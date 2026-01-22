@@ -1,10 +1,14 @@
-// Streaming browser operations endpoint with progress updates
+/**
+ * @fileoverview Streaming URL analysis endpoint with progress updates.
+ * Provides Server-Sent Events (SSE) endpoint for real-time progress during
+ * page loading, consent handling, and tracking analysis.
+ */
 
 import type { Request, Response } from 'express'
 import {
   launchBrowser,
   navigateTo,
-  setPageUrl,
+  setCurrentPageUrl,
   clearTrackingData,
   captureCurrentCookies,
   captureStorage,
@@ -21,20 +25,60 @@ import { detectCookieConsent } from '../services/consent-detection.js'
 import { extractConsentDetails } from '../services/consent-extraction.js'
 import { tryClickConsentButton } from '../services/consent-click.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
+import { getErrorMessage } from '../utils/index.js'
 import type { ConsentDetails, CookieConsentDetection } from '../types.js'
 
-// SSE helper functions
+// ============================================================================
+// SSE Helper Functions
+// ============================================================================
+
+/**
+ * Send a named event to the SSE stream.
+ *
+ * @param res - Express response object (SSE stream)
+ * @param type - Event type name
+ * @param data - Data object to serialize as JSON
+ */
 function sendEvent(res: Response, type: string, data: object): void {
   res.write(`event: ${type}\n`)
   res.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
+/**
+ * Send a progress event to the SSE stream.
+ *
+ * @param res - Express response object (SSE stream)
+ * @param step - Current step identifier (e.g., 'init', 'navigate', 'consent')
+ * @param message - Human-readable progress message
+ * @param progress - Progress percentage (0-100)
+ */
 function sendProgress(res: Response, step: string, message: string, progress: number): void {
   sendEvent(res, 'progress', { step, message, progress })
 }
 
-// Streaming endpoint for browser operations
-export async function openBrowserStreamHandler(req: Request, res: Response): Promise<void> {
+// ============================================================================
+// Main Streaming Handler
+// ============================================================================
+
+/**
+ * GET /api/open-browser-stream - Analyze tracking on a URL with streaming progress.
+ *
+ * Opens a headless browser, navigates to the URL, detects and handles cookie
+ * consent banners, captures tracking data, and runs AI analysis. Progress
+ * is streamed via Server-Sent Events (SSE).
+ *
+ * Query parameters:
+ * - url: The URL to analyze (required)
+ *
+ * SSE Events emitted:
+ * - progress: { step, message, progress } - Progress updates
+ * - screenshot: { screenshot, cookies, scripts, networkRequests, storage } - Page captures
+ * - consent: { detected, clicked, details } - Consent banner handling result
+ * - consentDetails: { categories, partners, purposes } - Extracted consent info
+ * - complete: { success, analysis, highRisks, ... } - Final results
+ * - error: { error } - If something fails
+ */
+export async function analyzeUrlStreamHandler(req: Request, res: Response): Promise<void> {
   const url = req.query.url as string
 
   if (!url) {
@@ -51,9 +95,9 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
   try {
     sendProgress(res, 'init', '🚀 Starting browser...', 5)
 
-    // Clear tracked data and set page URL
+    // Clear tracked data and set URL for third-party detection
     clearTrackingData()
-    setPageUrl(url)
+    setCurrentPageUrl(url)
 
     sendProgress(res, 'browser', '🌐 Launching headless browser...', 10)
 
@@ -92,15 +136,15 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
     const html = await getPageContent()
     const consentDetection = await detectCookieConsent(screenshot, html)
 
-    let cookieConsentClicked = false
-    let cookieConsentInfo: CookieConsentDetection | null = null
+    let consentAccepted = false
+    let detectedConsent: CookieConsentDetection | null = null
     let consentDetails: ConsentDetails | null = null
 
     const page = getPage()
 
     if (consentDetection.found && consentDetection.selector && page) {
       sendProgress(res, 'consent-found', `✅ Cookie consent found: "${consentDetection.buttonText || 'Accept'}"`, 50)
-      cookieConsentInfo = consentDetection
+      detectedConsent = consentDetection
 
       // Extract detailed consent information BEFORE accepting
       sendProgress(res, 'consent-extract', '📋 Extracting partner and tracking details from consent dialog...', 55)
@@ -169,9 +213,9 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
         sendProgress(res, 'consent-click', '👆 Clicking accept button...', 62)
 
         // Try multiple click strategies
-        cookieConsentClicked = await tryClickConsentButton(page, consentDetection.selector, consentDetection.buttonText)
+        consentAccepted = await tryClickConsentButton(page, consentDetection.selector, consentDetection.buttonText)
 
-        if (cookieConsentClicked) {
+        if (consentAccepted) {
           sendProgress(res, 'consent-wait', '⏳ Waiting for page to update...', 70)
           await waitForTimeout(1000)
           await waitForLoadState('domcontentloaded').catch(() => {})
@@ -195,14 +239,14 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
           sendEvent(res, 'consent', {
             detected: true,
             clicked: true,
-            details: cookieConsentInfo,
+            details: detectedConsent,
           })
         } else {
           console.log('All consent click strategies failed')
           sendEvent(res, 'consent', {
             detected: true,
             clicked: false,
-            details: cookieConsentInfo,
+            details: detectedConsent,
             error: 'Failed to click consent button with all strategies',
           })
         }
@@ -211,7 +255,7 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
         sendEvent(res, 'consent', {
           detected: true,
           clicked: false,
-          details: cookieConsentInfo,
+          details: detectedConsent,
           error: 'Failed to click consent button',
         })
       }
@@ -244,9 +288,9 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
     // Send final complete event
     sendEvent(res, 'complete', {
       success: true,
-      message: cookieConsentClicked
-        ? 'Browser opened, cookie consent accepted, and tracking analyzed'
-        : 'Browser opened and tracking analyzed',
+      message: consentAccepted
+        ? 'Tracking analyzed after accepting cookie consent'
+        : 'Tracking analyzed',
       analysis: analysisResult.success ? analysisResult.analysis : null,
       highRisks: analysisResult.success ? analysisResult.highRisks : null,
       analysisSummary: analysisResult.success ? analysisResult.summary : null,
@@ -256,8 +300,7 @@ export async function openBrowserStreamHandler(req: Request, res: Response): Pro
 
     res.end()
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    sendEvent(res, 'error', { error: message })
+    sendEvent(res, 'error', { error: getErrorMessage(error) })
     res.end()
   }
 }

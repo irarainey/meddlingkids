@@ -1,7 +1,14 @@
-// Tracking analysis prompts for privacy risk assessment
+/**
+ * @fileoverview Tracking analysis prompts for privacy risk assessment.
+ * Contains system prompts and user prompt builders for LLM-based analysis.
+ */
 
-import type { ConsentDetails, StorageItem } from '../types.js'
+import type { ConsentDetails, TrackingSummary } from '../types.js'
 
+/**
+ * System prompt for comprehensive tracking analysis.
+ * Instructs the LLM to analyze tracking data and produce a detailed privacy report.
+ */
 export const TRACKING_ANALYSIS_SYSTEM_PROMPT = `You are a privacy and web tracking expert analyst. Your task is to analyze tracking data collected from a website and provide comprehensive insights about:
 
 1. **Tracking Technologies Identified**: Identify known tracking services (Google Analytics, Facebook Pixel, advertising networks, etc.) based on cookie names, script URLs, and network requests.
@@ -26,6 +33,10 @@ Format your response in clear sections with markdown headings. Be specific about
 
 IMPORTANT: Pay special attention to the consent dialog information if provided - this is what users typically don't read but agree to. Highlight the most concerning aspects.`
 
+/**
+ * System prompt for generating high-risks summary.
+ * Produces a brief, alarming bullet-point summary of privacy concerns.
+ */
 export const HIGH_RISKS_SYSTEM_PROMPT = `You are a privacy expert. Create a brief, alarming summary of the highest privacy risks found on a website. 
 Be direct and impactful - this is what users need to know immediately.
 
@@ -37,27 +48,14 @@ Format as a SHORT bulleted list (max 5-7 points) with:
 Keep each point to ONE sentence. Be specific about company names and what they do.
 End with an overall privacy risk rating: 🔴 High Risk, 🟠 Medium Risk, or 🟢 Low Risk.`
 
-interface TrackingSummary {
-  analyzedUrl: string
-  totalCookies: number
-  totalScripts: number
-  totalNetworkRequests: number
-  localStorageItems: number
-  sessionStorageItems: number
-  thirdPartyDomains: string[]
-  domainBreakdown: Array<{
-    domain: string
-    cookieCount: number
-    cookieNames: string[]
-    scriptCount: number
-    requestCount: number
-    requestTypes: string[]
-  }>
-  localStorage: Array<{ key: string; valuePreview: string }>
-  sessionStorage: Array<{ key: string; valuePreview: string }>
-}
-
-export function buildConsentSection(consentDetails: ConsentDetails): string {
+/**
+ * Build the consent information section for the analysis prompt.
+ * Formats cookie categories, partners, and purposes into readable markdown.
+ *
+ * @param consentDetails - Extracted consent dialog information
+ * @returns Formatted markdown section for inclusion in the analysis prompt
+ */
+function buildConsentSection(consentDetails: ConsentDetails): string {
   return `
 
 ## Cookie Consent Dialog Information (What Users Agreed To)
@@ -91,6 +89,14 @@ ${consentDetails.rawText.substring(0, 3000)}
 `
 }
 
+/**
+ * Build the user prompt for tracking analysis.
+ * Combines tracking summary data with optional consent details.
+ *
+ * @param trackingSummary - Aggregated tracking data from the page
+ * @param consentDetails - Optional consent dialog information
+ * @returns Complete user prompt for the LLM
+ */
 export function buildTrackingAnalysisUserPrompt(
   trackingSummary: TrackingSummary,
   consentDetails?: ConsentDetails | null
@@ -126,6 +132,13 @@ ${consentSection}
 Please provide a comprehensive privacy analysis of this tracking data. If consent dialog information is provided, compare what was disclosed to users vs what is actually happening, and highlight any concerning discrepancies.`
 }
 
+/**
+ * Build the user prompt for high-risks summary generation.
+ * Takes the full analysis and requests a condensed summary.
+ *
+ * @param analysis - The full analysis text from the main LLM call
+ * @returns User prompt asking for high-risks summary
+ */
 export function buildHighRisksUserPrompt(analysis: string): string {
   return `Based on this full analysis, create a brief high-risks summary:\n\n${analysis}`
 }

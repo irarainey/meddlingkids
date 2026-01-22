@@ -1,5 +1,12 @@
-// Consent detection prompt for LLM vision analysis
+/**
+ * @fileoverview Consent detection prompt for LLM vision analysis.
+ * Instructs the LLM to find cookie consent banners and accept buttons.
+ */
 
+/**
+ * System prompt for cookie consent banner detection.
+ * Guides the LLM to analyze screenshots and HTML to find "Accept All" buttons.
+ */
 export const CONSENT_DETECTION_SYSTEM_PROMPT = `You are an expert at detecting cookie consent banners and GDPR/privacy popups on websites. 
 Your task is to analyze the screenshot and HTML to find a button that accepts all cookies.
 
@@ -26,6 +33,13 @@ For the selector, prefer:
 
 IMPORTANT: Return ONLY the JSON object, no other text.`
 
+/**
+ * Build the user prompt for consent detection.
+ * Includes relevant HTML snippets for the LLM to analyze.
+ *
+ * @param relevantHtml - Filtered HTML containing likely consent-related elements
+ * @returns User prompt with HTML context
+ */
 export function buildConsentDetectionUserPrompt(relevantHtml: string): string {
   return `Analyze this webpage screenshot and the following HTML snippets to find a cookie consent "Accept All" button.
 

@@ -5,7 +5,6 @@ export { CONSENT_EXTRACTION_SYSTEM_PROMPT, buildConsentExtractionUserPrompt } fr
 export {
   TRACKING_ANALYSIS_SYSTEM_PROMPT,
   HIGH_RISKS_SYSTEM_PROMPT,
-  buildConsentSection,
   buildTrackingAnalysisUserPrompt,
   buildHighRisksUserPrompt,
 } from './tracking-analysis.js'

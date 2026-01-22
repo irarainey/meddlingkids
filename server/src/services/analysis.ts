@@ -1,4 +1,8 @@
-// AI-powered tracking analysis service
+/**
+ * @fileoverview AI-powered tracking analysis service.
+ * Uses Azure OpenAI to analyze collected tracking data and generate
+ * comprehensive privacy reports with risk assessments.
+ */
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import {
@@ -7,9 +11,23 @@ import {
   buildTrackingAnalysisUserPrompt,
   buildHighRisksUserPrompt,
 } from '../prompts/index.js'
+import { getErrorMessage, buildTrackingSummary } from '../utils/index.js'
 import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult } from '../types.js'
 
-// Run comprehensive tracking analysis using Azure OpenAI
+/**
+ * Run comprehensive tracking analysis using Azure OpenAI.
+ * Analyzes cookies, scripts, network requests, and storage to generate
+ * a detailed privacy report and high-risks summary.
+ *
+ * @param cookies - Captured cookies from the browser
+ * @param localStorage - localStorage items from the page
+ * @param sessionStorage - sessionStorage items from the page
+ * @param networkRequests - Network requests made by the page
+ * @param scripts - Scripts loaded by the page
+ * @param analyzedUrl - URL of the page that was analyzed
+ * @param consentDetails - Optional consent dialog information for comparison
+ * @returns Analysis result with full report and high-risks summary
+ */
 export async function runTrackingAnalysis(
   cookies: TrackedCookie[],
   localStorage: StorageItem[],
@@ -25,72 +43,14 @@ export async function runTrackingAnalysis(
   }
 
   try {
-    // Group data by domain for analysis
-    const domainData: Record<
-      string,
-      {
-        cookies: TrackedCookie[]
-        scripts: TrackedScript[]
-        networkRequests: NetworkRequest[]
-      }
-    > = {}
-
-    for (const cookie of cookies || []) {
-      if (!domainData[cookie.domain]) {
-        domainData[cookie.domain] = { cookies: [], scripts: [], networkRequests: [] }
-      }
-      domainData[cookie.domain].cookies.push(cookie)
-    }
-
-    for (const script of scripts || []) {
-      if (!domainData[script.domain]) {
-        domainData[script.domain] = { cookies: [], scripts: [], networkRequests: [] }
-      }
-      domainData[script.domain].scripts.push(script)
-    }
-
-    for (const request of networkRequests || []) {
-      if (!domainData[request.domain]) {
-        domainData[request.domain] = { cookies: [], scripts: [], networkRequests: [] }
-      }
-      domainData[request.domain].networkRequests.push(request)
-    }
-
-    const trackingSummary = {
-      analyzedUrl,
-      totalCookies: cookies?.length || 0,
-      totalScripts: scripts?.length || 0,
-      totalNetworkRequests: networkRequests?.length || 0,
-      localStorageItems: localStorage?.length || 0,
-      sessionStorageItems: sessionStorage?.length || 0,
-      thirdPartyDomains: Object.keys(domainData).filter((domain) => {
-        try {
-          const pageBaseDomain = new URL(analyzedUrl).hostname.split('.').slice(-2).join('.')
-          const domainBase = domain.split('.').slice(-2).join('.')
-          return pageBaseDomain !== domainBase
-        } catch {
-          return true
-        }
-      }),
-      domainBreakdown: Object.entries(domainData).map(([domain, data]) => ({
-        domain,
-        cookieCount: data.cookies.length,
-        cookieNames: data.cookies.map((c) => c.name),
-        scriptCount: data.scripts.length,
-        requestCount: data.networkRequests.length,
-        requestTypes: [...new Set(data.networkRequests.map((r) => r.resourceType))],
-      })),
-      localStorage:
-        localStorage?.map((item: StorageItem) => ({
-          key: item.key,
-          valuePreview: item.value.substring(0, 100),
-        })) || [],
-      sessionStorage:
-        sessionStorage?.map((item: StorageItem) => ({
-          key: item.key,
-          valuePreview: item.value.substring(0, 100),
-        })) || [],
-    }
+    const trackingSummary = buildTrackingSummary(
+      cookies,
+      scripts,
+      networkRequests,
+      localStorage,
+      sessionStorage,
+      analyzedUrl
+    )
 
     const deployment = getDeploymentName()
 
@@ -131,6 +91,6 @@ export async function runTrackingAnalysis(
     }
   } catch (error) {
     console.error('Analysis error:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    return { success: false, error: getErrorMessage(error) }
   }
 }

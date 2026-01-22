@@ -1,8 +1,12 @@
-// Consent button click strategies
+/**
+ * @fileoverview Consent button click strategies.
+ * Provides multiple fallback strategies for clicking "Accept All" buttons
+ * on cookie consent banners, including iframe handling.
+ */
 
 import type { Page } from 'playwright'
 
-// Common accept button text patterns
+/** Common text patterns found on accept/agree buttons */
 const COMMON_ACCEPT_PATTERNS = [
   'Accept All',
   'Accept all',
@@ -21,7 +25,7 @@ const COMMON_ACCEPT_PATTERNS = [
   'Allow',
 ]
 
-// Common consent iframe URL patterns
+/** URL patterns that indicate a frame contains consent UI */
 const CONSENT_IFRAME_PATTERNS = [
   'consent',
   'cookie',
@@ -33,7 +37,16 @@ const CONSENT_IFRAME_PATTERNS = [
   'quantcast',
 ]
 
-// Helper function to try multiple click strategies for consent buttons
+/**
+ * Try multiple strategies to click a consent accept button.
+ * Attempts various selectors and patterns in order of likelihood,
+ * including checking iframes for consent managers like OneTrust or CookieBot.
+ *
+ * @param page - Playwright Page instance
+ * @param selector - CSS selector suggested by LLM detection (may be null)
+ * @param buttonText - Text of the button suggested by LLM (may be null)
+ * @returns True if any strategy succeeded in clicking, false otherwise
+ */
 export async function tryClickConsentButton(
   page: Page,
   selector: string | null,
@@ -105,7 +118,14 @@ export async function tryClickConsentButton(
   return false
 }
 
-// Try clicking consent buttons within iframes
+/**
+ * Try clicking consent buttons within iframes.
+ * Many consent management platforms (OneTrust, CookieBot, TrustArc)
+ * render their UI in iframes.
+ *
+ * @param page - Playwright Page instance
+ * @throws Error if no consent iframe found or click fails
+ */
 async function tryClickInConsentIframes(page: Page): Promise<void> {
   const frames = page.frames()
 

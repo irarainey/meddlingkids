@@ -1,62 +1,107 @@
-// Browser state management and capture utilities
+/**
+ * @fileoverview Browser state management and capture utilities.
+ * Manages a headless Chromium browser instance via Playwright,
+ * tracks cookies, scripts, and network requests during page visits.
+ */
 
 import { chromium, type Browser, type Page, type BrowserContext } from 'playwright'
 import { extractDomain, isThirdParty } from '../utils/index.js'
 import type { TrackedCookie, TrackedScript, NetworkRequest, StorageItem } from '../types.js'
 
-// Browser state - module-level singletons
-let browser: Browser | null = null
-let context: BrowserContext | null = null
-let page: Page | null = null
-let pageUrl: string = ''
+// ============================================================================
+// Browser State - Module-level Singletons
+// ============================================================================
 
-// Tracking data arrays
+/** Active browser instance */
+let browser: Browser | null = null
+/** Browser context (incognito-like session) */
+let context: BrowserContext | null = null
+/** Current page being controlled */
+let page: Page | null = null
+/** URL of the page being analyzed (for third-party detection) */
+let currentPageUrl: string = ''
+
+// ============================================================================
+// Tracking Data Arrays
+// ============================================================================
+
+/** Cookies captured from the browser context */
 const trackedCookies: TrackedCookie[] = []
+/** Scripts loaded by the page */
 const trackedScripts: TrackedScript[] = []
+/** Network requests made by the page */
 const trackedNetworkRequests: NetworkRequest[] = []
 
-// Getters for state
-export function getBrowser(): Browser | null {
-  return browser
-}
+// ============================================================================
+// State Getters
+// ============================================================================
 
-export function getContext(): BrowserContext | null {
-  return context
-}
-
+/**
+ * Get the current page being controlled.
+ * @returns The Page instance or null if no session is active
+ */
 export function getPage(): Page | null {
   return page
 }
 
-export function getPageUrl(): string {
-  return pageUrl
-}
-
+/**
+ * Get all cookies captured during the session.
+ * @returns Array of tracked cookies (may include duplicates from multiple captures)
+ */
 export function getTrackedCookies(): TrackedCookie[] {
   return trackedCookies
 }
 
+/**
+ * Get all scripts detected during the session.
+ * @returns Array of script URLs and their domains
+ */
 export function getTrackedScripts(): TrackedScript[] {
   return trackedScripts
 }
 
+/**
+ * Get all network requests tracked during the session.
+ * @returns Array of network requests with metadata
+ */
 export function getTrackedNetworkRequests(): NetworkRequest[] {
   return trackedNetworkRequests
 }
 
-// Clear all tracking data
+// ============================================================================
+// State Management
+// ============================================================================
+
+/**
+ * Clear all tracked data (cookies, scripts, network requests).
+ * Call this before navigating to a new URL for fresh tracking.
+ */
 export function clearTrackingData(): void {
   trackedCookies.length = 0
   trackedScripts.length = 0
   trackedNetworkRequests.length = 0
 }
 
-// Set page URL for third-party detection
-export function setPageUrl(url: string): void {
-  pageUrl = url
+/**
+ * Set the URL being analyzed for third-party detection.
+ * Must be called before navigating to properly classify requests.
+ * @param url - The URL about to be visited
+ */
+export function setCurrentPageUrl(url: string): void {
+  currentPageUrl = url
 }
 
-// Launch a new browser instance
+// ============================================================================
+// Browser Lifecycle
+// ============================================================================
+
+/**
+ * Launch a new headless Chromium browser instance.
+ * Sets up request interception to track scripts and network activity.
+ * Closes any existing browser instance first.
+ *
+ * @param headless - Whether to run in headless mode (default: true)
+ */
 export async function launchBrowser(headless: boolean = true): Promise<void> {
   // Close existing browser if open
   if (browser) {
@@ -96,7 +141,7 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
       domain,
       method: request.method(),
       resourceType,
-      isThirdParty: isThirdParty(requestUrl, pageUrl),
+      isThirdParty: isThirdParty(requestUrl, currentPageUrl),
       timestamp: new Date().toISOString(),
     }
 
@@ -106,7 +151,16 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
   })
 }
 
-// Navigate to a URL
+/**
+ * Navigate the current page to a URL and wait for it to load.
+ *
+ * @param url - The URL to navigate to
+ * @param waitUntil - When to consider navigation complete:
+ *   - 'load': Wait for load event (default browser behavior)
+ *   - 'domcontentloaded': Wait for DOMContentLoaded event
+ *   - 'networkidle': Wait until network is idle (default, best for tracking)
+ * @throws Error if no browser session is active
+ */
 export async function navigateTo(url: string, waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'networkidle'): Promise<void> {
   if (!page) {
     throw new Error('No browser session active')
@@ -114,17 +168,15 @@ export async function navigateTo(url: string, waitUntil: 'load' | 'domcontentloa
   await page.goto(url, { waitUntil })
 }
 
-// Close the browser
-export async function closeBrowser(): Promise<void> {
-  if (browser) {
-    await browser.close()
-    browser = null
-    context = null
-    page = null
-  }
-}
+// ============================================================================
+// Data Capture Functions
+// ============================================================================
 
-// Capture current cookies from browser context
+/**
+ * Capture all cookies from the current browser context.
+ * Updates or adds cookies to the trackedCookies array.
+ * Call this after page interactions to get the latest cookies.
+ */
 export async function captureCurrentCookies(): Promise<void> {
   if (!context) return
 
@@ -158,7 +210,12 @@ export async function captureCurrentCookies(): Promise<void> {
   }
 }
 
-// Capture localStorage and sessionStorage
+/**
+ * Capture localStorage and sessionStorage contents from the current page.
+ * Executes JavaScript in the page context to read storage.
+ *
+ * @returns Object with localStorage and sessionStorage arrays
+ */
 export async function captureStorage(): Promise<{ localStorage: StorageItem[]; sessionStorage: StorageItem[] }> {
   if (!page) return { localStorage: [], sessionStorage: [] }
 
@@ -192,7 +249,13 @@ export async function captureStorage(): Promise<{ localStorage: StorageItem[]; s
   }
 }
 
-// Take a screenshot
+/**
+ * Take a PNG screenshot of the current page.
+ *
+ * @param fullPage - Whether to capture the entire scrollable page (default: false)
+ * @returns Buffer containing the PNG image data
+ * @throws Error if no browser session is active
+ */
 export async function takeScreenshot(fullPage: boolean = false): Promise<Buffer> {
   if (!page) {
     throw new Error('No browser session active')
@@ -200,7 +263,12 @@ export async function takeScreenshot(fullPage: boolean = false): Promise<Buffer>
   return page.screenshot({ type: 'png', fullPage })
 }
 
-// Get page HTML content
+/**
+ * Get the full HTML content of the current page.
+ *
+ * @returns The page's HTML as a string
+ * @throws Error if no browser session is active
+ */
 export async function getPageContent(): Promise<string> {
   if (!page) {
     throw new Error('No browser session active')
@@ -208,7 +276,17 @@ export async function getPageContent(): Promise<string> {
   return page.content()
 }
 
-// Wait for timeout
+// ============================================================================
+// Page Interaction Helpers
+// ============================================================================
+
+/**
+ * Wait for a specified amount of time.
+ * Useful for waiting for animations or async operations.
+ *
+ * @param ms - Milliseconds to wait
+ * @throws Error if no browser session is active
+ */
 export async function waitForTimeout(ms: number): Promise<void> {
   if (!page) {
     throw new Error('No browser session active')
@@ -216,7 +294,15 @@ export async function waitForTimeout(ms: number): Promise<void> {
   await page.waitForTimeout(ms)
 }
 
-// Wait for load state
+/**
+ * Wait for a specific page load state.
+ *
+ * @param state - The load state to wait for:
+ *   - 'load': Wait for load event
+ *   - 'domcontentloaded': Wait for DOMContentLoaded
+ *   - 'networkidle': Wait until no network activity for 500ms
+ * @throws Error if no browser session is active
+ */
 export async function waitForLoadState(state: 'load' | 'domcontentloaded' | 'networkidle'): Promise<void> {
   if (!page) {
     throw new Error('No browser session active')
@@ -224,26 +310,3 @@ export async function waitForLoadState(state: 'load' | 'domcontentloaded' | 'net
   await page.waitForLoadState(state)
 }
 
-// Click at coordinates
-export async function clickAt(x: number, y: number): Promise<void> {
-  if (!page) {
-    throw new Error('No browser session active')
-  }
-  await page.mouse.click(x, y)
-}
-
-// Click on element by selector
-export async function clickSelector(selector: string, timeout: number = 5000): Promise<void> {
-  if (!page) {
-    throw new Error('No browser session active')
-  }
-  await page.click(selector, { timeout })
-}
-
-// Fill text in an element
-export async function fillText(selector: string, text: string): Promise<void> {
-  if (!page) {
-    throw new Error('No browser session active')
-  }
-  await page.fill(selector, text)
-}

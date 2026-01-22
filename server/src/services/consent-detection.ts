@@ -1,10 +1,21 @@
-// Cookie consent banner detection using LLM vision
+/**
+ * @fileoverview Cookie consent banner detection using LLM vision.
+ * Uses Azure OpenAI to analyze screenshots and find "Accept All" buttons.
+ */
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_DETECTION_SYSTEM_PROMPT, buildConsentDetectionUserPrompt } from '../prompts/index.js'
+import { getErrorMessage } from '../utils/index.js'
 import type { CookieConsentDetection } from '../types.js'
 
-// Detect cookie consent banner using LLM vision
+/**
+ * Detect cookie consent banner using LLM vision analysis.
+ * Analyzes a screenshot and HTML to find the "Accept All" button.
+ *
+ * @param screenshot - PNG screenshot buffer of the page
+ * @param html - Full HTML content of the page
+ * @returns Detection result with selector and confidence level
+ */
 export async function detectCookieConsent(screenshot: Buffer, html: string): Promise<CookieConsentDetection> {
   const client = getOpenAIClient()
   if (!client) {
@@ -67,12 +78,18 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
       selector: null,
       buttonText: null,
       confidence: 'low',
-      reason: `Detection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      reason: `Detection failed: ${getErrorMessage(error)}`,
     }
   }
 }
 
-// Extract only relevant HTML for cookie consent analysis
+/**
+ * Extract only relevant HTML snippets for cookie consent analysis.
+ * Reduces payload size by filtering to elements likely to contain consent UI.
+ *
+ * @param fullHtml - Complete HTML content of the page
+ * @returns Filtered HTML containing likely consent-related elements
+ */
 function extractRelevantHtml(fullHtml: string): string {
   const patterns = [
     /<div[^>]*(?:cookie|consent|gdpr|privacy|banner|modal|popup|overlay)[^>]*>[\s\S]*?<\/div>/gi,

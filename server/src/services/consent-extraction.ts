@@ -1,11 +1,23 @@
-// Consent details extraction using LLM vision
+/**
+ * @fileoverview Consent details extraction using LLM vision.
+ * Extracts detailed information about cookie categories, partners,
+ * and data collection purposes from consent dialogs.
+ */
 
 import type { Page } from 'playwright'
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_EXTRACTION_SYSTEM_PROMPT, buildConsentExtractionUserPrompt } from '../prompts/index.js'
 import type { ConsentDetails } from '../types.js'
 
-// Extract detailed consent information from a cookie preferences panel
+/**
+ * Extract detailed consent information from a cookie preferences panel.
+ * Uses LLM vision to analyze the screenshot and extract structured data
+ * about cookie categories, third-party partners, and data purposes.
+ *
+ * @param page - Playwright Page instance for extracting visible text
+ * @param screenshot - PNG screenshot buffer of the consent dialog
+ * @returns Structured consent details or empty defaults if extraction fails
+ */
 export async function extractConsentDetails(page: Page, screenshot: Buffer): Promise<ConsentDetails> {
   const client = getOpenAIClient()
   if (!client) {

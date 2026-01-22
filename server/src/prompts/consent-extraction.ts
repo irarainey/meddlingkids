@@ -1,5 +1,12 @@
-// Consent extraction prompt for extracting detailed consent information
+/**
+ * @fileoverview Consent extraction prompt for detailed consent information.
+ * Instructs the LLM to extract cookie categories, partners, and purposes.
+ */
 
+/**
+ * System prompt for extracting detailed consent information.
+ * Guides the LLM to analyze consent dialogs and extract structured data.
+ */
 export const CONSENT_EXTRACTION_SYSTEM_PROMPT = `You are an expert at analyzing cookie consent dialogs and extracting detailed information about tracking and data collection.
 
 Your task is to extract ALL information about:
@@ -28,6 +35,13 @@ Return a JSON object with this exact structure:
 Extract as much detail as possible. If you see a long list of partners, include them all.
 IMPORTANT: Return ONLY the JSON object, no other text.`
 
+/**
+ * Build the user prompt for consent details extraction.
+ * Includes extracted text from consent-related DOM elements.
+ *
+ * @param consentText - Text content extracted from consent dialog elements
+ * @returns User prompt with consent text context
+ */
 export function buildConsentExtractionUserPrompt(consentText: string): string {
   return `Analyze this cookie consent dialog screenshot and extracted text to find ALL information about tracking, partners, and data collection.
 
