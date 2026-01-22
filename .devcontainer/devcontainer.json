@@ -1,7 +1,10 @@
 {
   "name": "Node.js",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
-  "features": {},
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+  ],
+  "remoteUser": "node",
   "customizations": {
     "vscode": {
       "extensions": [
