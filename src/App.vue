@@ -321,7 +321,7 @@ function formatMarkdown(text: string): string {
   <div class="app-container">
     <header class="header">
       <h1>Meddling Kids</h1>
-      <p class="subtitle">And we would've got away with it!</p>
+      <p class="subtitle">And we would've gotten away with it!</p>
     </header>
 
     <div class="url-bar">
