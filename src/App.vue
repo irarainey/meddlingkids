@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import logo from './assets/logo.svg'
 
 interface TrackedCookie {
   name: string
@@ -148,7 +149,7 @@ const hasTrackingData = computed(() => {
 
 async function openBrowser() {
   if (!inputValue.value.trim()) {
-    errorMessage.value = 'Please enter a URL'
+    errorMessage.value = 'You need a URL to investigate!'
     return
   }
 
@@ -320,8 +321,7 @@ function formatMarkdown(text: string): string {
 <template>
   <div class="app-container">
     <header class="header">
-      <h1>Meddling Kids</h1>
-      <p class="subtitle">And we would've gotten away with it!</p>
+      <img :src="logo" alt="Meddling Kids" class="logo" />
     </header>
 
     <div class="url-bar">
@@ -329,11 +329,11 @@ function formatMarkdown(text: string): string {
         v-model="inputValue"
         type="text"
         class="text-input"
-        placeholder="Enter URL (e.g., example.com)"
+        placeholder="Enter a suspicious URL to investigate..."
         @keyup.enter="openBrowser"
       />
       <button class="go-button" :disabled="isLoading" @click="openBrowser">
-        {{ isLoading ? 'Loading...' : 'Go' }}
+        {{ isLoading ? 'Sleuthing...' : 'Unmask' }}
       </button>
     </div>
 
@@ -605,6 +605,13 @@ function formatMarkdown(text: string): string {
   margin-bottom: 1.5rem;
 }
 
+.logo {
+  max-width: 320px;
+  height: auto;
+  margin-bottom: 1rem;
+  filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.3));
+}
+
 .header h1 {
   margin: 0;
   font-size: 2rem;
@@ -643,7 +650,7 @@ function formatMarkdown(text: string): string {
   font-size: 1rem;
   font-weight: 600;
   color: white;
-  background-color: #42b883;
+  background-color: #0C67AC;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -651,7 +658,7 @@ function formatMarkdown(text: string): string {
 }
 
 .go-button:hover {
-  background-color: #3aa876;
+  background-color: #21436E;
 }
 
 .go-button:disabled {
