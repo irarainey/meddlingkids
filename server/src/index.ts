@@ -747,6 +747,8 @@ app.get('/api/open-browser-stream', async (req, res) => {
 
     context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
+      storageState: undefined,
+      ignoreHTTPSErrors: false,
     })
 
     page = await context.newPage()
@@ -1012,6 +1014,8 @@ app.post('/api/open-browser', async (req, res) => {
 
     context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
+      storageState: undefined,
+      ignoreHTTPSErrors: false,
     })
 
     page = await context.newPage()
