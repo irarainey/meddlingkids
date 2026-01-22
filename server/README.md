@@ -261,12 +261,29 @@ Return complete results
 
 ### 2. Consent Detection
 
-The server uses Azure OpenAI's vision capabilities to:
+The server uses Azure OpenAI to detect consent banners by sending **both a screenshot AND filtered HTML** to the LLM. Each serves a distinct purpose:
 
-1. Analyze a screenshot of the page
-2. Identify cookie consent banners/modals
-3. Find the "Accept All" button
-4. Return a CSS selector to click
+**Screenshot (Vision Analysis):**
+- Visually detects consent banners even when dynamically rendered by JavaScript
+- Sees banners inside iframes that may not appear in the main page HTML
+- Reads button text even if styled unusually or rendered as images
+- Provides high confidence that a consent banner is actually visible to users
+
+**Filtered HTML:**
+- Provides the CSS selectors, IDs, and class names needed to actually click the button
+- Enables the LLM to return actionable selectors like `#onetrust-accept-btn-handler`
+- Gives structural context when multiple similar buttons exist
+- Acts as fallback context if the screenshot is unclear
+
+The HTML is filtered to only include relevant elements (divs with cookie/consent/gdpr classes, buttons, etc.) and limited to ~15KB to minimize token usage while providing necessary context.
+
+**Detection Flow:**
+1. Take screenshot of the page
+2. Extract relevant HTML snippets (cookie/consent/button elements)
+3. Send both to Azure OpenAI vision model
+4. LLM returns: `{ found, selector, buttonText, confidence, reason }`
+
+**Fallback Click Strategies:**
 
 If the LLM-suggested selector fails, fallback strategies try:
 - Common button text patterns ("Accept All", "I Agree", etc.)
