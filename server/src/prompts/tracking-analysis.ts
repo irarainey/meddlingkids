@@ -1,0 +1,131 @@
+// Tracking analysis prompts for privacy risk assessment
+
+import type { ConsentDetails, StorageItem } from '../types.js'
+
+export const TRACKING_ANALYSIS_SYSTEM_PROMPT = `You are a privacy and web tracking expert analyst. Your task is to analyze tracking data collected from a website and provide comprehensive insights about:
+
+1. **Tracking Technologies Identified**: Identify known tracking services (Google Analytics, Facebook Pixel, advertising networks, etc.) based on cookie names, script URLs, and network requests.
+
+2. **Data Collection Analysis**: What types of data are likely being collected (browsing behavior, user identification, cross-site tracking, etc.)
+
+3. **Third-Party Services**: List each third-party domain found and explain what company/service it belongs to and what they typically track.
+
+4. **Privacy Risk Assessment**: Rate the privacy risk level (Low/Medium/High/Very High) and explain why.
+
+5. **Cookie Analysis**: Analyze cookie purposes - which are functional, which are for tracking, and their persistence.
+
+6. **Storage Analysis**: Analyze localStorage/sessionStorage usage and what data might be persisted.
+
+7. **Consent Dialog Analysis**: If consent information is provided, analyze what the website disclosed about tracking and compare it to what was actually detected. Highlight any discrepancies or concerning practices.
+
+8. **Partner/Vendor Analysis**: If partner information is provided, explain what each partner does, what data they collect, and the privacy implications.
+
+9. **Recommendations**: What users can do to protect their privacy on this site.
+
+Format your response in clear sections with markdown headings. Be specific about which domains and cookies you're referring to. If you recognize specific tracking technologies, name them explicitly.
+
+IMPORTANT: Pay special attention to the consent dialog information if provided - this is what users typically don't read but agree to. Highlight the most concerning aspects.`
+
+export const HIGH_RISKS_SYSTEM_PROMPT = `You are a privacy expert. Create a brief, alarming summary of the highest privacy risks found on a website. 
+Be direct and impactful - this is what users need to know immediately.
+
+Format as a SHORT bulleted list (max 5-7 points) with:
+- 🚨 for critical risks (cross-site tracking, fingerprinting, data selling)
+- ⚠️ for high risks (persistent tracking, third-party data sharing)
+- 📊 for concerning findings (analytics, ad tracking)
+
+Keep each point to ONE sentence. Be specific about company names and what they do.
+End with an overall privacy risk rating: 🔴 High Risk, 🟠 Medium Risk, or 🟢 Low Risk.`
+
+interface TrackingSummary {
+  analyzedUrl: string
+  totalCookies: number
+  totalScripts: number
+  totalNetworkRequests: number
+  localStorageItems: number
+  sessionStorageItems: number
+  thirdPartyDomains: string[]
+  domainBreakdown: Array<{
+    domain: string
+    cookieCount: number
+    cookieNames: string[]
+    scriptCount: number
+    requestCount: number
+    requestTypes: string[]
+  }>
+  localStorage: Array<{ key: string; valuePreview: string }>
+  sessionStorage: Array<{ key: string; valuePreview: string }>
+}
+
+export function buildConsentSection(consentDetails: ConsentDetails): string {
+  return `
+
+## Cookie Consent Dialog Information (What Users Agreed To)
+
+### Cookie Categories Disclosed
+${
+  consentDetails.categories.length > 0
+    ? consentDetails.categories
+        .map((c) => `- **${c.name}** (${c.required ? 'Required' : 'Optional'}): ${c.description}`)
+        .join('\n')
+    : 'No categories found'
+}
+
+### Partners/Vendors Listed (${consentDetails.partners.length} found)
+${
+  consentDetails.partners.length > 0
+    ? consentDetails.partners
+        .map(
+          (p) =>
+            `- **${p.name}**: ${p.purpose}${p.dataCollected.length > 0 ? ` | Data: ${p.dataCollected.join(', ')}` : ''}`
+        )
+        .join('\n')
+    : 'No partners listed'
+}
+
+### Stated Purposes
+${consentDetails.purposes.length > 0 ? consentDetails.purposes.map((p) => `- ${p}`).join('\n') : 'No specific purposes listed'}
+
+### Raw Consent Text Excerpts
+${consentDetails.rawText.substring(0, 3000)}
+`
+}
+
+export function buildTrackingAnalysisUserPrompt(
+  trackingSummary: TrackingSummary,
+  consentDetails?: ConsentDetails | null
+): string {
+  const consentSection =
+    consentDetails && (consentDetails.categories.length > 0 || consentDetails.partners.length > 0)
+      ? buildConsentSection(consentDetails)
+      : ''
+
+  return `Analyze the following tracking data collected from: ${trackingSummary.analyzedUrl}
+
+## Summary
+- Total Cookies: ${trackingSummary.totalCookies}
+- Total Scripts: ${trackingSummary.totalScripts}
+- Total Network Requests: ${trackingSummary.totalNetworkRequests}
+- LocalStorage Items: ${trackingSummary.localStorageItems}
+- SessionStorage Items: ${trackingSummary.sessionStorageItems}
+- Third-Party Domains: ${trackingSummary.thirdPartyDomains.length}
+
+## Third-Party Domains Detected
+${trackingSummary.thirdPartyDomains.join('\n')}
+
+## Domain Breakdown
+${JSON.stringify(trackingSummary.domainBreakdown, null, 2)}
+
+## LocalStorage Data
+${JSON.stringify(trackingSummary.localStorage, null, 2)}
+
+## SessionStorage Data
+${JSON.stringify(trackingSummary.sessionStorage, null, 2)}
+${consentSection}
+
+Please provide a comprehensive privacy analysis of this tracking data. If consent dialog information is provided, compare what was disclosed to users vs what is actually happening, and highlight any concerning discrepancies.`
+}
+
+export function buildHighRisksUserPrompt(analysis: string): string {
+  return `Based on this full analysis, create a brief high-risks summary:\n\n${analysis}`
+}
