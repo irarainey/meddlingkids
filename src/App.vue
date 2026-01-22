@@ -320,8 +320,8 @@ function formatMarkdown(text: string): string {
 <template>
   <div class="app-container">
     <header class="header">
-      <h1>🍪 CrumbTrailer</h1>
-      <p class="subtitle">Load a page and see what cookies and trackers are deployed</p>
+      <h1>Meddling Kids</h1>
+      <p class="subtitle">And we would've got away with it!</p>
     </header>
 
     <div class="url-bar">
