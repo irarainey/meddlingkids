@@ -186,8 +186,10 @@ Located in `utils/formatters.ts`:
 The client communicates with the server using Server-Sent Events:
 
 ```typescript
+// API base URL: empty in production (relative), absolute in development
+const apiBase = import.meta.env.VITE_API_URL || ''
 const eventSource = new EventSource(
-  `http://localhost:3001/api/open-browser-stream?url=${encodeURIComponent(url)}`
+  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}`
 )
 
 eventSource.addEventListener('progress', (event) => { /* Update status */ })
@@ -196,6 +198,16 @@ eventSource.addEventListener('consentDetails', (event) => { /* Store consent inf
 eventSource.addEventListener('complete', (event) => { /* Finalize results */ })
 eventSource.addEventListener('error', (event) => { /* Handle errors */ })
 ```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `''` (empty) | API base URL. In development, set to `http://localhost:3001`. In production (Docker), leave empty for same-origin requests. |
+
+The environment is configured via:
+- `client/.env.development` - Development settings (set for local dev server)
+- Production builds use empty string (relative URLs work with same-origin server)
 
 ### Event Types Received
 

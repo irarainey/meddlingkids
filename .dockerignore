@@ -1,0 +1,64 @@
+# =============================================================================
+# Docker Ignore File
+# =============================================================================
+# Excludes files and directories from the Docker build context to:
+# - Speed up builds by reducing context size
+# - Prevent sensitive files from being included in the image
+# - Avoid overwriting built artifacts with local versions
+# =============================================================================
+
+# Dependencies (will be installed fresh in container)
+node_modules/
+
+# Build outputs (will be built in container)
+dist/
+server/dist/
+
+# Development and IDE files
+.devcontainer/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Environment files (should be passed at runtime, not baked in)
+.env
+.env.local
+.env.*.local
+client/.env.development
+
+# Documentation and metadata
+README.md
+LICENSE
+*.md
+!client/README.md
+
+# Test files
+tests/
+*.test.ts
+*.spec.ts
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (no need to include in context)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# GitHub
+.github/
+
+# TypeScript build info
+*.tsbuildinfo

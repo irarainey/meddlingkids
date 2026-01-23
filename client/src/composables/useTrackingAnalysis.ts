@@ -193,8 +193,10 @@ export function useTrackingAnalysis() {
     currentUrl.value = url
 
     try {
+      // Use relative URL in production (same origin), absolute in development
+      const apiBase = import.meta.env.VITE_API_URL || ''
       const eventSource = new EventSource(
-        `http://localhost:3001/api/open-browser-stream?url=${encodeURIComponent(url)}`
+        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}`
       )
 
       eventSource.addEventListener('progress', (event) => {
