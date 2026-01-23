@@ -1,4 +1,6 @@
-# Meddling Kids 🔍
+# Meddling Kids
+
+![Meddling Kids Logo](./images/logo.png)
 
 A privacy investigation tool that unmasks website tracking behavior. Analyze any URL to discover cookies, scripts, network requests, storage usage, and consent dialog practices—powered by AI analysis.
 
