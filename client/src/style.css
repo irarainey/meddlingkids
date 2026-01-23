@@ -57,3 +57,60 @@ button:focus-visible {
   margin: 0 auto;
   padding: 1rem;
 }
+
+/* =============================================================================
+   Common Tab Styles
+   ============================================================================= */
+
+/* Tab content container - used by all tab panels */
+.tab-content {
+  border: 1px solid #ccc;
+  border-radius: 0 0 8px 8px;
+  margin-top: -1px;
+  max-height: 500px;
+  overflow-y: auto;
+  background: white;
+}
+
+/* Empty state message shown when no data */
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+}
+
+/* Hint text below empty state */
+.hint {
+  font-weight: normal;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* Container for grouped items (cookies, scripts, network by domain) */
+.domain-groups {
+  padding: 0.5rem;
+}
+
+.domain-group {
+  margin-bottom: 1rem;
+}
+
+/* Sticky header for each domain group */
+.domain-header {
+  font-size: 0.9rem;
+  background: #f0f0f0;
+  padding: 0.5rem;
+  margin: 0;
+  border-radius: 4px;
+  position: sticky;
+  top: 0;
+}
+
+/* Small badge labels */
+.badge {
+  background: #e0e0e0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
