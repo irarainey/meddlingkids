@@ -16,14 +16,16 @@ The client is a single-page application built with Vue 3 and TypeScript. It conn
 
 ```
 src/
-├── App.vue                      # Main app shell (URL input, layout, tab nav)
+├── App.vue                      # Main app shell (URL input, device selector, tab nav)
 ├── main.ts                      # Application entry point
 ├── style.css                    # Global styles
 ├── assets/
 │   └── logo.svg                 # Application logo
 ├── components/
 │   ├── index.ts                 # Barrel export
+│   ├── PageErrorDialog.vue      # Access denied/error dialog
 │   ├── ProgressBanner.vue       # Loading progress indicator
+│   ├── ScoreDialog.vue          # Privacy score results dialog
 │   ├── ScreenshotGallery.vue    # Screenshot thumbnails + modal
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
@@ -51,16 +53,33 @@ src/
 
 The main application shell containing:
 - Header with logo
-- URL input bar
+- URL input bar with device type dropdown
 - Tab navigation
+- Privacy score dialog (Scooby-Doo themed)
+- Page error dialog (for access denied/bot protection)
 - Component mounting for each view
 
 ### ProgressBanner
 
 Displays during analysis with:
-- Animated spinner icon
+- Animated Mystery Machine van
 - Status message
 - Progress bar with percentage
+
+### ScoreDialog
+
+Privacy score results dialog showing:
+- Animated privacy score (0-100)
+- Scooby-Doo themed exclamation (Zoinks!, Jeepers!, Jinkies!, Ruh-Roh!, or Scooby Snack!)
+- One-sentence privacy summary
+- Site name
+
+### PageErrorDialog
+
+Error dialog for blocked pages:
+- Access denied / bot protection detection
+- Server error handling
+- Helpful tips for users
 
 ### ScreenshotGallery
 
@@ -89,13 +108,14 @@ The core of the application logic, managing:
 
 - **Reactive State**: All UI state including loading status, error messages, and collected data
 - **SSE Connection**: Establishes and manages the EventSource connection to the server
-- **Event Handlers**: Processes `progress`, `screenshot`, `consentDetails`, `complete`, and `error` events
+- **Event Handlers**: Processes `progress`, `screenshot`, `consentDetails`, `pageError`, `complete`, and `error` events
 - **Computed Properties**: Derived data like grouped cookies/scripts by domain, filtered network requests
 
 ```typescript
 const {
   // State
   inputValue,           // URL input field
+  deviceType,           // Selected device/browser type
   isLoading,            // Analysis in progress
   isComplete,           // Analysis finished
   errorMessage,         // Error to display
@@ -106,14 +126,22 @@ const {
   sessionStorage,       // sessionStorage items
   activeTab,            // Currently selected tab
   analysisResult,       // Full AI analysis (markdown)
+  analysisError,        // Analysis error if AI failed
   highRisks,            // High-risk summary
+  privacyScore,         // Privacy score (0-100)
+  privacySummary,       // One-sentence summary
+  showScoreDialog,      // Score dialog visibility
   consentDetails,       // Extracted consent info
+  pageError,            // Page error info (access denied, etc.)
+  showPageErrorDialog,  // Error dialog visibility
   statusMessage,        // Current progress message
+  progressStep,         // Current step identifier
   progressPercent,      // Progress bar value (0-100)
 
   // Computed
   scriptsByDomain,      // Scripts grouped by domain
   cookiesByDomain,      // Cookies grouped by domain
+  filteredNetworkRequests, // Network requests (filtered)
   networkByDomain,      // Network requests grouped by domain
   thirdPartyDomainCount, // Count of third-party domains
 
@@ -121,6 +149,8 @@ const {
   analyzeUrl,           // Start analysis
   openScreenshotModal,  // View screenshot fullscreen
   closeScreenshotModal, // Close modal
+  closeScoreDialog,     // Close score dialog
+  closePageErrorDialog, // Close error dialog
 } = useTrackingAnalysis()
 ```
 
@@ -139,6 +169,7 @@ Located in `types/tracking.ts`:
 | `ConsentDetails` | Full consent dialog information |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |
+| `PageError` | Access denied or server error information |
 
 ### Utility Functions
 
@@ -155,8 +186,11 @@ Located in `utils/formatters.ts`:
 
 ### Main Sections
 
-1. **URL Input Bar**: Enter a URL and click "Unmask" to start analysis
-2. **Progress Banner**: Shows current analysis step with progress bar
+1. **URL Input Bar**: Enter a URL, select device type, and click "Unmask" to start analysis
+2. **Device Selector**: Choose from iPhone, iPad, Android Phone, Android Tablet, Windows Chrome, or macOS Safari
+3. **Progress Banner**: Shows current analysis step with animated Mystery Machine van
+4. **Privacy Score Dialog**: Displays final privacy score with Scooby-Doo themed rating
+5. **Page Error Dialog**: Displays access denied or server error information
 3. **Screenshot Gallery**: Thumbnails of captured screenshots (clickable for fullscreen)
 4. **Tab Navigation**: Switch between different data views
 5. **Data Panels**: Display collected tracking information
@@ -175,9 +209,10 @@ Located in `utils/formatters.ts`:
 
 ### Visual Indicators
 
-- **Loading spinner**: Shown during analysis
+- **Mystery Machine van**: Animated van on progress bar during analysis
 - **Progress bar**: Visual progress through analysis stages
 - **Status messages**: Real-time updates ("Loading page...", "Analyzing consent...", etc.)
+- **Privacy score animation**: Animated counter revealing final score
 - **Third-party badges**: Highlight external domains in network requests
 - **Resource type icons**: Emoji indicators for request types (📜 script, 🔄 XHR, 🖼️ image)
 
@@ -189,7 +224,7 @@ The client communicates with the server using Server-Sent Events:
 // API base URL: empty in production (relative), absolute in development
 const apiBase = import.meta.env.VITE_API_URL || ''
 const eventSource = new EventSource(
-  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}`
+  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&deviceType=${deviceType}`
 )
 
 eventSource.addEventListener('progress', (event) => { /* Update status */ })
@@ -216,15 +251,16 @@ The environment is configured via:
 | `progress` | `{ step, message, progress }` | Update progress bar and status |
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
-| `complete` | `{ analysis, highRisks, ... }` | Final results with AI analysis |
+| `pageError` | `{ type, message, statusCode }` | Display page error dialog |
+| `complete` | `{ analysis, highRisks, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 22+ (uses native TypeScript support)
+- npm
 
 ### Setup
 

@@ -19,6 +19,9 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🤖 **AI-Powered Analysis** — Uses Azure OpenAI to analyze privacy implications
 - 📋 **Consent Dialog Extraction** — Reads and reports cookie consent banner details
 - 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
+- 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scooby Snack!)
+- 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
+- 🚫 **Error Detection** — Detects and reports access denied pages and bot protection
 
 ## Architecture
 
@@ -129,13 +132,15 @@ Then open http://localhost:3001
 
 ## How It Works
 
-1. **URL Submission** — User enters a URL to analyze
-2. **Browser Automation** — Playwright launches headless Chromium to load the page
-3. **Data Collection** — Captures cookies, scripts, network requests, and storage
-4. **Consent Detection** — AI analyzes the page for cookie consent dialogs
-5. **Consent Interaction** — Attempts to click "Accept All" and captures changes
-6. **Privacy Analysis** — AI reviews collected data for privacy concerns
-7. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
+1. **URL Submission** — User enters a URL and selects a device type to emulate
+2. **Browser Automation** — Playwright launches headless Chromium with device emulation
+3. **Access Check** — Detects bot protection or access denied responses
+4. **Data Collection** — Captures cookies, scripts, network requests, and storage
+5. **Consent Detection** — AI analyzes the page for cookie consent dialogs
+6. **Consent Interaction** — Attempts to click "Accept All" and captures changes
+7. **Privacy Analysis** — AI reviews collected data for privacy concerns
+8. **Privacy Score** — Generates a 0-100 privacy score with Scooby-Doo themed rating
+9. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 
 ## Tech Stack
 

@@ -46,12 +46,13 @@ server/src/
 
 ## API Endpoint
 
-### `GET /api/open-browser-stream?url={url}`
+### `GET /api/open-browser-stream?url={url}&deviceType={deviceType}`
 
 Analyzes tracking on the specified URL with real-time progress updates.
 
 **Query Parameters:**
 - `url` (required): The URL to analyze
+- `deviceType` (optional): Device to emulate. One of: `iphone`, `ipad`, `android-phone`, `android-tablet`, `windows-chrome`, `macos-safari`. Default: `ipad`
 
 **Response:** Server-Sent Events stream
 
@@ -63,7 +64,8 @@ Analyzes tracking on the specified URL with real-time progress updates.
 | `screenshot` | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with tracking data |
 | `consentDetails` | `{ categories, partners, purposes, hasManageOptions }` | Extracted consent dialog info |
 | `consent` | `{ detected, clicked, details }` | Consent handling result |
-| `complete` | `{ success, analysis, highRisks, analysisSummary, consentDetails }` | Final analysis results |
+| `pageError` | `{ type, message, statusCode }` | Access denied or server error detected |
+| `complete` | `{ success, analysis, highRisks, analysisSummary, privacyScore, privacySummary, siteName, consentDetails }` | Final analysis results with privacy score |
 | `error` | `{ error }` | Error message if something fails |
 
 **Example:**
@@ -90,13 +92,22 @@ eventSource.addEventListener('complete', (event) => {
 
 Manages headless Chromium browser via Playwright:
 
-- **`launchBrowser(headless)`** - Launch browser instance with request tracking
+- **`launchBrowser(headless, deviceType)`** - Launch browser instance with device emulation
 - **`navigateTo(url, waitUntil)`** - Navigate to URL
 - **`captureCurrentCookies()`** - Capture all cookies from browser context
 - **`captureStorage()`** - Capture localStorage and sessionStorage
 - **`takeScreenshot(fullPage)`** - Take PNG screenshot
 - **`getPageContent()`** - Get full HTML content
+- **`checkForAccessDenied()`** - Detect bot protection or access denied pages
 - **`getTrackedCookies/Scripts/NetworkRequests()`** - Get tracked data arrays
+
+**Supported Device Types:**
+- `iphone` - iPhone 15 Pro Max (Safari)
+- `ipad` - iPad Pro 12.9" (Safari)
+- `android-phone` - Pixel 8 Pro (Chrome)
+- `android-tablet` - Samsung Galaxy Tab S9 (Chrome)
+- `windows-chrome` - Windows 11 (Chrome)
+- `macos-safari` - macOS Sonoma (Safari)
 
 ### Analysis Service (`services/analysis.ts`)
 
@@ -182,8 +193,11 @@ interface ConsentPartner {
 ```typescript
 interface AnalysisResult {
   success: boolean
-  analysis?: string      // Full markdown report
-  highRisks?: string     // Brief risk summary
+  analysis?: string        // Full markdown report
+  highRisks?: string       // Brief risk summary
+  privacyScore?: number    // Privacy score 0-100 (lower is worse)
+  privacySummary?: string  // One-sentence summary
+  siteName?: string        // Extracted site name
   summary?: TrackingSummary
   error?: string
 }
@@ -210,7 +224,7 @@ OPENAI_API_VERSION=2024-12-01-preview
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22+ (uses native TypeScript support)
 - Azure OpenAI resource with a deployed model (GPT-4o recommended for vision)
 
 ### Installation
@@ -242,7 +256,11 @@ npm run typecheck
 ### 1. Browser Automation Flow
 
 ```
-Launch Browser → Navigate to URL → Wait for content
+Launch Browser (with device emulation) → Navigate to URL → Wait for content
+     ↓
+Check for access denied / bot protection
+     ↓
+If blocked: Return page error to client
      ↓
 Capture initial state (cookies, scripts, requests)
      ↓
@@ -254,9 +272,9 @@ If consent found:
   → Wait for page update
   → Recapture tracking data
      ↓
-Run AI privacy analysis
+Run AI privacy analysis (parallel: analysis + score)
      ↓
-Return complete results
+Return complete results with privacy score
 ```
 
 ### 2. Consent Detection
