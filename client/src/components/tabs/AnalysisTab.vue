@@ -54,7 +54,7 @@ defineProps<{
   width: 40px;
   height: 40px;
   border: 4px solid #3d4663;
-  border-top-color: #8b5cf6;
+  border-top-color: #0C67AC;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -87,20 +87,20 @@ defineProps<{
   color: #f0f4ff;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
-  border-bottom: 2px solid #8b5cf6;
+  border-bottom: 2px solid #0C67AC;
   padding-bottom: 0.25rem;
 }
 
 .analysis-result :deep(h3) {
   font-size: 1.1rem;
-  color: #c7d2fe;
+  color: #7CB8E4;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
 .analysis-result :deep(h4) {
   font-size: 1rem;
-  color: #a5b4fc;
+  color: #5BA3D9;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
@@ -120,7 +120,7 @@ defineProps<{
 
 .analysis-result :deep(code) {
   background: #2a2f45;
-  color: #c7d2fe;
+  color: #7CB8E4;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
   font-family: monospace;

@@ -8,8 +8,10 @@ import { getOpenAIClient, getDeploymentName } from './openai.js'
 import {
   TRACKING_ANALYSIS_SYSTEM_PROMPT,
   HIGH_RISKS_SYSTEM_PROMPT,
+  PRIVACY_SCORE_SYSTEM_PROMPT,
   buildTrackingAnalysisUserPrompt,
   buildHighRisksUserPrompt,
+  buildPrivacyScoreUserPrompt,
 } from '../prompts/index.js'
 import { getErrorMessage, buildTrackingSummary } from '../utils/index.js'
 import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult } from '../types.js'
@@ -83,10 +85,41 @@ export async function runTrackingAnalysis(
       console.error('Failed to generate high risks summary:', highRisksError)
     }
 
+    // Generate privacy score
+    let privacyScore: number | undefined
+    let privacySummary: string | undefined
+    try {
+      const scoreResponse = await client.chat.completions.create({
+        model: deployment,
+        messages: [
+          { role: 'system', content: PRIVACY_SCORE_SYSTEM_PROMPT },
+          { role: 'user', content: buildPrivacyScoreUserPrompt(analysis) },
+        ],
+        max_completion_tokens: 200,
+      })
+      const scoreContent = scoreResponse.choices[0]?.message?.content || ''
+      console.log('Privacy score response:', scoreContent)
+      try {
+        const scoreData = JSON.parse(scoreContent)
+        privacyScore = Math.min(100, Math.max(0, Number(scoreData.score) || 50))
+        privacySummary = scoreData.summary || ''
+        console.log('Privacy score generated:', privacyScore)
+      } catch (parseError) {
+        console.error('Failed to parse privacy score JSON:', parseError)
+        // Default to moderate risk if parsing fails
+        privacyScore = 50
+        privacySummary = 'Unable to generate summary'
+      }
+    } catch (scoreError) {
+      console.error('Failed to generate privacy score:', scoreError)
+    }
+
     return {
       success: true,
       analysis,
       highRisks,
+      privacyScore,
+      privacySummary,
       summary: trackingSummary,
     }
   } catch (error) {

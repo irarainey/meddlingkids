@@ -4,6 +4,7 @@ import { useTrackingAnalysis } from './composables'
 import {
   ProgressBanner,
   ScreenshotGallery,
+  ScoreDialog,
   AnalysisTab,
   ConsentTab,
   CookiesTab,
@@ -30,6 +31,9 @@ const {
   analysisResult,
   analysisError,
   highRisks,
+  privacyScore,
+  privacySummary,
+  showScoreDialog,
   consentDetails,
   statusMessage,
   progressStep,
@@ -46,6 +50,7 @@ const {
   // Methods
   openScreenshotModal,
   closeScreenshotModal,
+  closeScoreDialog,
   analyzeUrl,
 } = useTrackingAnalysis()
 </script>
@@ -54,6 +59,10 @@ const {
   <div>
     <header class="header">
       <img :src="logo" alt="Meddling Kids" class="logo" />
+      <p class="tagline">
+        Feed any URL to these meddling kids and watch them unmask sneaky trackers, 
+        cookies, scripts, and shady consent dialogs lurking underneath!
+      </p>
     </header>
 
     <div class="url-bar">
@@ -76,6 +85,14 @@ const {
       v-if="isLoading"
       :status-message="statusMessage"
       :progress-percent="progressPercent"
+    />
+
+    <!-- Privacy Score Dialog -->
+    <ScoreDialog
+      :is-open="showScoreDialog"
+      :score="privacyScore ?? 0"
+      :summary="privacySummary"
+      @close="closeScoreDialog"
     />
 
     <!-- Screenshot Gallery -->
@@ -175,10 +192,19 @@ const {
 }
 
 .logo {
-  max-width: 320px;
+  max-width: 272px;
   height: auto;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.3));
+}
+
+.tagline {
+  max-width: 650px;
+  margin: 0 auto 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #9ca3af;
+  padding: 0 1rem;
 }
 
 .url-bar {
@@ -186,7 +212,7 @@ const {
   align-items: center;
   gap: 1rem;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.6rem;
   flex-wrap: wrap;
 }
 
@@ -203,7 +229,7 @@ const {
 
 .text-input:focus {
   outline: none;
-  border-color: #42b883;
+  border-color: #0C67AC;
 }
 
 .text-input::placeholder {
@@ -255,7 +281,7 @@ const {
   padding: 0.5rem 0.75rem;
   border: 1px solid #3d4663;
   background: #2a2f45;
-  color: #c7d2fe;
+  color: #9ca3af;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
   font-size: 0.8rem;
@@ -275,9 +301,9 @@ const {
 }
 
 .tab.highlight {
-  background: #3b2f5a;
-  border-color: #8b5cf6;
-  color: #c4b5fd;
+  background: #1a3a52;
+  border-color: #0C67AC;
+  color: #7CB8E4;
 }
 
 .tab.highlight.active {

@@ -18,7 +18,7 @@ defineProps<{
       <div class="track-line"></div>
       <div 
         class="mystery-machine-container" 
-          :style="{ left: `calc(${progressPercent}% - 50px)` }"      >
+          :style="{ left: `calc(${progressPercent}% - ${progressPercent}px)` }"      >
         <img 
           :src="mysteryMachine" 
           alt="Mystery Machine" 
@@ -33,11 +33,11 @@ defineProps<{
 <style scoped>
 .progress-banner {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border: 2px solid #7c3aed;
+  border: 2px solid #0C67AC;
   border-radius: 16px;
   padding: 1.5rem 2rem;
   margin: 1.5rem 0;
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 20px rgba(12, 103, 172, 0.3);
 }
 
 .progress-track {
@@ -52,7 +52,7 @@ defineProps<{
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #7c3aed, #a78bfa, #7c3aed);
+  background: linear-gradient(90deg, #0C67AC, #3B8FD4, #0C67AC);
   border-radius: 2px;
   transform: translateY(-50%);
 }

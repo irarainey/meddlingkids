@@ -1,12 +1,12 @@
 /**
  * @fileoverview Consent button click strategies.
- * Provides multiple fallback strategies for clicking "Accept All" buttons
- * on cookie consent banners, including iframe handling.
+ * Provides multiple fallback strategies for clicking dismiss/accept buttons
+ * on cookie consent banners, sign-in walls, and other blocking overlays.
  */
 
 import type { Page } from 'playwright'
 
-/** Common text patterns found on accept/agree buttons */
+/** Common text patterns found on accept/agree buttons (cookie consent) */
 const COMMON_ACCEPT_PATTERNS = [
   'Accept All',
   'Accept all',
@@ -25,6 +25,27 @@ const COMMON_ACCEPT_PATTERNS = [
   'Allow',
 ]
 
+/** Common text patterns for dismissing sign-in walls and other overlays */
+const COMMON_DISMISS_PATTERNS = [
+  'Maybe Later',
+  'Maybe later',
+  'Not Now',
+  'Not now',
+  'No Thanks',
+  'No thanks',
+  'No, thanks',
+  'Skip',
+  'Close',
+  'Dismiss',
+  'Later',
+  'Continue without',
+  'Continue as guest',
+  'Stay signed out',
+  'No thank you',
+  'Remind me later',
+  'Ask me later',
+]
+
 /** URL patterns that indicate a frame contains consent UI */
 const CONSENT_IFRAME_PATTERNS = [
   'consent',
@@ -38,7 +59,7 @@ const CONSENT_IFRAME_PATTERNS = [
 ]
 
 /**
- * Try multiple strategies to click a consent accept button.
+ * Try multiple strategies to click a consent/dismiss button.
  * Attempts various selectors and patterns in order of likelihood,
  * including checking iframes for consent managers like OneTrust or CookieBot.
  *
@@ -78,6 +99,16 @@ export async function tryClickConsentButton(
       name: `button role "${buttonText}"`,
       fn: () => page.getByRole('button', { name: buttonText }).click({ timeout: 3000 }),
     })
+    // Also try link role (for "Maybe Later" style links)
+    strategies.push({
+      name: `link role "${buttonText}"`,
+      fn: () => page.getByRole('link', { name: buttonText }).click({ timeout: 3000 }),
+    })
+    // Try generic text click (works for any element)
+    strategies.push({
+      name: `text click "${buttonText}"`,
+      fn: () => page.getByText(buttonText, { exact: false }).first().click({ timeout: 3000 }),
+    })
     // Also try with exact: false for partial matches
     strategies.push({
       name: `button role partial "${buttonText}"`,
@@ -89,15 +120,41 @@ export async function tryClickConsentButton(
     })
   }
 
-  // Strategy 3: Common accept button patterns
+  // Strategy 3: Common dismiss patterns (for sign-in walls, newsletter popups)
+  for (const pattern of COMMON_DISMISS_PATTERNS) {
+    strategies.push({
+      name: `dismiss link "${pattern}"`,
+      fn: () => page.getByRole('link', { name: pattern }).click({ timeout: 2000 }),
+    })
+    strategies.push({
+      name: `dismiss button "${pattern}"`,
+      fn: () => page.getByRole('button', { name: pattern }).click({ timeout: 2000 }),
+    })
+    strategies.push({
+      name: `dismiss text "${pattern}"`,
+      fn: () => page.getByText(pattern, { exact: false }).first().click({ timeout: 2000 }),
+    })
+  }
+
+  // Strategy 4: Common accept button patterns (for cookie consent)
   for (const pattern of COMMON_ACCEPT_PATTERNS) {
     strategies.push({
-      name: `common pattern "${pattern}"`,
+      name: `accept pattern "${pattern}"`,
       fn: () => page.getByRole('button', { name: pattern }).click({ timeout: 2000 }),
     })
   }
 
-  // Strategy 4: Check iframes for consent banners
+  // Strategy 5: Close buttons (X icons, close buttons)
+  strategies.push({
+    name: 'close button aria-label',
+    fn: () => page.locator('[aria-label*="close" i], [aria-label*="dismiss" i]').first().click({ timeout: 2000 }),
+  })
+  strategies.push({
+    name: 'close button class',
+    fn: () => page.locator('[class*="close"], [class*="dismiss"]').first().click({ timeout: 2000 }),
+  })
+
+  // Strategy 6: Check iframes for consent banners
   strategies.push({
     name: 'iframe consent',
     fn: () => tryClickInConsentIframes(page),

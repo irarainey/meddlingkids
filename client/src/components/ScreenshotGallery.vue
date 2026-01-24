@@ -59,7 +59,7 @@ function getLabel(index: number): string {
 .screenshots-row {
   display: flex;
   gap: 1rem;
-  margin: 1rem 0;
+  margin: 0 0 2rem 0;
   padding: 1rem;
   background: #1e2235;
   border: 1px solid #3d4663;
@@ -96,7 +96,7 @@ function getLabel(index: number): string {
 .screenshot-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #c7d2fe;
+  color: #7CB8E4;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

@@ -16,6 +16,7 @@ import {
   getPageContent,
   waitForTimeout,
   waitForLoadState,
+  waitForNetworkIdle,
   getPage,
   getTrackedCookies,
   getTrackedScripts,
@@ -93,30 +94,42 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    sendProgress(res, 'init', '🚀 Starting browser...', 5)
+    sendProgress(res, 'init', 'Starting investigation...', 5)
 
     // Clear tracked data and set URL for third-party detection
     clearTrackingData()
     setCurrentPageUrl(url)
 
-    sendProgress(res, 'browser', '🌐 Launching headless browser...', 10)
+    sendProgress(res, 'browser', 'Launching browser...', 10)
 
     await launchBrowser(true)
 
-    sendProgress(res, 'navigate', `📄 Loading ${new URL(url).hostname}...`, 20)
+    sendProgress(res, 'navigate', `Loading ${new URL(url).hostname}...`, 15)
 
-    await navigateTo(url, 'networkidle')
+    // First, navigate and wait for DOM to be ready (fast)
+    await navigateTo(url, 'domcontentloaded', 30000)
+    
+    sendProgress(res, 'wait-network', 'Waiting for page to finish loading...', 20)
+    
+    // Now wait for network to become idle (captures all trackers/ads)
+    // This may take a while on ad-heavy sites
+    const networkIdleResult = await waitForNetworkIdle(90000)
+    
+    if (!networkIdleResult) {
+      console.log('Network did not reach idle state within timeout, continuing with captured data')
+      sendProgress(res, 'wait-partial', 'Page still loading, continuing...', 28)
+    }
 
-    // Wait additional time for dynamic content (ads, trackers) to load
-    sendProgress(res, 'wait-content', '⏳ Waiting for dynamic content to load...', 30)
+    // Wait additional time for any final dynamic content
+    sendProgress(res, 'wait-content', 'Capturing page content...', 30)
     await waitForTimeout(3000)
 
-    sendProgress(res, 'cookies', '🍪 Capturing initial cookies...', 35)
+    sendProgress(res, 'cookies', 'Collecting tracking data...', 35)
 
     await captureCurrentCookies()
     let storage = await captureStorage()
 
-    sendProgress(res, 'screenshot', '📸 Taking initial screenshot...', 40)
+    sendProgress(res, 'screenshot', 'Taking screenshot...', 40)
 
     let screenshot = await takeScreenshot(false)
     let base64Screenshot = screenshot.toString('base64')
@@ -131,102 +144,140 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       sessionStorage: storage.sessionStorage,
     })
 
-    sendProgress(res, 'consent-detect', '🔍 Analyzing page for cookie consent banner...', 45)
+    sendProgress(res, 'consent-detect', 'Analyzing page...', 45)
 
-    const html = await getPageContent()
-    const consentDetection = await detectCookieConsent(screenshot, html)
-
-    let consentAccepted = false
-    let detectedConsent: CookieConsentDetection | null = null
     let consentDetails: ConsentDetails | null = null
-
     const page = getPage()
+    
+    // Track all overlays dismissed for the final event
+    const dismissedOverlays: CookieConsentDetection[] = []
+    let overlayCount = 0
+    const MAX_OVERLAYS = 5 // Safety limit to prevent infinite loops
 
-    if (consentDetection.found && consentDetection.selector && page) {
-      sendProgress(res, 'consent-found', `✅ Cookie consent found: "${consentDetection.buttonText || 'Accept'}"`, 50)
-      detectedConsent = consentDetection
+    // Get appropriate message based on overlay type
+    const getOverlayMessage = (type: string | null, buttonText: string | null): string => {
+      const btn = buttonText || 'Dismiss'
+      switch (type) {
+        case 'cookie-consent': return `Cookie consent detected`
+        case 'sign-in': return `Sign-in prompt detected`
+        case 'newsletter': return `Newsletter popup detected`
+        case 'paywall': return `Paywall detected`
+        case 'age-verification': return `Age verification detected`
+        default: return `Overlay detected`
+      }
+    }
 
-      // Extract detailed consent information BEFORE accepting
-      sendProgress(res, 'consent-extract', '📋 Extracting partner and tracking details from consent dialog...', 55)
-      consentDetails = await extractConsentDetails(page, screenshot)
+    // Loop to handle multiple overlays (cookie consent, then sign-in wall, then newsletter, etc.)
+    while (page && overlayCount < MAX_OVERLAYS) {
+      const html = await getPageContent()
+      screenshot = await takeScreenshot(false)
+      const consentDetection = await detectCookieConsent(screenshot, html)
 
-      // Send consent details event
-      sendEvent(res, 'consentDetails', {
-        categories: consentDetails.categories,
-        partners: consentDetails.partners,
-        purposes: consentDetails.purposes,
-        hasManageOptions: consentDetails.hasManageOptions,
-      })
-
-      // If there's a manage options button, try clicking it to get more details
-      if (consentDetails.hasManageOptions && consentDetails.manageOptionsSelector) {
-        sendProgress(res, 'consent-expand', '🔎 Expanding cookie preferences to find more details...', 58)
-        try {
-          // Convert jQuery-style :contains() selectors to Playwright text selectors
-          let selector = consentDetails.manageOptionsSelector
-          const containsMatch = selector.match(/:contains\(["'](.+?)["']\)/)
-
-          if (containsMatch) {
-            // Extract the text and use Playwright's text locator instead
-            const buttonText = containsMatch[1]
-            await page.getByRole('button', { name: buttonText }).first().click({ timeout: 3000 })
-          } else {
-            await page.click(selector, { timeout: 3000 })
-          }
-          await waitForTimeout(500)
-
-          // Take new screenshot and extract more details
-          const expandedScreenshot = await takeScreenshot(true)
-          const expandedDetails = await extractConsentDetails(page, expandedScreenshot)
-
-          // Merge the details
-          consentDetails = {
-            ...consentDetails,
-            categories: [...consentDetails.categories, ...expandedDetails.categories].filter(
-              (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
-            ),
-            partners: [...consentDetails.partners, ...expandedDetails.partners].filter(
-              (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
-            ),
-            purposes: [...new Set([...consentDetails.purposes, ...expandedDetails.purposes])],
-            rawText: consentDetails.rawText + '\n\n' + expandedDetails.rawText,
-          }
-
-          // Send updated consent details
-          sendEvent(res, 'consentDetails', {
-            categories: consentDetails.categories,
-            partners: consentDetails.partners,
-            purposes: consentDetails.purposes,
-            expanded: true,
+      if (!consentDetection.found || !consentDetection.selector) {
+        if (overlayCount === 0) {
+          sendProgress(res, 'consent-none', 'No overlay detected', 70)
+          sendEvent(res, 'consent', {
+            detected: false,
+            clicked: false,
+            details: null,
+            reason: consentDetection.reason,
           })
+        } else {
+          sendProgress(res, 'overlays-done', `Dismissed ${overlayCount} overlay(s)`, 70)
+        }
+        break
+      }
 
-          console.log('Expanded consent details:', {
-            categories: consentDetails.categories.length,
-            partners: consentDetails.partners.length,
-          })
-        } catch (expandError) {
-          console.log('Could not expand cookie preferences:', expandError)
+      overlayCount++
+      const progressBase = 45 + (overlayCount * 5) // Progress increases with each overlay
+      
+      sendProgress(res, `overlay-${overlayCount}-found`, getOverlayMessage(consentDetection.overlayType, consentDetection.buttonText), progressBase)
+      dismissedOverlays.push(consentDetection)
+
+      // Extract detailed consent information BEFORE accepting (only for cookie consent)
+      if (consentDetection.overlayType === 'cookie-consent') {
+        sendProgress(res, 'consent-extract', 'Extracting consent details...', progressBase + 1)
+        consentDetails = await extractConsentDetails(page, screenshot)
+
+        // Send consent details event
+        sendEvent(res, 'consentDetails', {
+          categories: consentDetails.categories,
+          partners: consentDetails.partners,
+          purposes: consentDetails.purposes,
+          hasManageOptions: consentDetails.hasManageOptions,
+        })
+
+        // If there's a manage options button, try clicking it to get more details
+        if (consentDetails.hasManageOptions && consentDetails.manageOptionsSelector) {
+          sendProgress(res, 'consent-expand', 'Expanding preferences...', progressBase + 2)
+          try {
+            // Convert jQuery-style :contains() selectors to Playwright text selectors
+            let selector = consentDetails.manageOptionsSelector
+            const containsMatch = selector.match(/:contains\(["'](.+?)["']\)/)
+
+            if (containsMatch) {
+              // Extract the text and use Playwright's text locator instead
+              const buttonText = containsMatch[1]
+              await page.getByRole('button', { name: buttonText }).first().click({ timeout: 3000 })
+            } else {
+              await page.click(selector, { timeout: 3000 })
+            }
+            await waitForTimeout(500)
+
+            // Take new screenshot and extract more details
+            const expandedScreenshot = await takeScreenshot(true)
+            const expandedDetails = await extractConsentDetails(page, expandedScreenshot)
+
+            // Merge the details
+            consentDetails = {
+              ...consentDetails,
+              categories: [...consentDetails.categories, ...expandedDetails.categories].filter(
+                (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
+              ),
+              partners: [...consentDetails.partners, ...expandedDetails.partners].filter(
+                (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
+              ),
+              purposes: [...new Set([...consentDetails.purposes, ...expandedDetails.purposes])],
+              rawText: consentDetails.rawText + '\n\n' + expandedDetails.rawText,
+            }
+
+            // Send updated consent details
+            sendEvent(res, 'consentDetails', {
+              categories: consentDetails.categories,
+              partners: consentDetails.partners,
+              purposes: consentDetails.purposes,
+              expanded: true,
+            })
+
+            console.log('Expanded consent details:', {
+              categories: consentDetails.categories.length,
+              partners: consentDetails.partners.length,
+            })
+          } catch (expandError) {
+            console.log('Could not expand cookie preferences:', expandError)
+          }
         }
       }
 
+      // Try to click the dismiss/accept button
       try {
-        sendProgress(res, 'consent-click', '👆 Clicking accept button...', 62)
+        sendProgress(res, `overlay-${overlayCount}-click`, 'Dismissing overlay...', progressBase + 3)
 
-        // Try multiple click strategies
-        consentAccepted = await tryClickConsentButton(page, consentDetection.selector, consentDetection.buttonText)
+        const clicked = await tryClickConsentButton(page, consentDetection.selector, consentDetection.buttonText)
 
-        if (consentAccepted) {
-          sendProgress(res, 'consent-wait', '⏳ Waiting for page to update...', 70)
-          await waitForTimeout(1000)
+        if (clicked) {
+          sendProgress(res, `overlay-${overlayCount}-wait`, 'Waiting for page to update...', progressBase + 4)
+          await waitForTimeout(1500)
           await waitForLoadState('domcontentloaded').catch(() => {})
 
-          sendProgress(res, 'recapture', '🔄 Recapturing tracking data...', 75)
+          // Recapture data and take screenshot after this overlay
+          sendProgress(res, `overlay-${overlayCount}-capture`, 'Capturing page state...', progressBase + 5)
           await captureCurrentCookies()
           storage = await captureStorage()
           screenshot = await takeScreenshot(false)
           base64Screenshot = screenshot.toString('base64')
 
-          // Send screenshot after consent (stage 2)
+          // Send screenshot after this overlay (captures each state change)
           sendEvent(res, 'screenshot', {
             screenshot: `data:image/png;base64,${base64Screenshot}`,
             cookies: getTrackedCookies(),
@@ -234,42 +285,47 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
             networkRequests: getTrackedNetworkRequests(),
             localStorage: storage.localStorage,
             sessionStorage: storage.sessionStorage,
+            overlayDismissed: consentDetection.overlayType,
           })
 
           sendEvent(res, 'consent', {
             detected: true,
             clicked: true,
-            details: detectedConsent,
+            details: consentDetection,
+            overlayNumber: overlayCount,
           })
+          
+          console.log(`Overlay ${overlayCount} (${consentDetection.overlayType}) dismissed successfully`)
         } else {
-          console.log('All consent click strategies failed')
+          console.log(`Failed to click overlay ${overlayCount}, stopping overlay detection`)
           sendEvent(res, 'consent', {
             detected: true,
             clicked: false,
-            details: detectedConsent,
-            error: 'Failed to click consent button with all strategies',
+            details: consentDetection,
+            error: 'Failed to click dismiss button',
+            overlayNumber: overlayCount,
           })
+          break // Stop trying if we can't click
         }
       } catch (clickError) {
-        console.error('Failed to click cookie consent:', clickError)
+        console.error(`Failed to click overlay ${overlayCount}:`, clickError)
         sendEvent(res, 'consent', {
           detected: true,
           clicked: false,
-          details: detectedConsent,
-          error: 'Failed to click consent button',
+          details: consentDetection,
+          error: 'Failed to click dismiss button',
+          overlayNumber: overlayCount,
         })
+        break // Stop trying on error
       }
-    } else {
-      sendProgress(res, 'consent-none', 'ℹ️ No cookie consent banner detected', 70)
-      sendEvent(res, 'consent', {
-        detected: false,
-        clicked: false,
-        details: null,
-        reason: consentDetection.reason,
-      })
     }
 
-    sendProgress(res, 'analysis', '🤖 Running AI privacy analysis...', 80)
+    if (overlayCount >= MAX_OVERLAYS) {
+      console.log('Reached maximum overlay limit, stopping detection')
+      sendProgress(res, 'overlays-limit', 'Maximum overlay limit reached', 70)
+    }
+
+    sendProgress(res, 'analysis', 'Running privacy analysis...', 80)
     console.log('Starting tracking analysis...')
 
     const analysisResult = await runTrackingAnalysis(
@@ -283,16 +339,18 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     )
 
     console.log('Analysis result:', analysisResult.success ? 'Success' : analysisResult.error)
-    sendProgress(res, 'complete', '✅ Analysis complete!', 100)
+    sendProgress(res, 'complete', 'Analysis complete!', 100)
 
     // Send final complete event
     sendEvent(res, 'complete', {
       success: true,
-      message: consentAccepted
-        ? 'Tracking analyzed after accepting cookie consent'
+      message: overlayCount > 0
+        ? 'Tracking analyzed after dismissing overlays'
         : 'Tracking analyzed',
       analysis: analysisResult.success ? analysisResult.analysis : null,
       highRisks: analysisResult.success ? analysisResult.highRisks : null,
+      privacyScore: analysisResult.success ? analysisResult.privacyScore : null,
+      privacySummary: analysisResult.success ? analysisResult.privacySummary : null,
       analysisSummary: analysisResult.success ? analysisResult.summary : null,
       analysisError: analysisResult.success ? null : analysisResult.error,
       consentDetails: consentDetails,

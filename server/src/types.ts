@@ -82,15 +82,22 @@ export interface NetworkRequest {
 // ============================================================================
 
 /**
- * Result of LLM vision analysis for detecting cookie consent banners.
- * Used to find and click "Accept All" buttons automatically.
+ * Type of overlay detected on the page.
+ */
+export type OverlayType = 'cookie-consent' | 'sign-in' | 'newsletter' | 'paywall' | 'age-verification' | 'other'
+
+/**
+ * Result of LLM vision analysis for detecting cookie consent banners and other blocking overlays.
+ * Used to find and click dismiss/accept buttons automatically.
  */
 export interface CookieConsentDetection {
-  /** Whether a consent banner was found */
+  /** Whether a blocking overlay was found */
   found: boolean
-  /** CSS selector to click the accept button, or null if not found */
+  /** Type of overlay detected */
+  overlayType: OverlayType | null
+  /** CSS selector to click the dismiss/accept button, or null if not found */
   selector: string | null
-  /** Text displayed on the accept button */
+  /** Text displayed on the button */
   buttonText: string | null
   /** LLM's confidence in the detection */
   confidence: 'high' | 'medium' | 'low'
@@ -219,6 +226,10 @@ export interface AnalysisResult {
   analysis?: string
   /** Brief summary of highest privacy risks */
   highRisks?: string
+  /** Privacy risk score (0-100) */
+  privacyScore?: number
+  /** One-sentence summary for the results dialog */
+  privacySummary?: string
   /** Tracking data summary used for the analysis */
   summary?: TrackingSummary
   /** Error message if analysis failed */

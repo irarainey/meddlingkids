@@ -153,19 +153,46 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
 
 /**
  * Navigate the current page to a URL and wait for it to load.
+ * Uses an extended timeout for ad-heavy sites that take longer to reach network idle.
  *
  * @param url - The URL to navigate to
  * @param waitUntil - When to consider navigation complete:
  *   - 'load': Wait for load event (default browser behavior)
  *   - 'domcontentloaded': Wait for DOMContentLoaded event
  *   - 'networkidle': Wait until network is idle (default, best for tracking)
+ * @param timeout - Maximum time to wait in milliseconds (default: 90000 for ad-heavy sites)
  * @throws Error if no browser session is active
  */
-export async function navigateTo(url: string, waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'networkidle'): Promise<void> {
+export async function navigateTo(
+  url: string, 
+  waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'networkidle',
+  timeout: number = 90000
+): Promise<void> {
   if (!page) {
     throw new Error('No browser session active')
   }
-  await page.goto(url, { waitUntil })
+  
+  await page.goto(url, { waitUntil, timeout })
+}
+
+/**
+ * Wait for the network to become idle (no requests for 500ms).
+ * Useful after initial navigation to ensure all dynamic content has loaded.
+ *
+ * @param timeout - Maximum time to wait in milliseconds (default: 60000)
+ * @returns True if network became idle, false if timed out
+ */
+export async function waitForNetworkIdle(timeout: number = 60000): Promise<boolean> {
+  if (!page) {
+    return false
+  }
+  
+  try {
+    await page.waitForLoadState('networkidle', { timeout })
+    return true
+  } catch {
+    return false
+  }
 }
 
 // ============================================================================

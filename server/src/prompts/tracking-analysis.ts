@@ -49,6 +49,22 @@ Keep each point to ONE sentence. Be specific about company names and what they d
 End with an overall privacy risk rating: 🔴 High Risk, 🟠 Medium Risk, or 🟢 Low Risk.`
 
 /**
+ * System prompt for generating a privacy risk score.
+ * Produces a numerical score and brief summary for the results dialog.
+ */
+export const PRIVACY_SCORE_SYSTEM_PROMPT = `You are a privacy expert. Based on a tracking analysis, provide a privacy risk score from 0-100 and a one-sentence summary.
+
+Scoring guidelines:
+- 80-100: Critical risk - extensive cross-site tracking, fingerprinting, data selling to many partners, deceptive practices
+- 60-79: High risk - significant third-party tracking, multiple advertising networks, questionable data sharing
+- 40-59: Moderate risk - standard analytics, some third-party trackers, typical advertising
+- 20-39: Low risk - minimal tracking, basic analytics only, few third parties
+- 0-19: Very low risk - privacy-respecting, minimal or no tracking, first-party only
+
+You MUST respond with ONLY valid JSON in this exact format, no other text:
+{"score": <number 0-100>, "summary": "<one sentence summary of key findings>"}`
+
+/**
  * Build the consent information section for the analysis prompt.
  * Formats cookie categories, partners, and purposes into readable markdown.
  *
@@ -141,4 +157,15 @@ Please provide a comprehensive privacy analysis of this tracking data. If consen
  */
 export function buildHighRisksUserPrompt(analysis: string): string {
   return `Based on this full analysis, create a brief high-risks summary:\n\n${analysis}`
+}
+
+/**
+ * Build the user prompt for privacy score generation.
+ * Takes the full analysis and requests a numerical score with summary.
+ *
+ * @param analysis - The full analysis text from the main LLM call
+ * @returns User prompt asking for privacy score
+ */
+export function buildPrivacyScoreUserPrompt(analysis: string): string {
+  return `Based on this tracking analysis, provide a privacy risk score (0-100) and one-sentence summary. Respond with JSON only:\n\n${analysis}`
 }

@@ -58,6 +58,12 @@ export function useTrackingAnalysis() {
   const analysisError = ref('')
   /** High risks summary from AI */
   const highRisks = ref('')
+  /** Privacy risk score (0-100) */
+  const privacyScore = ref<number | null>(null)
+  /** One-sentence privacy summary */
+  const privacySummary = ref('')
+  /** Whether the score dialog is visible */
+  const showScoreDialog = ref(false)
   /** Consent details extracted from the page */
   const consentDetails = ref<ConsentDetails | null>(null)
 
@@ -149,6 +155,9 @@ export function useTrackingAnalysis() {
     analysisResult.value = ''
     analysisError.value = ''
     highRisks.value = ''
+    privacyScore.value = null
+    privacySummary.value = ''
+    showScoreDialog.value = false
     consentDetails.value = null
     statusMessage.value = 'Starting...'
     progressStep.value = 'init'
@@ -232,6 +241,10 @@ export function useTrackingAnalysis() {
         if (data.highRisks) {
           highRisks.value = data.highRisks
         }
+        if (data.privacyScore !== null && data.privacyScore !== undefined) {
+          privacyScore.value = data.privacyScore
+          privacySummary.value = data.privacySummary || ''
+        }
         if (data.analysisError) {
           analysisError.value = data.analysisError
         }
@@ -242,8 +255,15 @@ export function useTrackingAnalysis() {
         activeTab.value = data.highRisks ? 'risks' : 'analysis'
         statusMessage.value = data.message
         progressPercent.value = 100
-        isLoading.value = false
         isComplete.value = true
+        
+        // Wait for the van animation to complete (500ms transition) before hiding progress and showing score dialog
+        setTimeout(() => {
+          isLoading.value = false
+          if (data.privacyScore !== null && data.privacyScore !== undefined) {
+            showScoreDialog.value = true
+          }
+        }, 700)
         eventSource.close()
       })
 
@@ -292,6 +312,9 @@ export function useTrackingAnalysis() {
     analysisResult,
     analysisError,
     highRisks,
+    privacyScore,
+    privacySummary,
+    showScoreDialog,
     consentDetails,
     statusMessage,
     progressStep,
@@ -308,6 +331,7 @@ export function useTrackingAnalysis() {
     // Methods
     openScreenshotModal,
     closeScreenshotModal,
+    closeScoreDialog: () => { showScoreDialog.value = false },
     analyzeUrl,
   }
 }

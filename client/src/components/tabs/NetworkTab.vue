@@ -69,7 +69,7 @@ function onFilterChange(event: Event) {
   gap: 0.5rem;
   font-size: 0.85rem;
   cursor: pointer;
-  color: #e0e7ff;
+  color: #7CB8E4;
 }
 
 .filter-checkbox input {

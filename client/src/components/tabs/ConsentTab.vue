@@ -170,7 +170,7 @@ function hasContent(details: ConsentDetails | null): boolean {
 .purposes-list li {
   margin-bottom: 0.25rem;
   font-size: 0.9rem;
-  color: #c7d2fe;
+  color: #7CB8E4;
 }
 
 .partners-grid {
