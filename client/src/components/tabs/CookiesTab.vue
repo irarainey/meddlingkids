@@ -43,7 +43,7 @@ defineProps<{
 <style scoped>
 .cookie-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #3d4663;
   font-size: 0.85rem;
 }
 
@@ -53,11 +53,11 @@ defineProps<{
 
 .cookie-name {
   font-weight: 600;
-  color: #333;
+  color: #e0e7ff;
 }
 
 .cookie-value {
-  color: #666;
+  color: #9ca3af;
   word-break: break-all;
 }
 
@@ -71,6 +71,6 @@ defineProps<{
 
 .expiry {
   font-size: 0.75rem;
-  color: #888;
+  color: #9ca3af;
 }
 </style>

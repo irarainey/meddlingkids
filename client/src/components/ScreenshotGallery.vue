@@ -61,9 +61,11 @@ function getLabel(index: number): string {
   gap: 1rem;
   margin: 1rem 0;
   padding: 1rem;
-  background: #f8f9fa;
+  background: #1e2235;
+  border: 1px solid #3d4663;
   border-radius: 12px;
   overflow-x: auto;
+  justify-content: center;
 }
 
 .screenshot-thumb {
@@ -76,11 +78,11 @@ function getLabel(index: number): string {
 }
 
 .screenshot-thumb img {
-  width: 200px;
+  width: 300px;
   height: auto;
-  border: 2px solid #ddd;
+  border: 2px solid #3d4663;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition:
     transform 0.2s,
     border-color 0.2s;
@@ -94,7 +96,7 @@ function getLabel(index: number): string {
 .screenshot-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #666;
+  color: #c7d2fe;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -115,14 +117,15 @@ function getLabel(index: number): string {
 }
 
 .modal-content {
-  background: white;
+  background: #1e2235;
+  border: 1px solid #3d4663;
   border-radius: 12px;
   max-width: 95vw;
   max-height: 95vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .modal-close {
@@ -152,8 +155,9 @@ function getLabel(index: number): string {
   margin: 0;
   padding: 1rem 1.5rem;
   font-size: 1.1rem;
-  border-bottom: 1px solid #eee;
-  background: #f8f9fa;
+  border-bottom: 1px solid #3d4663;
+  background: #2a2f45;
+  color: #e0e7ff;
 }
 
 .modal-image-container {

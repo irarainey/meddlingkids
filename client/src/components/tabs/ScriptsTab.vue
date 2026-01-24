@@ -29,7 +29,7 @@ defineProps<{
 <style scoped>
 .script-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #3d4663;
   font-size: 0.85rem;
 }
 
@@ -38,7 +38,7 @@ defineProps<{
 }
 
 .script-url {
-  color: #2563eb;
+  color: #60a5fa;
   word-break: break-all;
   text-decoration: none;
 }

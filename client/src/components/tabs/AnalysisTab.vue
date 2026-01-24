@@ -53,7 +53,7 @@ defineProps<{
 .analyzing-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e0e0e0;
+  border: 4px solid #3d4663;
   border-top-color: #8b5cf6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -67,24 +67,24 @@ defineProps<{
 }
 
 .analyzing-hint {
-  color: #888;
+  color: #9ca3af;
   font-size: 0.85rem;
 }
 
 .analysis-error {
   padding: 2rem;
   text-align: center;
-  color: #e74c3c;
+  color: #f87171;
 }
 
 .analysis-result {
   line-height: 1.6;
-  color: #333;
+  color: #e0e7ff;
 }
 
 .analysis-result :deep(h2) {
   font-size: 1.3rem;
-  color: #1a1a1a;
+  color: #f0f4ff;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
   border-bottom: 2px solid #8b5cf6;
@@ -93,14 +93,14 @@ defineProps<{
 
 .analysis-result :deep(h3) {
   font-size: 1.1rem;
-  color: #333;
+  color: #c7d2fe;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
 .analysis-result :deep(h4) {
   font-size: 1rem;
-  color: #444;
+  color: #a5b4fc;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
@@ -119,7 +119,8 @@ defineProps<{
 }
 
 .analysis-result :deep(code) {
-  background: #f0f0f0;
+  background: #2a2f45;
+  color: #c7d2fe;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
   font-family: monospace;
@@ -127,13 +128,13 @@ defineProps<{
 }
 
 .analysis-result :deep(pre) {
-  background: #f5f5f5;
+  background: #2a2f45;
   padding: 1rem;
   border-radius: 6px;
   overflow-x: auto;
 }
 
 .analysis-result :deep(strong) {
-  color: #1a1a1a;
+  color: #f0f4ff;
 }
 </style>

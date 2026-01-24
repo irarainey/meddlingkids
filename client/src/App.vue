@@ -193,15 +193,21 @@ const {
 .text-input {
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid #3d4663;
   border-radius: 8px;
   width: 400px;
   font-family: inherit;
+  background: #1e2235;
+  color: #e0e7ff;
 }
 
 .text-input:focus {
   outline: none;
   border-color: #42b883;
+}
+
+.text-input::placeholder {
+  color: #9ca3af;
 }
 
 .go-button {
@@ -221,12 +227,12 @@ const {
 }
 
 .go-button:disabled {
-  background-color: #a0a0a0;
+  background-color: #4a5568;
   cursor: not-allowed;
 }
 
 .error {
-  color: #e74c3c;
+  color: #f87171;
   text-align: center;
   margin: 1rem 0;
 }
@@ -247,8 +253,9 @@ const {
   flex: 1;
   min-width: fit-content;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
-  background: #f5f5f5;
+  border: 1px solid #3d4663;
+  background: #2a2f45;
+  color: #c7d2fe;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
   font-size: 0.8rem;
@@ -257,37 +264,41 @@ const {
 }
 
 .tab:hover {
-  background: #e8e8e8;
+  background: #3d4663;
 }
 
 .tab.active {
-  background: white;
-  border-bottom-color: white;
+  background: #1e2235;
+  border-bottom-color: #1e2235;
   font-weight: 600;
+  color: #e0e7ff;
 }
 
 .tab.highlight {
-  background: #f3e8ff;
+  background: #3b2f5a;
   border-color: #8b5cf6;
+  color: #c4b5fd;
 }
 
 .tab.highlight.active {
-  background: white;
+  background: #1e2235;
+  color: #e0e7ff;
 }
 
 .tab.risk-tab {
-  background: #fef2f2;
+  background: #3b1f1f;
   border-color: #ef4444;
-  color: #dc2626;
+  color: #fca5a5;
 }
 
 .tab.risk-tab:hover {
-  background: #fee2e2;
+  background: #4a2525;
 }
 
 .tab.risk-tab.active {
-  background: white;
+  background: #1e2235;
   font-weight: 600;
+  color: #fca5a5;
 }
 
 @media (max-width: 900px) {

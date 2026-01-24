@@ -40,7 +40,7 @@ defineProps<{
 <style scoped>
 .storage-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #3d4663;
   font-size: 0.85rem;
 }
 
@@ -50,15 +50,15 @@ defineProps<{
 
 .storage-key {
   font-weight: 600;
-  color: #333;
+  color: #e0e7ff;
 }
 
 .storage-value {
-  color: #666;
+  color: #9ca3af;
   word-break: break-all;
   font-family: monospace;
   font-size: 0.8rem;
-  background: #f5f5f5;
+  background: #2a2f45;
   padding: 0.25rem;
   border-radius: 4px;
   margin-top: 0.25rem;

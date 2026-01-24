@@ -100,7 +100,7 @@ function hasContent(details: ConsentDetails | null): boolean {
 }
 
 .consent-section {
-  background: #f9fafb;
+  background: #2a2f45;
   border-radius: 8px;
   padding: 1rem;
 }
@@ -108,20 +108,20 @@ function hasContent(details: ConsentDetails | null): boolean {
 .consent-section-header {
   margin: 0 0 1rem;
   font-size: 1rem;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: #e0e7ff;
+  border-bottom: 1px solid #3d4663;
   padding-bottom: 0.5rem;
 }
 
 .section-hint {
   font-size: 0.85rem;
-  color: #666;
+  color: #9ca3af;
   margin: -0.5rem 0 1rem;
 }
 
 .consent-category {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: #1e2235;
+  border: 1px solid #3d4663;
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -136,7 +136,7 @@ function hasContent(details: ConsentDetails | null): boolean {
 
 .category-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #e0e7ff;
 }
 
 .category-badge {
@@ -147,19 +147,19 @@ function hasContent(details: ConsentDetails | null): boolean {
 }
 
 .category-badge.required {
-  background: #fef3c7;
-  color: #92400e;
+  background: #78350f;
+  color: #fef3c7;
 }
 
 .category-badge.optional {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #1e3a5f;
+  color: #93c5fd;
 }
 
 .category-description {
   margin: 0;
   font-size: 0.85rem;
-  color: #4b5563;
+  color: #9ca3af;
 }
 
 .purposes-list {
@@ -170,7 +170,7 @@ function hasContent(details: ConsentDetails | null): boolean {
 .purposes-list li {
   margin-bottom: 0.25rem;
   font-size: 0.9rem;
-  color: #374151;
+  color: #c7d2fe;
 }
 
 .partners-grid {
@@ -180,42 +180,42 @@ function hasContent(details: ConsentDetails | null): boolean {
 }
 
 .partner-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: #1e2235;
+  border: 1px solid #3d4663;
   border-radius: 6px;
   padding: 0.75rem;
 }
 
 .partner-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #e0e7ff;
   margin-bottom: 0.25rem;
 }
 
 .partner-purpose {
   font-size: 0.85rem;
-  color: #4b5563;
+  color: #9ca3af;
   margin-bottom: 0.5rem;
 }
 
 .partner-data {
   font-size: 0.75rem;
-  background: #f3f4f6;
+  background: #2a2f45;
   padding: 0.5rem;
   border-radius: 4px;
 }
 
 .data-label {
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .data-types {
-  color: #dc2626;
+  color: #f87171;
 }
 
 .expanded-notice {
-  background: #d1fae5;
-  color: #065f46;
+  background: #064e3b;
+  color: #a7f3d0;
   padding: 0.75rem;
   border-radius: 6px;
   font-size: 0.85rem;

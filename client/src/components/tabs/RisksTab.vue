@@ -23,12 +23,13 @@ defineProps<{
 .risks-content {
   max-height: 600px;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #fef2f2, #fff);
+  background: linear-gradient(135deg, #2a1f1f, #1e2235);
 }
 
 .risks-result {
   font-size: 1.05rem;
   line-height: 1.8;
+  color: #e0e7ff;
 }
 
 .risks-result :deep(ul) {
@@ -40,9 +41,10 @@ defineProps<{
 .risks-result :deep(li) {
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
-  background: white;
+  background: #2a2f45;
   border-radius: 8px;
   border-left: 4px solid #ef4444;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  color: #fecaca;
 }
 </style>

@@ -59,8 +59,8 @@ function onFilterChange(event: Event) {
 <style scoped>
 .filter-bar {
   padding: 0.5rem;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #2a2f45;
+  border-bottom: 1px solid #3d4663;
 }
 
 .filter-checkbox {
@@ -69,6 +69,7 @@ function onFilterChange(event: Event) {
   gap: 0.5rem;
   font-size: 0.85rem;
   cursor: pointer;
+  color: #e0e7ff;
 }
 
 .filter-checkbox input {
@@ -86,7 +87,7 @@ function onFilterChange(event: Event) {
 
 .network-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #3d4663;
   font-size: 0.85rem;
   display: flex;
   flex-wrap: wrap;
@@ -100,20 +101,21 @@ function onFilterChange(event: Event) {
 
 .resource-type {
   font-size: 0.75rem;
-  color: #666;
+  color: #9ca3af;
   min-width: 80px;
 }
 
 .request-method {
   font-size: 0.7rem;
   font-weight: 600;
-  background: #e0e0e0;
+  background: #3d4663;
+  color: #c7d2fe;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
 
 .request-url {
-  color: #2563eb;
+  color: #60a5fa;
   word-break: break-all;
   text-decoration: none;
   font-size: 0.8rem;
