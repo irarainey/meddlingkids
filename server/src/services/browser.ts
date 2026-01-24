@@ -95,9 +95,10 @@ export function setCurrentPageUrl(url: string): void {
 // Browser Lifecycle
 // ============================================================================
 
-/** iPad Pro 12.9" with Chrome - realistic tablet user agent and settings */
+/** iPad Pro 12.9" with Safari - realistic tablet user agent and settings */
 const MOBILE_DEVICE_CONFIG = {
-  userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.89 Mobile/15E148 Safari/604.1',
+  // Use Safari instead of Chrome - less commonly blocked
+  userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
   viewport: { width: 1024, height: 1366 },
   deviceScaleFactor: 2,
   isMobile: true,
@@ -105,28 +106,99 @@ const MOBILE_DEVICE_CONFIG = {
 }
 
 /**
+ * JavaScript to inject for evading bot detection.
+ * Masks common automation signatures that sites check for.
+ */
+const STEALTH_SCRIPTS = `
+  // Mask webdriver property
+  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  
+  // Mask automation-related properties
+  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+  
+  // Add realistic plugins array (iPads have minimal plugins)
+  Object.defineProperty(navigator, 'plugins', {
+    get: () => [{ name: 'PDF Viewer', filename: 'internal-pdf-viewer' }]
+  });
+  
+  // Add realistic languages
+  Object.defineProperty(navigator, 'languages', {
+    get: () => ['en-GB', 'en-US', 'en']
+  });
+  
+  // Mask Permissions API to avoid detection
+  const originalQuery = window.navigator.permissions?.query;
+  if (originalQuery) {
+    window.navigator.permissions.query = (parameters) => (
+      parameters.name === 'notifications' ?
+        Promise.resolve({ state: Notification.permission }) :
+        originalQuery(parameters)
+    );
+  }
+`;
+
+/**
  * Launch a new headless Chromium browser instance.
- * Configured to appear as Chrome on an iPhone for realistic behavior.
+ * Configured to appear as Safari on an iPad with stealth measures.
  * Sets up request interception to track scripts and network activity.
- * Closes any existing browser instance first.
+ * Creates a completely fresh browser instance with no stored state.
  *
  * @param headless - Whether to run in headless mode (default: true)
  */
 export async function launchBrowser(headless: boolean = true): Promise<void> {
-  // Close existing browser if open
+  // Close existing context and browser completely to ensure clean state
+  if (context) {
+    await context.close().catch(() => {})
+    context = null
+  }
   if (browser) {
-    await browser.close()
+    await browser.close().catch(() => {})
+    browser = null
+  }
+  if (page) {
+    page = null
   }
 
-  browser = await chromium.launch({ headless })
+  // Launch fresh browser with additional args to avoid detection
+  browser = await chromium.launch({ 
+    headless,
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--disable-site-isolation-trials',
+      // Ensure no disk cache or persistent storage
+      '--disable-application-cache',
+      '--disable-gpu-shader-disk-cache',
+      '--disk-cache-size=0',
+    ]
+  })
 
+  // Create fresh context with no stored state (incognito-like)
   context = await browser.newContext({
     ...MOBILE_DEVICE_CONFIG,
+    // Explicitly set no storage state - completely fresh session
     storageState: undefined,
     ignoreHTTPSErrors: false,
     locale: 'en-GB',
     timezoneId: 'Europe/London',
+    // Disable service workers which can persist state
+    serviceWorkers: 'block',
+    // Add extra HTTP headers to appear more legitimate
+    extraHTTPHeaders: {
+      'Accept-Language': 'en-GB,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'DNT': '1',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+    }
   })
+
+  // Inject stealth scripts before any page loads
+  await context.addInitScript(STEALTH_SCRIPTS)
 
   page = await context.newPage()
 

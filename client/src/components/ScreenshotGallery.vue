@@ -22,8 +22,7 @@ const emit = defineEmits<{
  * Get label for screenshot by index.
  */
 function getLabel(index: number): string {
-  const labels = ['Initial', 'After Consent', 'Final']
-  return labels[index] || `Stage ${index + 1}`
+  return String(index + 1)
 }
 </script>
 
