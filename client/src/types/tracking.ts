@@ -46,6 +46,7 @@ export interface NetworkRequest {
   resourceType: string
   isThirdParty: boolean
   timestamp: string
+  statusCode?: number
 }
 
 /**

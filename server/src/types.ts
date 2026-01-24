@@ -75,6 +75,8 @@ export interface NetworkRequest {
   isThirdParty: boolean
   /** ISO timestamp when the request was made */
   timestamp: string
+  /** HTTP status code from the response (if captured) */
+  statusCode?: number
 }
 
 // ============================================================================

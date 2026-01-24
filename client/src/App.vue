@@ -5,6 +5,7 @@ import {
   ProgressBanner,
   ScreenshotGallery,
   ScoreDialog,
+  PageErrorDialog,
   AnalysisTab,
   ConsentTab,
   CookiesTab,
@@ -18,6 +19,7 @@ import {
 const {
   // State
   inputValue,
+  deviceType,
   isLoading,
   isComplete,
   errorMessage,
@@ -35,6 +37,8 @@ const {
   privacySummary,
   showScoreDialog,
   consentDetails,
+  pageError,
+  showPageErrorDialog,
   statusMessage,
   progressStep,
   progressPercent,
@@ -51,6 +55,7 @@ const {
   openScreenshotModal,
   closeScreenshotModal,
   closeScoreDialog,
+  closePageErrorDialog,
   analyzeUrl,
 } = useTrackingAnalysis()
 </script>
@@ -73,6 +78,14 @@ const {
         placeholder="Enter a suspicious URL to investigate..."
         @keyup.enter="analyzeUrl"
       />
+      <select v-model="deviceType" class="device-select" :disabled="isLoading">
+        <option value="iphone">iPhone</option>
+        <option value="ipad">iPad</option>
+        <option value="android-phone">Android Phone</option>
+        <option value="android-tablet">Android Tablet</option>
+        <option value="windows-chrome">Windows Chrome</option>
+        <option value="macos-safari">macOS Safari</option>
+      </select>
       <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
         {{ isLoading ? 'Sleuthing...' : 'Unmask' }}
       </button>
@@ -93,6 +106,15 @@ const {
       :score="privacyScore ?? 0"
       :summary="privacySummary"
       @close="closeScoreDialog"
+    />
+
+    <!-- Page Error Dialog -->
+    <PageErrorDialog
+      :is-open="showPageErrorDialog"
+      :error-type="pageError?.type ?? null"
+      :message="pageError?.message ?? ''"
+      :status-code="pageError?.statusCode ?? null"
+      @close="closePageErrorDialog"
     />
 
     <!-- Screenshot Gallery -->
@@ -234,6 +256,28 @@ const {
 
 .text-input::placeholder {
   color: #9ca3af;
+}
+
+.device-select {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #3d4663;
+  border-radius: 8px;
+  font-family: inherit;
+  background: #1e2235;
+  color: #e0e7ff;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.device-select:focus {
+  outline: none;
+  border-color: #0C67AC;
+}
+
+.device-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .go-button {

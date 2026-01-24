@@ -27,6 +27,8 @@ export function useTrackingAnalysis() {
   const inputValue = ref('')
   /** Currently analyzed URL */
   const currentUrl = ref('')
+  /** Selected device/browser type */
+  const deviceType = ref('ipad')
   /** Whether analysis is in progress */
   const isLoading = ref(false)
   /** Whether analysis has completed */
@@ -66,6 +68,15 @@ export function useTrackingAnalysis() {
   const showScoreDialog = ref(false)
   /** Consent details extracted from the page */
   const consentDetails = ref<ConsentDetails | null>(null)
+  
+  /** Page error information (access denied, server error, etc.) */
+  const pageError = ref<{
+    type: 'access-denied' | 'server-error' | null
+    message: string
+    statusCode: number | null
+  } | null>(null)
+  /** Whether the page error dialog is visible */
+  const showPageErrorDialog = ref(false)
 
   /** Current status message during analysis */
   const statusMessage = ref('')
@@ -159,6 +170,8 @@ export function useTrackingAnalysis() {
     privacySummary.value = ''
     showScoreDialog.value = false
     consentDetails.value = null
+    pageError.value = null
+    showPageErrorDialog.value = false
     statusMessage.value = 'Starting...'
     progressStep.value = 'init'
     progressPercent.value = 0
@@ -205,7 +218,7 @@ export function useTrackingAnalysis() {
       // Use relative URL in production (same origin), absolute in development
       const apiBase = import.meta.env.VITE_API_URL || ''
       const eventSource = new EventSource(
-        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}`
+        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}`
       )
 
       eventSource.addEventListener('progress', (event) => {
@@ -225,6 +238,18 @@ export function useTrackingAnalysis() {
         networkRequests.value = data.networkRequests || []
         localStorage.value = data.localStorage || []
         sessionStorage.value = data.sessionStorage || []
+      })
+
+      eventSource.addEventListener('pageError', (event) => {
+        const data = JSON.parse(event.data)
+        pageError.value = {
+          type: data.isAccessDenied ? 'access-denied' : 'server-error',
+          message: data.message || 'Failed to load page',
+          statusCode: data.statusCode,
+        }
+        showPageErrorDialog.value = true
+        isLoading.value = false
+        eventSource.close()
       })
 
       eventSource.addEventListener('consentDetails', (event) => {
@@ -299,6 +324,7 @@ export function useTrackingAnalysis() {
   return {
     // State
     inputValue,
+    deviceType,
     isLoading,
     isComplete,
     errorMessage,
@@ -316,6 +342,8 @@ export function useTrackingAnalysis() {
     privacySummary,
     showScoreDialog,
     consentDetails,
+    pageError,
+    showPageErrorDialog,
     statusMessage,
     progressStep,
     progressPercent,
@@ -332,6 +360,7 @@ export function useTrackingAnalysis() {
     openScreenshotModal,
     closeScreenshotModal,
     closeScoreDialog: () => { showScoreDialog.value = false },
+    closePageErrorDialog: () => { showPageErrorDialog.value = false },
     analyzeUrl,
   }
 }

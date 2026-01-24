@@ -17,6 +17,7 @@ import {
   waitForTimeout,
   waitForLoadState,
   waitForNetworkIdle,
+  checkForAccessDenied,
   getPage,
   getTrackedCookies,
   getTrackedScripts,
@@ -81,6 +82,11 @@ function sendProgress(res: Response, step: string, message: string, progress: nu
  */
 export async function analyzeUrlStreamHandler(req: Request, res: Response): Promise<void> {
   const url = req.query.url as string
+  const device = (req.query.device as string) || 'ipad'
+
+  // Validate device type
+  const validDevices = ['iphone', 'ipad', 'android-phone', 'android-tablet', 'windows-chrome', 'macos-safari']
+  const deviceType = validDevices.includes(device) ? device : 'ipad'
 
   if (!url) {
     res.status(400).json({ error: 'URL is required' })
@@ -102,13 +108,27 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
     sendProgress(res, 'browser', 'Launching headless browser...', 8)
 
-    await launchBrowser(true)
+    await launchBrowser(true, deviceType as import('../services/browser.js').DeviceType)
 
     const hostname = new URL(url).hostname
     sendProgress(res, 'navigate', `Connecting to ${hostname}...`, 12)
 
     // Navigate and wait for DOM to be ready (fast initial load)
-    await navigateTo(url, 'domcontentloaded', 30000)
+    const navResult = await navigateTo(url, 'domcontentloaded', 30000)
+    
+    // Check for HTTP-level errors
+    if (!navResult.success) {
+      const errorType = navResult.isAccessDenied ? 'access-denied' : 'server-error'
+      sendEvent(res, 'pageError', {
+        type: errorType,
+        statusCode: navResult.statusCode,
+        message: navResult.errorMessage,
+        isAccessDenied: navResult.isAccessDenied,
+      })
+      sendProgress(res, 'error', navResult.errorMessage || 'Failed to load page', 100)
+      res.end()
+      return
+    }
     
     sendProgress(res, 'wait-network', `Loading ${hostname}...`, 18)
     
@@ -128,12 +148,46 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
     // Brief pause to let any final scripts execute
     await waitForTimeout(1000)
+    
+    // Check for access denied in page content (bot detection, Cloudflare, etc.)
+    const accessCheck = await checkForAccessDenied()
+    if (accessCheck.denied) {
+      console.log('Access denied detected:', accessCheck.reason)
+      
+      // Still take a screenshot to show the user what happened
+      const screenshot = await takeScreenshot(false)
+      const base64Screenshot = screenshot.toString('base64')
+      
+      sendEvent(res, 'screenshot', {
+        screenshot: `data:image/png;base64,${base64Screenshot}`,
+        cookies: getTrackedCookies(),
+        scripts: getTrackedScripts(),
+        networkRequests: getTrackedNetworkRequests(),
+        localStorage: [],
+        sessionStorage: [],
+      })
+      
+      sendEvent(res, 'pageError', {
+        type: 'access-denied',
+        statusCode: navResult.statusCode,
+        message: 'Access denied - this site has bot protection that blocked our request',
+        isAccessDenied: true,
+        reason: accessCheck.reason,
+      })
+      sendProgress(res, 'blocked', 'Site blocked access', 100)
+      res.end()
+      return
+    }
 
     sendProgress(res, 'cookies', 'Capturing cookies...', 32)
     await captureCurrentCookies()
     
     sendProgress(res, 'storage', 'Capturing storage data...', 35)
     let storage = await captureStorage()
+
+    // Wait for consent dialogs to appear - they often load asynchronously
+    sendProgress(res, 'consent-wait', 'Waiting for consent dialogs...', 37)
+    await waitForTimeout(2000)
 
     sendProgress(res, 'screenshot', 'Taking screenshot...', 38)
     let screenshot = await takeScreenshot(false)

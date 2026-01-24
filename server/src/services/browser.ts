@@ -95,59 +95,75 @@ export function setCurrentPageUrl(url: string): void {
 // Browser Lifecycle
 // ============================================================================
 
-/** iPad Pro 12.9" with Safari - realistic tablet user agent and settings */
-const MOBILE_DEVICE_CONFIG = {
-  // Use Safari instead of Chrome - less commonly blocked
-  userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
-  viewport: { width: 1024, height: 1366 },
-  deviceScaleFactor: 2,
-  isMobile: true,
-  hasTouch: true,
+/** Device type identifiers */
+export type DeviceType = 'iphone' | 'ipad' | 'android-phone' | 'android-tablet' | 'windows-chrome' | 'macos-safari'
+
+/** Device configurations for different browser/device combinations */
+const DEVICE_CONFIGS: Record<DeviceType, {
+  userAgent: string
+  viewport: { width: number; height: number }
+  deviceScaleFactor: number
+  isMobile: boolean
+  hasTouch: boolean
+}> = {
+  'iphone': {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+    viewport: { width: 430, height: 932 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+  },
+  'ipad': {
+    userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+    viewport: { width: 1024, height: 1366 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  },
+  'android-phone': {
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.90 Mobile Safari/537.36',
+    viewport: { width: 412, height: 915 },
+    deviceScaleFactor: 2.625,
+    isMobile: true,
+    hasTouch: true,
+  },
+  'android-tablet': {
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel Tablet) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.90 Safari/537.36',
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  },
+  'windows-chrome': {
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1920, height: 1080 },
+    deviceScaleFactor: 1,
+    isMobile: false,
+    hasTouch: false,
+  },
+  'macos-safari': {
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 2,
+    isMobile: false,
+    hasTouch: false,
+  },
 }
 
-/**
- * JavaScript to inject for evading bot detection.
- * Masks common automation signatures that sites check for.
- */
-const STEALTH_SCRIPTS = `
-  // Mask webdriver property
-  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-  
-  // Mask automation-related properties
-  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
-  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-  delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-  
-  // Add realistic plugins array (iPads have minimal plugins)
-  Object.defineProperty(navigator, 'plugins', {
-    get: () => [{ name: 'PDF Viewer', filename: 'internal-pdf-viewer' }]
-  });
-  
-  // Add realistic languages
-  Object.defineProperty(navigator, 'languages', {
-    get: () => ['en-GB', 'en-US', 'en']
-  });
-  
-  // Mask Permissions API to avoid detection
-  const originalQuery = window.navigator.permissions?.query;
-  if (originalQuery) {
-    window.navigator.permissions.query = (parameters) => (
-      parameters.name === 'notifications' ?
-        Promise.resolve({ state: Notification.permission }) :
-        originalQuery(parameters)
-    );
-  }
-`;
+/** Currently selected device type */
+let currentDeviceType: DeviceType = 'ipad'
 
 /**
  * Launch a new headless Chromium browser instance.
- * Configured to appear as Safari on an iPad with stealth measures.
- * Sets up request interception to track scripts and network activity.
  * Creates a completely fresh browser instance with no stored state.
  *
  * @param headless - Whether to run in headless mode (default: true)
+ * @param deviceType - The device/browser to emulate (default: 'ipad')
  */
-export async function launchBrowser(headless: boolean = true): Promise<void> {
+export async function launchBrowser(headless: boolean = true, deviceType: DeviceType = 'ipad'): Promise<void> {
+  currentDeviceType = deviceType
+  const deviceConfig = DEVICE_CONFIGS[deviceType]
+  
   // Close existing context and browser completely to ensure clean state
   if (context) {
     await context.close().catch(() => {})
@@ -161,54 +177,32 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
     page = null
   }
 
-  // Launch fresh browser with additional args to avoid detection
+  // Launch fresh browser with minimal args
   browser = await chromium.launch({ 
     headless,
     args: [
-      '--disable-blink-features=AutomationControlled',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--disable-site-isolation-trials',
-      // Ensure no disk cache or persistent storage
-      '--disable-application-cache',
-      '--disable-gpu-shader-disk-cache',
-      '--disk-cache-size=0',
+      '--no-first-run',
+      '--no-default-browser-check',
     ]
   })
 
-  // Create fresh context with no stored state (incognito-like)
+  // Create fresh context with device emulation
   context = await browser.newContext({
-    ...MOBILE_DEVICE_CONFIG,
-    // Explicitly set no storage state - completely fresh session
-    storageState: undefined,
-    ignoreHTTPSErrors: false,
+    ...deviceConfig,
     locale: 'en-GB',
     timezoneId: 'Europe/London',
-    // Disable service workers which can persist state
-    serviceWorkers: 'block',
-    // Add extra HTTP headers to appear more legitimate
-    extraHTTPHeaders: {
-      'Accept-Language': 'en-GB,en;q=0.9',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'DNT': '1',
-      'Upgrade-Insecure-Requests': '1',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-    }
+    javaScriptEnabled: true,
   })
-
-  // Inject stealth scripts before any page loads
-  await context.addInitScript(STEALTH_SCRIPTS)
 
   page = await context.newPage()
 
-  // Set up request tracking
+  // Set up request tracking - capture ALL requests (not just unique URLs)
   page.on('request', (request) => {
     const resourceType = request.resourceType()
     const requestUrl = request.url()
     const domain = extractDomain(requestUrl)
 
-    // Track scripts separately
+    // Track scripts separately (deduplicate by URL since we just need to know which scripts loaded)
     if (resourceType === 'script') {
       if (!trackedScripts.some((s) => s.url === requestUrl)) {
         trackedScripts.push({
@@ -219,7 +213,7 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
       }
     }
 
-    // Track all network requests
+    // Track ALL network requests (don't deduplicate - we want to see every request)
     const networkRequest: NetworkRequest = {
       url: requestUrl,
       domain,
@@ -229,15 +223,36 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
       timestamp: new Date().toISOString(),
     }
 
-    if (!trackedNetworkRequests.some((r) => r.url === requestUrl)) {
-      trackedNetworkRequests.push(networkRequest)
+    trackedNetworkRequests.push(networkRequest)
+  })
+  
+  // Also track responses to capture status codes
+  page.on('response', (response) => {
+    const requestUrl = response.url()
+    // Find the corresponding request and update with response info
+    const existingRequest = trackedNetworkRequests.find(
+      (r) => r.url === requestUrl && !r.statusCode
+    )
+    if (existingRequest) {
+      existingRequest.statusCode = response.status()
     }
   })
 }
 
 /**
+ * Result of a navigation attempt.
+ */
+export interface NavigationResult {
+  success: boolean
+  statusCode: number | null
+  statusText: string | null
+  isAccessDenied: boolean
+  errorMessage: string | null
+}
+
+/**
  * Navigate the current page to a URL and wait for it to load.
- * Uses an extended timeout for ad-heavy sites that take longer to reach network idle.
+ * Returns information about the navigation result including status codes.
  *
  * @param url - The URL to navigate to
  * @param waitUntil - When to consider navigation complete:
@@ -245,18 +260,55 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
  *   - 'domcontentloaded': Wait for DOMContentLoaded event
  *   - 'networkidle': Wait until network is idle (default, best for tracking)
  * @param timeout - Maximum time to wait in milliseconds (default: 90000 for ad-heavy sites)
+ * @returns NavigationResult with status information
  * @throws Error if no browser session is active
  */
 export async function navigateTo(
   url: string, 
   waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'networkidle',
   timeout: number = 90000
-): Promise<void> {
+): Promise<NavigationResult> {
   if (!page) {
     throw new Error('No browser session active')
   }
   
-  await page.goto(url, { waitUntil, timeout })
+  try {
+    const response = await page.goto(url, { waitUntil, timeout })
+    
+    const statusCode = response?.status() ?? null
+    const statusText = response?.statusText() ?? null
+    
+    // Check for HTTP errors
+    if (statusCode && statusCode >= 400) {
+      const isAccessDenied = statusCode === 403 || statusCode === 401
+      return {
+        success: false,
+        statusCode,
+        statusText,
+        isAccessDenied,
+        errorMessage: isAccessDenied 
+          ? `Access denied (${statusCode})` 
+          : `Server error (${statusCode}: ${statusText})`,
+      }
+    }
+    
+    return {
+      success: true,
+      statusCode,
+      statusText,
+      isAccessDenied: false,
+      errorMessage: null,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Navigation failed'
+    return {
+      success: false,
+      statusCode: null,
+      statusText: null,
+      isAccessDenied: false,
+      errorMessage: message,
+    }
+  }
 }
 
 /**
@@ -276,6 +328,82 @@ export async function waitForNetworkIdle(timeout: number = 60000): Promise<boole
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Check if the current page content indicates access denial or bot blocking.
+ * Looks for common patterns in the page title and body text.
+ *
+ * @returns Object indicating if access was denied and the reason
+ */
+export async function checkForAccessDenied(): Promise<{ denied: boolean; reason: string | null }> {
+  if (!page) {
+    return { denied: false, reason: null }
+  }
+
+  try {
+    const title = await page.title()
+    const titleLower = title.toLowerCase()
+    
+    // Check title for common access denied patterns
+    const blockedTitlePatterns = [
+      'access denied',
+      'forbidden',
+      '403',
+      '401',
+      'blocked',
+      'not allowed',
+      'cloudflare',
+      'security check',
+      'captcha',
+      'robot',
+      'bot detection',
+      'please verify',
+      'are you human',
+      'just a moment',
+      'checking your browser',
+      'ddos protection',
+      'attention required',
+    ]
+    
+    for (const pattern of blockedTitlePatterns) {
+      if (titleLower.includes(pattern)) {
+        return { denied: true, reason: `Page title indicates blocking: "${title}"` }
+      }
+    }
+
+    // Check visible body text for common access denied messages
+    const bodyText = await page.evaluate(() => {
+      const body = document.body
+      return body ? body.innerText.substring(0, 2000).toLowerCase() : ''
+    })
+
+    const blockedBodyPatterns = [
+      'access denied',
+      'access to this page has been denied',
+      'you have been blocked',
+      'this request was blocked',
+      'automated access',
+      'bot traffic',
+      'enable javascript and cookies',
+      'please complete the security check',
+      'checking if the site connection is secure',
+      'verify you are human',
+      'we have detected unusual activity',
+      'your ip has been blocked',
+      'rate limit exceeded',
+    ]
+
+    for (const pattern of blockedBodyPatterns) {
+      if (bodyText.includes(pattern)) {
+        return { denied: true, reason: `Page content indicates blocking: "${pattern}"` }
+      }
+    }
+
+    return { denied: false, reason: null }
+  } catch {
+    return { denied: false, reason: null }
   }
 }
 
