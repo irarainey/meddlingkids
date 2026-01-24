@@ -20,6 +20,8 @@ import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, Consent
  * Run comprehensive tracking analysis using Azure OpenAI.
  * Analyzes cookies, scripts, network requests, and storage to generate
  * a detailed privacy report and high-risks summary.
+ * 
+ * Optimized to run secondary analyses (high risks, score) in parallel.
  *
  * @param cookies - Captured cookies from the browser
  * @param localStorage - localStorage items from the page
@@ -56,6 +58,7 @@ export async function runTrackingAnalysis(
 
     const deployment = getDeploymentName()
 
+    // Step 1: Run main analysis (required for subsequent analyses)
     const response = await client.chat.completions.create({
       model: deployment,
       messages: [
@@ -68,36 +71,47 @@ export async function runTrackingAnalysis(
     const analysis = response.choices[0]?.message?.content || 'No analysis generated'
     console.log('Analysis generated, length:', analysis.length)
 
-    // Generate a concise high risks summary
-    let highRisks = ''
-    try {
-      const highRisksResponse = await client.chat.completions.create({
+    // Step 2: Run high risks and privacy score in PARALLEL (both depend on main analysis)
+    const [highRisksResult, scoreResult] = await Promise.all([
+      // High risks summary
+      client.chat.completions.create({
         model: deployment,
         messages: [
           { role: 'system', content: HIGH_RISKS_SYSTEM_PROMPT },
           { role: 'user', content: buildHighRisksUserPrompt(analysis) },
         ],
         max_completion_tokens: 500,
-      })
-      highRisks = highRisksResponse.choices[0]?.message?.content || ''
-      console.log('High risks summary generated')
-    } catch (highRisksError) {
-      console.error('Failed to generate high risks summary:', highRisksError)
-    }
-
-    // Generate privacy score
-    let privacyScore: number | undefined
-    let privacySummary: string | undefined
-    try {
-      const scoreResponse = await client.chat.completions.create({
+      }).catch(err => {
+        console.error('Failed to generate high risks summary:', err)
+        return null
+      }),
+      
+      // Privacy score
+      client.chat.completions.create({
         model: deployment,
         messages: [
           { role: 'system', content: PRIVACY_SCORE_SYSTEM_PROMPT },
-          { role: 'user', content: buildPrivacyScoreUserPrompt(analysis) },
+          { role: 'user', content: buildPrivacyScoreUserPrompt(analysis, analyzedUrl) },
         ],
         max_completion_tokens: 200,
+      }).catch(err => {
+        console.error('Failed to generate privacy score:', err)
+        return null
       })
-      const scoreContent = scoreResponse.choices[0]?.message?.content || ''
+    ])
+
+    // Process high risks result
+    const highRisks = highRisksResult?.choices[0]?.message?.content || ''
+    if (highRisks) {
+      console.log('High risks summary generated')
+    }
+
+    // Process privacy score result
+    let privacyScore: number | undefined
+    let privacySummary: string | undefined
+    
+    if (scoreResult) {
+      const scoreContent = scoreResult.choices[0]?.message?.content || ''
       console.log('Privacy score response:', scoreContent)
       try {
         const scoreData = JSON.parse(scoreContent)
@@ -106,12 +120,9 @@ export async function runTrackingAnalysis(
         console.log('Privacy score generated:', privacyScore)
       } catch (parseError) {
         console.error('Failed to parse privacy score JSON:', parseError)
-        // Default to moderate risk if parsing fails
         privacyScore = 50
         privacySummary = 'Unable to generate summary'
       }
-    } catch (scoreError) {
-      console.error('Failed to generate privacy score:', scoreError)
     }
 
     return {

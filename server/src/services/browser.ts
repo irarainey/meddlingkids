@@ -95,8 +95,18 @@ export function setCurrentPageUrl(url: string): void {
 // Browser Lifecycle
 // ============================================================================
 
+/** iPad Pro 12.9" with Chrome - realistic tablet user agent and settings */
+const MOBILE_DEVICE_CONFIG = {
+  userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.89 Mobile/15E148 Safari/604.1',
+  viewport: { width: 1024, height: 1366 },
+  deviceScaleFactor: 2,
+  isMobile: true,
+  hasTouch: true,
+}
+
 /**
  * Launch a new headless Chromium browser instance.
+ * Configured to appear as Chrome on an iPhone for realistic behavior.
  * Sets up request interception to track scripts and network activity.
  * Closes any existing browser instance first.
  *
@@ -111,9 +121,11 @@ export async function launchBrowser(headless: boolean = true): Promise<void> {
   browser = await chromium.launch({ headless })
 
   context = await browser.newContext({
-    viewport: { width: 1280, height: 720 },
+    ...MOBILE_DEVICE_CONFIG,
     storageState: undefined,
     ignoreHTTPSErrors: false,
+    locale: 'en-GB',
+    timezoneId: 'Europe/London',
   })
 
   page = await context.newPage()

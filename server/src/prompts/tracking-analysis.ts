@@ -61,8 +61,10 @@ Scoring guidelines:
 - 20-39: Low risk - minimal tracking, basic analytics only, few third parties
 - 0-19: Very low risk - privacy-respecting, minimal or no tracking, first-party only
 
+IMPORTANT: The summary MUST start with the site name (e.g., "BBC.com has...", "Amazon.co.uk uses...").
+
 You MUST respond with ONLY valid JSON in this exact format, no other text:
-{"score": <number 0-100>, "summary": "<one sentence summary of key findings>"}`
+{"score": <number 0-100>, "summary": "<site name> <one sentence about key findings>"}`
 
 /**
  * Build the consent information section for the analysis prompt.
@@ -164,8 +166,15 @@ export function buildHighRisksUserPrompt(analysis: string): string {
  * Takes the full analysis and requests a numerical score with summary.
  *
  * @param analysis - The full analysis text from the main LLM call
+ * @param siteUrl - The URL of the analyzed site (for including in summary)
  * @returns User prompt asking for privacy score
  */
-export function buildPrivacyScoreUserPrompt(analysis: string): string {
-  return `Based on this tracking analysis, provide a privacy risk score (0-100) and one-sentence summary. Respond with JSON only:\n\n${analysis}`
+export function buildPrivacyScoreUserPrompt(analysis: string, siteUrl: string): string {
+  let siteName: string
+  try {
+    siteName = new URL(siteUrl).hostname.replace(/^www\./, '')
+  } catch {
+    siteName = siteUrl
+  }
+  return `Site analyzed: ${siteName}\n\nBased on this tracking analysis, provide a privacy risk score (0-100) and one-sentence summary that starts with the site name. Respond with JSON only:\n\n${analysis}`
 }

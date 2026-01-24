@@ -1,174 +1,124 @@
 /**
  * @fileoverview Consent button click strategies.
- * Provides multiple fallback strategies for clicking dismiss/accept buttons
- * on cookie consent banners, sign-in walls, and other blocking overlays.
+ * Prioritizes LLM-suggested selectors, checking main page and iframes.
  */
 
-import type { Page } from 'playwright'
-
-/** Common text patterns found on accept/agree buttons (cookie consent) */
-const COMMON_ACCEPT_PATTERNS = [
-  'Accept All',
-  'Accept all',
-  'Accept Cookies',
-  'Accept cookies',
-  'Allow All',
-  'Allow all',
-  'I Accept',
-  'I agree',
-  'Agree',
-  'OK',
-  'Got it',
-  'Continue',
-  'Consent',
-  'Yes',
-  'Allow',
-]
-
-/** Common text patterns for dismissing sign-in walls and other overlays */
-const COMMON_DISMISS_PATTERNS = [
-  'Maybe Later',
-  'Maybe later',
-  'Not Now',
-  'Not now',
-  'No Thanks',
-  'No thanks',
-  'No, thanks',
-  'Skip',
-  'Close',
-  'Dismiss',
-  'Later',
-  'Continue without',
-  'Continue as guest',
-  'Stay signed out',
-  'No thank you',
-  'Remind me later',
-  'Ask me later',
-]
-
-/** URL patterns that indicate a frame contains consent UI */
-const CONSENT_IFRAME_PATTERNS = [
-  'consent',
-  'cookie',
-  'privacy',
-  'gdpr',
-  'onetrust',
-  'cookiebot',
-  'trustarc',
-  'quantcast',
-]
+import type { Page, Frame } from 'playwright'
 
 /**
- * Try multiple strategies to click a consent/dismiss button.
- * Attempts various selectors and patterns in order of likelihood,
- * including checking iframes for consent managers like OneTrust or CookieBot.
+ * Click a consent/dismiss button using LLM-provided selector and text.
+ * Checks both main page and iframes since consent managers often use iframes.
  *
  * @param page - Playwright Page instance
- * @param selector - CSS selector suggested by LLM detection (may be null)
- * @param buttonText - Text of the button suggested by LLM (may be null)
- * @returns True if any strategy succeeded in clicking, false otherwise
+ * @param selector - CSS selector suggested by LLM detection
+ * @param buttonText - Text of the button suggested by LLM
+ * @returns True if click succeeded, false otherwise
  */
 export async function tryClickConsentButton(
   page: Page,
   selector: string | null,
   buttonText: string | null
 ): Promise<boolean> {
-  const strategies: Array<{ name: string; fn: () => Promise<void> }> = []
+  // Phase 1: Try LLM suggestions on main page (quick - 1.5s timeout)
+  console.log(`Attempting to click: selector="${selector}", buttonText="${buttonText}"`)
+  
+  const mainResult = await tryClickInFrame(page.mainFrame(), selector, buttonText, 1500)
+  if (mainResult) {
+    console.log('Success on main page')
+    return true
+  }
 
-  // Strategy 1: Direct selector click
-  if (selector) {
-    // Convert jQuery-style :contains() to Playwright text selector
-    const containsMatch = selector.match(/:contains\(["'](.+?)["']\)/)
-    if (containsMatch) {
-      const text = containsMatch[1]
-      strategies.push({
-        name: `text selector "${text}"`,
-        fn: () => page.getByText(text, { exact: false }).first().click({ timeout: 3000 }),
-      })
-    } else {
-      strategies.push({
-        name: `CSS selector "${selector}"`,
-        fn: () => page.click(selector, { timeout: 3000 }),
-      })
+  // Phase 2: Try LLM suggestions in ALL iframes (consent managers often use iframes)
+  const frames = page.frames()
+  for (const frame of frames) {
+    if (frame === page.mainFrame()) continue
+    
+    const frameUrl = frame.url()
+    console.log(`Checking iframe: ${frameUrl.substring(0, 80)}...`)
+    
+    const iframeResult = await tryClickInFrame(frame, selector, buttonText, 1500)
+    if (iframeResult) {
+      console.log(`Success in iframe: ${frameUrl.substring(0, 50)}`)
+      return true
     }
   }
 
-  // Strategy 2: Button role with text
+  // Phase 3: Last resort - try generic close buttons on main page
+  const closeResult = await tryCloseButtons(page)
+  if (closeResult) return true
+
+  console.log('All click strategies failed')
+  return false
+}
+
+/**
+ * Try clicking in a specific frame using LLM-provided selector and text.
+ * Tries selector first, then button role, then link role, then text.
+ */
+async function tryClickInFrame(
+  frame: Frame,
+  selector: string | null,
+  buttonText: string | null,
+  timeout: number
+): Promise<boolean> {
+  // Strategy 1: Direct CSS selector
+  if (selector) {
+    // Handle jQuery-style :contains() selectors
+    const containsMatch = selector.match(/:contains\(["'](.+?)["']\)/)
+    const actualSelector = containsMatch ? null : selector
+    const textFromSelector = containsMatch ? containsMatch[1] : null
+    
+    if (actualSelector) {
+      try {
+        await frame.locator(actualSelector).first().click({ timeout })
+        return true
+      } catch {
+        // Continue to next strategy
+      }
+    }
+    
+    if (textFromSelector) {
+      try {
+        await frame.getByText(textFromSelector, { exact: false }).first().click({ timeout })
+        return true
+      } catch {
+        // Continue to next strategy
+      }
+    }
+  }
+
+  // Strategy 2: Button/link/text with buttonText
   if (buttonText) {
-    strategies.push({
-      name: `button role "${buttonText}"`,
-      fn: () => page.getByRole('button', { name: buttonText }).click({ timeout: 3000 }),
-    })
-    // Also try link role (for "Maybe Later" style links)
-    strategies.push({
-      name: `link role "${buttonText}"`,
-      fn: () => page.getByRole('link', { name: buttonText }).click({ timeout: 3000 }),
-    })
-    // Try generic text click (works for any element)
-    strategies.push({
-      name: `text click "${buttonText}"`,
-      fn: () => page.getByText(buttonText, { exact: false }).first().click({ timeout: 3000 }),
-    })
-    // Also try with exact: false for partial matches
-    strategies.push({
-      name: `button role partial "${buttonText}"`,
-      fn: () =>
-        page
-          .getByRole('button', { name: new RegExp(buttonText, 'i') })
-          .first()
-          .click({ timeout: 3000 }),
-    })
-  }
-
-  // Strategy 3: Common dismiss patterns (for sign-in walls, newsletter popups)
-  for (const pattern of COMMON_DISMISS_PATTERNS) {
-    strategies.push({
-      name: `dismiss link "${pattern}"`,
-      fn: () => page.getByRole('link', { name: pattern }).click({ timeout: 2000 }),
-    })
-    strategies.push({
-      name: `dismiss button "${pattern}"`,
-      fn: () => page.getByRole('button', { name: pattern }).click({ timeout: 2000 }),
-    })
-    strategies.push({
-      name: `dismiss text "${pattern}"`,
-      fn: () => page.getByText(pattern, { exact: false }).first().click({ timeout: 2000 }),
-    })
-  }
-
-  // Strategy 4: Common accept button patterns (for cookie consent)
-  for (const pattern of COMMON_ACCEPT_PATTERNS) {
-    strategies.push({
-      name: `accept pattern "${pattern}"`,
-      fn: () => page.getByRole('button', { name: pattern }).click({ timeout: 2000 }),
-    })
-  }
-
-  // Strategy 5: Close buttons (X icons, close buttons)
-  strategies.push({
-    name: 'close button aria-label',
-    fn: () => page.locator('[aria-label*="close" i], [aria-label*="dismiss" i]').first().click({ timeout: 2000 }),
-  })
-  strategies.push({
-    name: 'close button class',
-    fn: () => page.locator('[class*="close"], [class*="dismiss"]').first().click({ timeout: 2000 }),
-  })
-
-  // Strategy 6: Check iframes for consent banners
-  strategies.push({
-    name: 'iframe consent',
-    fn: () => tryClickInConsentIframes(page),
-  })
-
-  // Try each strategy in order
-  for (const strategy of strategies) {
+    // Try as button
     try {
-      console.log(`Trying consent click strategy: ${strategy.name}`)
-      await strategy.fn()
-      console.log(`Success with strategy: ${strategy.name}`)
+      await frame.getByRole('button', { name: buttonText }).first().click({ timeout })
       return true
-    } catch (error) {
-      console.log(`Strategy "${strategy.name}" failed:`, error instanceof Error ? error.message : error)
+    } catch {
+      // Continue
+    }
+
+    // Try as link
+    try {
+      await frame.getByRole('link', { name: buttonText }).first().click({ timeout })
+      return true
+    } catch {
+      // Continue
+    }
+
+    // Try as any text element
+    try {
+      await frame.getByText(buttonText, { exact: true }).first().click({ timeout })
+      return true
+    } catch {
+      // Continue
+    }
+    
+    // Try partial text match
+    try {
+      await frame.getByText(buttonText, { exact: false }).first().click({ timeout })
+      return true
+    } catch {
+      // Continue
     }
   }
 
@@ -176,36 +126,26 @@ export async function tryClickConsentButton(
 }
 
 /**
- * Try clicking consent buttons within iframes.
- * Many consent management platforms (OneTrust, CookieBot, TrustArc)
- * render their UI in iframes.
- *
- * @param page - Playwright Page instance
- * @throws Error if no consent iframe found or click fails
+ * Try common close button patterns as a last resort.
  */
-async function tryClickInConsentIframes(page: Page): Promise<void> {
-  const frames = page.frames()
+async function tryCloseButtons(page: Page): Promise<boolean> {
+  const closeSelectors = [
+    '[aria-label*="close" i]',
+    '[aria-label*="dismiss" i]',
+    'button[class*="close"]',
+    '[class*="modal-close"]',
+  ]
 
-  for (const frame of frames) {
-    if (frame === page.mainFrame()) continue
-
-    const frameUrl = frame.url().toLowerCase()
-
-    // Check if this frame matches consent iframe patterns
-    const isConsentFrame = CONSENT_IFRAME_PATTERNS.some((pattern) => frameUrl.includes(pattern))
-
-    if (isConsentFrame) {
-      // Try clicking accept buttons in this frame
-      for (const pattern of ['Accept All', 'Accept', 'Allow All', 'I Accept', 'Agree', 'OK']) {
-        try {
-          await frame.getByRole('button', { name: pattern }).click({ timeout: 2000 })
-          return // Success
-        } catch {
-          // Try next pattern
-        }
-      }
+  for (const sel of closeSelectors) {
+    try {
+      console.log(`Trying close button: "${sel}"`)
+      await page.locator(sel).first().click({ timeout: 1000 })
+      console.log(`Success with close button`)
+      return true
+    } catch {
+      // Try next
     }
   }
 
-  throw new Error('No consent iframe found')
+  return false
 }

@@ -100,39 +100,51 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     clearTrackingData()
     setCurrentPageUrl(url)
 
-    sendProgress(res, 'browser', 'Launching browser...', 10)
+    sendProgress(res, 'browser', 'Launching headless browser...', 8)
 
     await launchBrowser(true)
 
-    sendProgress(res, 'navigate', `Loading ${new URL(url).hostname}...`, 15)
+    const hostname = new URL(url).hostname
+    sendProgress(res, 'navigate', `Connecting to ${hostname}...`, 12)
 
-    // First, navigate and wait for DOM to be ready (fast)
+    // Navigate and wait for DOM to be ready (fast initial load)
     await navigateTo(url, 'domcontentloaded', 30000)
     
-    sendProgress(res, 'wait-network', 'Waiting for page to finish loading...', 20)
+    sendProgress(res, 'wait-network', `Loading ${hostname}...`, 18)
     
-    // Now wait for network to become idle (captures all trackers/ads)
-    // This may take a while on ad-heavy sites
-    const networkIdleResult = await waitForNetworkIdle(90000)
+    // Wait for network to settle - use a shorter timeout since ad-heavy sites
+    // like Daily Mail never truly reach "idle" due to continuous ad refreshes.
+    // 15 seconds is enough to capture most trackers without waiting forever.
+    const networkIdleResult = await waitForNetworkIdle(15000)
     
     if (!networkIdleResult) {
-      console.log('Network did not reach idle state within timeout, continuing with captured data')
-      sendProgress(res, 'wait-partial', 'Page still loading, continuing...', 28)
+      // Network didn't idle - this is NORMAL for ad-heavy sites
+      // We've still captured the trackers that loaded in the first 15 seconds
+      console.log('Network still active (normal for ad-heavy sites), continuing...')
+      sendProgress(res, 'wait-continue', 'Page loaded, capturing trackers...', 28)
+    } else {
+      sendProgress(res, 'wait-done', 'Page fully loaded', 28)
     }
 
-    // Wait additional time for any final dynamic content
-    sendProgress(res, 'wait-content', 'Capturing page content...', 30)
-    await waitForTimeout(3000)
+    // Brief pause to let any final scripts execute
+    await waitForTimeout(1000)
 
-    sendProgress(res, 'cookies', 'Collecting tracking data...', 35)
-
+    sendProgress(res, 'cookies', 'Capturing cookies...', 32)
     await captureCurrentCookies()
+    
+    sendProgress(res, 'storage', 'Capturing storage data...', 35)
     let storage = await captureStorage()
 
-    sendProgress(res, 'screenshot', 'Taking screenshot...', 40)
-
+    sendProgress(res, 'screenshot', 'Taking screenshot...', 38)
     let screenshot = await takeScreenshot(false)
     let base64Screenshot = screenshot.toString('base64')
+
+    // Count what we've found so far
+    const cookieCount = getTrackedCookies().length
+    const scriptCount = getTrackedScripts().length
+    const requestCount = getTrackedNetworkRequests().length
+    
+    sendProgress(res, 'captured', `Found ${cookieCount} cookies, ${scriptCount} scripts, ${requestCount} requests`, 42)
 
     // Send initial screenshot (stage 1)
     sendEvent(res, 'screenshot', {
@@ -144,7 +156,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       sessionStorage: storage.sessionStorage,
     })
 
-    sendProgress(res, 'consent-detect', 'Analyzing page...', 45)
+    sendProgress(res, 'consent-detect', 'Checking for consent dialogs...', 45)
 
     let consentDetails: ConsentDetails | null = null
     const page = getPage()
@@ -169,8 +181,9 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
     // Loop to handle multiple overlays (cookie consent, then sign-in wall, then newsletter, etc.)
     while (page && overlayCount < MAX_OVERLAYS) {
+      // Only fetch new screenshot/HTML on first iteration or after a successful click
+      // (screenshot variable is reused from previous capture)
       const html = await getPageContent()
-      screenshot = await takeScreenshot(false)
       const consentDetection = await detectCookieConsent(screenshot, html)
 
       if (!consentDetection.found || !consentDetection.selector) {
@@ -194,8 +207,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       sendProgress(res, `overlay-${overlayCount}-found`, getOverlayMessage(consentDetection.overlayType, consentDetection.buttonText), progressBase)
       dismissedOverlays.push(consentDetection)
 
-      // Extract detailed consent information BEFORE accepting (only for cookie consent)
-      if (consentDetection.overlayType === 'cookie-consent') {
+      // Extract detailed consent information BEFORE accepting (only for first cookie consent)
+      if (consentDetection.overlayType === 'cookie-consent' && !consentDetails) {
         sendProgress(res, 'consent-extract', 'Extracting consent details...', progressBase + 1)
         consentDetails = await extractConsentDetails(page, screenshot)
 
@@ -207,56 +220,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
           hasManageOptions: consentDetails.hasManageOptions,
         })
 
-        // If there's a manage options button, try clicking it to get more details
-        if (consentDetails.hasManageOptions && consentDetails.manageOptionsSelector) {
-          sendProgress(res, 'consent-expand', 'Expanding preferences...', progressBase + 2)
-          try {
-            // Convert jQuery-style :contains() selectors to Playwright text selectors
-            let selector = consentDetails.manageOptionsSelector
-            const containsMatch = selector.match(/:contains\(["'](.+?)["']\)/)
-
-            if (containsMatch) {
-              // Extract the text and use Playwright's text locator instead
-              const buttonText = containsMatch[1]
-              await page.getByRole('button', { name: buttonText }).first().click({ timeout: 3000 })
-            } else {
-              await page.click(selector, { timeout: 3000 })
-            }
-            await waitForTimeout(500)
-
-            // Take new screenshot and extract more details
-            const expandedScreenshot = await takeScreenshot(true)
-            const expandedDetails = await extractConsentDetails(page, expandedScreenshot)
-
-            // Merge the details
-            consentDetails = {
-              ...consentDetails,
-              categories: [...consentDetails.categories, ...expandedDetails.categories].filter(
-                (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
-              ),
-              partners: [...consentDetails.partners, ...expandedDetails.partners].filter(
-                (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
-              ),
-              purposes: [...new Set([...consentDetails.purposes, ...expandedDetails.purposes])],
-              rawText: consentDetails.rawText + '\n\n' + expandedDetails.rawText,
-            }
-
-            // Send updated consent details
-            sendEvent(res, 'consentDetails', {
-              categories: consentDetails.categories,
-              partners: consentDetails.partners,
-              purposes: consentDetails.purposes,
-              expanded: true,
-            })
-
-            console.log('Expanded consent details:', {
-              categories: consentDetails.categories.length,
-              partners: consentDetails.partners.length,
-            })
-          } catch (expandError) {
-            console.log('Could not expand cookie preferences:', expandError)
-          }
-        }
+        // Skip the "expand preferences" step - it's slow and often doesn't add value
+        // The initial extraction usually captures the key information
       }
 
       // Try to click the dismiss/accept button
@@ -267,8 +232,12 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
         if (clicked) {
           sendProgress(res, `overlay-${overlayCount}-wait`, 'Waiting for page to update...', progressBase + 4)
-          await waitForTimeout(1500)
-          await waitForLoadState('domcontentloaded').catch(() => {})
+          
+          // Wait for DOM to settle - use shorter wait with domcontentloaded as backup
+          await Promise.race([
+            waitForTimeout(800),
+            waitForLoadState('domcontentloaded').catch(() => {})
+          ])
 
           // Recapture data and take screenshot after this overlay
           sendProgress(res, `overlay-${overlayCount}-capture`, 'Capturing page state...', progressBase + 5)
@@ -325,8 +294,14 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       sendProgress(res, 'overlays-limit', 'Maximum overlay limit reached', 70)
     }
 
-    sendProgress(res, 'analysis', 'Running privacy analysis...', 80)
+    sendProgress(res, 'analysis-prep', 'Preparing tracking data for analysis...', 75)
     console.log('Starting tracking analysis...')
+
+    // Update counts after any overlay dismissals
+    const finalCookieCount = getTrackedCookies().length
+    const finalRequestCount = getTrackedNetworkRequests().length
+    
+    sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalRequestCount} requests...`, 80)
 
     const analysisResult = await runTrackingAnalysis(
       getTrackedCookies(),
@@ -338,8 +313,12 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       consentDetails
     )
 
+    if (analysisResult.success) {
+      sendProgress(res, 'analysis-score', 'Calculating privacy score...', 95)
+    }
+
     console.log('Analysis result:', analysisResult.success ? 'Success' : analysisResult.error)
-    sendProgress(res, 'complete', 'Analysis complete!', 100)
+    sendProgress(res, 'complete', 'Investigation complete!', 100)
 
     // Send final complete event
     sendEvent(res, 'complete', {
