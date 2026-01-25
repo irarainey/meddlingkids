@@ -205,13 +205,14 @@ interface AnalysisResult {
 
 ## Environment Variables
 
-Create a `.env` file in the server directory:
+Create a `.env` file in the server directory. Configure either Azure OpenAI OR standard OpenAI:
 
+**Option A: Azure OpenAI**
 ```env
 # Server port (default: 3001)
 PORT=3001
 
-# Azure OpenAI Configuration (required for AI analysis)
+# Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=your-deployment-name
@@ -220,12 +221,25 @@ AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 OPENAI_API_VERSION=2024-12-01-preview
 ```
 
+**Option B: Standard OpenAI**
+```env
+# Server port (default: 3001)
+PORT=3001
+
+# OpenAI Configuration
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=gpt-4o
+
+# Optional: Custom base URL for OpenAI-compatible APIs
+# OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
 ## Development
 
 ### Prerequisites
 
 - Node.js 22+ (uses native TypeScript support)
-- Azure OpenAI resource with a deployed model (GPT-4o recommended for vision)
+- OpenAI API key or Azure OpenAI resource (GPT-4o recommended for vision)
 
 ### Installation
 
@@ -344,12 +358,18 @@ page.on('request', (request) => {
 
 ## Troubleshooting
 
-### "Azure OpenAI not configured"
+### "OpenAI not configured"
 
-Ensure all required environment variables are set:
+Ensure you have configured either Azure OpenAI or standard OpenAI:
+
+**Azure OpenAI:**
 - `AZURE_OPENAI_ENDPOINT`
 - `AZURE_OPENAI_API_KEY`
 - `AZURE_OPENAI_DEPLOYMENT`
+
+**Standard OpenAI:**
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (optional, defaults to `gpt-4o`)
 
 ### Consent button not clicking
 

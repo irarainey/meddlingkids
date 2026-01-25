@@ -43,7 +43,7 @@ export async function runTrackingAnalysis(
 ): Promise<AnalysisResult> {
   const client = getOpenAIClient()
   if (!client) {
-    return { success: false, error: 'Azure OpenAI not configured' }
+    return { success: false, error: 'OpenAI not configured' }
   }
 
   try {

@@ -65,12 +65,19 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your Azure OpenAI credentials:
+Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and standard OpenAI:
 
+**Option A: Azure OpenAI**
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4o
+```
+
+**Option B: Standard OpenAI**
+```env
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=gpt-4o
 ```
 
 ### 3. Run Development Server
@@ -101,11 +108,20 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 
 ### Run with Environment Variables
 
+**Azure OpenAI:**
 ```bash
 docker run -p 3001:3001 \
   -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
   -e AZURE_OPENAI_API_KEY=your-api-key \
   -e AZURE_OPENAI_DEPLOYMENT=gpt-4o \
+  meddlingkids
+```
+
+**Standard OpenAI:**
+```bash
+docker run -p 3001:3001 \
+  -e OPENAI_API_KEY=your-api-key \
+  -e OPENAI_MODEL=gpt-4o \
   meddlingkids
 ```
 
@@ -123,11 +139,29 @@ Then open http://localhost:3001
 
 ## Environment Variables
 
+Configure either Azure OpenAI OR standard OpenAI (Azure takes priority if both are set):
+
+### Azure OpenAI
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `AZURE_OPENAI_ENDPOINT` | Yes | Your Azure OpenAI endpoint URL |
 | `AZURE_OPENAI_API_KEY` | Yes | Your Azure OpenAI API key |
 | `AZURE_OPENAI_DEPLOYMENT` | Yes | The deployment name (e.g., `gpt-4o`) |
+| `OPENAI_API_VERSION` | No | API version (default: `2024-12-01-preview`) |
+
+### Standard OpenAI
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes | Your OpenAI API key |
+| `OPENAI_MODEL` | No | Model name (default: `gpt-4o`) |
+| `OPENAI_BASE_URL` | No | Custom base URL for OpenAI-compatible APIs |
+
+### General
+
+| Variable | Required | Description |
+|----------|----------|-------------|
 | `PORT` | No | Server port (default: `3001`) |
 
 ## How It Works

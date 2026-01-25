@@ -25,7 +25,7 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
       selector: null,
       buttonText: null,
       confidence: 'low',
-      reason: 'Azure OpenAI not configured',
+      reason: 'OpenAI not configured',
     }
   }
 
