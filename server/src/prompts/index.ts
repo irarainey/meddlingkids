@@ -10,3 +10,4 @@ export {
   buildHighRisksUserPrompt,
   buildPrivacyScoreUserPrompt,
 } from './tracking-analysis.js'
+export { SCRIPT_ANALYSIS_SYSTEM_PROMPT, buildScriptAnalysisUserPrompt } from './script-analysis.js'

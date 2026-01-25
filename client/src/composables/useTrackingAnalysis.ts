@@ -276,6 +276,10 @@ export function useTrackingAnalysis() {
         if (data.consentDetails) {
           consentDetails.value = data.consentDetails
         }
+        // Update scripts with analyzed descriptions if available
+        if (data.scripts) {
+          scripts.value = data.scripts
+        }
 
         activeTab.value = data.highRisks ? 'risks' : 'analysis'
         statusMessage.value = data.message

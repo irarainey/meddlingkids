@@ -44,6 +44,8 @@ export interface TrackedScript {
   domain: string
   /** ISO timestamp when the script was detected */
   timestamp: string
+  /** AI-generated description of the script's purpose */
+  description?: string
 }
 
 /**

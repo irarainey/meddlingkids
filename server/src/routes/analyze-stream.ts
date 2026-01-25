@@ -27,6 +27,7 @@ import { detectCookieConsent } from '../services/consent-detection.js'
 import { extractConsentDetails } from '../services/consent-extraction.js'
 import { tryClickConsentButton } from '../services/consent-click.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
+import { analyzeScripts } from '../services/script-analysis.js'
 import { getErrorMessage } from '../utils/index.js'
 import type { ConsentDetails, CookieConsentDetection } from '../types.js'
 
@@ -353,19 +354,37 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
     // Update counts after any overlay dismissals
     const finalCookieCount = getTrackedCookies().length
+    const finalScriptCount = getTrackedScripts().length
     const finalRequestCount = getTrackedNetworkRequests().length
     
-    sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalRequestCount} requests...`, 80)
+    sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalScriptCount} scripts...`, 78)
 
-    const analysisResult = await runTrackingAnalysis(
-      getTrackedCookies(),
-      storage.localStorage,
-      storage.sessionStorage,
-      getTrackedNetworkRequests(),
-      getTrackedScripts(),
-      url,
-      consentDetails
-    )
+    // Run script analysis and main analysis in parallel for efficiency
+    const [analyzedScripts, analysisResult] = await Promise.all([
+      // Script analysis (identify what each script does)
+      (async () => {
+        const scripts = await analyzeScripts(
+          getTrackedScripts(), 
+          20, // Analyze up to 20 unknown scripts
+          (current, total) => {
+            sendProgress(res, 'script-analysis', `Analyzing script ${current} of ${total}...`, 80 + Math.floor((current / total) * 10))
+          }
+        )
+        console.log(`Script analysis complete: ${scripts.length} scripts analyzed`)
+        return scripts
+      })(),
+      
+      // Main tracking analysis
+      runTrackingAnalysis(
+        getTrackedCookies(),
+        storage.localStorage,
+        storage.sessionStorage,
+        getTrackedNetworkRequests(),
+        getTrackedScripts(),
+        url,
+        consentDetails
+      )
+    ])
 
     if (analysisResult.success) {
       sendProgress(res, 'analysis-score', 'Calculating privacy score...', 95)
@@ -374,7 +393,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     console.log('Analysis result:', analysisResult.success ? 'Success' : analysisResult.error)
     sendProgress(res, 'complete', 'Investigation complete!', 100)
 
-    // Send final complete event
+    // Send final complete event with analyzed scripts
     sendEvent(res, 'complete', {
       success: true,
       message: overlayCount > 0
@@ -387,6 +406,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       analysisSummary: analysisResult.success ? analysisResult.summary : null,
       analysisError: analysisResult.success ? null : analysisResult.error,
       consentDetails: consentDetails,
+      scripts: analyzedScripts, // Scripts with descriptions
     })
 
     res.end()

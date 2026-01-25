@@ -25,6 +25,8 @@ export interface TrackedScript {
   url: string
   domain: string
   timestamp: string
+  /** AI-generated description of the script's purpose */
+  description?: string
 }
 
 /**
