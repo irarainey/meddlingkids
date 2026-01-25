@@ -172,9 +172,9 @@ export function buildHighRisksUserPrompt(analysis: string): string {
 export function buildPrivacyScoreUserPrompt(analysis: string, siteUrl: string): string {
   let siteName: string
   try {
-    siteName = new URL(siteUrl).hostname.replace(/^www\./, '')
+    siteName = new URL(siteUrl).hostname.replace(/^www\./, '').toLowerCase()
   } catch {
-    siteName = siteUrl
+    siteName = siteUrl.toLowerCase()
   }
   return `Site analyzed: ${siteName}\n\nBased on this tracking analysis, provide a privacy risk score (0-100) and one-sentence summary that starts with the site name. Respond with JSON only:\n\n${analysis}`
 }
