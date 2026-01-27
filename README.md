@@ -191,6 +191,7 @@ Configure either Azure OpenAI OR standard OpenAI (Azure takes priority if both a
 
 ## Project Documentation
 
+- [Developer Guide](DEVELOPER_GUIDE.md) — Application workflow, data flow, and architecture
 - [Client README](client/README.md) — Frontend architecture, components, and styling
 - [Server README](server/README.md) — Backend architecture, services, and API
 
