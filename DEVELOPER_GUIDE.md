@@ -481,10 +481,6 @@ interface ConsentDetails {
 
 Enable browser DevTools → Network tab → Filter by "EventStream" to see SSE messages.
 
-### Testing Without AI
-
-Set environment variables to point to a local OpenAI-compatible server, or add mock responses in the service layer.
-
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
