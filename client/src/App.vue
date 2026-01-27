@@ -79,6 +79,7 @@ const {
         type="text"
         class="text-input"
         placeholder="Enter a suspicious URL to investigate..."
+        :disabled="isLoading"
         @keyup.enter="analyzeUrl"
       />
       <select v-model="deviceType" class="device-select" :disabled="isLoading">
@@ -265,6 +266,11 @@ const {
 
 .text-input::placeholder {
   color: #9ca3af;
+}
+
+.text-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .device-select {
