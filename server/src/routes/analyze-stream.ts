@@ -90,7 +90,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     setCurrentPageUrl(url)
 
     sendProgress(res, 'browser', 'Launching headless browser...', 8)
-    await launchBrowser(true, deviceType as import('../services/browser.js').DeviceType)
+    await launchBrowser(deviceType as import('../services/browser.js').DeviceType)
 
     const hostname = new URL(url).hostname
     sendProgress(res, 'navigate', `Connecting to ${hostname}...`, 12)

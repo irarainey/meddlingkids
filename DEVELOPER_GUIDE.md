@@ -101,7 +101,7 @@ analyzeUrlStreamHandler() in analyze-stream.ts
    │
    ├── validateOpenAIConfig() → Check env vars
    ├── clearTrackingData() → Reset tracking arrays
-   ├── launchBrowser(headless, deviceType) → Start Playwright
+   ├── launchBrowser(deviceType) → Start Playwright headless
    └── navigateTo(url) → Load target page
 ```
 
@@ -484,10 +484,6 @@ Enable browser DevTools → Network tab → Filter by "EventStream" to see SSE m
 ### Testing Without AI
 
 Set environment variables to point to a local OpenAI-compatible server, or add mock responses in the service layer.
-
-### Browser Debugging
-
-Set `headless: false` in `launchBrowser()` to see the browser window during development.
 
 ### Performance
 
