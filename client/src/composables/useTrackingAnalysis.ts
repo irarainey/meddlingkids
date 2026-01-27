@@ -177,7 +177,7 @@ export function useTrackingAnalysis() {
     showPageErrorDialog.value = false
     errorDialog.value = null
     showErrorDialog.value = false
-    statusMessage.value = 'Starting...'
+    statusMessage.value = 'Warming up...'
     progressStep.value = 'init'
     progressPercent.value = 0
   }
