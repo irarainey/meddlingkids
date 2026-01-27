@@ -24,6 +24,7 @@ import {
 } from '../services/browser.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
 import { analyzeScripts } from '../services/script-analysis.js'
+import { validateOpenAIConfig } from '../services/openai.js'
 import { getErrorMessage } from '../utils/index.js'
 import { sendEvent, sendProgress, handleOverlays } from './analyze-helpers.js'
 
@@ -54,20 +55,29 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
   const url = req.query.url as string
   const device = (req.query.device as string) || 'ipad'
 
+  // Set up SSE headers first so we can send error events
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+
+  // Validate OpenAI configuration before starting analysis
+  const configError = validateOpenAIConfig()
+  if (configError) {
+    sendEvent(res, 'error', { error: configError })
+    res.end()
+    return
+  }
+
   // Validate device type
   const validDevices = ['iphone', 'ipad', 'android-phone', 'android-tablet', 'windows-chrome', 'macos-safari']
   const deviceType = validDevices.includes(device) ? device : 'ipad'
 
   if (!url) {
-    res.status(400).json({ error: 'URL is required' })
+    sendEvent(res, 'error', { error: 'URL is required' })
+    res.end()
     return
   }
-
-  // Set up SSE headers
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-  res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
     // ========================================================================

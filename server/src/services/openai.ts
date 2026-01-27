@@ -84,3 +84,32 @@ export function getDeploymentName(): string {
   }
   return process.env.OPENAI_MODEL || 'gpt-4o'
 }
+
+/**
+ * Check if OpenAI is properly configured.
+ * Returns an error message if not configured, or null if configured.
+ *
+ * @returns Error message string if not configured, null if configured
+ */
+export function validateOpenAIConfig(): string | null {
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT
+  const azureApiKey = process.env.AZURE_OPENAI_API_KEY
+  const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT
+  const openaiApiKey = process.env.OPENAI_API_KEY
+
+  // Check if Azure OpenAI is configured
+  if (azureEndpoint && azureApiKey && azureDeployment) {
+    return null
+  }
+
+  // Check if standard OpenAI is configured
+  if (openaiApiKey) {
+    return null
+  }
+
+  return (
+    'OpenAI is not configured. Please set one of the following:\n' +
+    '  Azure OpenAI: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n' +
+    '  Standard OpenAI: OPENAI_API_KEY (and optionally OPENAI_MODEL, OPENAI_BASE_URL)'
+  )
+}

@@ -76,6 +76,11 @@ export function useTrackingAnalysis() {
   /** Whether the page error dialog is visible */
   const showPageErrorDialog = ref(false)
 
+  /** Configuration error message (e.g., missing OpenAI keys) */
+  const configError = ref('')
+  /** Whether the config error dialog is visible */
+  const showConfigErrorDialog = ref(false)
+
   /** Current status message during analysis */
   const statusMessage = ref('')
   /** Current progress step identifier */
@@ -170,6 +175,8 @@ export function useTrackingAnalysis() {
     consentDetails.value = null
     pageError.value = null
     showPageErrorDialog.value = false
+    configError.value = ''
+    showConfigErrorDialog.value = false
     statusMessage.value = 'Starting...'
     progressStep.value = 'init'
     progressPercent.value = 0
@@ -296,7 +303,15 @@ export function useTrackingAnalysis() {
       eventSource.addEventListener('error', (event) => {
         if (event instanceof MessageEvent) {
           const data = JSON.parse(event.data)
-          errorMessage.value = data.error || 'An error occurred'
+          const error = data.error || 'An error occurred'
+          
+          // Check if this is a configuration error
+          if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
+            configError.value = error
+            showConfigErrorDialog.value = true
+          } else {
+            errorMessage.value = error
+          }
         } else {
           errorMessage.value = 'Connection error'
         }
@@ -345,6 +360,8 @@ export function useTrackingAnalysis() {
     consentDetails,
     pageError,
     showPageErrorDialog,
+    configError,
+    showConfigErrorDialog,
     statusMessage,
     progressStep,
     progressPercent,
@@ -362,6 +379,7 @@ export function useTrackingAnalysis() {
     closeScreenshotModal,
     closeScoreDialog: () => { showScoreDialog.value = false },
     closePageErrorDialog: () => { showPageErrorDialog.value = false },
+    closeConfigErrorDialog: () => { showConfigErrorDialog.value = false },
     analyzeUrl,
   }
 }

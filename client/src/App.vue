@@ -6,6 +6,7 @@ import {
   ScreenshotGallery,
   ScoreDialog,
   PageErrorDialog,
+  ConfigErrorDialog,
   AnalysisTab,
   ConsentTab,
   CookiesTab,
@@ -39,6 +40,8 @@ const {
   consentDetails,
   pageError,
   showPageErrorDialog,
+  configError,
+  showConfigErrorDialog,
   statusMessage,
   progressStep,
   progressPercent,
@@ -56,6 +59,7 @@ const {
   closeScreenshotModal,
   closeScoreDialog,
   closePageErrorDialog,
+  closeConfigErrorDialog,
   analyzeUrl,
 } = useTrackingAnalysis()
 </script>
@@ -115,6 +119,13 @@ const {
       :message="pageError?.message ?? ''"
       :status-code="pageError?.statusCode ?? null"
       @close="closePageErrorDialog"
+    />
+
+    <!-- Configuration Error Dialog -->
+    <ConfigErrorDialog
+      :is-open="showConfigErrorDialog"
+      :message="configError"
+      @close="closeConfigErrorDialog"
     />
 
     <!-- Screenshot Gallery -->
