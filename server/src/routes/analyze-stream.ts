@@ -84,7 +84,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     // Phase 1: Browser Setup and Navigation
     // ========================================================================
     
-    sendProgress(res, 'init', 'Starting investigation...', 5)
+    sendProgress(res, 'init', 'Warming up...', 5)
 
     clearTrackingData()
     setCurrentPageUrl(url)
@@ -234,6 +234,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
           }
         )
         console.log(`Script analysis complete: ${scripts.length} scripts analyzed`)
+        sendProgress(res, 'script-analysis-complete', 'Analyzing tracking data...', 90)
         return scripts
       })(),
       
