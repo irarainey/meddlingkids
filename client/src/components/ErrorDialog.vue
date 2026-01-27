@@ -44,41 +44,49 @@ const emit = defineEmits<{
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 2rem;
 }
 
 .dialog-content {
-  background: var(--color-background);
-  border-radius: 12px;
+  background: #1e2235;
+  border: 1px solid #3d4663;
+  border-radius: 16px;
   padding: 2rem;
   max-width: 500px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  text-align: center;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .dialog-close {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: none;
+  width: 32px;
+  height: 32px;
   border: none;
-  font-size: 1.5rem;
+  background: #2a2f45;
+  color: #9ca3af;
+  font-size: 1.25rem;
+  border-radius: 50%;
   cursor: pointer;
-  color: var(--color-text);
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 .dialog-close:hover {
-  opacity: 1;
+  background: #3d4663;
+  color: #e0e7ff;
 }
 
 .error-icon {
@@ -89,35 +97,41 @@ const emit = defineEmits<{
 
 .error-title {
   text-align: center;
-  margin: 0 0 1rem;
-  color: var(--color-heading);
+  margin: 0 0 1.5rem;
+  color: #e0e7ff;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .error-message {
-  background: var(--color-background-soft);
+  background: #2a2f45;
   padding: 1rem;
   border-radius: 8px;
   font-size: 0.95rem;
   white-space: pre-wrap;
   margin-bottom: 1.5rem;
-  border-left: 4px solid var(--color-error, #dc3545);
-  line-height: 1.5;
+  border-left: 4px solid #ef4444;
+  line-height: 1.6;
+  color: #c7d2fe;
+  text-align: left;
 }
 
 .dialog-button {
   display: block;
   width: 100%;
   padding: 0.75rem 1.5rem;
-  background: var(--color-primary, #646cff);
+  background: #0C67AC;
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .dialog-button:hover {
-  background: var(--color-primary-hover, #535bf2);
+  background: #0A5690;
+  transform: translateY(-2px);
 }
 </style>
