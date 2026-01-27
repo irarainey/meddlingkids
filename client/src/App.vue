@@ -6,7 +6,7 @@ import {
   ScreenshotGallery,
   ScoreDialog,
   PageErrorDialog,
-  ConfigErrorDialog,
+  ErrorDialog,
   AnalysisTab,
   ConsentTab,
   CookiesTab,
@@ -23,7 +23,6 @@ const {
   deviceType,
   isLoading,
   isComplete,
-  errorMessage,
   screenshots,
   cookies,
   scripts,
@@ -40,8 +39,8 @@ const {
   consentDetails,
   pageError,
   showPageErrorDialog,
-  configError,
-  showConfigErrorDialog,
+  errorDialog,
+  showErrorDialog,
   statusMessage,
   progressStep,
   progressPercent,
@@ -59,7 +58,7 @@ const {
   closeScreenshotModal,
   closeScoreDialog,
   closePageErrorDialog,
-  closeConfigErrorDialog,
+  closeErrorDialog,
   analyzeUrl,
 } = useTrackingAnalysis()
 </script>
@@ -95,8 +94,6 @@ const {
       </button>
     </div>
 
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-
     <!-- Loading Banner with Progress -->
     <ProgressBanner
       v-if="isLoading"
@@ -121,11 +118,12 @@ const {
       @close="closePageErrorDialog"
     />
 
-    <!-- Configuration Error Dialog -->
-    <ConfigErrorDialog
-      :is-open="showConfigErrorDialog"
-      :message="configError"
-      @close="closeConfigErrorDialog"
+    <!-- Generic Error Dialog -->
+    <ErrorDialog
+      :is-open="showErrorDialog"
+      :title="errorDialog?.title ?? 'Error'"
+      :message="errorDialog?.message ?? ''"
+      @close="closeErrorDialog"
     />
 
     <!-- Screenshot Gallery -->

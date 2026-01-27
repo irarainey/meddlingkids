@@ -31,8 +31,6 @@ export function useTrackingAnalysis() {
   const isLoading = ref(false)
   /** Whether analysis has completed */
   const isComplete = ref(false)
-  /** Error message to display */
-  const errorMessage = ref('')
 
   /** Screenshots captured during analysis */
   const screenshots = ref<string[]>([])
@@ -76,10 +74,13 @@ export function useTrackingAnalysis() {
   /** Whether the page error dialog is visible */
   const showPageErrorDialog = ref(false)
 
-  /** Configuration error message (e.g., missing OpenAI keys) */
-  const configError = ref('')
-  /** Whether the config error dialog is visible */
-  const showConfigErrorDialog = ref(false)
+  /** Generic error dialog state */
+  const errorDialog = ref<{
+    title: string
+    message: string
+  } | null>(null)
+  /** Whether the generic error dialog is visible */
+  const showErrorDialog = ref(false)
 
   /** Current status message during analysis */
   const statusMessage = ref('')
@@ -159,7 +160,6 @@ export function useTrackingAnalysis() {
   function resetState() {
     isLoading.value = true
     isComplete.value = false
-    errorMessage.value = ''
     screenshots.value = []
     cookies.value = []
     scripts.value = []
@@ -175,8 +175,8 @@ export function useTrackingAnalysis() {
     consentDetails.value = null
     pageError.value = null
     showPageErrorDialog.value = false
-    configError.value = ''
-    showConfigErrorDialog.value = false
+    errorDialog.value = null
+    showErrorDialog.value = false
     statusMessage.value = 'Starting...'
     progressStep.value = 'init'
     progressPercent.value = 0
@@ -206,7 +206,11 @@ export function useTrackingAnalysis() {
    */
   async function analyzeUrl() {
     if (!inputValue.value.trim()) {
-      errorMessage.value = 'You need a URL to investigate!'
+      errorDialog.value = {
+        title: 'URL Required',
+        message: 'You need a URL to investigate!',
+      }
+      showErrorDialog.value = true
       return
     }
 
@@ -307,13 +311,23 @@ export function useTrackingAnalysis() {
           
           // Check if this is a configuration error
           if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
-            configError.value = error
-            showConfigErrorDialog.value = true
+            errorDialog.value = {
+              title: 'Configuration Error',
+              message: error,
+            }
           } else {
-            errorMessage.value = error
+            errorDialog.value = {
+              title: 'Error',
+              message: error,
+            }
           }
+          showErrorDialog.value = true
         } else {
-          errorMessage.value = 'Connection error'
+          errorDialog.value = {
+            title: 'Connection Error',
+            message: 'Failed to connect to the server. Please check that the server is running.',
+          }
+          showErrorDialog.value = true
         }
         isLoading.value = false
         eventSource.close()
@@ -323,12 +337,20 @@ export function useTrackingAnalysis() {
         if (eventSource.readyState === EventSource.CLOSED) {
           return
         }
-        errorMessage.value = 'Connection to server lost'
+        errorDialog.value = {
+          title: 'Connection Lost',
+          message: 'Connection to server lost. Please try again.',
+        }
+        showErrorDialog.value = true
         isLoading.value = false
         eventSource.close()
       }
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'An error occurred'
+      errorDialog.value = {
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'An error occurred',
+      }
+      showErrorDialog.value = true
       isLoading.value = false
     }
   }
@@ -343,7 +365,6 @@ export function useTrackingAnalysis() {
     deviceType,
     isLoading,
     isComplete,
-    errorMessage,
     screenshots,
     cookies,
     scripts,
@@ -360,8 +381,8 @@ export function useTrackingAnalysis() {
     consentDetails,
     pageError,
     showPageErrorDialog,
-    configError,
-    showConfigErrorDialog,
+    errorDialog,
+    showErrorDialog,
     statusMessage,
     progressStep,
     progressPercent,
@@ -379,7 +400,7 @@ export function useTrackingAnalysis() {
     closeScreenshotModal,
     closeScoreDialog: () => { showScoreDialog.value = false },
     closePageErrorDialog: () => { showPageErrorDialog.value = false },
-    closeConfigErrorDialog: () => { showConfigErrorDialog.value = false },
+    closeErrorDialog: () => { showErrorDialog.value = false },
     analyzeUrl,
   }
 }
