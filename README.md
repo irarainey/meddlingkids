@@ -137,6 +137,8 @@ Then open http://localhost:3001
 | `npm run dev:server` | Start only the Express server |
 | `npm run build` | Build the client for production |
 | `npm run preview` | Preview the production build |
+| `npm run lint` | Check for lint errors |
+| `npm run lint:fix` | Auto-fix lint errors |
 
 ## Environment Variables
 

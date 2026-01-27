@@ -23,6 +23,7 @@ src/
 │   └── logo.svg                 # Application logo
 ├── components/
 │   ├── index.ts                 # Barrel export
+│   ├── ErrorDialog.vue          # Generic error dialog
 │   ├── PageErrorDialog.vue      # Access denied/error dialog
 │   ├── ProgressBanner.vue       # Loading progress indicator
 │   ├── ScoreDialog.vue          # Privacy score results dialog
@@ -81,6 +82,13 @@ Error dialog for blocked pages:
 - Server error handling
 - Helpful tips for users
 
+### ErrorDialog
+
+Generic error dialog for displaying error messages:
+- Configuration errors (missing OpenAI keys)
+- Connection errors
+- General error handling
+
 ### ScreenshotGallery
 
 Shows captured screenshots with:
@@ -118,7 +126,6 @@ const {
   deviceType,           // Selected device/browser type
   isLoading,            // Analysis in progress
   isComplete,           // Analysis finished
-  errorMessage,         // Error to display
   screenshots,          // Array of base64 screenshots
   cookies,              // Tracked cookies
   scripts,              // Loaded scripts
@@ -133,7 +140,9 @@ const {
   showScoreDialog,      // Score dialog visibility
   consentDetails,       // Extracted consent info
   pageError,            // Page error info (access denied, etc.)
-  showPageErrorDialog,  // Error dialog visibility
+  showPageErrorDialog,  // Page error dialog visibility
+  errorDialog,          // Generic error dialog info { title, message }
+  showErrorDialog,      // Error dialog visibility
   statusMessage,        // Current progress message
   progressStep,         // Current step identifier
   progressPercent,      // Progress bar value (0-100)
@@ -150,7 +159,8 @@ const {
   openScreenshotModal,  // View screenshot fullscreen
   closeScreenshotModal, // Close modal
   closeScoreDialog,     // Close score dialog
-  closePageErrorDialog, // Close error dialog
+  closePageErrorDialog, // Close page error dialog
+  closeErrorDialog,     // Close generic error dialog
 } = useTrackingAnalysis()
 ```
 
