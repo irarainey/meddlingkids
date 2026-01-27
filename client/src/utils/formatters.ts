@@ -54,7 +54,7 @@ export function getResourceTypeIcon(type: string): string {
  * @returns HTML string
  */
 export function formatMarkdown(text: string): string {
-  let html = text
+  const html = text
     // Escape HTML
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

@@ -160,9 +160,6 @@ const DEVICE_CONFIGS: Record<DeviceType, {
   },
 }
 
-/** Currently selected device type */
-let currentDeviceType: DeviceType = 'ipad'
-
 /**
  * Launch a new headless Chromium browser instance.
  * Creates a completely fresh browser instance with no stored state.
@@ -171,7 +168,6 @@ let currentDeviceType: DeviceType = 'ipad'
  * @param deviceType - The device/browser to emulate (default: 'ipad')
  */
 export async function launchBrowser(headless: boolean = true, deviceType: DeviceType = 'ipad'): Promise<void> {
-  currentDeviceType = deviceType
   const deviceConfig = DEVICE_CONFIGS[deviceType]
   
   // Close existing context and browser completely to ensure clean state

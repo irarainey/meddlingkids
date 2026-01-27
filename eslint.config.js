@@ -1,0 +1,61 @@
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import pluginVue from 'eslint-plugin-vue'
+
+export default tseslint.config(
+  // Global ignores
+  {
+    ignores: ['dist/**', '**/dist/**', 'node_modules/**', '*.config.js', '*.config.ts'],
+  },
+
+  // Base JavaScript rules
+  js.configs.recommended,
+
+  // TypeScript rules
+  ...tseslint.configs.recommended,
+
+  // Vue rules - use essential instead of recommended for less strict formatting
+  ...pluginVue.configs['flat/essential'],
+
+  // Configure Vue parser for TypeScript
+  {
+    files: ['**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+      },
+      globals: {
+        // Browser globals for Vue components
+        Event: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLElement: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        Document: 'readonly',
+        Window: 'readonly',
+      },
+    },
+  },
+
+  // Client-side rules
+  {
+    files: ['client/**/*.ts', 'client/**/*.vue'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'vue/multi-word-component-names': 'off',
+      'vue/no-v-html': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+
+  // Server-side rules - allow console.log for logging
+  {
+    files: ['server/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-console': 'off',
+    },
+  },
+)

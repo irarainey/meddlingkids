@@ -174,8 +174,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     await waitForTimeout(2000)
 
     sendProgress(res, 'screenshot', 'Taking screenshot...', 38)
-    let screenshot = await takeScreenshot(false)
-    let base64Screenshot = screenshot.toString('base64')
+    const screenshot = await takeScreenshot(false)
+    const base64Screenshot = screenshot.toString('base64')
 
     const cookieCount = getTrackedCookies().length
     const scriptCount = getTrackedScripts().length
