@@ -23,6 +23,32 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
 - 🚫 **Error Detection** — Detects and reports access denied pages and bot protection
 
+## Screenshots
+
+If we take a look at this page from the Daily Mail (a site known for heavy tracking), here's what the original page looks like. Wow! I wonder what is going on behind the scenes...
+
+![Original Site](./images/examples/001.png)
+
+So let's run an analysis and see what Meddling Kids uncovers!
+
+![Start Analysis](./images/examples/002.png)
+
+First we load up the intial page and see if it has any consent dialogs. If so we will attempt to accept all cookies and track the changes.
+
+![Detect Consent Dialog](./images/examples/003.png)
+
+Once we've detected and dismissed the consent dialog, we can see the final loaded page and we can start the analysis..
+
+![Final Page](./images/examples/004.png)
+
+After the analysis is complete, we get a privacy score out of 100 based on the tracking detected.
+
+![Score](./images/examples/005.png)
+
+If you want to dive deeper, we get a full report showing all cookies, scripts, network requests, storage items, and AI analysis.
+
+![Full Report](./images/examples/006.png)
+
 ## Architecture
 
 ```
