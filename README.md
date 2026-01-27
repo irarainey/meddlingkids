@@ -54,13 +54,13 @@ First we load up the intial page and see if it has any consent dialogs. If so we
 
 ---
 
-Once we've detected and dismissed the consent dialog, we can see the final loaded page and we can start the analysis..
+Once we've detected and dismissed the consent dialog, we can see the final loaded page and we can start the analysis. If there are multiple stages, the screenshots will show each step.
 
 ![Final Page](./images/examples/004.png)
 
 ---
 
-After the analysis is complete, we get a privacy score out of 100 based on the tracking detected.
+After the analysis is complete, we get a privacy score out of 100 based on the tracking detected. The score ranges from "Zoinks!" for poor privacy to "Scooby Snack!" for excellent privacy.
 
 ![Score](./images/examples/005.png)
 

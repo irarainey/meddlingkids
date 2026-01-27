@@ -23,7 +23,6 @@ defineProps<{
 .risks-content {
   max-height: 600px;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #2a1f1f, #1e2235);
 }
 
 .risks-result {

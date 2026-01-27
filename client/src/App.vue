@@ -184,6 +184,7 @@ const {
           :is-analyzing="isLoading && progressStep === 'analysis'"
           :analysis-error="analysisError"
           :analysis-result="analysisResult"
+          :privacy-score="privacyScore"
         />
 
         <CookiesTab
@@ -331,7 +332,6 @@ const {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-bottom: 1rem;
 }
 
 .tab {
@@ -339,7 +339,7 @@ const {
   min-width: fit-content;
   padding: 0.5rem 0.75rem;
   border: 1px solid #3d4663;
-  background: #2a2f45;
+  background: #151825;
   color: #9ca3af;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
@@ -349,7 +349,7 @@ const {
 }
 
 .tab:hover {
-  background: #3d4663;
+  background: #1a1e2e;
 }
 
 .tab.active {
@@ -357,33 +357,7 @@ const {
   border-bottom-color: #1e2235;
   font-weight: 600;
   color: #e0e7ff;
-}
-
-.tab.highlight {
-  background: #1a3a52;
-  border-color: #0C67AC;
-  color: #7CB8E4;
-}
-
-.tab.highlight.active {
-  background: #1e2235;
-  color: #e0e7ff;
-}
-
-.tab.risk-tab {
-  background: #3b1f1f;
-  border-color: #ef4444;
-  color: #fca5a5;
-}
-
-.tab.risk-tab:hover {
-  background: #4a2525;
-}
-
-.tab.risk-tab.active {
-  background: #1e2235;
-  font-weight: 600;
-  color: #fca5a5;
+  border-bottom: 1px solid #1e2235;
 }
 
 @media (max-width: 900px) {
