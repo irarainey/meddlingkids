@@ -48,7 +48,7 @@ So let's run an analysis and see what Meddling Kids uncovers!
 
 ---
 
-First we load up the intial page and see if it has any consent dialogs. If so we will attempt to accept all cookies and track the changes.
+First we load up the intial page and see if it has any consent dialogs. If so we will attempt to accept consent and all cookies and track the changes.
 
 ![Detect Consent Dialog](./images/examples/003.png)
 
