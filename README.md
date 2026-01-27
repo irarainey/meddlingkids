@@ -11,21 +11,32 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 
 ## Features
 
+- 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
+- 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
+- 📋 **Consent Dialog Extraction** — Reads and reports cookie consent banner details
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
+- 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scooby Snack!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers
 - 📜 **Script Tracking** — Lists all JavaScript files loaded, grouped by domain
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
 - 🤖 **AI-Powered Analysis** — Uses Azure OpenAI to analyze privacy implications
-- 📋 **Consent Dialog Extraction** — Reads and reports cookie consent banner details
-- 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
-- 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scooby Snack!)
-- 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
-- 🚫 **Error Detection** — Detects and reports access denied pages and bot protection
 
-## Screenshots
+## How It Works
 
-If we take a look at this page from the Daily Mail (a site known for heavy tracking), here's what the original page looks like. Wow! I wonder what is going on behind the scenes...
+1. **URL Submission** — User enters a URL and selects a device type to emulate
+2. **Browser Automation** — Playwright launches headless Chromium with device emulation
+3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
+4. **Access Check** — Detects bot protection or access denied responses
+5. **Consent Detection** — AI analyzes the page for cookie consent dialogs
+6. **Consent Interaction** — Attempts to click "Accept All" and captures changes
+7. **Data Collection** — Captures cookies, scripts, network requests, and storage
+8. **Privacy Score** — Generates a 0-100 privacy score with Scooby-Doo themed rating
+9. **Privacy Analysis** — AI reviews collected data for privacy concerns
+
+## Example Analysis Walkthrough
+
+Let's take a look at a page from the Daily Mail (a site known for heavy tracking). Here's what the original page looks like. Wowzers! I wonder what is going on behind the scenes...
 
 ![Original Site](./images/examples/001.png)
 
@@ -61,6 +72,16 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 
 ---
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Vue 3, TypeScript, Vite |
+| Backend | Express.js, TypeScript |
+| Browser Automation | Playwright |
+| AI | Azure OpenAI (GPT-4) |
+| Communication | Server-Sent Events (SSE) |
+
 ## Architecture
 
 ```
@@ -83,7 +104,7 @@ meddlingkids/
 └── vite.config.ts             # Vite build configuration
 ```
 
-## Quick Start
+## How to Run Locally
 
 ### Prerequisites
 
@@ -177,55 +198,6 @@ Then open http://localhost:3001
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Check for lint errors |
 | `npm run lint:fix` | Auto-fix lint errors |
-
-## Environment Variables
-
-Configure either Azure OpenAI OR standard OpenAI (Azure takes priority if both are set):
-
-### Azure OpenAI
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `AZURE_OPENAI_ENDPOINT` | Yes | Your Azure OpenAI endpoint URL |
-| `AZURE_OPENAI_API_KEY` | Yes | Your Azure OpenAI API key |
-| `AZURE_OPENAI_DEPLOYMENT` | Yes | The deployment name (e.g., `gpt-4o`) |
-| `OPENAI_API_VERSION` | No | API version (default: `2024-12-01-preview`) |
-
-### Standard OpenAI
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | Your OpenAI API key |
-| `OPENAI_MODEL` | No | Model name (default: `gpt-4o`) |
-| `OPENAI_BASE_URL` | No | Custom base URL for OpenAI-compatible APIs |
-
-### General
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PORT` | No | Server port (default: `3001`) |
-
-## How It Works
-
-1. **URL Submission** — User enters a URL and selects a device type to emulate
-2. **Browser Automation** — Playwright launches headless Chromium with device emulation
-3. **Access Check** — Detects bot protection or access denied responses
-4. **Data Collection** — Captures cookies, scripts, network requests, and storage
-5. **Consent Detection** — AI analyzes the page for cookie consent dialogs
-6. **Consent Interaction** — Attempts to click "Accept All" and captures changes
-7. **Privacy Analysis** — AI reviews collected data for privacy concerns
-8. **Privacy Score** — Generates a 0-100 privacy score with Scooby-Doo themed rating
-9. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Vue 3, TypeScript, Vite |
-| Backend | Express.js, TypeScript |
-| Browser Automation | Playwright |
-| AI | Azure OpenAI (GPT-4) |
-| Communication | Server-Sent Events (SSE) |
 
 ## Project Documentation
 
