@@ -184,14 +184,11 @@ export async function analyzeScripts(
   let analyzedCount = 0
   
   if (scriptsToAnalyze.length > 0) {
-    console.log(`Analyzing ${scriptsToAnalyze.length} unknown scripts with LLM (skipped ${scripts.length - unknownScripts.length} known scripts)...`)
+    console.log(`Analyzing ${scriptsToAnalyze.length} unknown scripts with LLM in parallel (skipped ${scripts.length - unknownScripts.length} known scripts)...`)
     
-    // Process in parallel (batches of 5 to avoid rate limits)
-    const batchSize = 5
-    for (let i = 0; i < scriptsToAnalyze.length; i += batchSize) {
-      const batch = scriptsToAnalyze.slice(i, i + batchSize)
-      
-      const analysisPromises = batch.map(async ({ script, index }) => {
+    // Process all scripts in parallel - OpenAI handles rate limiting internally
+    const analysisPromises = scriptsToAnalyze.map(async ({ script, index }) => {
+      try {
         // Try to fetch script content
         const content = await fetchScriptContent(script.url)
         
@@ -202,16 +199,19 @@ export async function analyzeScripts(
           // Couldn't fetch content - try to infer from URL
           results[index] = { ...results[index], description: inferFromUrl(script.url) }
         }
-        
-        // Update progress
-        analyzedCount++
-        if (onProgress) {
-          onProgress(analyzedCount, totalToAnalyze)
-        }
-      })
+      } catch (error) {
+        console.error(`Error analyzing script ${script.url}:`, error)
+        results[index] = { ...results[index], description: inferFromUrl(script.url) }
+      }
       
-      await Promise.all(analysisPromises)
-    }
+      // Update progress
+      analyzedCount++
+      if (onProgress) {
+        onProgress(analyzedCount, totalToAnalyze)
+      }
+    })
+    
+    await Promise.all(analysisPromises)
   } else {
     console.log('All scripts identified from known patterns, no LLM analysis needed')
   }
