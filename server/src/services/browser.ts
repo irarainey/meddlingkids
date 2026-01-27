@@ -33,6 +33,16 @@ const trackedScripts: TrackedScript[] = []
 const trackedNetworkRequests: NetworkRequest[] = []
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** Maximum number of network requests to track (prevents memory issues on ad-heavy sites) */
+const MAX_TRACKED_REQUESTS = 5000
+
+/** Maximum number of scripts to track */
+const MAX_TRACKED_SCRIPTS = 1000
+
+// ============================================================================
 // State Getters
 // ============================================================================
 
@@ -204,7 +214,7 @@ export async function launchBrowser(headless: boolean = true, deviceType: Device
 
     // Track scripts separately (deduplicate by URL since we just need to know which scripts loaded)
     if (resourceType === 'script') {
-      if (!trackedScripts.some((s) => s.url === requestUrl)) {
+      if (trackedScripts.length < MAX_TRACKED_SCRIPTS && !trackedScripts.some((s) => s.url === requestUrl)) {
         trackedScripts.push({
           url: requestUrl,
           domain,
@@ -213,17 +223,19 @@ export async function launchBrowser(headless: boolean = true, deviceType: Device
       }
     }
 
-    // Track ALL network requests (don't deduplicate - we want to see every request)
-    const networkRequest: NetworkRequest = {
-      url: requestUrl,
-      domain,
-      method: request.method(),
-      resourceType,
-      isThirdParty: isThirdParty(requestUrl, currentPageUrl),
-      timestamp: new Date().toISOString(),
-    }
+    // Track ALL network requests (with limit to prevent memory issues on ad-heavy sites)
+    if (trackedNetworkRequests.length < MAX_TRACKED_REQUESTS) {
+      const networkRequest: NetworkRequest = {
+        url: requestUrl,
+        domain,
+        method: request.method(),
+        resourceType,
+        isThirdParty: isThirdParty(requestUrl, currentPageUrl),
+        timestamp: new Date().toISOString(),
+      }
 
-    trackedNetworkRequests.push(networkRequest)
+      trackedNetworkRequests.push(networkRequest)
+    }
   })
   
   // Also track responses to capture status codes
@@ -547,5 +559,49 @@ export async function waitForLoadState(state: 'load' | 'domcontentloaded' | 'net
     throw new Error('No browser session active')
   }
   await page.waitForLoadState(state)
+}
+
+// ============================================================================
+// Cleanup Functions
+// ============================================================================
+
+/**
+ * Close the browser and clean up all resources.
+ * Should be called after each analysis to prevent resource leaks.
+ * Safe to call multiple times or when no browser is active.
+ */
+export async function closeBrowser(): Promise<void> {
+  // Remove event listeners from page before closing
+  if (page) {
+    page.removeAllListeners()
+    page = null
+  }
+
+  // Close context (closes all pages)
+  if (context) {
+    await context.close().catch((err) => {
+      console.warn('Error closing browser context:', err)
+    })
+    context = null
+  }
+
+  // Close browser process
+  if (browser) {
+    await browser.close().catch((err) => {
+      console.warn('Error closing browser:', err)
+    })
+    browser = null
+  }
+
+  // Clear tracking data
+  clearTrackingData()
+}
+
+/**
+ * Check if a browser session is currently active.
+ * @returns True if browser and page are initialized
+ */
+export function isBrowserActive(): boolean {
+  return browser !== null && page !== null
 }
 

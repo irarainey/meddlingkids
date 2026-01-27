@@ -1,7 +1,15 @@
 /**
  * @fileoverview Type definitions for tracking data.
  * Shared interfaces for cookies, scripts, storage, network requests, and consent.
+ * 
+ * NOTE: These types are duplicated in server/src/types.ts. When modifying,
+ * ensure both files are updated to maintain consistency. A shared types
+ * package could be created in future to eliminate this duplication.
  */
+
+// ============================================================================
+// Core Tracking Data Types
+// ============================================================================
 
 /**
  * A cookie captured from the browser context.
@@ -51,6 +59,10 @@ export interface NetworkRequest {
   statusCode?: number
 }
 
+// ============================================================================
+// Cookie Consent Types
+// ============================================================================
+
 /**
  * A cookie category disclosed in a consent dialog.
  */
@@ -79,6 +91,10 @@ export interface ConsentDetails {
   hasManageOptions?: boolean
   expanded?: boolean
 }
+
+// ============================================================================
+// Client-Only UI Types
+// ============================================================================
 
 /**
  * Screenshot modal display state.

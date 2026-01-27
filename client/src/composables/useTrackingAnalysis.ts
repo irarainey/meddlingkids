@@ -25,8 +25,6 @@ export function useTrackingAnalysis() {
 
   /** URL input field value */
   const inputValue = ref('')
-  /** Currently analyzed URL */
-  const currentUrl = ref('')
   /** Selected device/browser type */
   const deviceType = ref('ipad')
   /** Whether analysis is in progress */
@@ -212,7 +210,6 @@ export function useTrackingAnalysis() {
     }
 
     resetState()
-    currentUrl.value = url
 
     try {
       // Use relative URL in production (same origin), absolute in development

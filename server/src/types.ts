@@ -110,6 +110,27 @@ export interface CookieConsentDetection {
 }
 
 /**
+ * Detailed information extracted from a cookie consent dialog.
+ * Server version with additional fields for extraction process.
+ */
+export interface ConsentDetails {
+  /** Whether there's a button to manage detailed preferences */
+  hasManageOptions: boolean
+  /** CSS selector for the manage options button, if present */
+  manageOptionsSelector: string | null
+  /** Cookie categories disclosed in the dialog */
+  categories: ConsentCategory[]
+  /** Third-party partners/vendors listed */
+  partners: ConsentPartner[]
+  /** Stated purposes for data collection */
+  purposes: string[]
+  /** Raw text excerpts from the consent dialog */
+  rawText: string
+  /** Whether the preferences panel was expanded to get more details */
+  expanded?: boolean
+}
+
+/**
  * Represents a cookie category disclosed in a consent dialog.
  * Examples: "Necessary", "Analytics", "Marketing", "Functional"
  */
@@ -133,27 +154,6 @@ export interface ConsentPartner {
   purpose: string
   /** Types of data collected by this partner */
   dataCollected: string[]
-}
-
-/**
- * Detailed information extracted from a cookie consent dialog.
- * Contains all the fine print that users typically don't read.
- */
-export interface ConsentDetails {
-  /** Whether there's a button to manage detailed preferences */
-  hasManageOptions: boolean
-  /** CSS selector for the manage options button, if present */
-  manageOptionsSelector: string | null
-  /** Cookie categories disclosed in the dialog */
-  categories: ConsentCategory[]
-  /** Third-party partners/vendors listed */
-  partners: ConsentPartner[]
-  /** Stated purposes for data collection */
-  purposes: string[]
-  /** Raw text excerpts from the consent dialog */
-  rawText: string
-  /** Whether the preferences panel was expanded to get more details */
-  expanded?: boolean
 }
 
 // ============================================================================
