@@ -24,18 +24,25 @@ server/src/
 ├── types.ts                  # TypeScript interfaces
 ├── routes/
 │   ├── index.ts              # Route exports
-│   └── analyze-stream.ts     # Main SSE streaming endpoint
+│   ├── analyze-stream.ts     # Main SSE streaming endpoint
+│   └── analyze-helpers.ts    # Helper functions for streaming
 ├── services/
 │   ├── browser.ts            # Playwright browser management
-│   ├── openai.ts             # Azure OpenAI client
+│   ├── openai.ts             # Azure OpenAI / OpenAI client
 │   ├── analysis.ts           # AI tracking analysis
+│   ├── script-analysis.ts    # Script identification & LLM analysis
 │   ├── consent-detection.ts  # AI consent banner detection
 │   ├── consent-extraction.ts # AI consent details extraction
 │   └── consent-click.ts      # Consent button click strategies
+├── data/
+│   ├── index.ts              # Data exports
+│   ├── tracking-scripts.ts   # 300+ known tracking script patterns
+│   └── benign-scripts.ts     # Known benign library patterns
 ├── prompts/
 │   ├── index.ts              # Prompt exports
 │   ├── consent-detection.ts  # Detection system prompt
 │   ├── consent-extraction.ts # Extraction system prompt
+│   ├── script-analysis.ts    # Script analysis system prompt
 │   └── tracking-analysis.ts  # Analysis system prompts
 └── utils/
     ├── index.ts              # Utility exports
@@ -46,13 +53,13 @@ server/src/
 
 ## API Endpoint
 
-### `GET /api/open-browser-stream?url={url}&deviceType={deviceType}`
+### `GET /api/open-browser-stream?url={url}&device={device}`
 
 Analyzes tracking on the specified URL with real-time progress updates.
 
 **Query Parameters:**
 - `url` (required): The URL to analyze
-- `deviceType` (optional): Device to emulate. One of: `iphone`, `ipad`, `android-phone`, `android-tablet`, `windows-chrome`, `macos-safari`. Default: `ipad`
+- `device` (optional): Device to emulate. One of: `iphone`, `ipad`, `android-phone`, `android-tablet`, `windows-chrome`, `macos-safari`. Default: `ipad`
 
 **Response:** Server-Sent Events stream
 
@@ -64,8 +71,8 @@ Analyzes tracking on the specified URL with real-time progress updates.
 | `screenshot` | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with tracking data |
 | `consentDetails` | `{ categories, partners, purposes, hasManageOptions }` | Extracted consent dialog info |
 | `consent` | `{ detected, clicked, details }` | Consent handling result |
-| `pageError` | `{ type, message, statusCode }` | Access denied or server error detected |
-| `complete` | `{ success, analysis, highRisks, analysisSummary, privacyScore, privacySummary, siteName, consentDetails }` | Final analysis results with privacy score |
+| `pageError` | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or server error detected |
+| `complete` | `{ success, message, analysis, highRisks, privacyScore, privacySummary, analysisSummary, analysisError?, consentDetails, scripts }` | Final analysis results with privacy score and analyzed scripts |
 | `error` | `{ error }` | Error message if something fails |
 
 **Example:**
@@ -93,13 +100,22 @@ eventSource.addEventListener('complete', (event) => {
 Manages headless Chromium browser via Playwright:
 
 - **`launchBrowser(headless, deviceType)`** - Launch browser instance with device emulation
-- **`navigateTo(url, waitUntil)`** - Navigate to URL
+- **`closeBrowser()`** - Close browser and clean up all resources
+- **`navigateTo(url, waitUntil)`** - Navigate to URL with timeout
+- **`waitForNetworkIdle(timeout)`** - Wait for network activity to settle
 - **`captureCurrentCookies()`** - Capture all cookies from browser context
 - **`captureStorage()`** - Capture localStorage and sessionStorage
 - **`takeScreenshot(fullPage)`** - Take PNG screenshot
 - **`getPageContent()`** - Get full HTML content
 - **`checkForAccessDenied()`** - Detect bot protection or access denied pages
+- **`clearTrackingData()`** - Reset all tracked data arrays
+- **`setCurrentPageUrl(url)`** - Set URL for third-party detection
 - **`getTrackedCookies/Scripts/NetworkRequests()`** - Get tracked data arrays
+- **`isBrowserActive()`** - Check if browser session is active
+
+**Tracking Limits:** The browser service enforces limits to prevent memory issues:
+- Maximum 5,000 network requests tracked
+- Maximum 1,000 scripts tracked
 
 **Supported Device Types:**
 - `iphone` - iPhone 15 Pro Max (Safari)
@@ -123,6 +139,24 @@ Runs AI-powered tracking analysis:
 - **`consent-detection.ts`** - Uses AI vision to detect consent banners and find the "Accept All" button
 - **`consent-extraction.ts`** - Extracts detailed consent information (partners, categories, purposes)
 - **`consent-click.ts`** - Multiple strategies to click consent buttons, including iframe handling
+
+### Script Analysis Service (`services/script-analysis.ts`)
+
+Identifies and analyzes JavaScript files loaded by the page:
+
+- **`analyzeScripts(scripts, maxLLMAnalyses, onProgress)`** - Analyzes scripts to determine their purpose
+
+**Analysis Flow:**
+1. Match scripts against 300+ known tracking patterns (instant identification)
+2. Match scripts against ~55 known benign library patterns (skip LLM)
+3. Use LLM to analyze remaining unknown scripts (limited to `maxLLMAnalyses`)
+
+### Data Modules (`data/`)
+
+Pre-compiled databases of known script patterns:
+
+- **`tracking-scripts.ts`** - 300+ tracking script patterns with descriptions (Google Analytics, Facebook Pixel, etc.)
+- **`benign-scripts.ts`** - ~55 benign library patterns (jQuery, React, CDN libraries, etc.)
 
 ## Data Types
 

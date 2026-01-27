@@ -224,7 +224,7 @@ The client communicates with the server using Server-Sent Events:
 // API base URL: empty in production (relative), absolute in development
 const apiBase = import.meta.env.VITE_API_URL || ''
 const eventSource = new EventSource(
-  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&deviceType=${deviceType}`
+  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${deviceType}`
 )
 
 eventSource.addEventListener('progress', (event) => { /* Update status */ })

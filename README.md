@@ -38,6 +38,7 @@ meddlingkids/
 │   └── src/
 │       ├── routes/            # API endpoints (SSE streaming)
 │       ├── services/          # Business logic (browser, analysis, consent)
+│       ├── data/              # Tracking script databases
 │       ├── prompts/           # AI prompt templates
 │       └── utils/             # Utility functions
 ├── Dockerfile                 # Multi-stage production build
