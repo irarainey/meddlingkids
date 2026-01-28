@@ -27,7 +27,7 @@ server/src/
 │   ├── analyze-stream.ts     # Main SSE streaming endpoint
 │   └── analyze-helpers.ts    # Helper functions for streaming
 ├── services/
-│   ├── browser.ts            # Playwright browser management
+│   ├── browser-session.ts    # Playwright browser session (per-request isolation)
 │   ├── openai.ts             # Azure OpenAI / OpenAI client
 │   ├── analysis.ts           # AI tracking analysis
 │   ├── script-analysis.ts    # Script identification & LLM analysis
@@ -95,12 +95,14 @@ eventSource.addEventListener('complete', (event) => {
 
 ## Services
 
-### Browser Service (`services/browser.ts`)
+### Browser Session (`services/browser-session.ts`)
 
-Manages headless Chromium browser via Playwright:
+Manages headless Chromium browser sessions via Playwright. Each `BrowserSession` instance is isolated, enabling concurrent URL analyses without interference.
+
+**Class: `BrowserSession`**
 
 - **`launchBrowser(deviceType)`** - Launch headless browser with device emulation
-- **`closeBrowser()`** - Close browser and clean up all resources
+- **`close()`** - Close browser and clean up all resources
 - **`navigateTo(url, waitUntil)`** - Navigate to URL with timeout
 - **`waitForNetworkIdle(timeout)`** - Wait for network activity to settle
 - **`captureCurrentCookies()`** - Capture all cookies from browser context
@@ -111,9 +113,12 @@ Manages headless Chromium browser via Playwright:
 - **`clearTrackingData()`** - Reset all tracked data arrays
 - **`setCurrentPageUrl(url)`** - Set URL for third-party detection
 - **`getTrackedCookies/Scripts/NetworkRequests()`** - Get tracked data arrays
-- **`isBrowserActive()`** - Check if browser session is active
+- **`getPage()`** - Get the Playwright Page instance
+- **`isActive()`** - Check if browser session is active
 
-**Tracking Limits:** The browser service enforces limits to prevent memory issues:
+**Concurrency Support:** Each request creates its own `BrowserSession` instance, allowing multiple analyses to run simultaneously without shared state conflicts.
+
+**Tracking Limits:** Each session enforces limits to prevent memory issues:
 - Maximum 5,000 network requests tracked
 - Maximum 1,000 scripts tracked
 

@@ -228,8 +228,8 @@ export interface AnalysisResult {
   success: boolean
   /** Full markdown analysis report */
   analysis?: string
-  /** Brief summary of highest privacy risks */
-  highRisks?: string
+  /** Brief summary content for the summary tab */
+  summaryContent?: string
   /** Privacy risk score (0-100) */
   privacyScore?: number
   /** One-sentence summary for the results dialog */

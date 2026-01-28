@@ -100,10 +100,10 @@ export async function runTrackingAnalysis(
       })
     ])
 
-    // Process high risks result
-    const highRisks = highRisksResult?.choices[0]?.message?.content || ''
-    if (highRisks) {
-      console.log('High risks summary generated')
+    // Process summary content result
+    const summaryContent = highRisksResult?.choices[0]?.message?.content || ''
+    if (summaryContent) {
+      console.log('Summary content generated')
     }
 
     // Process privacy score result
@@ -143,7 +143,7 @@ export async function runTrackingAnalysis(
     return {
       success: true,
       analysis,
-      highRisks,
+      summaryContent,
       privacyScore,
       privacySummary,
       summary: trackingSummary,

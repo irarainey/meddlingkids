@@ -37,16 +37,16 @@ IMPORTANT: Pay special attention to the consent dialog information if provided -
  * System prompt for generating high-risks summary.
  * Produces a brief, alarming bullet-point summary of privacy concerns.
  */
-export const HIGH_RISKS_SYSTEM_PROMPT = `You are a privacy expert. Create a brief, alarming summary of the highest privacy risks found on a website. 
-Be direct and impactful - this is what users need to know immediately.
+export const HIGH_RISKS_SYSTEM_PROMPT = `You are a privacy expert. Create a brief, alarming overall summary of the privacy risks found on a website. 
+Be direct and impactful - this is what users need to know immediately. Include both positive and negative findings.
 
 Format as a SHORT bulleted list (max 5-7 points) with:
 - 🚨 for critical risks (cross-site tracking, fingerprinting, data selling)
 - ⚠️ for high risks (persistent tracking, third-party data sharing)
 - 📊 for concerning findings (analytics, ad tracking)
+- 📋 for general information (cookie policies, consent dialogs)
 
-Keep each point to ONE sentence. Be specific about company names and what they do.
-End with an overall privacy risk rating: 🔴 High Risk, 🟠 Medium Risk, or 🟢 Low Risk.`
+Keep each point to ONE sentence. Be specific about company names and what they do.`
 
 /**
  * System prompt for generating a privacy risk score.
@@ -61,10 +61,10 @@ Scoring guidelines:
 - 20-39: Low risk - minimal tracking, basic analytics only, few third parties
 - 0-19: Very low risk - privacy-respecting, minimal or no tracking, first-party only
 
-IMPORTANT: The summary MUST start with the site name (e.g., "BBC.com has...", "Amazon.co.uk uses...").
+IMPORTANT: The summary MUST start with the site name (e.g., "bbc.com has...", "amazon.co.uk uses...").
 
 You MUST respond with ONLY valid JSON in this exact format, no other text:
-{"score": <number 0-100>, "summary": "<site name> <one sentence about key findings>"}`
+{"score": <number 0-100>, "summary": "<site name in lowercase> <one sentence about key findings>"}`
 
 /**
  * Build the consent information section for the analysis prompt.

@@ -107,4 +107,4 @@ export interface ScreenshotModal {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'risks'
+export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'summary'

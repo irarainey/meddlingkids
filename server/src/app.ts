@@ -6,17 +6,12 @@
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import 'dotenv/config'
 
 import { analyzeUrlStreamHandler } from './routes/index.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
-
-// Get directory path for ES modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 // ============================================================================
 // Middleware
@@ -35,8 +30,6 @@ app.get('/api/open-browser-stream', analyzeUrlStreamHandler)
 // ============================================================================
 // Static File Serving (Production)
 // ============================================================================
-
-console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
 
 // In production, serve the built client files
 if (process.env.NODE_ENV === 'production') {

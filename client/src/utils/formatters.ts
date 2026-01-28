@@ -54,7 +54,12 @@ export function getResourceTypeIcon(type: string): string {
  * @returns HTML string
  */
 export function formatMarkdown(text: string): string {
-  const html = text
+  // Normalize whitespace: collapse multiple blank lines between list items
+  const normalized = text
+    .replace(/^(- .+)\n\n+(- )/gm, '$1\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+
+  const html = normalized
     // Escape HTML
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

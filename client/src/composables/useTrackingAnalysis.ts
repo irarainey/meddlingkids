@@ -46,7 +46,7 @@ export function useTrackingAnalysis() {
   const networkRequests = ref<NetworkRequest[]>([])
 
   /** Currently active tab */
-  const activeTab = ref<TabId>('risks')
+  const activeTab = ref<TabId>('summary')
   /** Whether to filter to third-party requests only */
   const showOnlyThirdParty = ref(true)
 
@@ -54,8 +54,8 @@ export function useTrackingAnalysis() {
   const analysisResult = ref('')
   /** Analysis error message if AI failed */
   const analysisError = ref('')
-  /** High risks summary from AI */
-  const highRisks = ref('')
+  /** Summary content from AI */
+  const summaryContent = ref('')
   /** Privacy risk score (0-100) */
   const privacyScore = ref<number | null>(null)
   /** One-sentence privacy summary */
@@ -168,7 +168,7 @@ export function useTrackingAnalysis() {
     networkRequests.value = []
     analysisResult.value = ''
     analysisError.value = ''
-    highRisks.value = ''
+    summaryContent.value = ''
     privacyScore.value = null
     privacySummary.value = ''
     showScoreDialog.value = false
@@ -268,15 +268,15 @@ export function useTrackingAnalysis() {
       eventSource.addEventListener('complete', (event) => {
         const data = JSON.parse(event.data)
 
-        if (data.analysis) {
-          analysisResult.value = data.analysis
-        }
-        if (data.highRisks) {
-          highRisks.value = data.highRisks
+        if (data.summaryContent) {
+          summaryContent.value = data.summaryContent
         }
         if (data.privacyScore !== null && data.privacyScore !== undefined) {
           privacyScore.value = data.privacyScore
           privacySummary.value = data.privacySummary || ''
+        }
+        if (data.analysis) {
+          analysisResult.value = data.analysis
         }
         if (data.analysisError) {
           analysisError.value = data.analysisError
@@ -289,7 +289,7 @@ export function useTrackingAnalysis() {
           scripts.value = data.scripts
         }
 
-        activeTab.value = data.highRisks ? 'risks' : 'analysis'
+        activeTab.value = data.summaryContent ? 'summary' : 'analysis'
         statusMessage.value = data.message
         progressPercent.value = 100
         isComplete.value = true
@@ -374,7 +374,7 @@ export function useTrackingAnalysis() {
     showOnlyThirdParty,
     analysisResult,
     analysisError,
-    highRisks,
+    summaryContent,
     privacyScore,
     privacySummary,
     showScoreDialog,

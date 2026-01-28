@@ -1,25 +1,16 @@
 /**
  * @fileoverview Helper functions for the streaming analysis handler.
  * Extracts reusable logic for overlay handling, screenshot capture, etc.
+ * Updated to use BrowserSession for concurrent request support.
  */
 
 import type { Response } from 'express'
 import type { Page } from 'playwright'
-import {
-  captureCurrentCookies,
-  captureStorage,
-  takeScreenshot,
-  getPageContent,
-  waitForTimeout,
-  waitForLoadState,
-  getTrackedCookies,
-  getTrackedScripts,
-  getTrackedNetworkRequests,
-} from '../services/browser.js'
+import type { BrowserSession } from '../services/browser-session.js'
 import { detectCookieConsent } from '../services/consent-detection.js'
 import { extractConsentDetails } from '../services/consent-extraction.js'
 import { tryClickConsentButton } from '../services/consent-click.js'
-import type { ConsentDetails, CookieConsentDetection } from '../types.js'
+import type { ConsentDetails, CookieConsentDetection, StorageItem } from '../types.js'
 
 // ============================================================================
 // SSE Helper Functions
@@ -50,50 +41,6 @@ export function sendProgress(res: Response, step: string, message: string, progr
 }
 
 // ============================================================================
-// Screenshot Capture
-// ============================================================================
-
-/** Result of capturing a screenshot with tracking data */
-export interface ScreenshotCaptureResult {
-  screenshot: string
-  cookies: ReturnType<typeof getTrackedCookies>
-  scripts: ReturnType<typeof getTrackedScripts>
-  networkRequests: ReturnType<typeof getTrackedNetworkRequests>
-  localStorage: { key: string; value: string; timestamp: string }[]
-  sessionStorage: { key: string; value: string; timestamp: string }[]
-}
-
-/**
- * Capture screenshot and all tracking data, send to client.
- *
- * @param res - Express response for SSE
- * @param extraData - Additional data to include in the event
- * @returns The captured data
- */
-export async function captureAndSendScreenshot(
-  res: Response,
-  extraData?: Record<string, unknown>
-): Promise<ScreenshotCaptureResult> {
-  await captureCurrentCookies()
-  const storage = await captureStorage()
-  const screenshot = await takeScreenshot(false)
-  const base64Screenshot = screenshot.toString('base64')
-
-  const result: ScreenshotCaptureResult = {
-    screenshot: `data:image/png;base64,${base64Screenshot}`,
-    cookies: getTrackedCookies(),
-    scripts: getTrackedScripts(),
-    networkRequests: getTrackedNetworkRequests(),
-    localStorage: storage.localStorage,
-    sessionStorage: storage.sessionStorage,
-  }
-
-  sendEvent(res, 'screenshot', { ...result, ...extraData })
-
-  return result
-}
-
-// ============================================================================
 // Overlay Handling
 // ============================================================================
 
@@ -120,19 +67,21 @@ export interface OverlayHandlingResult {
   dismissedOverlays: CookieConsentDetection[]
   consentDetails: ConsentDetails | null
   finalScreenshot: Buffer
-  finalStorage: { localStorage: { key: string; value: string; timestamp: string }[]; sessionStorage: { key: string; value: string; timestamp: string }[] }
+  finalStorage: { localStorage: StorageItem[]; sessionStorage: StorageItem[] }
 }
 
 /**
  * Handle multiple overlays (cookie consent, sign-in walls, etc.) in sequence.
  * Captures consent details from the first cookie consent dialog.
  *
+ * @param session - Browser session instance
  * @param page - Playwright page instance
  * @param res - Express response for SSE
  * @param initialScreenshot - Screenshot taken before overlay detection
  * @returns Result with overlay count and consent details
  */
 export async function handleOverlays(
+  session: BrowserSession,
   page: Page,
   res: Response,
   initialScreenshot: Buffer
@@ -141,11 +90,11 @@ export async function handleOverlays(
   const dismissedOverlays: CookieConsentDetection[] = []
   let overlayCount = 0
   let screenshot = initialScreenshot
-  let storage = await captureStorage()
+  let storage = await session.captureStorage()
 
   while (overlayCount < MAX_OVERLAYS) {
     // Get fresh HTML for detection
-    const html = await getPageContent()
+    const html = await session.getPageContent()
     const consentDetection = await detectCookieConsent(screenshot, html)
 
     if (!consentDetection.found || !consentDetection.selector) {
@@ -193,23 +142,23 @@ export async function handleOverlays(
         
         // Wait for DOM to settle
         await Promise.race([
-          waitForTimeout(800),
-          waitForLoadState('domcontentloaded').catch(() => {})
+          session.waitForTimeout(800),
+          session.waitForLoadState('domcontentloaded').catch(() => {})
         ])
 
         // Recapture data and take screenshot after this overlay
         sendProgress(res, `overlay-${overlayCount}-capture`, 'Capturing page state...', progressBase + 5)
-        await captureCurrentCookies()
-        storage = await captureStorage()
-        screenshot = await takeScreenshot(false)
+        await session.captureCurrentCookies()
+        storage = await session.captureStorage()
+        screenshot = await session.takeScreenshot(false)
         const base64Screenshot = screenshot.toString('base64')
 
         // Send screenshot after this overlay
         sendEvent(res, 'screenshot', {
           screenshot: `data:image/png;base64,${base64Screenshot}`,
-          cookies: getTrackedCookies(),
-          scripts: getTrackedScripts(),
-          networkRequests: getTrackedNetworkRequests(),
+          cookies: session.getTrackedCookies(),
+          scripts: session.getTrackedScripts(),
+          networkRequests: session.getTrackedNetworkRequests(),
           localStorage: storage.localStorage,
           sessionStorage: storage.sessionStorage,
           overlayDismissed: consentDetection.overlayType,

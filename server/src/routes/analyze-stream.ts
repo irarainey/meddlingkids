@@ -2,26 +2,12 @@
  * @fileoverview Streaming URL analysis endpoint with progress updates.
  * Provides Server-Sent Events (SSE) endpoint for real-time progress during
  * page loading, consent handling, and tracking analysis.
+ * 
+ * Updated to use BrowserSession for concurrent request support.
  */
 
 import type { Request, Response } from 'express'
-import {
-  launchBrowser,
-  closeBrowser,
-  navigateTo,
-  setCurrentPageUrl,
-  clearTrackingData,
-  captureCurrentCookies,
-  captureStorage,
-  takeScreenshot,
-  waitForTimeout,
-  waitForNetworkIdle,
-  checkForAccessDenied,
-  getPage,
-  getTrackedCookies,
-  getTrackedScripts,
-  getTrackedNetworkRequests,
-} from '../services/browser.js'
+import { BrowserSession, type DeviceType } from '../services/browser-session.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
 import { analyzeScripts } from '../services/script-analysis.js'
 import { validateOpenAIConfig } from '../services/openai.js'
@@ -38,6 +24,9 @@ import { sendEvent, sendProgress, handleOverlays } from './analyze-helpers.js'
  * Opens a headless browser, navigates to the URL, detects and handles cookie
  * consent banners, captures tracking data, and runs AI analysis. Progress
  * is streamed via Server-Sent Events (SSE).
+ *
+ * Each request creates its own isolated BrowserSession, enabling concurrent
+ * analyses without interference.
  *
  * Query parameters:
  * - url: The URL to analyze (required)
@@ -71,13 +60,16 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
   // Validate device type
   const validDevices = ['iphone', 'ipad', 'android-phone', 'android-tablet', 'windows-chrome', 'macos-safari']
-  const deviceType = validDevices.includes(device) ? device : 'ipad'
+  const deviceType: DeviceType = validDevices.includes(device) ? device as DeviceType : 'ipad'
 
   if (!url) {
     sendEvent(res, 'error', { error: 'URL is required' })
     res.end()
     return
   }
+
+  // Create isolated browser session for this request
+  const session = new BrowserSession()
 
   try {
     // ========================================================================
@@ -86,17 +78,17 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     
     sendProgress(res, 'init', 'Warming up...', 5)
 
-    clearTrackingData()
-    setCurrentPageUrl(url)
+    session.clearTrackingData()
+    session.setCurrentPageUrl(url)
 
     sendProgress(res, 'browser', 'Launching headless browser...', 8)
-    await launchBrowser(deviceType as import('../services/browser.js').DeviceType)
+    await session.launchBrowser(deviceType)
 
     const hostname = new URL(url).hostname
     sendProgress(res, 'navigate', `Connecting to ${hostname}...`, 12)
 
     // Navigate and wait for DOM to be ready
-    const navResult = await navigateTo(url, 'domcontentloaded', 30000)
+    const navResult = await session.navigateTo(url, 'domcontentloaded', 30000)
     
     // Check for HTTP-level errors
     if (!navResult.success) {
@@ -119,7 +111,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     sendProgress(res, 'wait-network', `Loading ${hostname}...`, 18)
     
     // Wait for network to settle (shorter timeout for ad-heavy sites)
-    const networkIdleResult = await waitForNetworkIdle(15000)
+    const networkIdleResult = await session.waitForNetworkIdle(15000)
     
     if (!networkIdleResult) {
       console.log('Network still active (normal for ad-heavy sites), continuing...')
@@ -128,21 +120,21 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       sendProgress(res, 'wait-done', 'Page fully loaded', 28)
     }
 
-    await waitForTimeout(1000)
+    await session.waitForTimeout(1000)
     
     // Check for access denied in page content (bot detection, Cloudflare, etc.)
-    const accessCheck = await checkForAccessDenied()
+    const accessCheck = await session.checkForAccessDenied()
     if (accessCheck.denied) {
       console.log('Access denied detected:', accessCheck.reason)
       
-      const screenshot = await takeScreenshot(false)
+      const screenshot = await session.takeScreenshot(false)
       const base64Screenshot = screenshot.toString('base64')
       
       sendEvent(res, 'screenshot', {
         screenshot: `data:image/png;base64,${base64Screenshot}`,
-        cookies: getTrackedCookies(),
-        scripts: getTrackedScripts(),
-        networkRequests: getTrackedNetworkRequests(),
+        cookies: session.getTrackedCookies(),
+        scripts: session.getTrackedScripts(),
+        networkRequests: session.getTrackedNetworkRequests(),
         localStorage: [],
         sessionStorage: [],
       })
@@ -164,31 +156,31 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     // ========================================================================
     
     sendProgress(res, 'cookies', 'Capturing cookies...', 32)
-    await captureCurrentCookies()
+    await session.captureCurrentCookies()
     
     sendProgress(res, 'storage', 'Capturing storage data...', 35)
-    let storage = await captureStorage()
+    let storage = await session.captureStorage()
 
     // Wait for consent dialogs to appear
     sendProgress(res, 'consent-wait', 'Waiting for consent dialogs...', 37)
-    await waitForTimeout(2000)
+    await session.waitForTimeout(2000)
 
     sendProgress(res, 'screenshot', 'Taking screenshot...', 38)
-    const screenshot = await takeScreenshot(false)
+    const screenshot = await session.takeScreenshot(false)
     const base64Screenshot = screenshot.toString('base64')
 
-    const cookieCount = getTrackedCookies().length
-    const scriptCount = getTrackedScripts().length
-    const requestCount = getTrackedNetworkRequests().length
+    const cookieCount = session.getTrackedCookies().length
+    const scriptCount = session.getTrackedScripts().length
+    const requestCount = session.getTrackedNetworkRequests().length
     
     sendProgress(res, 'captured', `Found ${cookieCount} cookies, ${scriptCount} scripts, ${requestCount} requests`, 42)
 
     // Send initial screenshot
     sendEvent(res, 'screenshot', {
       screenshot: `data:image/png;base64,${base64Screenshot}`,
-      cookies: getTrackedCookies(),
-      scripts: getTrackedScripts(),
-      networkRequests: getTrackedNetworkRequests(),
+      cookies: session.getTrackedCookies(),
+      scripts: session.getTrackedScripts(),
+      networkRequests: session.getTrackedNetworkRequests(),
       localStorage: storage.localStorage,
       sessionStorage: storage.sessionStorage,
     })
@@ -199,12 +191,12 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     
     sendProgress(res, 'consent-detect', 'Checking for consent dialogs...', 45)
 
-    const page = getPage()
+    const page = session.getPage()
     let consentDetails = null
     let overlayCount = 0
 
     if (page) {
-      const overlayResult = await handleOverlays(page, res, screenshot)
+      const overlayResult = await handleOverlays(session, page, res, screenshot)
       consentDetails = overlayResult.consentDetails
       overlayCount = overlayResult.overlayCount
       storage = overlayResult.finalStorage
@@ -217,8 +209,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     sendProgress(res, 'analysis-prep', 'Preparing tracking data for analysis...', 75)
     console.log('Starting tracking analysis...')
 
-    const finalCookieCount = getTrackedCookies().length
-    const finalScriptCount = getTrackedScripts().length
+    const finalCookieCount = session.getTrackedCookies().length
+    const finalScriptCount = session.getTrackedScripts().length
     
     sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalScriptCount} scripts...`, 78)
 
@@ -227,7 +219,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       // Script analysis
       (async () => {
         const scripts = await analyzeScripts(
-          getTrackedScripts(), 
+          session.getTrackedScripts(), 
           20,
           (current, total) => {
             sendProgress(res, 'script-analysis', `Analyzing script ${current} of ${total}...`, 80 + Math.floor((current / total) * 10))
@@ -240,11 +232,11 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       
       // Main tracking analysis
       runTrackingAnalysis(
-        getTrackedCookies(),
+        session.getTrackedCookies(),
         storage.localStorage,
         storage.sessionStorage,
-        getTrackedNetworkRequests(),
-        getTrackedScripts(),
+        session.getTrackedNetworkRequests(),
+        session.getTrackedScripts(),
         url,
         consentDetails
       )
@@ -267,7 +259,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
         ? 'Tracking analyzed after dismissing overlays'
         : 'Tracking analyzed',
       analysis: analysisResult.success ? analysisResult.analysis : null,
-      highRisks: analysisResult.success ? analysisResult.highRisks : null,
+      summaryContent: analysisResult.success ? analysisResult.summaryContent : null,
       privacyScore: analysisResult.success ? analysisResult.privacyScore : null,
       privacySummary: analysisResult.success ? analysisResult.privacySummary : null,
       analysisSummary: analysisResult.success ? analysisResult.summary : null,
@@ -282,7 +274,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     res.end()
   } finally {
     // Always clean up browser resources to prevent memory leaks
-    await closeBrowser().catch((err) => {
+    await session.close().catch((err) => {
       console.warn('Error during browser cleanup:', err)
     })
   }

@@ -64,12 +64,13 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │                                    │                                       │
 │          ┌─────────────────────────┼─────────────────────────┐             │
 │          ▼                         ▼                         ▼             │
-│  ┌───────────────┐     ┌─────────────────────┐     ┌─────────────────┐     │
-│  │ browser.ts    │     │ consent-*.ts        │     │ analysis.ts     │     │
-│  │ - Playwright  │     │ - Detection (AI)    │     │ - OpenAI        │     │
-│  │ - Navigation  │     │ - Extraction (AI)   │     │ - Risk analysis │     │
-│  │ - Capture     │     │ - Click strategies  │     │ - Privacy score │     │
-│  └───────────────┘     └─────────────────────┘     └─────────────────┘     │
+│  ┌───────────────────┐  ┌─────────────────────┐     ┌─────────────────┐     │
+│  │ browser-session.ts│  │ consent-*.ts        │     │ analysis.ts     │     │
+│  │ - Playwright      │  │ - Detection (AI)    │     │ - OpenAI        │     │
+│  │ - Navigation      │  │ - Extraction (AI)   │     │ - Risk analysis │     │
+│  │ - Capture         │  │ - Click strategies  │     │ - Privacy score │     │
+│  │ - Per-request     │  └─────────────────────┘     └─────────────────┘     │
+│  └───────────────────┘                                                      │
 └────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
@@ -100,9 +101,10 @@ analyzeUrl() in useTrackingAnalysis.ts
 analyzeUrlStreamHandler() in analyze-stream.ts
    │
    ├── validateOpenAIConfig() → Check env vars
-   ├── clearTrackingData() → Reset tracking arrays
-   ├── launchBrowser(deviceType) → Start Playwright headless
-   └── navigateTo(url) → Load target page
+   ├── new BrowserSession() → Create isolated session
+   ├── session.clearTrackingData() → Reset tracking arrays
+   ├── session.launchBrowser(deviceType) → Start Playwright headless
+   └── session.navigateTo(url) → Load target page
 ```
 
 ### Phase 2: Wait for Page Load and Check Access
@@ -195,7 +197,7 @@ Analysis complete
          scripts        // Scripts with descriptions
        })
    │
-   └── closeBrowser() → Cleanup Playwright
+   └── session.close() → Cleanup Playwright (in finally block)
 ```
 
 ---
@@ -298,7 +300,7 @@ App.vue
 
 | Service | Responsibility |
 |---------|---------------|
-| `browser.ts` | Playwright browser lifecycle, navigation, data capture |
+| `browser-session.ts` | Playwright browser session (per-request isolation for concurrency) |
 | `openai.ts` | OpenAI/Azure OpenAI client management |
 | `analysis.ts` | Main tracking analysis with LLM |
 | `script-analysis.ts` | Script identification (patterns + LLM) |
@@ -337,7 +339,7 @@ Playwright Browser
     └── DOM available → localStorage[], sessionStorage[]
     │
     ▼
-browser.ts tracking arrays
+BrowserSession tracking arrays
     │
     ▼
 sendEvent('screenshot', data) in analyze-stream.ts
@@ -452,7 +454,7 @@ interface ConsentDetails {
 ### Adding a New Tracking Data Type
 
 1. Add interface to `server/src/types.ts`
-2. Add capture function in `server/src/services/browser.ts`
+2. Add capture method in `server/src/services/browser-session.ts`
 3. Include in screenshot event payload
 4. Add client interface in `client/src/types/tracking.ts`
 5. Add reactive state in `useTrackingAnalysis.ts`
@@ -481,9 +483,15 @@ interface ConsentDetails {
 
 Enable browser DevTools → Network tab → Filter by "EventStream" to see SSE messages.
 
+### Concurrency
+
+- Each request creates its own `BrowserSession` instance
+- Sessions are fully isolated - no shared state between requests
+- Multiple users can analyze different URLs simultaneously
+- Browser cleanup happens in `finally` block to prevent leaks
+
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
 - Main analysis runs first, then high risks + score in parallel
-- Browser cleanup happens in `finally` block to prevent leaks
-- Tracking arrays have limits (5000 requests, 1000 scripts)
+- Tracking arrays have limits (5000 requests, 1000 scripts) per session

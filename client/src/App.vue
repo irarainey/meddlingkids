@@ -11,7 +11,7 @@ import {
   ConsentTab,
   CookiesTab,
   NetworkTab,
-  RisksTab,
+  SummaryTab,
   ScriptsTab,
   StorageTab,
 } from './components'
@@ -32,7 +32,7 @@ const {
   showOnlyThirdParty,
   analysisResult,
   analysisError,
-  highRisks,
+  summaryContent,
   privacyScore,
   privacySummary,
   showScoreDialog,
@@ -139,18 +139,18 @@ const {
       <!-- Tab Navigation -->
       <div class="tabs">
           <button
-            class="tab risk-tab"
-            :class="{ active: activeTab === 'risks', highlight: highRisks }"
-            @click="activeTab = 'risks'"
+            class="tab summary-tab"
+            :class="{ active: activeTab === 'summary', highlight: summaryContent }"
+            @click="activeTab = 'summary'"
           >
-            🚨 High Risks
+            🛡️ Summary
           </button>
           <button
             class="tab"
             :class="{ active: activeTab === 'analysis', highlight: analysisResult }"
             @click="activeTab = 'analysis'"
           >
-            🤖 Full Analysis
+            📋 Full Analysis
           </button>
           <button class="tab" :class="{ active: activeTab === 'cookies' }" @click="activeTab = 'cookies'">
             🍪 Cookies ({{ cookies.length }})
@@ -172,19 +172,18 @@ const {
             }"
             @click="activeTab = 'consent'"
           >
-            📋 Consent ({{ consentDetails?.partners.length || 0 }} partners)
+            🎯 Consent ({{ consentDetails?.partners.length || 0 }} partners)
           </button>
         </div>
 
         <!-- Tab Content Panels -->
-        <RisksTab v-if="activeTab === 'risks'" :high-risks="highRisks" />
+        <SummaryTab v-if="activeTab === 'summary'" :summary-content="summaryContent" :privacy-score="privacyScore" />
 
         <AnalysisTab
           v-if="activeTab === 'analysis'"
           :is-analyzing="isLoading && progressStep === 'analysis'"
           :analysis-error="analysisError"
           :analysis-result="analysisResult"
-          :privacy-score="privacyScore"
         />
 
         <CookiesTab
