@@ -88,11 +88,21 @@ RUN npm install tsx
 # Install Playwright browsers (Chromium only for smaller image)
 RUN npx playwright install chromium
 
+# Create non-root user for security
+RUN groupadd --gid 1001 appgroup && \
+    useradd --uid 1001 --gid 1001 --shell /bin/bash --create-home appuser
+
 # Copy built client from builder stage
 COPY --from=builder /app/dist ./dist
 
 # Copy server source files (run TypeScript directly with Node 22)
 COPY server/ ./server/
+
+# Change ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
 
 # Environment variables with defaults
 ENV NODE_ENV=production
