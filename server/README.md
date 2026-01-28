@@ -28,6 +28,8 @@ server/src/
 │   └── analyze-helpers.ts    # Helper functions for streaming
 ├── services/
 │   ├── browser-session.ts    # Playwright browser session (per-request isolation)
+│   ├── device-configs.ts     # Device emulation profiles
+│   ├── access-detection.ts   # Bot blocking detection patterns
 │   ├── openai.ts             # Azure OpenAI / OpenAI client
 │   ├── analysis.ts           # AI tracking analysis
 │   ├── script-analysis.ts    # Script identification & LLM analysis
@@ -48,6 +50,7 @@ server/src/
     ├── index.ts              # Utility exports
     ├── url.ts                # Domain/URL utilities
     ├── errors.ts             # Error handling
+    ├── logger.ts             # Logging with timestamps and timing
     └── tracking-summary.ts   # Data aggregation for LLM
 ```
 
@@ -72,7 +75,7 @@ Analyzes tracking on the specified URL with real-time progress updates.
 | `consentDetails` | `{ categories, partners, purposes, hasManageOptions }` | Extracted consent dialog info |
 | `consent` | `{ detected, clicked, details }` | Consent handling result |
 | `pageError` | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or server error detected |
-| `complete` | `{ success, message, analysis, highRisks, privacyScore, privacySummary, analysisSummary, analysisError?, consentDetails, scripts }` | Final analysis results with privacy score and analyzed scripts |
+| `complete` | `{ success, message, analysis, summaryContent, privacyScore, privacySummary, analysisSummary, analysisError?, consentDetails, scripts }` | Final analysis results with privacy score and analyzed scripts |
 | `error` | `{ error }` | Error message if something fails |
 
 **Example:**
@@ -87,7 +90,7 @@ eventSource.addEventListener('progress', (event) => {
 })
 
 eventSource.addEventListener('complete', (event) => {
-  const { analysis, highRisks } = JSON.parse(event.data)
+  const { analysis, summaryContent } = JSON.parse(event.data)
   console.log('Analysis:', analysis)
   eventSource.close()
 })
@@ -136,7 +139,8 @@ Runs AI-powered tracking analysis:
 
 - **`runTrackingAnalysis(...)`** - Analyzes all tracking data and generates:
   - Full markdown privacy report
-  - High-risks bullet-point summary
+  - Summary content for the summary tab
+  - Privacy score (0-100) and one-sentence summary
   - Tracking data summary
 
 ### Consent Services
@@ -233,8 +237,8 @@ interface ConsentPartner {
 interface AnalysisResult {
   success: boolean
   analysis?: string        // Full markdown report
-  highRisks?: string       // Brief risk summary
-  privacyScore?: number    // Privacy score 0-100 (lower is worse)
+  summaryContent?: string  // Brief summary for summary tab
+  privacyScore?: number    // Privacy score 0-100 (higher is worse)
   privacySummary?: string  // One-sentence summary
   siteName?: string        // Extracted site name
   summary?: TrackingSummary

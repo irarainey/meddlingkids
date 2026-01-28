@@ -34,7 +34,7 @@ src/
 │       ├── ConsentTab.vue       # Consent dialog details
 │       ├── CookiesTab.vue       # Cookies by domain
 │       ├── NetworkTab.vue       # Network requests
-│       ├── RisksTab.vue         # High-risk summary
+│       ├── SummaryTab.vue       # Summary with privacy score and key findings
 │       ├── ScriptsTab.vue       # Scripts by domain
 │       └── StorageTab.vue       # localStorage/sessionStorage
 ├── composables/
@@ -102,7 +102,7 @@ Each tab is a self-contained component with its own template and scoped styles:
 
 | Component | Purpose |
 |-----------|---------|
-| `RisksTab` | High-priority privacy concerns |
+| `SummaryTab` | Privacy score and key findings summary |
 | `AnalysisTab` | Full AI analysis with loading state |
 | `CookiesTab` | Cookies grouped by domain |
 | `StorageTab` | localStorage and sessionStorage items |
@@ -134,7 +134,7 @@ const {
   activeTab,            // Currently selected tab
   analysisResult,       // Full AI analysis (markdown)
   analysisError,        // Analysis error if AI failed
-  highRisks,            // High-risk summary
+  summaryContent,       // Summary bullet points
   privacyScore,         // Privacy score (0-100)
   privacySummary,       // One-sentence summary
   showScoreDialog,      // Score dialog visibility
@@ -262,7 +262,7 @@ The environment is configured via:
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `complete` | `{ analysis, highRisks, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
+| `complete` | `{ analysis, summaryContent, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development

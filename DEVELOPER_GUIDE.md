@@ -189,12 +189,12 @@ Analysis complete
    │
    └── sendEvent('complete', {
          success,
-         analysis,      // Full markdown report
-         highRisks,     // Bullet points
-         privacyScore,  // 0-100
-         privacySummary,// One sentence
-         consentDetails,// Consent dialog info
-         scripts        // Scripts with descriptions
+         analysis,       // Full markdown report
+         summaryContent, // Bullet points summary
+         privacyScore,   // 0-100
+         privacySummary, // One sentence
+         consentDetails, // Consent dialog info
+         scripts         // Scripts with descriptions
        })
    │
    └── session.close() → Cleanup Playwright (in finally block)
@@ -229,7 +229,7 @@ sessionStorage       // StorageItem[]
 
 // Analysis results
 analysisResult       // Full markdown report
-highRisks            // Risk bullet points
+summaryContent       // Summary bullet points
 privacyScore         // 0-100
 privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
@@ -283,7 +283,7 @@ App.vue
 ├── ErrorDialog (generic errors)
 ├── ScreenshotGallery (thumbnail row + modal)
 └── Tab Content (v-if="isComplete")
-    ├── RisksTab
+    ├── SummaryTab
     ├── AnalysisTab
     ├── CookiesTab
     ├── StorageTab
@@ -301,6 +301,8 @@ App.vue
 | Service | Responsibility |
 |---------|---------------|
 | `browser-session.ts` | Playwright browser session (per-request isolation for concurrency) |
+| `device-configs.ts` | Device emulation profiles (iPhone, iPad, Android, etc.) |
+| `access-detection.ts` | Bot blocking and access denial detection patterns |
 | `openai.ts` | OpenAI/Azure OpenAI client management |
 | `analysis.ts` | Main tracking analysis with LLM |
 | `script-analysis.ts` | Script identification (patterns + LLM) |
@@ -436,7 +438,7 @@ interface ConsentDetails {
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `complete` | Server → Client | `{ success, analysis, highRisks, privacyScore, privacySummary, scripts, consentDetails }` | Final analysis results |
+| `complete` | Server → Client | `{ success, analysis, summaryContent, privacyScore, privacySummary, scripts, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---
@@ -483,6 +485,45 @@ interface ConsentDetails {
 
 Enable browser DevTools → Network tab → Filter by "EventStream" to see SSE messages.
 
+### Server Logging
+
+The server includes verbose logging with timestamps and timing information. Logs are colorized and grouped by module:
+
+```
+────────────────────────────────────────────────────────────────
+  Analyzing: https://example.com
+────────────────────────────────────────────────────────────────
+
+[12:34:56.789] ℹ [Analyze] Request received url="https://example.com" device="ipad"
+[12:34:56.790] ⏱ [Analyze] Starting: total-analysis
+
+  ▸ Phase 1: Browser Setup
+
+[12:34:56.791] ⏱ [Analyze] Starting: browser-launch
+[12:34:57.234] ⏱ [Analyze] Browser launched took 443ms
+```
+
+**Log Levels:**
+- `ℹ` Info - General information
+- `✓` Success - Operation completed successfully
+- `⚠` Warning - Non-critical issues
+- `✗` Error - Errors and failures
+- `•` Debug - Detailed debugging info
+- `⏱` Timing - Operation duration measurements
+
+**Using the Logger:**
+```typescript
+import { createLogger } from '../utils/index.js'
+
+const log = createLogger('MyModule')
+
+log.info('Starting operation', { param: value })
+log.startTimer('my-operation')
+// ... do work ...
+log.endTimer('my-operation', 'Operation complete')
+log.success('Done!', { result: data })
+```
+
 ### Concurrency
 
 - Each request creates its own `BrowserSession` instance
@@ -493,5 +534,6 @@ Enable browser DevTools → Network tab → Filter by "EventStream" to see SSE m
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
-- Main analysis runs first, then high risks + score in parallel
+- Main analysis runs first, then summary + score in parallel
+- Tracking arrays have limits (5000 requests, 1000 scripts) per session
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
