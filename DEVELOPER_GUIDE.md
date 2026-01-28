@@ -64,13 +64,13 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │                                    │                                       │
 │          ┌─────────────────────────┼─────────────────────────┐             │
 │          ▼                         ▼                         ▼             │
-│  ┌───────────────────┐  ┌─────────────────────┐     ┌─────────────────┐     │
-│  │ browser-session.ts│  │ consent-*.ts        │     │ analysis.ts     │     │
-│  │ - Playwright      │  │ - Detection (AI)    │     │ - OpenAI        │     │
-│  │ - Navigation      │  │ - Extraction (AI)   │     │ - Risk analysis │     │
-│  │ - Capture         │  │ - Click strategies  │     │ - Privacy score │     │
-│  │ - Per-request     │  └─────────────────────┘     └─────────────────┘     │
-│  └───────────────────┘                                                      │
+│  ┌───────────────────┐  ┌─────────────────────┐     ┌─────────────────┐    │
+│  │ browser-session.ts│  │ consent-*.ts        │     │ analysis.ts     │    │
+│  │ - Playwright      │  │ - Detection (AI)    │     │ - OpenAI        │    │
+│  │ - Navigation      │  │ - Extraction (AI)   │     │ - Risk analysis │    │
+│  │ - Capture         │  │ - Click strategies  │     │ - Privacy score │    │
+│  │ - Per-request     │  └─────────────────────┘     └─────────────────┘    │
+│  └───────────────────┘                                                     │
 └────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
