@@ -6,7 +6,7 @@
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { SCRIPT_ANALYSIS_SYSTEM_PROMPT, buildScriptAnalysisUserPrompt } from '../prompts/index.js'
 import { TRACKING_SCRIPTS, BENIGN_SCRIPTS } from '../data/index.js'
-import { createLogger, getErrorMessage } from '../utils/index.js'
+import { createLogger, getErrorMessage, withRetry } from '../utils/index.js'
 import type { TrackedScript } from '../types.js'
 
 const log = createLogger('Script-Analysis')
@@ -92,14 +92,17 @@ async function analyzeScriptWithLLM(scriptContent: string, url: string): Promise
     : scriptContent
 
   try {
-    const response = await client.chat.completions.create({
-      model: deployment,
-      messages: [
-        { role: 'system', content: SCRIPT_ANALYSIS_SYSTEM_PROMPT },
-        { role: 'user', content: buildScriptAnalysisUserPrompt(url, truncatedContent) },
-      ],
-      max_completion_tokens: 150,
-    })
+    const response = await withRetry(
+      () => client.chat.completions.create({
+        model: deployment,
+        messages: [
+          { role: 'system', content: SCRIPT_ANALYSIS_SYSTEM_PROMPT },
+          { role: 'user', content: buildScriptAnalysisUserPrompt(url, truncatedContent) },
+        ],
+        max_completion_tokens: 150,
+      }),
+      { context: `Script analysis: ${new URL(url).hostname}`, maxRetries: 2 }
+    )
 
     const description = response.choices[0]?.message?.content?.trim() || 'Purpose unclear'
     return description

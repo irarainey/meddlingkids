@@ -13,7 +13,7 @@ import {
   buildSummaryFindingsUserPrompt,
   buildPrivacyScoreUserPrompt,
 } from '../prompts/index.js'
-import { getErrorMessage, buildTrackingSummary, createLogger } from '../utils/index.js'
+import { getErrorMessage, buildTrackingSummary, createLogger, withRetry } from '../utils/index.js'
 import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult, SummaryFinding } from '../types.js'
 
 const log = createLogger('AI-Analysis')
@@ -67,14 +67,17 @@ export async function runTrackingAnalysis(
     // Step 1: Run main analysis (required for subsequent analyses)
     log.startTimer('main-analysis')
     log.info('Running main tracking analysis...')
-    const response = await client.chat.completions.create({
-      model: deployment,
-      messages: [
-        { role: 'system', content: TRACKING_ANALYSIS_SYSTEM_PROMPT },
-        { role: 'user', content: buildTrackingAnalysisUserPrompt(trackingSummary, consentDetails) },
-      ],
-      max_completion_tokens: 3000,
-    })
+    const response = await withRetry(
+      () => client.chat.completions.create({
+        model: deployment,
+        messages: [
+          { role: 'system', content: TRACKING_ANALYSIS_SYSTEM_PROMPT },
+          { role: 'user', content: buildTrackingAnalysisUserPrompt(trackingSummary, consentDetails) },
+        ],
+        max_completion_tokens: 3000,
+      }),
+      { context: 'Main tracking analysis' }
+    )
 
     const analysis = response.choices[0]?.message?.content || 'No analysis generated'
     log.endTimer('main-analysis', 'Main analysis complete')
@@ -89,14 +92,17 @@ export async function runTrackingAnalysis(
       (async () => {
         log.startTimer('summary-generation')
         try {
-          const result = await client.chat.completions.create({
-            model: deployment,
-            messages: [
-              { role: 'system', content: SUMMARY_FINDINGS_SYSTEM_PROMPT },
-              { role: 'user', content: buildSummaryFindingsUserPrompt(analysis) },
-            ],
-            max_completion_tokens: 500,
-          })
+          const result = await withRetry(
+            () => client.chat.completions.create({
+              model: deployment,
+              messages: [
+                { role: 'system', content: SUMMARY_FINDINGS_SYSTEM_PROMPT },
+                { role: 'user', content: buildSummaryFindingsUserPrompt(analysis) },
+              ],
+              max_completion_tokens: 500,
+            }),
+            { context: 'Summary findings' }
+          )
           log.endTimer('summary-generation', 'Summary generated')
           return result
         } catch (err) {
@@ -109,14 +115,17 @@ export async function runTrackingAnalysis(
       (async () => {
         log.startTimer('score-generation')
         try {
-          const result = await client.chat.completions.create({
-            model: deployment,
-            messages: [
-              { role: 'system', content: PRIVACY_SCORE_SYSTEM_PROMPT },
-              { role: 'user', content: buildPrivacyScoreUserPrompt(analysis, analyzedUrl) },
-            ],
-            max_completion_tokens: 200,
-          })
+          const result = await withRetry(
+            () => client.chat.completions.create({
+              model: deployment,
+              messages: [
+                { role: 'system', content: PRIVACY_SCORE_SYSTEM_PROMPT },
+                { role: 'user', content: buildPrivacyScoreUserPrompt(analysis, analyzedUrl) },
+              ],
+              max_completion_tokens: 200,
+            }),
+            { context: 'Privacy score' }
+          )
           log.endTimer('score-generation', 'Score generated')
           return result
         } catch (err) {

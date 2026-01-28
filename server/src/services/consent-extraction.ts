@@ -7,7 +7,7 @@
 import type { Page } from 'playwright'
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_EXTRACTION_SYSTEM_PROMPT, buildConsentExtractionUserPrompt } from '../prompts/index.js'
-import { createLogger, getErrorMessage } from '../utils/index.js'
+import { createLogger, getErrorMessage, withRetry } from '../utils/index.js'
 import type { ConsentDetails } from '../types.js'
 
 const log = createLogger('Consent-Extract')
@@ -88,31 +88,34 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
   log.info('Analyzing consent dialog with vision...')
   
   try {
-    const response = await client.chat.completions.create({
-      model: deployment,
-      messages: [
-        {
-          role: 'system',
-          content: CONSENT_EXTRACTION_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/png;base64,${screenshot.toString('base64')}`,
+    const response = await withRetry(
+      () => client.chat.completions.create({
+        model: deployment,
+        messages: [
+          {
+            role: 'system',
+            content: CONSENT_EXTRACTION_SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${screenshot.toString('base64')}`,
+                },
               },
-            },
-            {
-              type: 'text',
-              text: buildConsentExtractionUserPrompt(consentText),
-            },
-          ],
-        },
-      ],
-      max_completion_tokens: 2000,
-    })
+              {
+                type: 'text',
+                text: buildConsentExtractionUserPrompt(consentText),
+              },
+            ],
+          },
+        ],
+        max_completion_tokens: 2000,
+      }),
+      { context: 'Consent extraction' }
+    )
 
     log.endTimer('vision-extraction', 'Vision extraction complete')
 

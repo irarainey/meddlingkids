@@ -466,9 +466,10 @@ interface ConsentDetails {
 
 1. Create prompt template in `server/src/prompts/`
 2. Add analysis function in `server/src/services/`
-3. Call from `analyze-stream.ts` (consider parallel execution)
-4. Include in `complete` event payload
-5. Display in client
+3. Wrap OpenAI calls with `withRetry()` for rate limit handling
+4. Call from `analyze-stream.ts` (consider parallel execution)
+5. Include in `complete` event payload
+6. Display in client
 
 ### Adding a New Overlay Type
 
@@ -536,4 +537,31 @@ log.success('Done!', { result: data })
 - Script analysis uses pattern matching first, LLM only for unknowns
 - Main analysis runs first, then summary + score in parallel
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
-- Tracking arrays have limits (5000 requests, 1000 scripts) per session
+
+### Rate Limit Handling
+
+All OpenAI API calls use automatic retry with exponential backoff:
+
+- **Retryable errors:** 429 (rate limit), 5xx (server errors), network failures
+- **Backoff strategy:** Starts at 1s, doubles each retry, max 30s
+- **Jitter:** ±20% randomization to prevent thundering herd
+- **Header support:** Respects `Retry-After` headers from the API
+
+```typescript
+import { withRetry } from '../utils/index.js'
+
+const result = await withRetry(
+  () => client.chat.completions.create({ ... }),
+  { 
+    context: 'Main analysis',  // For logging
+    maxRetries: 3,             // Default: 3
+    initialDelayMs: 1000,      // Default: 1000
+    maxDelayMs: 30000,         // Default: 30000
+  }
+)
+```
+
+When rate limits are hit, you'll see logs like:
+```
+[12:34:56.789] ⚠ [Retry] Retrying after transient error context="Main analysis" attempt=1 maxRetries=3 delayMs=1200 isRateLimit=true
+```

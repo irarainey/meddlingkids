@@ -51,6 +51,7 @@ server/src/
     ├── url.ts                # Domain/URL utilities
     ├── errors.ts             # Error handling
     ├── logger.ts             # Logging with timestamps and timing
+    ├── retry.ts              # Retry with exponential backoff for API calls
     └── tracking-summary.ts   # Data aggregation for LLM
 ```
 
@@ -159,6 +160,28 @@ Identifies and analyzes JavaScript files loaded by the page:
 1. Match scripts against 300+ known tracking patterns (instant identification)
 2. Match scripts against ~55 known benign library patterns (skip LLM)
 3. Use LLM to analyze remaining unknown scripts (limited to `maxLLMAnalyses`)
+
+### Retry Handling (`utils/retry.ts`)
+
+All OpenAI API calls are wrapped with automatic retry logic to handle transient failures:
+
+- **Rate Limits (429)** - Automatically retried with exponential backoff
+- **Server Errors (5xx)** - Retried up to 3 times
+- **Network Issues** - Connection resets, timeouts, etc. are retried
+
+**Configuration:**
+- Default: 3 retries with 1s initial delay, doubling each retry (max 30s)
+- Jitter: ±20% randomization to prevent thundering herd
+- Respects `Retry-After` headers from the API
+
+```typescript
+import { withRetry } from '../utils/index.js'
+
+const result = await withRetry(
+  () => client.chat.completions.create({ ... }),
+  { context: 'Main analysis', maxRetries: 3 }
+)
+```
 
 ### Data Modules (`data/`)
 

@@ -5,7 +5,7 @@
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_DETECTION_SYSTEM_PROMPT, buildConsentDetectionUserPrompt } from '../prompts/index.js'
-import { getErrorMessage, createLogger } from '../utils/index.js'
+import { getErrorMessage, createLogger, withRetry } from '../utils/index.js'
 import type { CookieConsentDetection } from '../types.js'
 
 const log = createLogger('Consent-Detect')
@@ -42,31 +42,34 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
   log.info('Analyzing screenshot for overlays...')
   
   try {
-    const response = await client.chat.completions.create({
-      model: deployment,
-      messages: [
-        {
-          role: 'system',
-          content: CONSENT_DETECTION_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/png;base64,${screenshot.toString('base64')}`,
+    const response = await withRetry(
+      () => client.chat.completions.create({
+        model: deployment,
+        messages: [
+          {
+            role: 'system',
+            content: CONSENT_DETECTION_SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${screenshot.toString('base64')}`,
+                },
               },
-            },
-            {
-              type: 'text',
-              text: buildConsentDetectionUserPrompt(relevantHtml),
-            },
-          ],
-        },
-      ],
-      max_completion_tokens: 500,
-    })
+              {
+                type: 'text',
+                text: buildConsentDetectionUserPrompt(relevantHtml),
+              },
+            ],
+          },
+        ],
+        max_completion_tokens: 500,
+      }),
+      { context: 'Consent detection' }
+    )
 
     log.endTimer('vision-detection', 'Vision analysis complete')
 
