@@ -6,7 +6,12 @@
 
 import { chromium, type Browser, type Page, type BrowserContext } from 'playwright'
 import { extractDomain, isThirdParty } from '../utils/index.js'
+import { DEVICE_CONFIGS, type DeviceType } from './device-configs.js'
+import { checkForAccessDenied, type AccessDenialResult } from './access-detection.js'
 import type { TrackedCookie, TrackedScript, NetworkRequest, StorageItem } from '../types.js'
+
+// Re-export DeviceType for external use
+export type { DeviceType } from './device-configs.js'
 
 // ============================================================================
 // Constants
@@ -21,61 +26,6 @@ const MAX_TRACKED_SCRIPTS = 1000
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Device type identifiers */
-export type DeviceType = 'iphone' | 'ipad' | 'android-phone' | 'android-tablet' | 'windows-chrome' | 'macos-safari'
-
-/** Device configurations for different browser/device combinations */
-const DEVICE_CONFIGS: Record<DeviceType, {
-  userAgent: string
-  viewport: { width: number; height: number }
-  deviceScaleFactor: number
-  isMobile: boolean
-  hasTouch: boolean
-}> = {
-  'iphone': {
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
-    viewport: { width: 430, height: 932 },
-    deviceScaleFactor: 3,
-    isMobile: true,
-    hasTouch: true,
-  },
-  'ipad': {
-    userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
-    viewport: { width: 1024, height: 1366 },
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
-  },
-  'android-phone': {
-    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.90 Mobile Safari/537.36',
-    viewport: { width: 412, height: 915 },
-    deviceScaleFactor: 2.625,
-    isMobile: true,
-    hasTouch: true,
-  },
-  'android-tablet': {
-    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel Tablet) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.90 Safari/537.36',
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
-  },
-  'windows-chrome': {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    viewport: { width: 1920, height: 1080 },
-    deviceScaleFactor: 1,
-    isMobile: false,
-    hasTouch: false,
-  },
-  'macos-safari': {
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-    viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: 2,
-    isMobile: false,
-    hasTouch: false,
-  },
-}
 
 /**
  * Result of a navigation attempt.
@@ -346,74 +296,11 @@ export class BrowserSession {
    *
    * @returns Object indicating if access was denied and the reason
    */
-  async checkForAccessDenied(): Promise<{ denied: boolean; reason: string | null }> {
+  async checkForAccessDenied(): Promise<AccessDenialResult> {
     if (!this.page) {
       return { denied: false, reason: null }
     }
-
-    try {
-      const title = await this.page.title()
-      const titleLower = title.toLowerCase()
-      
-      // Check title for common access denied patterns
-      const blockedTitlePatterns = [
-        'access denied',
-        'forbidden',
-        '403',
-        '401',
-        'blocked',
-        'not allowed',
-        'cloudflare',
-        'security check',
-        'captcha',
-        'robot',
-        'bot detection',
-        'please verify',
-        'are you human',
-        'just a moment',
-        'checking your browser',
-        'ddos protection',
-        'attention required',
-      ]
-      
-      for (const pattern of blockedTitlePatterns) {
-        if (titleLower.includes(pattern)) {
-          return { denied: true, reason: `Page title indicates blocking: "${title}"` }
-        }
-      }
-
-      // Check visible body text for common access denied messages
-      const bodyText = await this.page.evaluate(() => {
-        const body = document.body
-        return body ? body.innerText.substring(0, 2000).toLowerCase() : ''
-      })
-
-      const blockedBodyPatterns = [
-        'access denied',
-        'access to this page has been denied',
-        'you have been blocked',
-        'this request was blocked',
-        'automated access',
-        'bot traffic',
-        'enable javascript and cookies',
-        'please complete the security check',
-        'checking if the site connection is secure',
-        'verify you are human',
-        'we have detected unusual activity',
-        'your ip has been blocked',
-        'rate limit exceeded',
-      ]
-
-      for (const pattern of blockedBodyPatterns) {
-        if (bodyText.includes(pattern)) {
-          return { denied: true, reason: `Page content indicates blocking: "${pattern}"` }
-        }
-      }
-
-      return { denied: false, reason: null }
-    } catch {
-      return { denied: false, reason: null }
-    }
+    return checkForAccessDenied(this.page)
   }
 
   // ==========================================================================
