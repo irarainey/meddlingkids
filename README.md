@@ -187,7 +187,7 @@ docker run -p 3001:3001 \
   meddlingkids
 ```
 
-Then open http://localhost:3001
+Then open http://localhost:3001 to access the app.
 
 ## Available Scripts
 
