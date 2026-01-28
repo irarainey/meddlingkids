@@ -12,6 +12,7 @@ import type {
   ConsentDetails,
   ScreenshotModal,
   TabId,
+  SummaryFinding,
 } from '../types'
 
 /**
@@ -54,8 +55,8 @@ export function useTrackingAnalysis() {
   const analysisResult = ref('')
   /** Analysis error message if AI failed */
   const analysisError = ref('')
-  /** Summary content from AI */
-  const summaryContent = ref('')
+  /** Summary findings from AI */
+  const summaryFindings = ref<SummaryFinding[]>([])
   /** Privacy risk score (0-100) */
   const privacyScore = ref<number | null>(null)
   /** One-sentence privacy summary */
@@ -168,7 +169,7 @@ export function useTrackingAnalysis() {
     networkRequests.value = []
     analysisResult.value = ''
     analysisError.value = ''
-    summaryContent.value = ''
+    summaryFindings.value = []
     privacyScore.value = null
     privacySummary.value = ''
     showScoreDialog.value = false
@@ -268,8 +269,8 @@ export function useTrackingAnalysis() {
       eventSource.addEventListener('complete', (event) => {
         const data = JSON.parse(event.data)
 
-        if (data.summaryContent) {
-          summaryContent.value = data.summaryContent
+        if (data.summaryFindings) {
+          summaryFindings.value = data.summaryFindings
         }
         if (data.privacyScore !== null && data.privacyScore !== undefined) {
           privacyScore.value = data.privacyScore
@@ -289,7 +290,7 @@ export function useTrackingAnalysis() {
           scripts.value = data.scripts
         }
 
-        activeTab.value = data.summaryContent ? 'summary' : 'analysis'
+        activeTab.value = data.summaryFindings?.length ? 'summary' : 'analysis'
         statusMessage.value = data.message
         progressPercent.value = 100
         isComplete.value = true
@@ -374,7 +375,7 @@ export function useTrackingAnalysis() {
     showOnlyThirdParty,
     analysisResult,
     analysisError,
-    summaryContent,
+    summaryFindings,
     privacyScore,
     privacySummary,
     showScoreDialog,

@@ -220,16 +220,26 @@ export interface TrackingSummary {
 }
 
 /**
+ * A single finding in the summary.
+ */
+export interface SummaryFinding {
+  /** Severity type: critical, high, moderate, info, or positive */
+  type: 'critical' | 'high' | 'moderate' | 'info' | 'positive'
+  /** Description of the finding */
+  text: string
+}
+
+/**
  * Result of the AI-powered tracking analysis.
- * Contains the full markdown report and a high-risks summary.
+ * Contains the full markdown report and structured summary findings.
  */
 export interface AnalysisResult {
   /** Whether the analysis completed successfully */
   success: boolean
   /** Full markdown analysis report */
   analysis?: string
-  /** Brief summary content for the summary tab */
-  summaryContent?: string
+  /** Structured summary findings for the summary tab */
+  summaryFindings?: SummaryFinding[]
   /** Privacy risk score (0-100) */
   privacyScore?: number
   /** One-sentence summary for the results dialog */

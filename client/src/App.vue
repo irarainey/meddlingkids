@@ -32,7 +32,7 @@ const {
   showOnlyThirdParty,
   analysisResult,
   analysisError,
-  summaryContent,
+  summaryFindings,
   privacyScore,
   privacySummary,
   showScoreDialog,
@@ -140,7 +140,7 @@ const {
       <div class="tabs">
           <button
             class="tab summary-tab"
-            :class="{ active: activeTab === 'summary', highlight: summaryContent }"
+            :class="{ active: activeTab === 'summary', highlight: summaryFindings.length > 0 }"
             @click="activeTab = 'summary'"
           >
             🛡️ Summary
@@ -177,7 +177,7 @@ const {
         </div>
 
         <!-- Tab Content Panels -->
-        <SummaryTab v-if="activeTab === 'summary'" :summary-content="summaryContent" :privacy-score="privacyScore" />
+        <SummaryTab v-if="activeTab === 'summary'" :summary-findings="summaryFindings" :privacy-score="privacyScore" />
 
         <AnalysisTab
           v-if="activeTab === 'analysis'"

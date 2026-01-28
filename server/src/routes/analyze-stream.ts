@@ -309,7 +309,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
         ? 'Tracking analyzed after dismissing overlays'
         : 'Tracking analyzed',
       analysis: analysisResult.success ? analysisResult.analysis : null,
-      summaryContent: analysisResult.success ? analysisResult.summaryContent : null,
+      summaryFindings: analysisResult.success ? analysisResult.summaryFindings : null,
       privacyScore: analysisResult.success ? analysisResult.privacyScore : null,
       privacySummary: analysisResult.success ? analysisResult.privacySummary : null,
       analysisSummary: analysisResult.success ? analysisResult.summary : null,

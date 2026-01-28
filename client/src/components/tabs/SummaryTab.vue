@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { formatMarkdown } from '../../utils'
+import type { SummaryFinding, SummaryFindingType } from '../../types'
 
 /**
- * Tab panel displaying privacy summary with score and key risks.
+ * Tab panel displaying privacy summary with score and key findings.
  */
 defineProps<{
-  /** Summary content from AI analysis */
-  summaryContent: string
+  /** Structured summary findings from AI analysis */
+  summaryFindings: SummaryFinding[]
   /** Privacy score (0-100) */
   privacyScore: number | null
 }>()
@@ -46,6 +46,20 @@ function getScoreClass(score: number | null): string {
   if (s >= 20) return 'score-low'
   return 'score-safe'
 }
+
+/**
+ * Get the icon for a finding type.
+ */
+function getFindingIcon(type: SummaryFindingType): string {
+  switch (type) {
+    case 'critical': return '🚨'
+    case 'high': return '⚠️'
+    case 'moderate': return '📋'
+    case 'info': return 'ℹ️'
+    case 'positive': return '✅'
+    default: return '•'
+  }
+}
 </script>
 
 <template>
@@ -55,7 +69,17 @@ function getScoreClass(score: number | null): string {
       <span class="score-value">{{ privacyScore }}</span>
       <span class="score-label">{{ getRiskLevel(privacyScore) }}</span>
     </div>
-    <div v-if="summaryContent" class="summary-result" v-html="formatMarkdown(summaryContent)"></div>
+    <ul v-if="summaryFindings.length > 0" class="findings-list">
+      <li 
+        v-for="(finding, index) in summaryFindings" 
+        :key="index"
+        class="finding-item"
+        :class="`finding-${finding.type}`"
+      >
+        <span class="finding-icon">{{ getFindingIcon(finding.type) }}</span>
+        <span class="finding-text">{{ finding.text }}</span>
+      </li>
+    </ul>
     <div v-else class="empty-state">
       <p>Summary will appear here once analysis is complete.</p>
     </div>
@@ -156,34 +180,55 @@ function getScoreClass(score: number | null): string {
   color: #6ee7b7;
 }
 
-.summary-result {
-  font-size: 1.05rem;
-  line-height: 1.8;
-  color: #e0e7ff;
-}
-
-.summary-result :deep(p) {
-  margin: 0;
-}
-
-.summary-result :deep(ul) {
+/* Findings List */
+.findings-list {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0;
-}
-
-.summary-result :deep(li) {
-  padding: 0.25rem 0;
   margin: 0;
+}
+
+.finding-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
   color: #e0e7ff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.summary-result :deep(br) {
-  display: none;
+.finding-item:last-child {
+  border-bottom: none;
 }
 
-.summary-result :deep(ul + br),
-.summary-result :deep(br + ul) {
-  display: none;
+.finding-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.finding-text {
+  flex: 1;
+}
+
+/* Finding type colors */
+.finding-critical .finding-text {
+  color: #fca5a5;
+}
+
+.finding-high .finding-text {
+  color: #fdba74;
+}
+
+.finding-moderate .finding-text {
+  color: #fde047;
+}
+
+.finding-info .finding-text {
+  color: #93c5fd;
+}
+
+.finding-positive .finding-text {
+  color: #86efac;
 }
 </style>

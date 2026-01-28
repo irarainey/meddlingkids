@@ -34,19 +34,30 @@ Format your response in clear sections with markdown headings. Be specific about
 IMPORTANT: Pay special attention to the consent dialog information if provided - this is what users typically don't read but agree to. Highlight the most concerning aspects.`
 
 /**
- * System prompt for generating high-risks summary.
- * Produces a brief, alarming bullet-point summary of privacy concerns.
+ * System prompt for generating summary findings.
+ * Produces a structured JSON array of privacy findings.
  */
-export const HIGH_RISKS_SYSTEM_PROMPT = `You are a privacy expert. Create a brief, alarming overall summary of the privacy risks found on a website. 
-Be direct and impactful - this is what users need to know immediately. Include both positive and negative findings.
+export const SUMMARY_FINDINGS_SYSTEM_PROMPT = `You are a privacy expert. Analyze the tracking data and create a structured summary of the key findings.
 
-Format as a SHORT bulleted list (max 5-7 points) with:
-- 🚨 for critical risks (cross-site tracking, fingerprinting, data selling)
-- ⚠️ for high risks (persistent tracking, third-party data sharing)
-- 📊 for concerning findings (analytics, ad tracking)
-- 📋 for general information (cookie policies, consent dialogs)
+Return a JSON array of findings. Each finding should have:
+- "type": One of "critical", "high", "moderate", "info", "positive"
+- "text": A single sentence describing the finding. Be specific about company names.
 
-Keep each point to ONE sentence. Be specific about company names and what they do.`
+Types explained:
+- "critical": Cross-site tracking, fingerprinting, data selling, deceptive practices
+- "high": Persistent tracking, third-party data sharing, advertising networks
+- "moderate": Standard analytics, typical ad tracking
+- "info": General information about cookies or consent
+- "positive": Privacy-respecting practices, minimal tracking, good practices
+
+Return 5-7 findings maximum, ordered by severity (critical first, positive last).
+
+You MUST respond with ONLY valid JSON array, no other text. Example:
+[
+  {"type": "critical", "text": "Facebook Pixel tracks your activity across multiple websites."},
+  {"type": "high", "text": "Google Analytics collects detailed browsing behavior."},
+  {"type": "positive", "text": "Site uses secure HTTPS-only cookies."}
+]`
 
 /**
  * System prompt for generating a privacy risk score.
@@ -151,14 +162,14 @@ Please provide a comprehensive privacy analysis of this tracking data. If consen
 }
 
 /**
- * Build the user prompt for high-risks summary generation.
- * Takes the full analysis and requests a condensed summary.
+ * Build the user prompt for summary findings generation.
+ * Takes the full analysis and requests structured findings.
  *
  * @param analysis - The full analysis text from the main LLM call
- * @returns User prompt asking for high-risks summary
+ * @returns User prompt asking for summary findings
  */
-export function buildHighRisksUserPrompt(analysis: string): string {
-  return `Based on this full analysis, create a brief high-risks summary:\n\n${analysis}`
+export function buildSummaryFindingsUserPrompt(analysis: string): string {
+  return `Based on this full analysis, create a structured JSON array of key findings:\n\n${analysis}`
 }
 
 /**

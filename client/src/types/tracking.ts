@@ -93,6 +93,23 @@ export interface ConsentDetails {
 }
 
 // ============================================================================
+// Summary Findings Types
+// ============================================================================
+
+/**
+ * Severity/type of a summary finding.
+ */
+export type SummaryFindingType = 'critical' | 'high' | 'moderate' | 'info' | 'positive'
+
+/**
+ * A structured finding from the privacy analysis summary.
+ */
+export interface SummaryFinding {
+  type: SummaryFindingType
+  text: string
+}
+
+// ============================================================================
 // Client-Only UI Types
 // ============================================================================
 

@@ -7,14 +7,14 @@
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import {
   TRACKING_ANALYSIS_SYSTEM_PROMPT,
-  HIGH_RISKS_SYSTEM_PROMPT,
+  SUMMARY_FINDINGS_SYSTEM_PROMPT,
   PRIVACY_SCORE_SYSTEM_PROMPT,
   buildTrackingAnalysisUserPrompt,
-  buildHighRisksUserPrompt,
+  buildSummaryFindingsUserPrompt,
   buildPrivacyScoreUserPrompt,
 } from '../prompts/index.js'
 import { getErrorMessage, buildTrackingSummary, createLogger } from '../utils/index.js'
-import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult } from '../types.js'
+import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult, SummaryFinding } from '../types.js'
 
 const log = createLogger('AI-Analysis')
 
@@ -84,16 +84,16 @@ export async function runTrackingAnalysis(
     log.startTimer('parallel-analysis')
     log.info('Running summary and score generation in parallel...')
     
-    const [highRisksResult, scoreResult] = await Promise.all([
-      // High risks summary
+    const [summaryResult, scoreResult] = await Promise.all([
+      // Summary findings
       (async () => {
         log.startTimer('summary-generation')
         try {
           const result = await client.chat.completions.create({
             model: deployment,
             messages: [
-              { role: 'system', content: HIGH_RISKS_SYSTEM_PROMPT },
-              { role: 'user', content: buildHighRisksUserPrompt(analysis) },
+              { role: 'system', content: SUMMARY_FINDINGS_SYSTEM_PROMPT },
+              { role: 'user', content: buildSummaryFindingsUserPrompt(analysis) },
             ],
             max_completion_tokens: 500,
           })
@@ -128,10 +128,24 @@ export async function runTrackingAnalysis(
     
     log.endTimer('parallel-analysis', 'Parallel analysis complete')
 
-    // Process summary content result
-    const summaryContent = highRisksResult?.choices[0]?.message?.content || ''
-    if (summaryContent) {
-      log.success('Summary content extracted', { length: summaryContent.length })
+    // Process summary findings result
+    let summaryFindings: SummaryFinding[] = []
+    if (summaryResult) {
+      const summaryContent = summaryResult.choices[0]?.message?.content || '[]'
+      log.debug('Summary findings response', { content: summaryContent })
+      try {
+        // Handle potential markdown code blocks
+        let jsonStr = summaryContent.trim()
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim()
+        }
+        summaryFindings = JSON.parse(jsonStr) as SummaryFinding[]
+        log.success('Summary findings parsed', { count: summaryFindings.length })
+      } catch (parseError) {
+        log.error('Failed to parse summary findings JSON', { error: getErrorMessage(parseError) })
+        // Fallback to empty array
+        summaryFindings = []
+      }
     }
 
     // Process privacy score result
@@ -168,12 +182,12 @@ export async function runTrackingAnalysis(
       }
     }
 
-    log.success('Analysis complete', { summaryLength: summaryContent.length, privacyScore })
+    log.success('Analysis complete', { findingsCount: summaryFindings.length, privacyScore })
 
     return {
       success: true,
       analysis,
-      summaryContent,
+      summaryFindings,
       privacyScore,
       privacySummary,
       summary: trackingSummary,
