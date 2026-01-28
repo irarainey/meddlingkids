@@ -115,10 +115,7 @@ function getFindingIcon(type: SummaryFindingType): string {
   border: 1px solid #ef4444;
 }
 
-.privacy-score-banner.score-critical .score-exclamation {
-  color: #ef4444;
-}
-
+.privacy-score-banner.score-critical .score-exclamation,
 .privacy-score-banner.score-critical .score-value,
 .privacy-score-banner.score-critical .score-label {
   color: #fca5a5;
@@ -129,10 +126,7 @@ function getFindingIcon(type: SummaryFindingType): string {
   border: 1px solid #f97316;
 }
 
-.privacy-score-banner.score-high .score-exclamation {
-  color: #f97316;
-}
-
+.privacy-score-banner.score-high .score-exclamation,
 .privacy-score-banner.score-high .score-value,
 .privacy-score-banner.score-high .score-label {
   color: #fdba74;
@@ -143,10 +137,7 @@ function getFindingIcon(type: SummaryFindingType): string {
   border: 1px solid #eab308;
 }
 
-.privacy-score-banner.score-moderate .score-exclamation {
-  color: #eab308;
-}
-
+.privacy-score-banner.score-moderate .score-exclamation,
 .privacy-score-banner.score-moderate .score-value,
 .privacy-score-banner.score-moderate .score-label {
   color: #fde047;
@@ -157,10 +148,7 @@ function getFindingIcon(type: SummaryFindingType): string {
   border: 1px solid #22c55e;
 }
 
-.privacy-score-banner.score-low .score-exclamation {
-  color: #22c55e;
-}
-
+.privacy-score-banner.score-low .score-exclamation,
 .privacy-score-banner.score-low .score-value,
 .privacy-score-banner.score-low .score-label {
   color: #86efac;
@@ -171,10 +159,7 @@ function getFindingIcon(type: SummaryFindingType): string {
   border: 1px solid #10b981;
 }
 
-.privacy-score-banner.score-safe .score-exclamation {
-  color: #10b981;
-}
-
+.privacy-score-banner.score-safe .score-exclamation,
 .privacy-score-banner.score-safe .score-value,
 .privacy-score-banner.score-safe .score-label {
   color: #6ee7b7;
@@ -209,26 +194,6 @@ function getFindingIcon(type: SummaryFindingType): string {
 
 .finding-text {
   flex: 1;
-}
-
-/* Finding type colors */
-.finding-critical .finding-text {
-  color: #fca5a5;
-}
-
-.finding-high .finding-text {
-  color: #fdba74;
-}
-
-.finding-moderate .finding-text {
-  color: #fde047;
-}
-
-.finding-info .finding-text {
-  color: #93c5fd;
-}
-
-.finding-positive .finding-text {
-  color: #86efac;
+  color: #9ca3af;
 }
 </style>
