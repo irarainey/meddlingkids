@@ -75,7 +75,7 @@ Analyzes tracking on the specified URL with real-time progress updates.
 | `consentDetails` | `{ categories, partners, purposes, hasManageOptions }` | Extracted consent dialog info |
 | `consent` | `{ detected, clicked, details }` | Consent handling result |
 | `pageError` | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or server error detected |
-| `complete` | `{ success, message, analysis, summaryContent, privacyScore, privacySummary, analysisSummary, analysisError?, consentDetails, scripts }` | Final analysis results with privacy score and analyzed scripts |
+| `complete` | `{ success, message, analysis, summaryFindings, privacyScore, privacySummary, analysisSummary, analysisError?, consentDetails, scripts }` | Final analysis results with privacy score and analyzed scripts |
 | `error` | `{ error }` | Error message if something fails |
 
 **Example:**
@@ -90,7 +90,7 @@ eventSource.addEventListener('progress', (event) => {
 })
 
 eventSource.addEventListener('complete', (event) => {
-  const { analysis, summaryContent } = JSON.parse(event.data)
+  const { analysis, summaryFindings } = JSON.parse(event.data)
   console.log('Analysis:', analysis)
   eventSource.close()
 })
@@ -231,16 +231,27 @@ interface ConsentPartner {
 }
 ```
 
+### Summary Finding
+
+```typescript
+type SummaryFindingType = 'critical' | 'high' | 'moderate' | 'info' | 'positive'
+
+interface SummaryFinding {
+  type: SummaryFindingType
+  text: string
+}
+```
+
 ### Analysis Result
 
 ```typescript
 interface AnalysisResult {
   success: boolean
-  analysis?: string        // Full markdown report
-  summaryContent?: string  // Brief summary for summary tab
-  privacyScore?: number    // Privacy score 0-100 (higher is worse)
-  privacySummary?: string  // One-sentence summary
-  siteName?: string        // Extracted site name
+  analysis?: string          // Full markdown report
+  summaryFindings?: SummaryFinding[]  // Structured findings for summary tab
+  privacyScore?: number      // Privacy score 0-100 (higher is worse)
+  privacySummary?: string    // One-sentence summary
+  siteName?: string          // Extracted site name
   summary?: TrackingSummary
   error?: string
 }

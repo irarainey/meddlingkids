@@ -179,7 +179,7 @@ All data captured
        ├── Main analysis prompt → Full markdown report
        │
        └── Parallel:
-           ├── High risks prompt → Bullet-point summary
+           ├── Summary findings prompt → Structured JSON findings
            └── Privacy score prompt → 0-100 score + summary
 ```
 
@@ -189,12 +189,12 @@ Analysis complete
    │
    └── sendEvent('complete', {
          success,
-         analysis,       // Full markdown report
-         summaryContent, // Bullet points summary
-         privacyScore,   // 0-100
-         privacySummary, // One sentence
-         consentDetails, // Consent dialog info
-         scripts         // Scripts with descriptions
+         analysis,        // Full markdown report
+         summaryFindings, // Structured findings array
+         privacyScore,    // 0-100
+         privacySummary,  // One sentence
+         consentDetails,  // Consent dialog info
+         scripts          // Scripts with descriptions
        })
    │
    └── session.close() → Cleanup Playwright (in finally block)
@@ -229,7 +229,7 @@ sessionStorage       // StorageItem[]
 
 // Analysis results
 analysisResult       // Full markdown report
-summaryContent       // Summary bullet points
+summaryFindings      // Structured findings array
 privacyScore         // 0-100
 privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
@@ -321,7 +321,7 @@ App.vue
 
 | Prompt | Purpose |
 |--------|---------|
-| `tracking-analysis.ts` | Main analysis, high risks, privacy score |
+| `tracking-analysis.ts` | Main analysis, summary findings, privacy score |
 | `consent-detection.ts` | AI vision for overlay detection |
 | `consent-extraction.ts` | Extract consent categories/partners |
 | `script-analysis.ts` | Describe unknown scripts |
@@ -438,7 +438,7 @@ interface ConsentDetails {
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `complete` | Server → Client | `{ success, analysis, summaryContent, privacyScore, privacySummary, scripts, consentDetails }` | Final analysis results |
+| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scripts, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---

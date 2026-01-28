@@ -134,7 +134,7 @@ const {
   activeTab,            // Currently selected tab
   analysisResult,       // Full AI analysis (markdown)
   analysisError,        // Analysis error if AI failed
-  summaryContent,       // Summary bullet points
+  summaryFindings,      // Structured findings array
   privacyScore,         // Privacy score (0-100)
   privacySummary,       // One-sentence summary
   showScoreDialog,      // Score dialog visibility
@@ -177,6 +177,8 @@ Located in `types/tracking.ts`:
 | `ConsentCategory` | Cookie category from consent dialog |
 | `ConsentPartner` | Third-party vendor from consent dialog |
 | `ConsentDetails` | Full consent dialog information |
+| `SummaryFindingType` | Finding severity: critical, high, moderate, info, positive |
+| `SummaryFinding` | Structured finding with type and text |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |
 | `PageError` | Access denied or server error information |
@@ -209,7 +211,7 @@ Located in `utils/formatters.ts`:
 
 | Tab | Content |
 |-----|---------|
-| **Risks** | High-priority privacy concerns (default when risks found) |
+| **Summary** | Privacy score and key findings (default when findings present) |
 | **Analysis** | Full AI-generated analysis with detailed findings |
 | **Consent** | Extracted consent dialog information |
 | **Cookies** | All cookies grouped by domain |
@@ -262,7 +264,7 @@ The environment is configured via:
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `complete` | `{ analysis, summaryContent, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
+| `complete` | `{ analysis, summaryFindings, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development

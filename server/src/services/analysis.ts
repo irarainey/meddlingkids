@@ -21,9 +21,9 @@ const log = createLogger('AI-Analysis')
 /**
  * Run comprehensive tracking analysis using Azure OpenAI.
  * Analyzes cookies, scripts, network requests, and storage to generate
- * a detailed privacy report and high-risks summary.
+ * a detailed privacy report and structured summary findings.
  * 
- * Optimized to run secondary analyses (high risks, score) in parallel.
+ * Optimized to run secondary analyses (summary findings, score) in parallel.
  *
  * @param cookies - Captured cookies from the browser
  * @param localStorage - localStorage items from the page
@@ -32,7 +32,7 @@ const log = createLogger('AI-Analysis')
  * @param scripts - Scripts loaded by the page
  * @param analyzedUrl - URL of the page that was analyzed
  * @param consentDetails - Optional consent dialog information for comparison
- * @returns Analysis result with full report and high-risks summary
+ * @returns Analysis result with full report and structured summary findings
  */
 export async function runTrackingAnalysis(
   cookies: TrackedCookie[],
@@ -80,7 +80,7 @@ export async function runTrackingAnalysis(
     log.endTimer('main-analysis', 'Main analysis complete')
     log.info('Analysis generated', { length: analysis.length })
 
-    // Step 2: Run high risks and privacy score in PARALLEL (both depend on main analysis)
+    // Step 2: Run summary findings and privacy score in PARALLEL (both depend on main analysis)
     log.startTimer('parallel-analysis')
     log.info('Running summary and score generation in parallel...')
     
