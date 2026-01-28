@@ -34,6 +34,10 @@ RUN npm ci
 # Copy source files needed for client build
 COPY tsconfig*.json vite.config.ts ./
 COPY client/ ./client/
+# Copy server tsconfig.json (needed by root tsconfig.json references for vue-tsc)
+# and create a placeholder file to satisfy TypeScript's include pattern
+COPY server/tsconfig.json ./server/
+RUN mkdir -p server/src && echo "export {};" > server/src/placeholder.ts
 
 # Build the Vue.js client (outputs to /app/dist)
 RUN npm run build
@@ -76,6 +80,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
+# Install tsx for running TypeScript directly
+RUN npm install tsx
+
 # Install Playwright browsers (Chromium only for smaller image)
 RUN npx playwright install chromium
 
@@ -101,5 +108,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://localhost:3001/').catch(() => process.exit(1))" || exit 1
 
-# Start the server with TypeScript support (Node 22+ feature)
-CMD ["node", "--experimental-strip-types", "--no-warnings", "server/src/app.ts"]
+# Start the server with tsx (handles TypeScript with .js imports)
+CMD ["node", "--import", "tsx", "server/src/app.ts"]

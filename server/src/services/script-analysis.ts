@@ -96,7 +96,6 @@ async function analyzeScriptWithLLM(scriptContent: string, url: string): Promise
         { role: 'user', content: buildScriptAnalysisUserPrompt(url, truncatedContent) },
       ],
       max_completion_tokens: 150,
-      temperature: 0.3, // Lower temperature for more consistent results
     })
 
     const description = response.choices[0]?.message?.content?.trim() || 'Purpose unclear'

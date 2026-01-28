@@ -36,13 +36,18 @@ app.get('/api/open-browser-stream', analyzeUrlStreamHandler)
 // Static File Serving (Production)
 // ============================================================================
 
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
+
 // In production, serve the built client files
 if (process.env.NODE_ENV === 'production') {
-  const distPath = path.resolve(__dirname, '../../dist')
+  // Use process.cwd() for reliable path resolution in container
+  const distPath = path.resolve(process.cwd(), 'dist')
+  console.log(`Serving static files from: ${distPath}`)
   app.use(express.static(distPath))
 
   // SPA fallback - serve index.html for all non-API routes
-  app.get('*', (_req, res) => {
+  // Express 5 requires named wildcard parameters
+  app.get('/{*splat}', (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'))
   })
 }
@@ -53,4 +58,5 @@ if (process.env.NODE_ENV === 'production') {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Open your browser to http://localhost:${PORT}`)
 })
