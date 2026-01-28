@@ -85,12 +85,16 @@ RUN npm ci --omit=dev
 # Install tsx for running TypeScript directly
 RUN npm install tsx
 
-# Install Playwright browsers (Chromium only for smaller image)
-RUN npx playwright install chromium
-
 # Create non-root user for security
 RUN groupadd --gid 1001 appgroup && \
     useradd --uid 1001 --gid 1001 --shell /bin/bash --create-home appuser
+
+# Set Playwright browsers path to a shared location
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+
+# Install Playwright browsers (Chromium only for smaller image)
+RUN npx playwright install chromium && \
+    chmod -R 755 /opt/playwright-browsers
 
 # Copy built client from builder stage
 COPY --from=builder /app/dist ./dist
