@@ -163,7 +163,7 @@ docker build -t meddlingkids .
 ### Run with Environment File
 
 ```bash
-docker run -it -p 3001:3001 --env-file .env meddlingkids
+docker run -p 3001:3001 --env-file .env meddlingkids
 ```
 
 Then open a browser to http://localhost:3001.
