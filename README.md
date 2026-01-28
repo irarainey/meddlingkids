@@ -152,23 +152,11 @@ This starts both:
 
 ## Docker Deployment
 
-Build and run the entire stack in a container:
+The application is available as a pre-built Docker image from GitHub Container Registry.
 
-### Build
+### Quick Start (Recommended)
 
-```bash
-docker build -t meddlingkids .
-```
-
-### Run with Environment File
-
-```bash
-docker run -p 3001:3001 --env-file .env meddlingkids
-```
-
-Then open a browser to http://localhost:3001.
-
-### Run with Environment Variables
+Pull and run the latest image:
 
 **Azure OpenAI:**
 ```bash
@@ -176,7 +164,7 @@ docker run -p 3001:3001 \
   -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
   -e AZURE_OPENAI_API_KEY=your-api-key \
   -e AZURE_OPENAI_DEPLOYMENT=gpt-4o \
-  meddlingkids
+  ghcr.io/irarainey/meddlingkids:latest
 ```
 
 **Standard OpenAI:**
@@ -184,10 +172,27 @@ docker run -p 3001:3001 \
 docker run -p 3001:3001 \
   -e OPENAI_API_KEY=your-api-key \
   -e OPENAI_MODEL=gpt-4o \
-  meddlingkids
+  ghcr.io/irarainey/meddlingkids:latest
 ```
 
 Then open http://localhost:3001 to access the app.
+
+### Using an Environment File
+
+Create a `.env` file with your credentials and run:
+
+```bash
+docker run -p 3001:3001 --env-file .env ghcr.io/irarainey/meddlingkids:latest
+```
+
+### Build Locally (Optional)
+
+If you prefer to build the image yourself:
+
+```bash
+docker build -t meddlingkids .
+docker run -p 3001:3001 --env-file .env meddlingkids
+```
 
 ## Available Scripts
 
