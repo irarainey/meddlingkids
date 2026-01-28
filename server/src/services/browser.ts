@@ -163,11 +163,11 @@ const DEVICE_CONFIGS: Record<DeviceType, {
 /**
  * Launch a new headless Chromium browser instance.
  * Creates a completely fresh browser instance with no stored state.
+ * Always runs in headless mode for Docker compatibility.
  *
- * @param headless - Whether to run in headless mode (default: true)
  * @param deviceType - The device/browser to emulate (default: 'ipad')
  */
-export async function launchBrowser(headless: boolean = true, deviceType: DeviceType = 'ipad'): Promise<void> {
+export async function launchBrowser(deviceType: DeviceType = 'ipad'): Promise<void> {
   const deviceConfig = DEVICE_CONFIGS[deviceType]
   
   // Close existing context and browser completely to ensure clean state
@@ -183,9 +183,9 @@ export async function launchBrowser(headless: boolean = true, deviceType: Device
     page = null
   }
 
-  // Launch fresh browser with minimal args
+  // Launch fresh browser with minimal args (always headless for Docker)
   browser = await chromium.launch({ 
-    headless,
+    headless: true,
     args: [
       '--no-first-run',
       '--no-default-browser-check',

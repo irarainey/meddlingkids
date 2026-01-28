@@ -99,7 +99,7 @@ eventSource.addEventListener('complete', (event) => {
 
 Manages headless Chromium browser via Playwright:
 
-- **`launchBrowser(headless, deviceType)`** - Launch browser instance with device emulation
+- **`launchBrowser(deviceType)`** - Launch headless browser with device emulation
 - **`closeBrowser()`** - Close browser and clean up all resources
 - **`navigateTo(url, waitUntil)`** - Navigate to URL with timeout
 - **`waitForNetworkIdle(timeout)`** - Wait for network activity to settle

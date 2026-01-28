@@ -117,6 +117,21 @@ export async function runTrackingAnalysis(
         const scoreData = JSON.parse(scoreContent)
         privacyScore = Math.min(100, Math.max(0, Number(scoreData.score) || 50))
         privacySummary = scoreData.summary || ''
+        
+        // Ensure the domain at the start of the summary is lowercase
+        // LLM sometimes capitalizes it despite instructions
+        if (privacySummary) {
+          let siteName: string
+          try {
+            siteName = new URL(analyzedUrl).hostname.replace(/^www\./, '').toLowerCase()
+          } catch {
+            siteName = analyzedUrl.toLowerCase()
+          }
+          if (privacySummary.toLowerCase().startsWith(siteName)) {
+            privacySummary = siteName + privacySummary.slice(siteName.length)
+          }
+        }
+        
         console.log('Privacy score generated:', privacyScore)
       } catch (parseError) {
         console.error('Failed to parse privacy score JSON:', parseError)
