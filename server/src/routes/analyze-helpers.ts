@@ -10,7 +10,10 @@ import type { BrowserSession } from '../services/browser-session.js'
 import { detectCookieConsent } from '../services/consent-detection.js'
 import { extractConsentDetails } from '../services/consent-extraction.js'
 import { tryClickConsentButton } from '../services/consent-click.js'
+import { createLogger } from '../utils/index.js'
 import type { ConsentDetails, CookieConsentDetection, StorageItem } from '../types.js'
+
+const log = createLogger('Overlays')
 
 // ============================================================================
 // SSE Helper Functions
@@ -92,13 +95,18 @@ export async function handleOverlays(
   let screenshot = initialScreenshot
   let storage = await session.captureStorage()
 
+  log.info('Starting overlay detection loop', { maxOverlays: MAX_OVERLAYS })
+
   while (overlayCount < MAX_OVERLAYS) {
     // Get fresh HTML for detection
+    log.startTimer(`overlay-detect-${overlayCount + 1}`)
     const html = await session.getPageContent()
     const consentDetection = await detectCookieConsent(screenshot, html)
+    log.endTimer(`overlay-detect-${overlayCount + 1}`, 'Overlay detection complete')
 
     if (!consentDetection.found || !consentDetection.selector) {
       if (overlayCount === 0) {
+        log.info('No overlay detected')
         sendProgress(res, 'consent-none', 'No overlay detected', 70)
         sendEvent(res, 'consent', {
           detected: false,
@@ -107,6 +115,7 @@ export async function handleOverlays(
           reason: consentDetection.reason,
         })
       } else {
+        log.success(`Dismissed ${overlayCount} overlay(s), no more found`)
         sendProgress(res, 'overlays-done', `Dismissed ${overlayCount} overlay(s)`, 70)
       }
       break
@@ -115,13 +124,17 @@ export async function handleOverlays(
     overlayCount++
     const progressBase = 45 + (overlayCount * 5)
     
+    log.info(`Overlay ${overlayCount} found`, { type: consentDetection.overlayType, selector: consentDetection.selector, buttonText: consentDetection.buttonText, confidence: consentDetection.confidence })
     sendProgress(res, `overlay-${overlayCount}-found`, getOverlayMessage(consentDetection.overlayType), progressBase)
     dismissedOverlays.push(consentDetection)
 
     // Extract detailed consent information BEFORE accepting (only for first cookie consent)
     if (consentDetection.overlayType === 'cookie-consent' && !consentDetails) {
+      log.startTimer('consent-extraction')
       sendProgress(res, 'consent-extract', 'Extracting consent details...', progressBase + 1)
       consentDetails = await extractConsentDetails(page, screenshot)
+      log.endTimer('consent-extraction', 'Consent details extracted')
+      log.info('Consent details', { categories: consentDetails.categories.length, partners: consentDetails.partners.length, purposes: consentDetails.purposes.length })
 
       sendEvent(res, 'consentDetails', {
         categories: consentDetails.categories,
@@ -133,9 +146,11 @@ export async function handleOverlays(
 
     // Try to click the dismiss/accept button
     try {
+      log.startTimer(`overlay-click-${overlayCount}`)
       sendProgress(res, `overlay-${overlayCount}-click`, 'Dismissing overlay...', progressBase + 3)
 
       const clicked = await tryClickConsentButton(page, consentDetection.selector, consentDetection.buttonText)
+      log.endTimer(`overlay-click-${overlayCount}`, clicked ? 'Click succeeded' : 'Click failed')
 
       if (clicked) {
         sendProgress(res, `overlay-${overlayCount}-wait`, 'Waiting for page to update...', progressBase + 4)
@@ -152,6 +167,8 @@ export async function handleOverlays(
         storage = await session.captureStorage()
         screenshot = await session.takeScreenshot(false)
         const base64Screenshot = screenshot.toString('base64')
+
+        log.success(`Overlay ${overlayCount} (${consentDetection.overlayType}) dismissed successfully`)
 
         // Send screenshot after this overlay
         sendEvent(res, 'screenshot', {
@@ -170,10 +187,8 @@ export async function handleOverlays(
           details: consentDetection,
           overlayNumber: overlayCount,
         })
-        
-        console.log(`Overlay ${overlayCount} (${consentDetection.overlayType}) dismissed successfully`)
       } else {
-        console.log(`Failed to click overlay ${overlayCount}, stopping overlay detection`)
+        log.warn(`Failed to click overlay ${overlayCount}, stopping overlay detection`)
         sendEvent(res, 'consent', {
           detected: true,
           clicked: false,
@@ -184,7 +199,7 @@ export async function handleOverlays(
         break
       }
     } catch (clickError) {
-      console.error(`Failed to click overlay ${overlayCount}:`, clickError)
+      log.error(`Failed to click overlay ${overlayCount}`, { error: clickError instanceof Error ? clickError.message : String(clickError) })
       sendEvent(res, 'consent', {
         detected: true,
         clicked: false,
@@ -197,7 +212,7 @@ export async function handleOverlays(
   }
 
   if (overlayCount >= MAX_OVERLAYS) {
-    console.log('Reached maximum overlay limit, stopping detection')
+    log.warn('Reached maximum overlay limit, stopping detection')
     sendProgress(res, 'overlays-limit', 'Maximum overlay limit reached', 70)
   }
 

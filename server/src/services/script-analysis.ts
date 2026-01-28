@@ -6,7 +6,10 @@
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { SCRIPT_ANALYSIS_SYSTEM_PROMPT, buildScriptAnalysisUserPrompt } from '../prompts/index.js'
 import { TRACKING_SCRIPTS, BENIGN_SCRIPTS } from '../data/index.js'
+import { createLogger, getErrorMessage } from '../utils/index.js'
 import type { TrackedScript } from '../types.js'
+
+const log = createLogger('Script-Analysis')
 
 /** Maximum script content length to send to LLM (in characters) */
 const MAX_SCRIPT_LENGTH = 30000
@@ -101,7 +104,7 @@ async function analyzeScriptWithLLM(scriptContent: string, url: string): Promise
     const description = response.choices[0]?.message?.content?.trim() || 'Purpose unclear'
     return description
   } catch (error) {
-    console.error('Script analysis error:', error)
+    log.error('Script analysis failed', { error: getErrorMessage(error) })
     return 'Analysis failed'
   }
 }
@@ -183,7 +186,7 @@ export async function analyzeScripts(
   let analyzedCount = 0
   
   if (scriptsToAnalyze.length > 0) {
-    console.log(`Analyzing ${scriptsToAnalyze.length} unknown scripts with LLM in parallel (skipped ${scripts.length - unknownScripts.length} known scripts)...`)
+    log.info('Starting LLM analysis of unknown scripts', { toAnalyze: scriptsToAnalyze.length, skipped: scripts.length - unknownScripts.length, total: scripts.length })
     
     // Process all scripts in parallel - OpenAI handles rate limiting internally
     const analysisPromises = scriptsToAnalyze.map(async ({ script, index }) => {
@@ -199,7 +202,7 @@ export async function analyzeScripts(
           results[index] = { ...results[index], description: inferFromUrl(script.url) }
         }
       } catch (error) {
-        console.error(`Error analyzing script ${script.url}:`, error)
+        log.error('Error analyzing script', { url: script.url, error: getErrorMessage(error) })
         results[index] = { ...results[index], description: inferFromUrl(script.url) }
       }
       
@@ -211,8 +214,9 @@ export async function analyzeScripts(
     })
     
     await Promise.all(analysisPromises)
+    log.success('Script analysis complete', { analyzed: analyzedCount })
   } else {
-    console.log('All scripts identified from known patterns, no LLM analysis needed')
+    log.info('All scripts identified from known patterns, no LLM analysis needed')
   }
 
   // Mark remaining unknown scripts (beyond maxLLMAnalyses)

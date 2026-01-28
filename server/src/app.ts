@@ -9,7 +9,9 @@ import path from 'path'
 import 'dotenv/config'
 
 import { analyzeUrlStreamHandler } from './routes/index.js'
+import { createLogger } from './utils/index.js'
 
+const log = createLogger('Server')
 const app = express()
 const PORT = process.env.PORT || 3001
 
@@ -35,7 +37,7 @@ app.get('/api/open-browser-stream', analyzeUrlStreamHandler)
 if (process.env.NODE_ENV === 'production') {
   // Use process.cwd() for reliable path resolution in container
   const distPath = path.resolve(process.cwd(), 'dist')
-  console.log(`Serving static files from: ${distPath}`)
+  log.info('Serving static files', { path: distPath })
   app.use(express.static(distPath))
 
   // SPA fallback - serve index.html for all non-API routes
@@ -50,6 +52,8 @@ if (process.env.NODE_ENV === 'production') {
 // ============================================================================
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`)
-  console.log(`Open your browser to http://localhost:${PORT}`)
+  log.section('Meddling Kids Server Started')
+  log.success(`Server listening on port ${PORT}`)
+  log.info('Environment', { nodeEnv: process.env.NODE_ENV || 'development' })
+  log.info('Open your browser', { url: `http://localhost:${PORT}` })
 })

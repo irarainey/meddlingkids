@@ -11,8 +11,10 @@ import { BrowserSession, type DeviceType } from '../services/browser-session.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
 import { analyzeScripts } from '../services/script-analysis.js'
 import { validateOpenAIConfig } from '../services/openai.js'
-import { getErrorMessage } from '../utils/index.js'
+import { getErrorMessage, createLogger } from '../utils/index.js'
 import { sendEvent, sendProgress, handleOverlays } from './analyze-helpers.js'
+
+const log = createLogger('Analyze')
 
 // ============================================================================
 // Main Streaming Handler
@@ -71,28 +73,41 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
   // Create isolated browser session for this request
   const session = new BrowserSession()
 
+  // Start overall timer
+  log.section(`Analyzing: ${url}`)
+  log.info('Request received', { url, device: deviceType })
+  log.startTimer('total-analysis')
+
   try {
     // ========================================================================
     // Phase 1: Browser Setup and Navigation
     // ========================================================================
     
+    log.subsection('Phase 1: Browser Setup')
     sendProgress(res, 'init', 'Warming up...', 5)
 
     session.clearTrackingData()
     session.setCurrentPageUrl(url)
 
+    log.startTimer('browser-launch')
     sendProgress(res, 'browser', 'Launching headless browser...', 8)
     await session.launchBrowser(deviceType)
+    log.endTimer('browser-launch', 'Browser launched')
 
     const hostname = new URL(url).hostname
+    log.startTimer('navigation')
+    log.info('Navigating to page', { hostname })
     sendProgress(res, 'navigate', `Connecting to ${hostname}...`, 12)
 
     // Navigate and wait for DOM to be ready
     const navResult = await session.navigateTo(url, 'domcontentloaded', 30000)
+    log.endTimer('navigation', 'Initial navigation complete')
+    log.info('Navigation result', { success: navResult.success, statusCode: navResult.statusCode })
     
     // Check for HTTP-level errors
     if (!navResult.success) {
       const errorType = navResult.isAccessDenied ? 'access-denied' : 'server-error'
+      log.error('Navigation failed', { errorType, statusCode: navResult.statusCode, message: navResult.errorMessage })
       sendEvent(res, 'pageError', {
         type: errorType,
         statusCode: navResult.statusCode,
@@ -108,24 +123,31 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     // Phase 2: Wait for Page Load and Check Access
     // ========================================================================
     
+    log.subsection('Phase 2: Page Load & Access Check')
+    log.startTimer('network-idle')
     sendProgress(res, 'wait-network', `Loading ${hostname}...`, 18)
     
     // Wait for network to settle (shorter timeout for ad-heavy sites)
     const networkIdleResult = await session.waitForNetworkIdle(15000)
+    log.endTimer('network-idle', 'Network idle wait complete')
     
     if (!networkIdleResult) {
-      console.log('Network still active (normal for ad-heavy sites), continuing...')
+      log.warn('Network still active (normal for ad-heavy sites), continuing...')
       sendProgress(res, 'wait-continue', 'Page loaded, capturing trackers...', 28)
     } else {
+      log.success('Network became idle')
       sendProgress(res, 'wait-done', 'Page fully loaded', 28)
     }
 
     await session.waitForTimeout(1000)
     
     // Check for access denied in page content (bot detection, Cloudflare, etc.)
+    log.startTimer('access-check')
     const accessCheck = await session.checkForAccessDenied()
+    log.endTimer('access-check', 'Access check complete')
+    
     if (accessCheck.denied) {
-      console.log('Access denied detected:', accessCheck.reason)
+      log.error('Access denied detected', { reason: accessCheck.reason })
       
       const screenshot = await session.takeScreenshot(false)
       const base64Screenshot = screenshot.toString('base64')
@@ -155,6 +177,9 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     // Phase 3: Initial Data Capture
     // ========================================================================
     
+    log.subsection('Phase 3: Initial Data Capture')
+    log.startTimer('initial-capture')
+    
     sendProgress(res, 'cookies', 'Capturing cookies...', 32)
     await session.captureCurrentCookies()
     
@@ -173,6 +198,9 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     const scriptCount = session.getTrackedScripts().length
     const requestCount = session.getTrackedNetworkRequests().length
     
+    log.endTimer('initial-capture', 'Initial data captured')
+    log.info('Initial capture stats', { cookies: cookieCount, scripts: scriptCount, requests: requestCount, localStorage: storage.localStorage.length, sessionStorage: storage.sessionStorage.length })
+    
     sendProgress(res, 'captured', `Found ${cookieCount} cookies, ${scriptCount} scripts, ${requestCount} requests`, 42)
 
     // Send initial screenshot
@@ -189,6 +217,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     // Phase 4: Overlay Detection and Handling
     // ========================================================================
     
+    log.subsection('Phase 4: Overlay Detection & Handling')
+    log.startTimer('overlay-handling')
     sendProgress(res, 'consent-detect', 'Checking for consent dialogs...', 45)
 
     const page = session.getPage()
@@ -201,23 +231,31 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       overlayCount = overlayResult.overlayCount
       storage = overlayResult.finalStorage
     }
+    
+    log.endTimer('overlay-handling', 'Overlay handling complete')
+    log.info('Overlay handling result', { overlaysFound: overlayCount, hasConsentDetails: !!consentDetails })
 
     // ========================================================================
     // Phase 5: AI Analysis
     // ========================================================================
     
+    log.subsection('Phase 5: AI Analysis')
     sendProgress(res, 'analysis-prep', 'Preparing tracking data for analysis...', 75)
-    console.log('Starting tracking analysis...')
 
     const finalCookieCount = session.getTrackedCookies().length
     const finalScriptCount = session.getTrackedScripts().length
+    const finalRequestCount = session.getTrackedNetworkRequests().length
     
+    log.info('Final data stats', { cookies: finalCookieCount, scripts: finalScriptCount, requests: finalRequestCount })
     sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalScriptCount} scripts...`, 78)
 
+    log.startTimer('ai-analysis')
+    
     // Run script analysis and main analysis in parallel
     const [analyzedScripts, analysisResult] = await Promise.all([
       // Script analysis
       (async () => {
+        log.startTimer('script-analysis')
         const scripts = await analyzeScripts(
           session.getTrackedScripts(), 
           20,
@@ -225,32 +263,44 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
             sendProgress(res, 'script-analysis', `Analyzing script ${current} of ${total}...`, 80 + Math.floor((current / total) * 10))
           }
         )
-        console.log(`Script analysis complete: ${scripts.length} scripts analyzed`)
+        log.endTimer('script-analysis', `Script analysis complete (${scripts.length} scripts)`)
         sendProgress(res, 'script-analysis-complete', 'Analyzing tracking data...', 90)
         return scripts
       })(),
       
       // Main tracking analysis
-      runTrackingAnalysis(
-        session.getTrackedCookies(),
-        storage.localStorage,
-        storage.sessionStorage,
-        session.getTrackedNetworkRequests(),
-        session.getTrackedScripts(),
-        url,
-        consentDetails
-      )
+      (async () => {
+        log.startTimer('tracking-analysis')
+        const result = await runTrackingAnalysis(
+          session.getTrackedCookies(),
+          storage.localStorage,
+          storage.sessionStorage,
+          session.getTrackedNetworkRequests(),
+          session.getTrackedScripts(),
+          url,
+          consentDetails
+        )
+        log.endTimer('tracking-analysis', 'Tracking analysis complete')
+        return result
+      })()
     ])
+    
+    log.endTimer('ai-analysis', 'All AI analysis complete')
 
     if (analysisResult.success) {
+      log.success('Analysis succeeded', { privacyScore: analysisResult.privacyScore, analysisLength: analysisResult.analysis?.length })
       sendProgress(res, 'analysis-score', 'Calculating privacy score...', 95)
+    } else {
+      log.error('Analysis failed', { error: analysisResult.error })
     }
 
     // ========================================================================
     // Phase 6: Complete
     // ========================================================================
     
-    console.log('Analysis result:', analysisResult.success ? 'Success' : analysisResult.error)
+    const totalTime = log.endTimer('total-analysis', 'Analysis complete')
+    log.success('Investigation complete!', { totalTime: `${(totalTime / 1000).toFixed(2)}s`, overlaysDismissed: overlayCount, privacyScore: analysisResult.privacyScore })
+    
     sendProgress(res, 'complete', 'Investigation complete!', 100)
 
     sendEvent(res, 'complete', {
@@ -270,12 +320,15 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
     res.end()
   } catch (error) {
+    log.error('Analysis failed with exception', { error: getErrorMessage(error) })
     sendEvent(res, 'error', { error: getErrorMessage(error) })
     res.end()
   } finally {
     // Always clean up browser resources to prevent memory leaks
+    log.debug('Cleaning up browser resources...')
     await session.close().catch((err) => {
-      console.warn('Error during browser cleanup:', err)
+      log.warn('Error during browser cleanup', { error: getErrorMessage(err) })
     })
+    log.debug('Browser cleanup complete')
   }
 }

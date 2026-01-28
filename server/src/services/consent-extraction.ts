@@ -7,7 +7,10 @@
 import type { Page } from 'playwright'
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_EXTRACTION_SYSTEM_PROMPT, buildConsentExtractionUserPrompt } from '../prompts/index.js'
+import { createLogger, getErrorMessage } from '../utils/index.js'
 import type { ConsentDetails } from '../types.js'
+
+const log = createLogger('Consent-Extract')
 
 /**
  * Extract detailed consent information from a cookie preferences panel.
@@ -21,6 +24,7 @@ import type { ConsentDetails } from '../types.js'
 export async function extractConsentDetails(page: Page, screenshot: Buffer): Promise<ConsentDetails> {
   const client = getOpenAIClient()
   if (!client) {
+    log.warn('OpenAI not configured, skipping consent extraction')
     return {
       hasManageOptions: false,
       manageOptionsSelector: null,
@@ -32,8 +36,10 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
   }
 
   const deployment = getDeploymentName()
+  log.info('Extracting consent details from page...')
 
   // Get all visible text from the page related to cookies/consent
+  log.startTimer('text-extraction')
   const consentText = await page.evaluate(() => {
     const selectors = [
       '[class*="cookie"]',
@@ -74,7 +80,13 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
 
     return [...new Set(elements)].join('\n\n---\n\n').substring(0, 30000)
   })
+  
+  log.endTimer('text-extraction', 'Text extraction complete')
+  log.debug('Extracted consent text', { length: consentText.length })
 
+  log.startTimer('vision-extraction')
+  log.info('Analyzing consent dialog with vision...')
+  
   try {
     const response = await client.chat.completions.create({
       model: deployment,
@@ -102,6 +114,8 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
       max_completion_tokens: 2000,
     })
 
+    log.endTimer('vision-extraction', 'Vision extraction complete')
+
     const content = response.choices[0]?.message?.content || '{}'
 
     let jsonStr = content.trim()
@@ -111,14 +125,12 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
 
     const result = JSON.parse(jsonStr) as ConsentDetails
     result.rawText = consentText.substring(0, 5000) // Keep raw text for analysis
-    console.log('Extracted consent details:', {
-      categories: result.categories.length,
-      partners: result.partners.length,
-      purposes: result.purposes.length,
-    })
+    
+    log.success('Consent details extracted', { categories: result.categories.length, partners: result.partners.length, purposes: result.purposes.length })
+    
     return result
   } catch (error) {
-    console.error('Consent details extraction error:', error)
+    log.error('Consent extraction failed', { error: getErrorMessage(error) })
     return {
       hasManageOptions: false,
       manageOptionsSelector: null,

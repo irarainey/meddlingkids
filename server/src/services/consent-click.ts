@@ -4,6 +4,9 @@
  */
 
 import type { Page, Frame } from 'playwright'
+import { createLogger } from '../utils/index.js'
+
+const log = createLogger('Consent-Click')
 
 /**
  * Click a consent/dismiss button using LLM-provided selector and text.
@@ -20,34 +23,37 @@ export async function tryClickConsentButton(
   buttonText: string | null
 ): Promise<boolean> {
   // Phase 1: Try LLM suggestions on main page (quick - 1.5s timeout)
-  console.log(`Attempting to click: selector="${selector}", buttonText="${buttonText}"`)
+  log.info('Attempting click', { selector, buttonText })
   
   const mainResult = await tryClickInFrame(page.mainFrame(), selector, buttonText, 1500)
   if (mainResult) {
-    console.log('Success on main page')
+    log.success('Click succeeded on main page')
     return true
   }
 
   // Phase 2: Try LLM suggestions in ALL iframes (consent managers often use iframes)
   const frames = page.frames()
+  log.debug('Checking iframes', { count: frames.length - 1 })
+  
   for (const frame of frames) {
     if (frame === page.mainFrame()) continue
     
     const frameUrl = frame.url()
-    console.log(`Checking iframe: ${frameUrl.substring(0, 80)}...`)
+    log.debug('Checking iframe', { url: frameUrl.substring(0, 80) })
     
     const iframeResult = await tryClickInFrame(frame, selector, buttonText, 1500)
     if (iframeResult) {
-      console.log(`Success in iframe: ${frameUrl.substring(0, 50)}`)
+      log.success('Click succeeded in iframe', { url: frameUrl.substring(0, 50) })
       return true
     }
   }
 
   // Phase 3: Last resort - try generic close buttons on main page
+  log.debug('Trying generic close buttons...')
   const closeResult = await tryCloseButtons(page)
   if (closeResult) return true
 
-  console.log('All click strategies failed')
+  log.warn('All click strategies failed')
   return false
 }
 
@@ -138,9 +144,9 @@ async function tryCloseButtons(page: Page): Promise<boolean> {
 
   for (const sel of closeSelectors) {
     try {
-      console.log(`Trying close button: "${sel}"`)
+      log.debug('Trying close button', { selector: sel })
       await page.locator(sel).first().click({ timeout: 1000 })
-      console.log(`Success with close button`)
+      log.success('Close button clicked', { selector: sel })
       return true
     } catch {
       // Try next

@@ -5,8 +5,10 @@
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { CONSENT_DETECTION_SYSTEM_PROMPT, buildConsentDetectionUserPrompt } from '../prompts/index.js'
-import { getErrorMessage } from '../utils/index.js'
+import { getErrorMessage, createLogger } from '../utils/index.js'
 import type { CookieConsentDetection } from '../types.js'
+
+const log = createLogger('Consent-Detect')
 
 /**
  * Detect blocking overlays (cookie consent, sign-in walls, etc.) using LLM vision analysis.
@@ -19,6 +21,7 @@ import type { CookieConsentDetection } from '../types.js'
 export async function detectCookieConsent(screenshot: Buffer, html: string): Promise<CookieConsentDetection> {
   const client = getOpenAIClient()
   if (!client) {
+    log.warn('OpenAI not configured, skipping consent detection')
     return {
       found: false,
       overlayType: null,
@@ -33,7 +36,11 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
 
   // Extract only relevant HTML for overlay detection (much smaller payload)
   const relevantHtml = extractRelevantHtml(html)
+  log.debug('Extracted relevant HTML', { originalLength: html.length, extractedLength: relevantHtml.length })
 
+  log.startTimer('vision-detection')
+  log.info('Analyzing screenshot for overlays...')
+  
   try {
     const response = await client.chat.completions.create({
       model: deployment,
@@ -61,6 +68,8 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
       max_completion_tokens: 500,
     })
 
+    log.endTimer('vision-detection', 'Vision analysis complete')
+
     const content = response.choices[0]?.message?.content || '{}'
 
     // Parse JSON from response, handling potential markdown code blocks
@@ -70,10 +79,16 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
     }
 
     const result = JSON.parse(jsonStr) as CookieConsentDetection
-    console.log('Overlay detection result:', result)
+    
+    if (result.found) {
+      log.success('Overlay detected', { type: result.overlayType, selector: result.selector, confidence: result.confidence })
+    } else {
+      log.info('No overlay detected', { reason: result.reason })
+    }
+    
     return result
   } catch (error) {
-    console.error('Overlay detection error:', error)
+    log.error('Overlay detection failed', { error: getErrorMessage(error) })
     return {
       found: false,
       overlayType: null,
