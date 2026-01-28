@@ -49,6 +49,8 @@ FROM node:22-slim AS production
 
 # Install dependencies required by Playwright browsers
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Init process for proper signal handling
+    tini \
     # Playwright dependencies
     libnss3 \
     libnspr4 \
@@ -107,6 +109,9 @@ EXPOSE 3001
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://localhost:3001/').catch(() => process.exit(1))" || exit 1
+
+# Use tini as init process for proper signal handling (CTRL+C)
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Start the server with tsx (handles TypeScript with .js imports)
 CMD ["node", "--import", "tsx", "server/src/app.ts"]
