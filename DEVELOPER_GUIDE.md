@@ -22,8 +22,11 @@ Meddling Kids is a full-stack application that analyzes website tracking behavio
 
 - **Client**: Vue 3 SPA that initiates analysis and displays results
 - **Server**: Express.js API that orchestrates browser automation and AI analysis
-- **Playwright**: Headless browser for page loading and data capture
+- **Playwright**: Browser automation for page loading and data capture
+- **Xvfb**: Virtual display that allows headed browser mode without a visible window
 - **OpenAI**: AI models for consent detection and privacy analysis
+
+> **Why Headed Mode?** Ad networks often detect and block headless browsers, refusing to serve ads. By running in headed mode on a virtual display (Xvfb), the browser appears identical to a real user's browser, allowing ads to load correctly while remaining invisible.
 
 Communication happens via **Server-Sent Events (SSE)**, allowing real-time progress updates during the multi-step analysis process.
 
@@ -103,7 +106,7 @@ analyzeUrlStreamHandler() in analyze-stream.ts
    ├── validateOpenAIConfig() → Check env vars
    ├── new BrowserSession() → Create isolated session
    ├── session.clearTrackingData() → Reset tracking arrays
-   ├── session.launchBrowser(deviceType) → Start Playwright headless
+   ├── session.launchBrowser(deviceType) → Start Playwright browser
    └── session.navigateTo(url) → Load target page
 ```
 
@@ -114,8 +117,12 @@ navigateTo() returns
    ├── Check HTTP status code
    │   └── If error → sendEvent('pageError', {...})
    │
-   ├── waitForNetworkIdle(15000)
+   ├── waitForNetworkIdle(20000)
    │   └── Wait for ad/tracking scripts to load
+   │   └── Extra 3s wait if network still active (for ad auctions)
+   │
+   ├── waitForTimeout(2000)
+   │   └── Additional wait for lazy-loaded ads and deferred scripts
    │
    └── checkForAccessDenied()
        └── If blocked → sendEvent('pageError', {...}) + screenshot
@@ -481,6 +488,32 @@ interface ConsentDetails {
 ---
 
 ## Development Tips
+
+### Virtual Display Setup
+
+The browser runs in headed mode on a virtual display (Xvfb) to avoid bot detection by ad networks. This is automatically configured in:
+
+**VS Code Devcontainer:**
+- `postCreateCommand` installs Xvfb
+- `postStartCommand` starts Xvfb on display `:99`
+- `.vscode/launch.json` sets `DISPLAY=:99` for the debug server
+
+**Docker:**
+- `docker-entrypoint.sh` starts Xvfb before the server
+- `Dockerfile` installs Xvfb and sets `ENV DISPLAY=:99`
+
+**Manual Setup (if not using devcontainer):**
+```bash
+# Install Xvfb
+sudo apt-get install -y xvfb
+
+# Start Xvfb on display :99
+Xvfb :99 -screen 0 1920x1080x24 -ac &
+
+# Set DISPLAY before running the server
+export DISPLAY=:99
+npm run dev:server
+```
 
 ### Debugging SSE
 

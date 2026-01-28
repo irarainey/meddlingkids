@@ -1,12 +1,12 @@
 # Tracking Analysis Server
 
-A Node.js server that analyzes website tracking and privacy practices using headless browser automation and AI-powered analysis.
+A Node.js server that analyzes website tracking and privacy practices using browser automation and AI-powered analysis.
 
 ## Overview
 
 This server provides a streaming API endpoint that:
 
-1. **Launches a headless browser** using Playwright
+1. **Launches a browser** using Playwright (headed mode on virtual display)
 2. **Navigates to a URL** and waits for content to load
 3. **Detects cookie consent banners** using AI vision analysis
 4. **Extracts consent details** (partners, categories, purposes) before accepting
@@ -101,11 +101,11 @@ eventSource.addEventListener('complete', (event) => {
 
 ### Browser Session (`services/browser-session.ts`)
 
-Manages headless Chromium browser sessions via Playwright. Each `BrowserSession` instance is isolated, enabling concurrent URL analyses without interference.
+Manages Chromium browser sessions via Playwright. Runs in headed mode on a virtual display (Xvfb) to avoid bot detection by ad networks. Each `BrowserSession` instance is isolated, enabling concurrent URL analyses without interference.
 
 **Class: `BrowserSession`**
 
-- **`launchBrowser(deviceType)`** - Launch headless browser with device emulation
+- **`launchBrowser(deviceType)`** - Launch browser with device emulation
 - **`close()`** - Close browser and clean up all resources
 - **`navigateTo(url, waitUntil)`** - Navigate to URL with timeout
 - **`waitForNetworkIdle(timeout)`** - Wait for network activity to settle
@@ -317,6 +317,7 @@ OPENAI_MODEL=gpt-4o
 
 - Node.js 22+ (uses native TypeScript support)
 - OpenAI API key or Azure OpenAI resource (GPT-4o recommended for vision)
+- Xvfb (virtual display) for browser automation
 
 ### Installation
 
@@ -325,11 +326,30 @@ cd server
 npm install
 ```
 
+### Virtual Display Setup
+
+The browser runs in headed mode to avoid ad network bot detection. It needs a virtual display (Xvfb):
+
+**Using VS Code Devcontainer (Recommended):**
+Xvfb is automatically installed and started. Just use the "Debug Server" launch configuration which sets `DISPLAY=:99`.
+
+**Manual Setup:**
+```bash
+# Install Xvfb (Debian/Ubuntu)
+sudo apt-get install -y xvfb
+
+# Start Xvfb on display :99
+Xvfb :99 -screen 0 1920x1080x24 -ac &
+
+# Run server with virtual display
+DISPLAY=:99 npm run dev
+```
+
 ### Running
 
 ```bash
-# Development with hot reload
-npm run dev
+# Development with hot reload (ensure DISPLAY=:99 is set)
+DISPLAY=:99 npm run dev
 
 # Production build
 npm run build
@@ -347,7 +367,13 @@ npm run typecheck
 ### 1. Browser Automation Flow
 
 ```
-Launch Browser (with device emulation) → Navigate to URL → Wait for content
+Launch Browser (headed mode on virtual display)
+     ↓
+Apply device emulation (viewport, user agent, touch)
+     ↓
+Navigate to URL → Wait for network idle (20s)
+     ↓
+Wait additional time for ads and deferred scripts
      ↓
 Check for access denied / bot protection
      ↓
@@ -367,6 +393,15 @@ Run AI privacy analysis (parallel: analysis + score)
      ↓
 Return complete results with privacy score
 ```
+
+**Why Headed Mode on Virtual Display?**
+
+Ad networks commonly detect and block headless browsers to prevent ad fraud. By running in headed mode, the browser passes fingerprinting checks that would otherwise block ads. The virtual display (Xvfb) means no actual window is shown - it renders to a virtual screen buffer instead.
+
+This is configured via:
+- `DISPLAY=:99` environment variable points to Xvfb
+- `headless: false` in Playwright launch options
+- `--disable-blink-features=AutomationControlled` removes automation flags
 
 ### 2. Consent Detection
 
@@ -461,6 +496,24 @@ Playwright requires certain system dependencies. On Linux, run:
 ```bash
 npx playwright install-deps chromium
 ```
+
+### Ads not loading / blank ad spaces
+
+The browser runs in headed mode on a virtual display to avoid bot detection by ad networks. Ensure:
+
+1. **Xvfb is running** on display `:99`:
+   ```bash
+   pgrep Xvfb || Xvfb :99 -screen 0 1920x1080x24 -ac &
+   ```
+
+2. **DISPLAY is set** to `:99` (not `:0` or `:1` which may be a real display):
+   ```bash
+   export DISPLAY=:99
+   ```
+
+3. **For Docker**, this is handled automatically by the entrypoint script.
+
+4. **For VS Code devcontainer**, ensure `.vscode/launch.json` sets `DISPLAY: ":99"` in the env section.
 
 ## License
 

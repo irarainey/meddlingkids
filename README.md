@@ -25,7 +25,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 ## How It Works
 
 1. **URL Submission** — User enters a URL and selects a device type to emulate
-2. **Browser Automation** — Playwright launches headless Chromium with device emulation
+2. **Browser Automation** — Playwright launches Chromium with device emulation (headed mode on virtual display to avoid bot detection)
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Consent Detection** — AI analyzes the page for cookie consent dialogs
@@ -78,7 +78,7 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite |
 | Backend | Express.js, TypeScript |
-| Browser Automation | Playwright |
+| Browser Automation | Playwright (headed mode on Xvfb virtual display) |
 | AI | Azure OpenAI (GPT-4) |
 | Communication | Server-Sent Events (SSE) |
 
@@ -185,6 +185,14 @@ Create a `.env` file with your credentials and run:
 docker run -p 3001:3001 --env-file .env ghcr.io/irarainey/meddlingkids:latest
 ```
 
+### Using a Custom Port
+
+To run on a different port (e.g., 8080):
+
+```bash
+docker run -p 8080:8080 -e PORT=8080 --env-file .env ghcr.io/irarainey/meddlingkids:latest
+```
+
 ### Build Locally (Optional)
 
 If you prefer to build the image yourself:
@@ -193,6 +201,8 @@ If you prefer to build the image yourself:
 docker build -t meddlingkids .
 docker run -p 3001:3001 --env-file .env meddlingkids
 ```
+
+> **Note:** The Docker container automatically starts Xvfb (virtual display) to allow the browser to run in headed mode without a visible window. This enables ads to load correctly, as ad networks often block headless browsers.
 
 ## Available Scripts
 

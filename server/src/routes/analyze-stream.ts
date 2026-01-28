@@ -23,7 +23,7 @@ const log = createLogger('Analyze')
 /**
  * GET /api/open-browser-stream - Analyze tracking on a URL with streaming progress.
  *
- * Opens a headless browser, navigates to the URL, detects and handles cookie
+ * Opens a browser, navigates to the URL, detects and handles cookie
  * consent banners, captures tracking data, and runs AI analysis. Progress
  * is streamed via Server-Sent Events (SSE).
  *
@@ -90,7 +90,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     session.setCurrentPageUrl(url)
 
     log.startTimer('browser-launch')
-    sendProgress(res, 'browser', 'Launching headless browser...', 8)
+    sendProgress(res, 'browser', 'Launching browser...', 8)
     await session.launchBrowser(deviceType)
     log.endTimer('browser-launch', 'Browser launched')
 
@@ -127,19 +127,24 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     log.startTimer('network-idle')
     sendProgress(res, 'wait-network', `Loading ${hostname}...`, 18)
     
-    // Wait for network to settle (shorter timeout for ad-heavy sites)
-    const networkIdleResult = await session.waitForNetworkIdle(15000)
+    // Wait for network to settle (give more time for ad auctions and lazy loading)
+    const networkIdleResult = await session.waitForNetworkIdle(20000)
     log.endTimer('network-idle', 'Network idle wait complete')
     
     if (!networkIdleResult) {
       log.warn('Network still active (normal for ad-heavy sites), continuing...')
-      sendProgress(res, 'wait-continue', 'Page loaded, capturing trackers...', 28)
+      sendProgress(res, 'wait-continue', 'Page loaded, waiting for ads to render...', 25)
+      // Give extra time for ad scripts to execute and render
+      await session.waitForTimeout(3000)
     } else {
       log.success('Network became idle')
       sendProgress(res, 'wait-done', 'Page fully loaded', 28)
     }
 
-    await session.waitForTimeout(1000)
+    // Additional wait for lazy-loaded ads and deferred scripts
+    // Ads often load via setTimeout/requestAnimationFrame after initial load
+    sendProgress(res, 'wait-ads', 'Waiting for dynamic content...', 28)
+    await session.waitForTimeout(2000)
     
     // Check for access denied in page content (bot detection, Cloudflare, etc.)
     log.startTimer('access-check')

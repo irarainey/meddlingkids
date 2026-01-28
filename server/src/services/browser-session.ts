@@ -4,6 +4,13 @@
  * allowing multiple concurrent URL analyses without interference.
  */
 
+// Ensure browser uses virtual display (Xvfb) for headed mode without visible window
+// DISPLAY should be set by environment (Docker/launch.json), but fallback to :99
+// This must happen before chromium is imported to take effect
+if (!process.env.DISPLAY || process.env.DISPLAY === ':0' || process.env.DISPLAY === ':1') {
+  process.env.DISPLAY = process.env.XVFB_DISPLAY || ':99'
+}
+
 import { chromium, type Browser, type Page, type BrowserContext } from 'playwright'
 import { extractDomain, isThirdParty } from '../utils/index.js'
 import { DEVICE_CONFIGS, type DeviceType } from './device-configs.js'
@@ -128,9 +135,10 @@ export class BrowserSession {
   // ==========================================================================
 
   /**
-   * Launch a new headless Chromium browser instance.
+   * Launch a new Chromium browser instance.
    * Creates a completely fresh browser instance with no stored state.
-   * Always runs in headless mode for Docker compatibility.
+   * Runs in headed mode on a virtual display (Xvfb) to avoid ad-blocker
+   * detection while remaining invisible.
    *
    * @param deviceType - The device/browser to emulate (default: 'ipad')
    */
@@ -150,13 +158,21 @@ export class BrowserSession {
       this.page = null
     }
 
-    // Launch fresh browser with minimal args (always headless for Docker)
+    // Run browser in headed mode on a virtual display (Xvfb)
+    // DISPLAY is set at module load to :99 (or XVFB_DISPLAY env var)
+    // This gives us ad-loading benefits of headed mode while being invisible
     this.browser = await chromium.launch({ 
-      headless: true,
+      headless: false,
       args: [
         '--no-first-run',
         '--no-default-browser-check',
-      ]
+        // Disable automation flags that ad networks detect
+        '--disable-blink-features=AutomationControlled',
+        // Disable infobars like "Chrome is being controlled by automated software"
+        '--disable-infobars',
+        // Disable extensions to reduce fingerprint differences
+        '--disable-extensions',
+      ],
     })
 
     // Create fresh context with device emulation
@@ -168,6 +184,13 @@ export class BrowserSession {
     })
 
     this.page = await this.context.newPage()
+
+    // Minimal script to remove the webdriver flag (Playwright sets this even in headed mode)
+    await this.context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      })
+    })
 
     // Set up request tracking - capture ALL requests (not just unique URLs)
     this.page.on('request', (request) => {

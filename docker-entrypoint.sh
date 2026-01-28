@@ -4,7 +4,7 @@
 # =============================================================================
 # Starts Xvfb (virtual display) and then the Node.js server.
 # This allows the browser to run in headed mode without a visible window,
-# which helps ads load (ad networks often block headless browsers).
+# which helps ads load (ad networks often block automated/headless browsers).
 # =============================================================================
 
 set -e

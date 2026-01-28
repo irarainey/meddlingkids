@@ -7,8 +7,11 @@
 # Build:
 #   docker build -t meddlingkids .
 #
-# Run with env file:
+# Run with env file (default port 3001):
 #   docker run -p 3001:3001 --env-file .env meddlingkids
+#
+# Run on a custom port (e.g., 8080):
+#   docker run -p 8080:8080 -e PORT=8080 --env-file .env meddlingkids
 #
 # Run with environment variables:
 #   docker run -p 3001:3001 \
@@ -51,6 +54,8 @@ FROM node:22-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Init process for proper signal handling
     tini \
+    # Xvfb for virtual display (allows headed browser without visible window)
+    xvfb \
     # Playwright dependencies
     libnss3 \
     libnspr4 \
@@ -102,6 +107,10 @@ COPY --from=builder /app/dist ./dist
 # Copy server source files (run TypeScript directly with Node 22)
 COPY server/ ./server/
 
+# Copy and prepare entrypoint script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app
 
@@ -111,21 +120,20 @@ USER appuser
 # Environment variables with defaults
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV DISPLAY=:99
 
 # Azure OpenAI configuration (pass via --env-file or -e flags)
 # ENV AZURE_OPENAI_ENDPOINT=
 # ENV AZURE_OPENAI_API_KEY=
 # ENV AZURE_OPENAI_DEPLOYMENT=
 
-# Expose the server port
-EXPOSE 3001
 
-# Health check
+# Health check using the PORT environment variable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://localhost:3001/').catch(() => process.exit(1))" || exit 1
+    CMD node -e "fetch('http://localhost:' + (process.env.PORT || 3001)).catch(() => process.exit(1))" || exit 1
 
 # Use tini as init process for proper signal handling (CTRL+C)
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Start the server with tsx (handles TypeScript with .js imports)
-CMD ["node", "--import", "tsx", "server/src/app.ts"]
+# Start Xvfb and the server via entrypoint script
+CMD ["./docker-entrypoint.sh"]
