@@ -64,7 +64,14 @@ function getLabel(index: number): string {
   border: 1px solid #3d4663;
   border-radius: 12px;
   overflow-x: auto;
-  justify-content: center;
+  /* Use auto margins on children for centering instead of justify-content */
+  /* This allows proper scrolling when content overflows */
+}
+
+.screenshots-row::before,
+.screenshots-row::after {
+  content: '';
+  margin: auto;
 }
 
 .screenshot-thumb {
