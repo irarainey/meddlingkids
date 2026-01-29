@@ -11,7 +11,8 @@ import { BrowserSession, type DeviceType } from '../services/browser-session.js'
 import { runTrackingAnalysis } from '../services/analysis.js'
 import { analyzeScripts } from '../services/script-analysis.js'
 import { validateOpenAIConfig } from '../services/openai.js'
-import { getErrorMessage, createLogger } from '../utils/index.js'
+import { getErrorMessage, createLogger, startLogFile } from '../utils/index.js'
+import { extractDomain } from '../utils/url.js'
 import { sendEvent, sendProgress, handleOverlays } from './analyze-helpers.js'
 
 const log = createLogger('Analyze')
@@ -72,6 +73,10 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
 
   // Create isolated browser session for this request
   const session = new BrowserSession()
+
+  // Start file logging for this analysis (if enabled)
+  const domain = extractDomain(url)
+  startLogFile(domain)
 
   // Start overall timer
   log.section(`Analyzing: ${url}`)

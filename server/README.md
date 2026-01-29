@@ -183,7 +183,7 @@ Calculates a **deterministic privacy score** (0-100) based on quantifiable facto
 
 ### Consent Services
 
-- **`consent-detection.ts`** - Uses AI vision to detect consent banners and find the "Accept All" button
+- **`consent-detection.ts`** - Uses AI vision to detect consent banners and find the "Accept All" button. Includes HTML-only fallback when screenshot analysis fails (e.g., Azure content filter triggers)
 - **`consent-extraction.ts`** - Extracts detailed consent information (partners, categories, purposes)
 - **`consent-click.ts`** - Multiple strategies to click consent buttons, including iframe handling
 
@@ -191,12 +191,25 @@ Calculates a **deterministic privacy score** (0-100) based on quantifiable facto
 
 Identifies and analyzes JavaScript files loaded by the page:
 
-- **`analyzeScripts(scripts, maxLLMAnalyses, onProgress)`** - Analyzes scripts to determine their purpose
+- **`analyzeScripts(scripts, onProgress)`** - Analyzes scripts to determine their purpose
+- **`groupSimilarScripts(scripts)`** - Groups similar scripts (chunks, bundles) to reduce noise
 
 **Analysis Flow:**
-1. Match scripts against 495 known tracking patterns (instant identification)
-2. Match scripts against 51 known benign library patterns (skip LLM)
-3. Use LLM to analyze remaining unknown scripts (limited to `maxLLMAnalyses`)
+1. **Grouping** - Identify and group similar scripts (app chunks, vendor bundles, lazy modules)
+2. **Pattern Matching** - Match scripts against 495 known tracking patterns (instant identification)
+3. **Benign Detection** - Match scripts against 51 known benign library patterns (skip LLM)
+4. **Batch LLM Analysis** - Analyze remaining unknown scripts in batches of up to 10
+
+**Script Grouping Patterns:**
+- `app-chunks` - Code-split application bundles (SPA framework chunks)
+- `vendor-bundles` - Third-party library bundles (node_modules)
+- `webpack-runtime` - Webpack module loading runtime
+- `lazy-modules` - Dynamically imported modules
+- `css-chunks` - Styled component or CSS module chunks
+
+**Batch Configuration:**
+- `MAX_BATCH_SIZE=10` - Maximum scripts per LLM batch
+- `MAX_BATCH_CONTENT_LENGTH=50000` - Maximum characters per batch
 
 ### Retry Handling (`utils/retry.ts`)
 
@@ -265,6 +278,18 @@ interface TrackedScript {
   url: string
   domain: string
   timestamp: string
+  description?: string  // Added by script analysis
+  groupId?: string      // Group ID if part of a grouped category
+  isGrouped?: boolean   // Whether this script was grouped
+}
+
+interface ScriptGroup {
+  id: string              // Unique identifier (e.g., 'example.com:app-chunks')
+  name: string            // Human-readable name
+  description: string     // What this group represents
+  count: number           // Number of scripts in this group
+  exampleUrls: string[]   // Example URLs from the group
+  domain: string          // Common domain for the grouped scripts
 }
 
 interface NetworkRequest {
@@ -350,6 +375,9 @@ AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 
 # Optional: API version (default: 2024-12-01-preview)
 OPENAI_API_VERSION=2024-12-01-preview
+
+# Optional: Write logs to timestamped files in /logs folder
+# WRITE_LOG_TO_FILE=true
 ```
 
 **Option B: Standard OpenAI**

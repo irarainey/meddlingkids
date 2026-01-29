@@ -31,10 +31,19 @@ let logFilePath: string | null = null
 let logFileStream: fs.WriteStream | null = null
 
 /**
- * Initialize file logging if enabled.
+ * Start a new log file for a specific analysis.
+ * Call this at the start of each URL analysis to create a domain-named log file.
+ * 
+ * @param domain - The domain being analyzed (e.g., 'example.com')
  */
-function initFileLogging(): void {
-  if (!writeToFile || logFileStream) return
+export function startLogFile(domain: string): void {
+  if (!writeToFile) return
+  
+  // Close any existing log file
+  if (logFileStream) {
+    logFileStream.end()
+    logFileStream = null
+  }
   
   // Create logs directory if it doesn't exist
   const logsDir = path.resolve(process.cwd(), 'logs')
@@ -42,20 +51,27 @@ function initFileLogging(): void {
     fs.mkdirSync(logsDir, { recursive: true })
   }
   
-  // Create timestamped log file
+  // Sanitize domain for use in filename
+  const safeDomain = domain
+    .replace(/^www\./, '')  // Remove www prefix
+    .replace(/[^a-zA-Z0-9.-]/g, '_')  // Replace invalid chars with underscore
+    .substring(0, 50)  // Limit length
+  
+  // Create timestamped log file with domain
   const now = new Date()
   const timestamp = now.toISOString()
     .replace(/[:.]/g, '-')
     .replace('T', '_')
     .slice(0, 19)
-  logFilePath = path.join(logsDir, `meddlingkids_${timestamp}.log`)
+  logFilePath = path.join(logsDir, `${safeDomain}_${timestamp}.log`)
   
   logFileStream = fs.createWriteStream(logFilePath, { flags: 'a' })
   
   // Write header
   const header = `
 ================================================================================
-  Meddling Kids Log - Started ${now.toISOString()}
+  Analysis Log - ${domain}
+  Started: ${now.toISOString()}
 ================================================================================
 `
   logFileStream.write(header)
@@ -75,9 +91,6 @@ function writeToLogFile(line: string): void {
   const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '')
   logFileStream.write(cleanLine + '\n')
 }
-
-// Initialize file logging on module load
-initFileLogging()
 
 // ============================================================================
 // ANSI Colors
@@ -302,8 +315,8 @@ function formatValue(value: unknown): string {
     return value ? `${colors.green}true${colors.reset}` : `${colors.red}false${colors.reset}`
   }
   if (typeof value === 'string') {
-    // Truncate long strings
-    const display = value.length > 50 ? value.substring(0, 47) + '...' : value
+    // Truncate very long strings (e.g., base64 images, HTML content)
+    const display = value.length > 500 ? value.substring(0, 497) + '...' : value
     return `${colors.green}"${display}"${colors.reset}`
   }
   if (Array.isArray(value)) {

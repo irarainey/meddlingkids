@@ -17,10 +17,10 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scooby Snack!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers
-- 📜 **Script Tracking** — Lists all JavaScript files loaded, grouped by domain
+- 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
-- 🤖 **AI-Powered Analysis** — Uses Azure OpenAI to analyze privacy implications
+- 🤖 **AI-Powered Analysis** — Uses Azure OpenAI to analyze privacy implications (batched for efficiency)
 
 ## How It Works
 
@@ -101,7 +101,8 @@ meddlingkids/
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       ├── prompts/           # AI prompt templates
-│       └── utils/             # Utility functions
+│       └── utils/             # Utility functions (including file logging)
+├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
 ```
@@ -140,6 +141,12 @@ AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat
 ```env
 OPENAI_API_KEY=your-api-key
 OPENAI_MODEL=gpt-5.1-chat
+```
+
+**Optional: File Logging**
+```env
+# Write server logs to timestamped files in /logs folder
+WRITE_LOG_TO_FILE=true
 ```
 
 ### 3. Run Development Server

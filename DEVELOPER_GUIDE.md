@@ -173,11 +173,12 @@ handleOverlays() loop (up to 5 iterations)
 ```
 All data captured
    │
-   ├── analyzeScripts(scripts, maxLLM=20)
+   ├── analyzeScripts(scripts)
    │   │
+   │   ├── Group similar scripts (chunks, vendor bundles)
    │   ├── Match against tracking patterns (495 patterns from JSON)
    │   ├── Match against benign patterns (51 patterns from JSON)
-   │   └── LLM analysis for unknown scripts
+   │   └── Batch LLM analysis for unknown scripts (10 per batch)
    │
    └── runTrackingAnalysis(cookies, storage, network, scripts, url, consent)
        │
@@ -202,7 +203,8 @@ Analysis complete
          privacyScore,    // 0-100
          privacySummary,  // One sentence
          consentDetails,  // Consent dialog info
-         scripts          // Scripts with descriptions
+         scripts,         // Scripts with descriptions
+         scriptGroups     // Grouped similar scripts
        })
    │
    └── session.close() → Cleanup Playwright (in finally block)
@@ -231,6 +233,7 @@ progressPercent      // 0-100 progress
 screenshots          // base64 images (up to 3)
 cookies              // TrackedCookie[]
 scripts              // TrackedScript[]
+scriptGroups         // ScriptGroup[] (grouped similar scripts)
 networkRequests      // NetworkRequest[]
 localStorage         // StorageItem[]
 sessionStorage       // StorageItem[]
@@ -321,7 +324,7 @@ App.vue
 ### Data Layer
 
 | Module | Content |
-|--------|---------|
+|--------|---------||
 | `data/loader.ts` | JSON data loader with lazy loading and caching |
 | `data/types.ts` | TypeScript type definitions for all data structures |
 | `data/trackers/tracking-scripts.json` | 495 regex patterns for known trackers |
@@ -414,6 +417,20 @@ interface TrackedScript {
   domain: string
   timestamp: string
   description?: string  // Added by script analysis
+  groupId?: string      // Group ID if part of a grouped category
+  isGrouped?: boolean   // Whether this script was grouped with similar scripts
+}
+```
+
+### ScriptGroup
+```typescript
+interface ScriptGroup {
+  id: string              // Unique identifier (e.g., 'example.com:app-chunks')
+  name: string            // Human-readable name
+  description: string     // What this group represents
+  count: number           // Number of scripts in this group
+  exampleUrls: string[]   // Example URLs from the group
+  domain: string          // Common domain for the grouped scripts
 }
 ```
 
@@ -449,7 +466,7 @@ interface ConsentDetails {
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scripts, consentDetails }` | Final analysis results |
+| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---
@@ -566,6 +583,17 @@ log.endTimer('my-operation', 'Operation complete')
 log.success('Done!', { result: data })
 ```
 
+**File Logging:**
+
+Set `WRITE_LOG_TO_FILE=true` in your environment to write logs to timestamped files in the `/logs` folder. The folder is created automatically if it doesn't exist. Each analysis creates a new log file named after the domain being analyzed. File logs are plain text with ANSI color codes stripped for readability.
+
+```bash
+# Enable file logging
+WRITE_LOG_TO_FILE=true npm run dev:server
+```
+
+Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-01-29_11-32-57.log`) and contain the same output as the console without color formatting.
+
 ### Concurrency
 
 - Each request creates its own `BrowserSession` instance
@@ -576,6 +604,8 @@ log.success('Done!', { result: data })
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
+- Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
+- Unknown scripts are analyzed in batches (up to 10 per LLM call) for efficiency
 - Privacy score is calculated deterministically (no LLM variance)
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
