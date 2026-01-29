@@ -498,9 +498,13 @@ interface ConsentDetails {
 The browser runs in headed mode on a virtual display (Xvfb) to avoid bot detection by ad networks. This is automatically configured in:
 
 **VS Code Devcontainer:**
-- `postCreateCommand` installs Xvfb
-- `postStartCommand` starts Xvfb on display `:99`
-- `.vscode/launch.json` sets `DISPLAY=:99` for the debug server
+- `containerEnv` in `devcontainer.json` sets `DISPLAY=:99`
+- `postStartCommand` runs `.devcontainer/init.sh` which:
+  - Installs npm dependencies if needed
+  - Installs Playwright browsers and system dependencies
+  - Installs Xvfb if not present
+  - Starts Xvfb on display `:99` if not already running
+- `.vscode/launch.json` also sets `DISPLAY=:99` for the debug server
 
 **Docker:**
 - `docker-entrypoint.sh` starts Xvfb before the server
