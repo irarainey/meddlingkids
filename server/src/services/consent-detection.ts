@@ -91,15 +91,74 @@ export async function detectCookieConsent(screenshot: Buffer, html: string): Pro
     
     return result
   } catch (error) {
-    log.error('Overlay detection failed', { error: getErrorMessage(error) })
+    const errorMsg = getErrorMessage(error)
+    
+    // Check if this is a content filter error from Azure OpenAI
+    if (errorMsg.includes('filtered') || errorMsg.includes('content_filter') || errorMsg.includes('ResponsibleAIPolicyViolation')) {
+      log.warn('Content filtered by Azure OpenAI - screenshot may contain flagged content, trying HTML-only detection')
+      
+      // Try HTML-only fallback detection
+      return detectFromHtmlOnly(relevantHtml)
+    }
+    
+    log.error('Overlay detection failed', { error: errorMsg })
     return {
       found: false,
       overlayType: null,
       selector: null,
       buttonText: null,
       confidence: 'low',
-      reason: `Detection failed: ${getErrorMessage(error)}`,
+      reason: `Detection failed: ${errorMsg}`,
     }
+  }
+}
+
+/**
+ * Fallback detection using HTML patterns only (no vision).
+ * Used when Azure content filter rejects the screenshot.
+ */
+function detectFromHtmlOnly(html: string): CookieConsentDetection {
+  const log2 = createLogger('Consent-Detect')
+  log2.info('Attempting HTML-only overlay detection...')
+  
+  // Common cookie consent button patterns
+  const consentPatterns = [
+    { pattern: /id=["']?onetrust-accept-btn-handler["']?/i, selector: '#onetrust-accept-btn-handler', type: 'cookie-consent' as const },
+    { pattern: /id=["']?accept-cookies["']?/i, selector: '#accept-cookies', type: 'cookie-consent' as const },
+    { pattern: /id=["']?CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll["']?/i, selector: '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll', type: 'cookie-consent' as const },
+    { pattern: /id=["']?didomi-notice-agree-button["']?/i, selector: '#didomi-notice-agree-button', type: 'cookie-consent' as const },
+    { pattern: /class=["'][^"']*sp_choice_type_11[^"']*["']?/i, selector: 'button.sp_choice_type_11', type: 'cookie-consent' as const },
+    { pattern: /data-action=["']?accept["']?/i, selector: '[data-action="accept"]', type: 'cookie-consent' as const },
+    { pattern: /data-testid=["']?accept-button["']?/i, selector: '[data-testid="accept-button"]', type: 'cookie-consent' as const },
+    { pattern: /aria-label=["'][^"']*[Aa]ccept[^"']*["']/i, selector: '[aria-label*="ccept"]', type: 'cookie-consent' as const },
+    { pattern: />Accept All</i, selector: 'button:has-text("Accept All")', type: 'cookie-consent' as const },
+    { pattern: />Accept Cookies</i, selector: 'button:has-text("Accept Cookies")', type: 'cookie-consent' as const },
+    { pattern: />I Agree</i, selector: 'button:has-text("I Agree")', type: 'cookie-consent' as const },
+    { pattern: />Agree</i, selector: 'button:has-text("Agree")', type: 'cookie-consent' as const },
+  ]
+  
+  for (const { pattern, selector, type } of consentPatterns) {
+    if (pattern.test(html)) {
+      log2.success('Found overlay via HTML pattern matching', { selector, type })
+      return {
+        found: true,
+        overlayType: type,
+        selector,
+        buttonText: 'Accept',
+        confidence: 'medium',
+        reason: 'Detected via HTML pattern matching (vision unavailable due to content filter)',
+      }
+    }
+  }
+  
+  log2.info('No overlay detected via HTML patterns')
+  return {
+    found: false,
+    overlayType: null,
+    selector: null,
+    buttonText: null,
+    confidence: 'low',
+    reason: 'No overlay detected (HTML-only detection, vision unavailable due to content filter)',
   }
 }
 

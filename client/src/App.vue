@@ -26,6 +26,7 @@ const {
   screenshots,
   cookies,
   scripts,
+  scriptGroups,
   localStorage,
   sessionStorage,
   activeTab,
@@ -210,6 +211,7 @@ const {
           v-if="activeTab === 'scripts'"
           :scripts-by-domain="scriptsByDomain"
           :script-count="scripts.length"
+          :script-groups="scriptGroups"
         />
 
         <ConsentTab v-if="activeTab === 'consent'" :consent-details="consentDetails" />

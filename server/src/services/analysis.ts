@@ -19,6 +19,16 @@ import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, Consent
 const log = createLogger('AI-Analysis')
 
 /**
+ * Progress callback for tracking analysis.
+ * @param phase - Current analysis phase
+ * @param detail - Optional detail message
+ */
+export type AnalysisProgressCallback = (
+  phase: 'preparing' | 'analyzing' | 'scoring' | 'summarizing',
+  detail?: string
+) => void
+
+/**
  * Run comprehensive tracking analysis using Azure OpenAI.
  * Analyzes cookies, scripts, network requests, and storage to generate
  * a detailed privacy report and structured summary findings.
@@ -32,6 +42,7 @@ const log = createLogger('AI-Analysis')
  * @param scripts - Scripts loaded by the page
  * @param analyzedUrl - URL of the page that was analyzed
  * @param consentDetails - Optional consent dialog information for comparison
+ * @param onProgress - Optional callback for progress updates
  * @returns Analysis result with full report and structured summary findings
  */
 export async function runTrackingAnalysis(
@@ -41,7 +52,8 @@ export async function runTrackingAnalysis(
   networkRequests: NetworkRequest[],
   scripts: TrackedScript[],
   analyzedUrl: string,
-  consentDetails?: ConsentDetails | null
+  consentDetails?: ConsentDetails | null,
+  onProgress?: AnalysisProgressCallback
 ): Promise<AnalysisResult> {
   const client = getOpenAIClient()
   if (!client) {
@@ -52,6 +64,11 @@ export async function runTrackingAnalysis(
   log.info('Starting tracking analysis', { url: analyzedUrl, cookies: cookies.length, scripts: scripts.length, networkRequests: networkRequests.length })
 
   try {
+    // Report preparing phase
+    if (onProgress) {
+      onProgress('preparing', 'Building tracking summary...')
+    }
+    
     const trackingSummary = buildTrackingSummary(
       cookies,
       scripts,
@@ -67,6 +84,11 @@ export async function runTrackingAnalysis(
     // Step 1: Run main analysis (required for subsequent analyses)
     log.startTimer('main-analysis')
     log.info('Running main tracking analysis...')
+    
+    if (onProgress) {
+      onProgress('analyzing', 'Generating privacy report...')
+    }
+    
     const response = await withRetry(
       () => client.chat.completions.create({
         model: deployment,
@@ -85,6 +107,11 @@ export async function runTrackingAnalysis(
 
     // Step 2: Calculate deterministic privacy score (consistent, no LLM variance)
     log.startTimer('score-calculation')
+    
+    if (onProgress) {
+      onProgress('scoring', 'Calculating privacy score...')
+    }
+    
     const scoreBreakdown = calculatePrivacyScore(
       cookies,
       scripts,
@@ -103,6 +130,10 @@ export async function runTrackingAnalysis(
     // Step 3: Generate summary findings from the analysis (LLM-based)
     log.startTimer('summary-generation')
     log.info('Generating summary findings...')
+    
+    if (onProgress) {
+      onProgress('summarizing', 'Generating summary findings...')
+    }
     
     let summaryResult = null
     try {

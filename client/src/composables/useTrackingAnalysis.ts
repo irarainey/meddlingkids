@@ -13,6 +13,7 @@ import type {
   ScreenshotModal,
   TabId,
   SummaryFinding,
+  ScriptGroup,
 } from '../types'
 
 /**
@@ -39,6 +40,8 @@ export function useTrackingAnalysis() {
   const cookies = ref<TrackedCookie[]>([])
   /** Scripts loaded by the page */
   const scripts = ref<TrackedScript[]>([])
+  /** Script groups (e.g., application chunks) */
+  const scriptGroups = ref<ScriptGroup[]>([])
   /** localStorage items from the page */
   const localStorage = ref<StorageItem[]>([])
   /** sessionStorage items from the page */
@@ -164,6 +167,7 @@ export function useTrackingAnalysis() {
     screenshots.value = []
     cookies.value = []
     scripts.value = []
+    scriptGroups.value = []
     localStorage.value = []
     sessionStorage.value = []
     networkRequests.value = []
@@ -289,6 +293,10 @@ export function useTrackingAnalysis() {
         if (data.scripts) {
           scripts.value = data.scripts
         }
+        // Update script groups if available
+        if (data.scriptGroups) {
+          scriptGroups.value = data.scriptGroups
+        }
 
         activeTab.value = data.summaryFindings?.length ? 'summary' : 'analysis'
         statusMessage.value = data.message
@@ -369,6 +377,7 @@ export function useTrackingAnalysis() {
     screenshots,
     cookies,
     scripts,
+    scriptGroups,
     localStorage,
     sessionStorage,
     activeTab,

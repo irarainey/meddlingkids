@@ -46,6 +46,29 @@ export interface TrackedScript {
   timestamp: string
   /** AI-generated description of the script's purpose */
   description?: string
+  /** Group ID if this script is part of a grouped category (e.g., 'app-chunks') */
+  groupId?: string
+  /** Whether this script was grouped with similar scripts */
+  isGrouped?: boolean
+}
+
+/**
+ * Represents a group of similar scripts (e.g., application chunks).
+ * Used to summarize multiple scripts of the same type.
+ */
+export interface ScriptGroup {
+  /** Unique identifier for the group */
+  id: string
+  /** Human-readable name for the group */
+  name: string
+  /** Description of what this group represents */
+  description: string
+  /** Number of scripts in this group */
+  count: number
+  /** Example URLs from the group (first few) */
+  exampleUrls: string[]
+  /** Common domain for the grouped scripts */
+  domain: string
 }
 
 /**

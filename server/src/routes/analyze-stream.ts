@@ -192,7 +192,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     let storage = await session.captureStorage()
 
     // Wait for consent dialogs to appear
-    sendProgress(res, 'consent-wait', 'Waiting for consent dialogs...', 37)
+    sendProgress(res, 'overlay-wait', 'Waiting for page overlays...', 37)
     await session.waitForTimeout(2000)
 
     sendProgress(res, 'screenshot', 'Taking screenshot...', 38)
@@ -224,7 +224,7 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     
     log.subsection('Phase 4: Overlay Detection & Handling')
     log.startTimer('overlay-handling')
-    sendProgress(res, 'consent-detect', 'Checking for consent dialogs...', 45)
+    sendProgress(res, 'overlay-detect', 'Checking for page overlays...', 45)
 
     const page = session.getPage()
     let consentDetails = null
@@ -252,49 +252,69 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
     const finalRequestCount = session.getTrackedNetworkRequests().length
     
     log.info('Final data stats', { cookies: finalCookieCount, scripts: finalScriptCount, requests: finalRequestCount })
-    sendProgress(res, 'analysis-start', `Analyzing ${finalCookieCount} cookies and ${finalScriptCount} scripts...`, 78)
+    sendProgress(res, 'analysis-start', `Found ${finalCookieCount} cookies, ${finalScriptCount} scripts, ${finalRequestCount} requests`, 76)
 
     log.startTimer('ai-analysis')
     
-    // Run script analysis and main analysis in parallel
-    const [analyzedScripts, analysisResult] = await Promise.all([
-      // Script analysis
-      (async () => {
-        log.startTimer('script-analysis')
-        const scripts = await analyzeScripts(
-          session.getTrackedScripts(), 
-          20,
-          (current, total) => {
-            sendProgress(res, 'script-analysis', `Analyzing script ${current} of ${total}...`, 80 + Math.floor((current / total) * 10))
+    // Run script analysis first (grouping, pattern matching, LLM for unknowns)
+    log.startTimer('script-analysis')
+    const scriptAnalysisResult = await analyzeScripts(
+      session.getTrackedScripts(),
+      (phase, current, total, detail) => {
+        if (phase === 'matching') {
+          if (current === 0) {
+            sendProgress(res, 'script-matching', detail || 'Grouping and identifying scripts...', 77)
           }
-        )
-        log.endTimer('script-analysis', `Script analysis complete (${scripts.length} scripts)`)
-        sendProgress(res, 'script-analysis-complete', 'Analyzing tracking data...', 90)
-        return scripts
-      })(),
-      
-      // Main tracking analysis
-      (async () => {
-        log.startTimer('tracking-analysis')
-        const result = await runTrackingAnalysis(
-          session.getTrackedCookies(),
-          storage.localStorage,
-          storage.sessionStorage,
-          session.getTrackedNetworkRequests(),
-          session.getTrackedScripts(),
-          url,
-          consentDetails
-        )
-        log.endTimer('tracking-analysis', 'Tracking analysis complete')
-        return result
-      })()
-    ])
+        } else if (phase === 'fetching') {
+          // Fetching phase: 77-79%
+          const progress = 77 + Math.floor((current / Math.max(total, 1)) * 2)
+          sendProgress(res, 'script-fetching', detail || `Fetching script ${current}/${total}...`, progress)
+        } else if (phase === 'analyzing') {
+          if (total === 0) {
+            sendProgress(res, 'script-analysis', detail || 'All scripts identified', 82)
+          } else {
+            // Analyzing phase: 79-83%
+            const progress = 79 + Math.floor((current / total) * 4)
+            sendProgress(res, 'script-analysis', detail || `Analyzed ${current}/${total} scripts...`, progress)
+          }
+        }
+      }
+    )
+    log.endTimer('script-analysis', `Script analysis complete (${scriptAnalysisResult.scripts.length} scripts, ${scriptAnalysisResult.groups.length} groups)`)
+    
+    // Then run main tracking analysis
+    log.startTimer('tracking-analysis')
+    const analysisResult = await runTrackingAnalysis(
+      session.getTrackedCookies(),
+      storage.localStorage,
+      storage.sessionStorage,
+      session.getTrackedNetworkRequests(),
+      session.getTrackedScripts(),
+      url,
+      consentDetails,
+      (phase, detail) => {
+        switch (phase) {
+          case 'preparing':
+            sendProgress(res, 'ai-preparing', detail || 'Preparing data for AI analysis...', 84)
+            break
+          case 'analyzing':
+            sendProgress(res, 'ai-analyzing', detail || 'Generating privacy report...', 88)
+            break
+          case 'scoring':
+            sendProgress(res, 'ai-scoring', detail || 'Calculating privacy score...', 94)
+            break
+          case 'summarizing':
+            sendProgress(res, 'ai-summarizing', detail || 'Generating summary findings...', 97)
+            break
+        }
+      }
+    )
+    log.endTimer('tracking-analysis', 'Tracking analysis complete')
     
     log.endTimer('ai-analysis', 'All AI analysis complete')
 
     if (analysisResult.success) {
       log.success('Analysis succeeded', { privacyScore: analysisResult.privacyScore, analysisLength: analysisResult.analysis?.length })
-      sendProgress(res, 'analysis-score', 'Calculating privacy score...', 95)
     } else {
       log.error('Analysis failed', { error: analysisResult.error })
     }
@@ -320,7 +340,8 @@ export async function analyzeUrlStreamHandler(req: Request, res: Response): Prom
       analysisSummary: analysisResult.success ? analysisResult.summary : null,
       analysisError: analysisResult.success ? null : analysisResult.error,
       consentDetails: consentDetails,
-      scripts: analyzedScripts,
+      scripts: scriptAnalysisResult.scripts,
+      scriptGroups: scriptAnalysisResult.groups,
     })
 
     res.end()
