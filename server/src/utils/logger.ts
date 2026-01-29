@@ -1,7 +1,11 @@
 /**
  * @fileoverview Logging utility with timestamps and timing support.
  * Provides structured, colorful console output for tracking analysis stages.
+ * Optionally writes logs to a timestamped file when WRITE_LOG_TO_FILE is set.
  */
+
+import * as fs from 'fs'
+import * as path from 'path'
 
 // ============================================================================
 // Types
@@ -12,6 +16,68 @@ type LogLevel = 'info' | 'success' | 'warn' | 'error' | 'debug' | 'timing'
 
 /** Timer storage for tracking operation durations */
 const timers: Map<string, number> = new Map()
+
+// ============================================================================
+// File Logging Setup
+// ============================================================================
+
+/** Whether to write logs to file */
+const writeToFile = process.env.WRITE_LOG_TO_FILE === 'true'
+
+/** Log file path (created once at startup) */
+let logFilePath: string | null = null
+
+/** Log file write stream */
+let logFileStream: fs.WriteStream | null = null
+
+/**
+ * Initialize file logging if enabled.
+ */
+function initFileLogging(): void {
+  if (!writeToFile || logFileStream) return
+  
+  // Create logs directory if it doesn't exist
+  const logsDir = path.resolve(process.cwd(), 'logs')
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true })
+  }
+  
+  // Create timestamped log file
+  const now = new Date()
+  const timestamp = now.toISOString()
+    .replace(/[:.]/g, '-')
+    .replace('T', '_')
+    .slice(0, 19)
+  logFilePath = path.join(logsDir, `meddlingkids_${timestamp}.log`)
+  
+  logFileStream = fs.createWriteStream(logFilePath, { flags: 'a' })
+  
+  // Write header
+  const header = `
+================================================================================
+  Meddling Kids Log - Started ${now.toISOString()}
+================================================================================
+`
+  logFileStream.write(header)
+  
+  // Log to console that file logging is enabled
+  console.log(`\x1b[36mℹ [Logger] Writing logs to: ${logFilePath}\x1b[0m`)
+}
+
+/**
+ * Write a line to the log file (without ANSI colors).
+ */
+function writeToLogFile(line: string): void {
+  if (!logFileStream) return
+  
+  // Strip ANSI escape codes for file output
+  // eslint-disable-next-line no-control-regex
+  const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '')
+  logFileStream.write(cleanLine + '\n')
+}
+
+// Initialize file logging on module load
+initFileLogging()
 
 // ============================================================================
 // ANSI Colors
@@ -120,14 +186,18 @@ class Logger {
     
     const prefix = `${colors.gray}[${timestamp}]${colors.reset} ${color}${symbol}${colors.reset} ${colors.bright}[${this.context}]${colors.reset}`
     
+    let logLine: string
     if (data && Object.keys(data).length > 0) {
       const dataStr = Object.entries(data)
         .map(([k, v]) => `${colors.dim}${k}=${colors.reset}${formatValue(v)}`)
         .join(' ')
-      console.log(`${prefix} ${message} ${dataStr}`)
+      logLine = `${prefix} ${message} ${dataStr}`
     } else {
-      console.log(`${prefix} ${message}`)
+      logLine = `${prefix} ${message}`
     }
+    
+    console.log(logLine)
+    writeToLogFile(logLine)
   }
 
   /** Log info message */
@@ -195,16 +265,26 @@ class Logger {
    */
   section(title: string): void {
     const line = '─'.repeat(60)
-    console.log(`\n${colors.blue}${line}${colors.reset}`)
-    console.log(`${colors.blue}${colors.bright}  ${title}${colors.reset}`)
-    console.log(`${colors.blue}${line}${colors.reset}\n`)
+    const output = [
+      '',
+      `${colors.blue}${line}${colors.reset}`,
+      `${colors.blue}${colors.bright}  ${title}${colors.reset}`,
+      `${colors.blue}${line}${colors.reset}`,
+      ''
+    ]
+    output.forEach(l => {
+      console.log(l)
+      writeToLogFile(l)
+    })
   }
 
   /**
    * Log a subsection header.
    */
   subsection(title: string): void {
-    console.log(`\n${colors.cyan}  ▸ ${title}${colors.reset}`)
+    const output = `\n${colors.cyan}  ▸ ${title}${colors.reset}`
+    console.log(output)
+    writeToLogFile(output)
   }
 }
 
