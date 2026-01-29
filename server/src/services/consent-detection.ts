@@ -11,6 +11,45 @@ import type { CookieConsentDetection } from '../types.js'
 const log = createLogger('Consent-Detect')
 
 /**
+ * Quick check using HTML patterns to see if an overlay might exist.
+ * Returns true if there are strong signals of an overlay in the HTML.
+ * This is faster than vision analysis and helps skip unnecessary LLM calls.
+ */
+export function quickHtmlOverlayCheck(html: string): boolean {
+  const htmlLower = html.toLowerCase()
+  
+  // Strong overlay indicators
+  const indicators = [
+    // Cookie/consent related
+    /id=["']?onetrust/i.test(html),
+    /id=["']?cookie/i.test(html),
+    /id=["']?consent/i.test(html),
+    /class=["'][^"']*cookie-?banner/i.test(html),
+    /class=["'][^"']*consent-?banner/i.test(html),
+    /class=["'][^"']*gdpr/i.test(html),
+    htmlLower.includes('cookiebot'),
+    htmlLower.includes('didomi'),
+    htmlLower.includes('sourcepoint'),
+    htmlLower.includes('sp_choice'),
+    htmlLower.includes('trustarc'),
+    htmlLower.includes('quantcast'),
+    // Modal/dialog patterns with visibility
+    /role=["']?dialog["']?[^>]*(?:open|visible|show)/i.test(html),
+    /aria-modal=["']?true/i.test(html),
+    // Sign-in gates
+    /class=["'][^"']*sign-?in-?wall/i.test(html),
+    /class=["'][^"']*login-?modal/i.test(html),
+    /class=["'][^"']*auth-?modal/i.test(html),
+    // BBC-style sign-in prompts
+    htmlLower.includes('sign in prompt'),
+    htmlLower.includes('maybe later'),
+  ]
+  
+  const matchCount = indicators.filter(Boolean).length
+  return matchCount >= 1 // At least one strong indicator
+}
+
+/**
  * Detect blocking overlays (cookie consent, sign-in walls, etc.) using LLM vision analysis.
  * Analyzes a screenshot and HTML to find the dismiss/accept button.
  *

@@ -41,41 +41,58 @@ function identifyBenignScript(url: string): string | null {
 }
 
 /**
- * Fetch a script's content for analysis.
+ * Fetch a script's content for analysis with retry.
  * 
  * @param url - The script URL
+ * @param retries - Number of retries (default: 2)
  * @returns The script content or null if fetch failed
  */
-async function fetchScriptContent(url: string): Promise<string | null> {
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-    
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)',
-      },
-    })
-    
-    clearTimeout(timeoutId)
-    
-    if (!response.ok) {
+async function fetchScriptContent(url: string, retries: number = 2): Promise<string | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)',
+        },
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        if (attempt < retries && (response.status >= 500 || response.status === 429)) {
+          // Retry on server errors or rate limits
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+          continue
+        }
+        return null
+      }
+      
+      const content = await response.text()
+      return content
+    } catch {
+      if (attempt < retries) {
+        // Retry on network errors
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+        continue
+      }
       return null
     }
-    
-    const content = await response.text()
-    return content
-  } catch {
-    return null
   }
+  return null
 }
 
 /** Maximum number of scripts to analyze in a single LLM batch */
-const MAX_BATCH_SIZE = 10
+const MAX_BATCH_SIZE = 15
 
 /** Maximum total content length for a batch (characters) */
-const MAX_BATCH_CONTENT_LENGTH = 50000
+const MAX_BATCH_CONTENT_LENGTH = 75000
+
+/** Maximum content per script for batching (characters) */
+const MAX_SCRIPT_CONTENT_LENGTH = 2000
 
 /**
  * Batch script analysis prompt.
@@ -111,7 +128,7 @@ async function analyzeBatchWithLLM(
   // Build batch content
   const batchContent = scripts.map((s, i) => {
     const content = s.content 
-      ? s.content.substring(0, 3000) // Limit each script to 3KB for batching
+      ? s.content.substring(0, MAX_SCRIPT_CONTENT_LENGTH)
       : '[Content not available]'
     return `Script ${i + 1}: ${s.url}\n${content}\n---`
   }).join('\n')
@@ -203,31 +220,48 @@ const GROUPABLE_PATTERNS: Array<{
     id: 'app-chunks',
     name: 'Application code chunks',
     description: 'Code-split application bundles (SPA framework chunks)',
-    pattern: /chunk[-._]?[a-f0-9]{6,}\.js|[a-f0-9]{8,}\.chunk\.js|\d+\.[a-f0-9]+\.js|chunks?\/[^/]+\.js/i,
+    // Match: chunk-abc123.js, abc12345.chunk.js, 123.abc123.js, chunks/foo.js
+    // Also: _app-abc123.js, main-abc123.js, page-abc123.js (Next.js style)
+    pattern: /(?:chunk|_app|_next|main|page|pages)[-._]?[a-f0-9]{5,}\.js|[a-f0-9]{8,}\.(?:chunk|module)\.js|\d+\.[a-f0-9]{6,}\.js|chunks?\/[^/]+\.js|_next\/static\/chunks/i,
   },
   {
     id: 'vendor-bundles',
     name: 'Vendor bundles',
     description: 'Third-party library bundles (node_modules)',
-    pattern: /vendor[-._]?[a-f0-9]*\.js|vendors[-~][a-f0-9]+\.js|node_modules.*\.js/i,
+    // Match: vendor-abc.js, vendors~abc.js, framework-abc.js, commons-abc.js
+    pattern: /(?:vendor|vendors|framework|commons|shared|lib)[-._~][a-f0-9]*\.js|node_modules.*\.js/i,
   },
   {
     id: 'webpack-runtime',
     name: 'Webpack runtime',
     description: 'Webpack module loading runtime',
-    pattern: /webpack[-._]?runtime[-._]?[a-f0-9]*\.js|runtime[-~][a-f0-9]+\.js/i,
+    pattern: /webpack[-._]?runtime[-._]?[a-f0-9]*\.js|runtime[-~][a-f0-9]+\.js|__webpack_require__/i,
   },
   {
     id: 'lazy-modules',
     name: 'Lazy-loaded modules',
     description: 'Dynamically imported modules',
-    pattern: /lazy[-._]?[a-f0-9]+\.js|async[-._]?[a-f0-9]+\.js|dynamic[-._]?[a-f0-9]+\.js/i,
+    // Match: lazy-abc.js, async-abc.js, dynamic-abc.js, also numbered modules like 123.js, 456.js
+    pattern: /(?:lazy|async|dynamic)[-._]?[a-f0-9]+\.js|\/\d{1,4}\.[a-f0-9]{6,}\.js$/i,
   },
   {
     id: 'css-chunks',
     name: 'CSS-in-JS chunks',
     description: 'Styled component or CSS module chunks',
     pattern: /styles?[-._]?[a-f0-9]+\.js|css[-._]?[a-f0-9]+\.js/i,
+  },
+  {
+    id: 'polyfills',
+    name: 'Polyfill bundles',
+    description: 'Browser compatibility polyfills',
+    pattern: /polyfill[s]?[-._]?[a-f0-9]*\.js|core-js.*\.js/i,
+  },
+  {
+    id: 'static-assets',
+    name: 'Static asset scripts',
+    description: 'Hashed static JavaScript files',
+    // Match generic hash patterns: abc123def456.js, script.abc123.js
+    pattern: /\/static\/(?:js|chunks?)\/[^/]+\.[a-f0-9]{8,}\.js|\/assets\/[^/]+\.[a-f0-9]{8,}\.js/i,
   },
 ]
 
@@ -455,10 +489,14 @@ export async function analyzeScripts(
     }
     
     let fetchedCount = 0
+    const failedUrls: string[] = []
     const scriptContents = await Promise.all(
       unknownScripts.map(async ({ script }) => {
         const content = await fetchScriptContent(script.url)
         fetchedCount++
+        if (!content) {
+          failedUrls.push(script.url)
+        }
         // Report progress every 5 scripts or at the end
         if (onProgress && (fetchedCount % 5 === 0 || fetchedCount === totalToAnalyze)) {
           onProgress('fetching', fetchedCount, totalToAnalyze, `Fetched ${fetchedCount}/${totalToAnalyze} scripts...`)
@@ -466,7 +504,18 @@ export async function analyzeScripts(
         return { url: script.url, content }
       })
     )
-    log.info('Script contents fetched', { fetched: scriptContents.filter(s => s.content).length, failed: scriptContents.filter(s => !s.content).length })
+    
+    const fetchedSuccessCount = scriptContents.filter(s => s.content).length
+    const failedCount = failedUrls.length
+    log.info('Script contents fetched', { fetched: fetchedSuccessCount, failed: failedCount })
+    
+    // Log failed URLs for debugging
+    if (failedUrls.length > 0) {
+      log.warn('Failed to fetch script contents', { 
+        count: failedUrls.length, 
+        urls: failedUrls.slice(0, 10).join(', ') + (failedUrls.length > 10 ? ` (+${failedUrls.length - 10} more)` : '')
+      })
+    }
     
     // Create batches
     const batches: Array<Array<{ url: string; content: string | null; index: number }>> = []

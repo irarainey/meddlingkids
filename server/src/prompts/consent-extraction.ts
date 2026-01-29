@@ -11,10 +11,18 @@ export const CONSENT_EXTRACTION_SYSTEM_PROMPT = `You are an expert at analyzing 
 
 Your task is to extract ALL information about:
 1. Cookie categories (necessary, functional, analytics, advertising, etc.)
-2. Third-party partners/vendors and what they do
+2. Third-party partners/vendors and what they do - EXTRACT ALL PARTNERS, even if there are hundreds
 3. What data is being collected
 4. Purposes of data collection
 5. Any retention periods mentioned
+
+IMPORTANT INSTRUCTIONS FOR PARTNERS:
+- Look for "View Partners", "Show Vendors", "IAB Vendors", or similar expandable sections
+- Many consent dialogs hide the full partner list behind a button - look for this in the HTML
+- TCF (Transparency & Consent Framework) dialogs often have 100+ partners - include them ALL
+- If you see text like "We and our 842 partners" or similar, there is a partner list somewhere
+- Partner lists may be in tables, lists, or accordion/expandable sections
+- Include EVERY partner name you can find, even if the list is very long
 
 Also identify if there's a "Manage Preferences", "Cookie Settings", "More Options", or similar button that reveals more details.
 
@@ -32,7 +40,7 @@ Return a JSON object with this exact structure:
   "rawText": "Key excerpts from the consent text that users should know about"
 }
 
-Extract as much detail as possible. If you see a long list of partners, include them all.
+Extract as much detail as possible. If you see a long list of partners, include them all - this is critical for privacy analysis.
 IMPORTANT: Return ONLY the JSON object, no other text.`
 
 /**

@@ -92,7 +92,7 @@ const {
         <option value="macos-safari">macOS Safari</option>
       </select>
       <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
-        {{ isLoading ? 'Sleuthing...' : 'Unmask' }}
+        {{ isLoading ? 'Spookscouting...' : 'Unmask' }}
       </button>
     </div>
 

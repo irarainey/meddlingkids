@@ -1978,5 +1978,49 @@
   {
     "pattern": "cheq\\.ai",
     "description": "CHEQ: Ad fraud prevention tracking invalid traffic."
+  },
+  {
+    "pattern": "dotmetrics\\.net",
+    "description": "DotMetrics: Cross-publisher audience measurement and tracking."
+  },
+  {
+    "pattern": "ati-host\\.net|at-internet|xiti\\.com",
+    "description": "AT Internet: Web analytics tracking page views and user journeys."
+  },
+  {
+    "pattern": "gemius\\.pl|gemius\\.com",
+    "description": "Gemius: Audience measurement tracking demographics and reach."
+  },
+  {
+    "pattern": "effective-?measure|effectivemeasure",
+    "description": "Effective Measure: Audience measurement and analytics tracking."
+  },
+  {
+    "pattern": "imrworldwide\\.com|nielsen\\.com\\/.*tags|exelator\\.com",
+    "description": "Nielsen Digital: Audience measurement tracking demographics and reach."
+  },
+  {
+    "pattern": "adsafeprotected\\.com|iponweb\\.com",
+    "description": "AdSafe/IponWeb: Ad verification and targeting platform."
+  },
+  {
+    "pattern": "adnxs\\.com|appnexus\\.com",
+    "description": "Xandr (AppNexus): Programmatic advertising exchange and tracking."
+  },
+  {
+    "pattern": "rubiconproject\\.com|rubicon\\.com",
+    "description": "Rubicon Project: Programmatic advertising exchange."
+  },
+  {
+    "pattern": "smartadserver\\.com",
+    "description": "Smart AdServer: Ad serving platform with tracking."
+  },
+  {
+    "pattern": "prebid\\.js|pbjs",
+    "description": "Prebid.js: Header bidding library enabling multiple ad exchanges."
+  },
+  {
+    "pattern": "analytics|tracking|beacon|telemetry|metrics",
+    "description": "Generic analytics/tracking script (detected by URL pattern)."
   }
 ]

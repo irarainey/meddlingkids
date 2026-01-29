@@ -103,8 +103,12 @@ ${
   consentDetails.partners.length > 0
     ? consentDetails.partners
         .map(
-          (p) =>
-            `- **${p.name}**: ${p.purpose}${p.dataCollected.length > 0 ? ` | Data: ${p.dataCollected.join(', ')}` : ''}`
+          (p) => {
+            const risk = p.riskLevel ? ` [${p.riskLevel.toUpperCase()} RISK]` : ''
+            const category = p.riskCategory ? ` (${p.riskCategory})` : ''
+            const concerns = p.concerns && p.concerns.length > 0 ? ` | Concerns: ${p.concerns.join(', ')}` : ''
+            return `- **${p.name}**${risk}${category}: ${p.purpose}${p.dataCollected.length > 0 ? ` | Data: ${p.dataCollected.join(', ')}` : ''}${concerns}`
+          }
         )
         .join('\n')
     : 'No partners listed'

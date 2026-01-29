@@ -40,7 +40,9 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
 
   // Get all visible text from the page related to cookies/consent
   log.startTimer('text-extraction')
-  const consentText = await page.evaluate(() => {
+  
+  // First extract from main page
+  const mainPageText = await page.evaluate(() => {
     const selectors = [
       '[class*="cookie"]',
       '[class*="consent"]',
@@ -52,13 +54,17 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
       '[class*="modal"]',
       '[class*="banner"]',
       '[class*="overlay"]',
+      '[class*="cmp"]',
+      '[class*="tcf"]',
+      '[class*="vendor"]',
+      '[class*="partner"]',
     ]
 
     const elements: string[] = []
     for (const selector of selectors) {
       document.querySelectorAll(selector).forEach((el) => {
         const text = (el as HTMLElement).innerText?.trim()
-        if (text && text.length > 10 && text.length < 10000) {
+        if (text && text.length > 10 && text.length < 15000) {
           elements.push(text)
         }
       })
@@ -77,9 +83,57 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
         elements.push(text)
       }
     })
+    
+    // Look for lists that might contain vendors/partners
+    document.querySelectorAll('ul, ol').forEach((list) => {
+      const text = (list as HTMLElement).innerText?.trim()
+      const parent = list.parentElement
+      const parentText = (parent as HTMLElement)?.innerText?.toLowerCase() || ''
+      if (
+        text && 
+        text.length > 50 &&
+        (parentText.includes('partner') ||
+         parentText.includes('vendor') ||
+         parentText.includes('third part'))
+      ) {
+        elements.push(`PARTNER LIST:\n${text}`)
+      }
+    })
 
-    return [...new Set(elements)].join('\n\n---\n\n').substring(0, 30000)
+    return [...new Set(elements)].join('\n\n---\n\n')
   })
+  
+  // Also extract from consent iframes (OneTrust, Sourcepoint, etc.)
+  const iframeTexts: string[] = []
+  const frames = page.frames()
+  for (const frame of frames) {
+    if (frame === page.mainFrame()) continue
+    
+    const frameUrl = frame.url().toLowerCase()
+    if (frameUrl.includes('consent') || frameUrl.includes('onetrust') || 
+        frameUrl.includes('cookiebot') || frameUrl.includes('sourcepoint') ||
+        frameUrl.includes('trustarc') || frameUrl.includes('didomi') ||
+        frameUrl.includes('quantcast') || frameUrl.includes('cmp') ||
+        frameUrl.includes('gdpr') || frameUrl.includes('privacy')) {
+      try {
+        const iframeText = await frame.evaluate(() => {
+          const text = document.body?.innerText?.trim()
+          return text && text.length > 50 ? text : ''
+        })
+        if (iframeText) {
+          iframeTexts.push(`[CONSENT IFRAME]:\n${iframeText}`)
+        }
+      } catch {
+        // Frame may be inaccessible
+      }
+    }
+  }
+  
+  // Combine all text, prioritizing iframe content
+  const consentText = [...iframeTexts, mainPageText]
+    .filter(t => t.length > 0)
+    .join('\n\n---\n\n')
+    .substring(0, 50000) // Increased limit to capture more partner data
   
   log.endTimer('text-extraction', 'Text extraction complete')
   log.debug('Extracted consent text', { length: consentText.length })
@@ -112,7 +166,7 @@ export async function extractConsentDetails(page: Page, screenshot: Buffer): Pro
             ],
           },
         ],
-        max_completion_tokens: 2000,
+        max_completion_tokens: 4000, // Increased to handle long partner lists
       }),
       { context: 'Consent extraction' }
     )

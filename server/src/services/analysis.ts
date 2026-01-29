@@ -166,6 +166,11 @@ export async function runTrackingAnalysis(
         }
         summaryFindings = JSON.parse(jsonStr) as SummaryFinding[]
         log.success('Summary findings parsed', { count: summaryFindings.length })
+        
+        // Log each finding for better visibility
+        for (const finding of summaryFindings) {
+          log.info(`Finding [${finding.type}]: ${finding.text}`)
+        }
       } catch (parseError) {
         log.error('Failed to parse summary findings JSON', { error: getErrorMessage(parseError) })
         // Fallback to empty array
@@ -176,6 +181,17 @@ export async function runTrackingAnalysis(
     // Use deterministic score from the breakdown
     const privacyScore = scoreBreakdown.totalScore
     const privacySummary = scoreBreakdown.summary
+
+    // Log full score breakdown for visibility
+    log.info('Privacy score details', {
+      total: privacyScore,
+      cookies: scoreBreakdown.categories.cookies.points,
+      thirdParty: scoreBreakdown.categories.thirdPartyTrackers.points,
+      advertising: scoreBreakdown.categories.advertising.points,
+      fingerprinting: scoreBreakdown.categories.fingerprinting.points,
+      social: scoreBreakdown.categories.socialMedia.points,
+      consent: scoreBreakdown.categories.consent.points,
+    })
 
     log.success('Analysis complete', { 
       findingsCount: summaryFindings.length, 
