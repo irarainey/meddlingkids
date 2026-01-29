@@ -1,0 +1,972 @@
+{
+  "liveramp": {
+    "concerns": [
+      "Cross-device identity resolution",
+      "Offline-to-online data matching",
+      "Data selling to 500+ partners",
+      "IdentityLink graph"
+    ],
+    "aliases": [
+      "live ramp",
+      "liveramp holdings",
+      "liveramp inc"
+    ]
+  },
+  "acxiom": {
+    "concerns": [
+      "2.5 billion consumer profiles",
+      "Data selling",
+      "Detailed demographic profiles",
+      "InfoBase database"
+    ],
+    "aliases": [
+      "acxiom llc",
+      "acxiom corporation",
+      "acxiom marketing"
+    ]
+  },
+  "oracle data cloud": {
+    "concerns": [
+      "Massive data aggregation",
+      "Cross-site tracking",
+      "Data marketplace",
+      "Purchases BlueKai",
+      "Datalogix",
+      "AddThis data"
+    ],
+    "aliases": [
+      "oracle",
+      "bluekai",
+      "datalogix",
+      "oracle advertising",
+      "oracle moat",
+      "grapeshot"
+    ]
+  },
+  "experian": {
+    "concerns": [
+      "Credit bureau data",
+      "Identity verification tied to tracking",
+      "Consumer profiling",
+      "Marketing services"
+    ],
+    "aliases": [
+      "experian marketing",
+      "experian plc",
+      "experian marketing services",
+      "experian audience"
+    ]
+  },
+  "epsilon": {
+    "concerns": [
+      "Consumer database of 250M+ Americans",
+      "Email tracking",
+      "Direct marketing data",
+      "Conversant ID"
+    ],
+    "aliases": [
+      "epsilon data",
+      "epsilon digital",
+      "conversant",
+      "publicis epsilon"
+    ]
+  },
+  "transunion": {
+    "concerns": [
+      "Credit data for marketing",
+      "TruVision data",
+      "Identity resolution",
+      "Signal platform"
+    ],
+    "aliases": [
+      "transunion llc",
+      "transunion marketing",
+      "signal digital",
+      "neustar"
+    ]
+  },
+  "equifax": {
+    "concerns": [
+      "Credit data integration",
+      "Financial profiling",
+      "Identity data",
+      "IXI Services wealth data"
+    ],
+    "aliases": [
+      "equifax inc",
+      "equifax marketing",
+      "ixi services"
+    ]
+  },
+  "lotame": {
+    "concerns": [
+      "Data management platform",
+      "Audience segmentation",
+      "Data selling",
+      "Panorama ID"
+    ],
+    "aliases": [
+      "lotame solutions",
+      "lotame inc"
+    ]
+  },
+  "salesforce dmp": {
+    "concerns": [
+      "Krux data",
+      "Cross-device tracking",
+      "CRM data matching",
+      "Audience Studio"
+    ],
+    "aliases": [
+      "krux",
+      "salesforce audience studio",
+      "salesforce cdp"
+    ]
+  },
+  "adobe audience manager": {
+    "concerns": [
+      "DMP with extensive tracking",
+      "Cross-device graphs",
+      "Data co-ops"
+    ],
+    "aliases": [
+      "adobe aam",
+      "audience manager",
+      "adobe experience cloud"
+    ]
+  },
+  "nielsen": {
+    "concerns": [
+      "TV viewing data",
+      "Cross-platform measurement",
+      "Demographic profiling",
+      "Exelate data"
+    ],
+    "aliases": [
+      "nielsen marketing",
+      "nielsen digital",
+      "exelate",
+      "nielsen dmp"
+    ]
+  },
+  "comscore": {
+    "concerns": [
+      "Web tracking panels",
+      "Audience measurement",
+      "Cross-platform tracking",
+      "Shareablee data"
+    ],
+    "aliases": [
+      "comscore inc",
+      "comscore networks"
+    ]
+  },
+  "lexisnexis": {
+    "concerns": [
+      "Public records aggregation",
+      "Identity verification",
+      "Risk assessment data",
+      "Accurint database"
+    ],
+    "aliases": [
+      "lexis nexis",
+      "relx",
+      "lexisnexis risk",
+      "accurint"
+    ]
+  },
+  "thomson reuters": {
+    "concerns": [
+      "CLEAR database",
+      "Public records",
+      "Identity verification"
+    ],
+    "aliases": [
+      "thomson reuters risk",
+      "clear investigation"
+    ]
+  },
+  "intelius": {
+    "concerns": [
+      "People search",
+      "Background checks",
+      "Personal data aggregation"
+    ],
+    "aliases": [
+      "intelius inc",
+      "peopleconnect"
+    ]
+  },
+  "spokeo": {
+    "concerns": [
+      "People search engine",
+      "Personal data aggregation",
+      "Social media scraping"
+    ],
+    "aliases": [
+      "spokeo inc"
+    ]
+  },
+  "whitepages": {
+    "concerns": [
+      "People search",
+      "Address history",
+      "Phone lookups"
+    ],
+    "aliases": [
+      "whitepages inc",
+      "whitepages pro"
+    ]
+  },
+  "beenverified": {
+    "concerns": [
+      "Background checks",
+      "People search",
+      "Personal data aggregation"
+    ],
+    "aliases": [
+      "been verified"
+    ]
+  },
+  "truthfinder": {
+    "concerns": [
+      "People search",
+      "Background checks",
+      "Public records"
+    ],
+    "aliases": [
+      "truth finder"
+    ]
+  },
+  "instantcheckmate": {
+    "concerns": [
+      "Background checks",
+      "Criminal records",
+      "Personal data"
+    ],
+    "aliases": [
+      "instant checkmate"
+    ]
+  },
+  "safegraph": {
+    "concerns": [
+      "Location data selling",
+      "Foot traffic data",
+      "POI data",
+      "Movement patterns"
+    ],
+    "aliases": [
+      "safe graph"
+    ]
+  },
+  "foursquare": {
+    "concerns": [
+      "Location intelligence",
+      "Place data",
+      "Attribution",
+      "Factual data"
+    ],
+    "aliases": [
+      "foursquare labs",
+      "factual"
+    ]
+  },
+  "placer.ai": {
+    "concerns": [
+      "Location analytics",
+      "Foot traffic",
+      "Consumer movement"
+    ],
+    "aliases": [
+      "placer ai",
+      "placer labs"
+    ]
+  },
+  "gravy analytics": {
+    "concerns": [
+      "Location data",
+      "Movement tracking",
+      "Consumer insights"
+    ],
+    "aliases": [
+      "gravy"
+    ]
+  },
+  "cuebiq": {
+    "concerns": [
+      "Location intelligence",
+      "Offline attribution",
+      "Mobility data"
+    ],
+    "aliases": []
+  },
+  "x-mode": {
+    "concerns": [
+      "Location data broker",
+      "Sold military location data",
+      "App SDK data"
+    ],
+    "aliases": [
+      "xmode",
+      "x mode social",
+      "outlogic"
+    ]
+  },
+  "venntel": {
+    "concerns": [
+      "Location data to government",
+      "Phone tracking",
+      "Movement patterns"
+    ],
+    "aliases": []
+  },
+  "iqvia": {
+    "concerns": [
+      "Healthcare data",
+      "Prescription data",
+      "Medical information tracking",
+      "Patient-level data"
+    ],
+    "aliases": [
+      "ims health",
+      "quintiles",
+      "iqvia holdings"
+    ]
+  },
+  "lexishealth": {
+    "concerns": [
+      "Medical records",
+      "Healthcare marketing",
+      "Patient data"
+    ],
+    "aliases": []
+  },
+  "verisk": {
+    "concerns": [
+      "Insurance data",
+      "Risk profiling",
+      "Claims data",
+      "Jornaya data"
+    ],
+    "aliases": [
+      "verisk analytics",
+      "jornaya"
+    ]
+  },
+  "corelogic": {
+    "concerns": [
+      "Property data",
+      "Real estate records",
+      "Consumer data"
+    ],
+    "aliases": [
+      "core logic"
+    ]
+  },
+  "moodys": {
+    "concerns": [
+      "Financial data",
+      "Credit analysis",
+      "Business intelligence"
+    ],
+    "aliases": [
+      "moodys analytics",
+      "moody's"
+    ]
+  },
+  "catalina": {
+    "concerns": [
+      "Purchase data from retailers",
+      "Shopper marketing",
+      "Transaction data"
+    ],
+    "aliases": [
+      "catalina marketing"
+    ]
+  },
+  "ibotta": {
+    "concerns": [
+      "Receipt scanning",
+      "Purchase data",
+      "Consumer behavior"
+    ],
+    "aliases": [
+      "ibotta inc"
+    ]
+  },
+  "ncs": {
+    "concerns": [
+      "Purchase-based targeting",
+      "Transaction data",
+      "Consumer purchase history"
+    ],
+    "aliases": [
+      "nielsen catalina",
+      "ncs solutions"
+    ]
+  },
+  "iri": {
+    "concerns": [
+      "Purchase data",
+      "Consumer panel data",
+      "Retail analytics"
+    ],
+    "aliases": [
+      "iri worldwide",
+      "information resources"
+    ]
+  },
+  "numerator": {
+    "concerns": [
+      "Receipt scanning",
+      "Purchase data",
+      "Panel data"
+    ],
+    "aliases": [
+      "numerator insights",
+      "infoscout"
+    ]
+  },
+  "zoominfo": {
+    "concerns": [
+      "B2B contact data",
+      "Email harvesting",
+      "Company intelligence"
+    ],
+    "aliases": [
+      "zoom info",
+      "zoominfo technologies"
+    ]
+  },
+  "clearbit": {
+    "concerns": [
+      "Email enrichment",
+      "Company data",
+      "Identity resolution"
+    ],
+    "aliases": [
+      "clearbit inc"
+    ]
+  },
+  "fullcontact": {
+    "concerns": [
+      "Identity resolution",
+      "Contact data",
+      "Social profiles"
+    ],
+    "aliases": [
+      "full contact"
+    ]
+  },
+  "pipl": {
+    "concerns": [
+      "People search",
+      "Identity resolution",
+      "Email lookup"
+    ],
+    "aliases": [
+      "pipl inc"
+    ]
+  },
+  "hunter.io": {
+    "concerns": [
+      "Email finding",
+      "Contact scraping",
+      "Domain search"
+    ],
+    "aliases": [
+      "hunter",
+      "email hunter"
+    ]
+  },
+  "lusha": {
+    "concerns": [
+      "Contact data",
+      "Phone numbers",
+      "Email addresses"
+    ],
+    "aliases": [
+      "lusha systems"
+    ]
+  },
+  "apollo.io": {
+    "concerns": [
+      "Sales intelligence",
+      "Contact database",
+      "Email sequences"
+    ],
+    "aliases": [
+      "apollo"
+    ]
+  },
+  "axiom": {
+    "concerns": [
+      "Data co-op",
+      "Publisher data sharing",
+      "First-party data exchange"
+    ],
+    "aliases": []
+  },
+  "eyeota": {
+    "concerns": [
+      "Audience data marketplace",
+      "Third-party data",
+      "Cross-border data"
+    ],
+    "aliases": [
+      "eyeota pte"
+    ]
+  },
+  "bombora": {
+    "concerns": [
+      "B2B intent data",
+      "Company surge data",
+      "Content consumption tracking"
+    ],
+    "aliases": [
+      "bombora inc"
+    ]
+  },
+  "peekyou": {
+    "concerns": [
+      "Social media aggregation",
+      "People search",
+      "Identity linking"
+    ],
+    "aliases": [
+      "peek you",
+      "peekyou inc"
+    ]
+  },
+  "towerdata": {
+    "concerns": [
+      "Email intelligence",
+      "Email appending",
+      "Demographic data"
+    ],
+    "aliases": [
+      "tower data",
+      "rapleaf"
+    ]
+  },
+  "dataaxle": {
+    "concerns": [
+      "Business and consumer data",
+      "Direct mail lists",
+      "Data licensing"
+    ],
+    "aliases": [
+      "data axle",
+      "infousa",
+      "databaseusa"
+    ]
+  },
+  "exact data": {
+    "concerns": [
+      "Consumer mailing lists",
+      "Email lists",
+      "Telemarketing data"
+    ],
+    "aliases": [
+      "exactdata",
+      "exact data llc"
+    ]
+  },
+  "peoplesmart": {
+    "concerns": [
+      "People search",
+      "Background checks",
+      "Public records"
+    ],
+    "aliases": [
+      "people smart"
+    ]
+  },
+  "usdate": {
+    "concerns": [
+      "Consumer database",
+      "Demographic data",
+      "Marketing lists"
+    ],
+    "aliases": [
+      "us date",
+      "usdate llc"
+    ]
+  },
+  "melissa data": {
+    "concerns": [
+      "Address verification",
+      "Data quality",
+      "Contact appending"
+    ],
+    "aliases": [
+      "melissa",
+      "melissadata"
+    ]
+  },
+  "dun & bradstreet": {
+    "concerns": [
+      "Business credit data",
+      "Company information",
+      "B2B data"
+    ],
+    "aliases": [
+      "dnb",
+      "d&b",
+      "dun and bradstreet",
+      "hoovers"
+    ]
+  },
+  "pitney bowes": {
+    "concerns": [
+      "Location intelligence",
+      "Consumer data",
+      "Address data"
+    ],
+    "aliases": [
+      "pitneybowes",
+      "pbdata"
+    ]
+  },
+  "talenthouse": {
+    "concerns": [
+      "Creative professional data",
+      "Portfolio tracking"
+    ],
+    "aliases": [
+      "talent house"
+    ]
+  },
+  "callcredit": {
+    "concerns": [
+      "UK credit bureau",
+      "Consumer profiling",
+      "Now TransUnion UK"
+    ],
+    "aliases": [
+      "call credit",
+      "transunion uk"
+    ]
+  },
+  "crif": {
+    "concerns": [
+      "European credit bureau",
+      "B2B data",
+      "Identity verification"
+    ],
+    "aliases": [
+      "crif spa",
+      "crif buergel"
+    ]
+  },
+  "creditreform": {
+    "concerns": [
+      "German business data",
+      "Credit information",
+      "B2B profiles"
+    ],
+    "aliases": [
+      "credit reform"
+    ]
+  },
+  "schufa": {
+    "concerns": [
+      "German credit bureau",
+      "Financial scoring",
+      "Consumer profiles"
+    ],
+    "aliases": [
+      "schufa holding"
+    ]
+  },
+  "experian uk": {
+    "concerns": [
+      "UK consumer data",
+      "Credit scoring",
+      "Marketing services"
+    ],
+    "aliases": [
+      "experian plc uk"
+    ]
+  },
+  "equifax uk": {
+    "concerns": [
+      "UK credit data",
+      "Consumer profiling",
+      "Identity services"
+    ],
+    "aliases": [
+      "equifax ltd"
+    ]
+  },
+  "qas": {
+    "concerns": [
+      "Address validation",
+      "Data quality",
+      "Experian owned"
+    ],
+    "aliases": [
+      "experian qas"
+    ]
+  },
+  "acuity": {
+    "concerns": [
+      "Data broker marketplace",
+      "Audience data",
+      "Publisher data"
+    ],
+    "aliases": [
+      "acuity best"
+    ]
+  },
+  "l2 political": {
+    "concerns": [
+      "Voter data",
+      "Political targeting",
+      "Consumer data"
+    ],
+    "aliases": [
+      "l2 inc",
+      "l2 data"
+    ]
+  },
+  "aristotle": {
+    "concerns": [
+      "Voter data",
+      "Political data broker",
+      "Campaign data"
+    ],
+    "aliases": [
+      "aristotle inc",
+      "aristotle political"
+    ]
+  },
+  "targetsmart": {
+    "concerns": [
+      "Political data",
+      "Voter file data",
+      "Campaign targeting"
+    ],
+    "aliases": [
+      "target smart"
+    ]
+  },
+  "i360": {
+    "concerns": [
+      "Political data",
+      "Koch network data",
+      "Conservative targeting"
+    ],
+    "aliases": [
+      "i-360"
+    ]
+  },
+  "cambridge analytica": {
+    "concerns": [
+      "Political profiling",
+      "Psychographic data",
+      "Now defunct but data persists"
+    ],
+    "aliases": [
+      "scl group"
+    ]
+  },
+  "data trust": {
+    "concerns": [
+      "RNC voter data",
+      "Political targeting",
+      "Conservative data"
+    ],
+    "aliases": [
+      "datatrust",
+      "data trust llc"
+    ]
+  },
+  "carfax": {
+    "concerns": [
+      "Vehicle history",
+      "Owner data",
+      "Purchase behavior"
+    ],
+    "aliases": [
+      "car fax",
+      "carfax inc"
+    ]
+  },
+  "polk": {
+    "concerns": [
+      "Automotive data",
+      "Vehicle registration",
+      "IHS Markit owned"
+    ],
+    "aliases": [
+      "r.l. polk",
+      "rl polk",
+      "ihs polk"
+    ]
+  },
+  "jd power": {
+    "concerns": [
+      "Automotive surveys",
+      "Consumer data",
+      "Purchase behavior"
+    ],
+    "aliases": [
+      "j.d. power",
+      "jdpower"
+    ]
+  },
+  "autobytel": {
+    "concerns": [
+      "Auto leads",
+      "Purchase intent",
+      "Consumer data"
+    ],
+    "aliases": [
+      "auto bytel"
+    ]
+  },
+  "symphony health": {
+    "concerns": [
+      "Healthcare data",
+      "Prescription data",
+      "IQVIA owned"
+    ],
+    "aliases": [
+      "symphonyhealth"
+    ]
+  },
+  "healthverity": {
+    "concerns": [
+      "Healthcare data marketplace",
+      "Patient data",
+      "Medical claims"
+    ],
+    "aliases": [
+      "health verity"
+    ]
+  },
+  "komodo health": {
+    "concerns": [
+      "Healthcare analytics",
+      "Patient journey data",
+      "Medical tracking"
+    ],
+    "aliases": [
+      "komodohealth"
+    ]
+  },
+  "definitive healthcare": {
+    "concerns": [
+      "Healthcare provider data",
+      "Hospital data",
+      "HCP targeting"
+    ],
+    "aliases": [
+      "definitivehc"
+    ]
+  },
+  "plaid": {
+    "concerns": [
+      "Bank account access",
+      "Transaction data",
+      "Financial tracking"
+    ],
+    "aliases": [
+      "plaid inc",
+      "plaid technologies"
+    ]
+  },
+  "yodlee": {
+    "concerns": [
+      "Account aggregation",
+      "Transaction data",
+      "Financial behavior"
+    ],
+    "aliases": [
+      "envestnet yodlee"
+    ]
+  },
+  "mx": {
+    "concerns": [
+      "Financial data aggregation",
+      "Transaction categorization",
+      "Banking data"
+    ],
+    "aliases": [
+      "mx technologies"
+    ]
+  },
+  "finicity": {
+    "concerns": [
+      "Financial data access",
+      "Verification services",
+      "Mastercard owned"
+    ],
+    "aliases": [
+      "finicity corporation"
+    ]
+  },
+  "argus information": {
+    "concerns": [
+      "Payment card data",
+      "Transaction analytics",
+      "Verisk owned"
+    ],
+    "aliases": [
+      "argus information and advisory"
+    ]
+  },
+  "zillow": {
+    "concerns": [
+      "Property searches",
+      "Home value data",
+      "Consumer intent"
+    ],
+    "aliases": [
+      "zillow group",
+      "trulia"
+    ]
+  },
+  "redfin": {
+    "concerns": [
+      "Real estate searches",
+      "Property data",
+      "Consumer behavior"
+    ],
+    "aliases": [
+      "redfin corporation"
+    ]
+  },
+  "realtor.com": {
+    "concerns": [
+      "Property searches",
+      "Move intent data",
+      "News Corp owned"
+    ],
+    "aliases": [
+      "move inc"
+    ]
+  },
+  "costar": {
+    "concerns": [
+      "Commercial real estate data",
+      "Property information",
+      "Apartments.com"
+    ],
+    "aliases": [
+      "costar group"
+    ]
+  },
+  "attom data": {
+    "concerns": [
+      "Property data",
+      "Real estate analytics",
+      "Consumer data"
+    ],
+    "aliases": [
+      "attom",
+      "attomdata"
+    ]
+  }
+}

@@ -1,0 +1,490 @@
+{
+  "firebase": {
+    "concerns": [
+      "Google analytics for apps",
+      "Crash reporting",
+      "Event tracking",
+      "User properties"
+    ],
+    "aliases": [
+      "firebase analytics",
+      "google firebase",
+      "firebase crashlytics"
+    ]
+  },
+  "flurry": {
+    "concerns": [
+      "Yahoo mobile analytics",
+      "User demographics",
+      "App events"
+    ],
+    "aliases": [
+      "flurry analytics",
+      "yahoo flurry"
+    ]
+  },
+  "localytics": {
+    "concerns": [
+      "Mobile engagement",
+      "User profiling",
+      "Behavioral analytics",
+      "Upland owned"
+    ],
+    "aliases": [
+      "localytics inc"
+    ]
+  },
+  "leanplum": {
+    "concerns": [
+      "Mobile engagement",
+      "A/B testing",
+      "User messaging",
+      "CleverTap merged"
+    ],
+    "aliases": [
+      "lean plum"
+    ]
+  },
+  "clevertap": {
+    "concerns": [
+      "Mobile engagement",
+      "User retention",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "clever tap",
+      "clevertap inc"
+    ]
+  },
+  "braze sdk": {
+    "concerns": [
+      "Mobile engagement",
+      "Push notifications",
+      "User tracking"
+    ],
+    "aliases": [
+      "appboy sdk"
+    ]
+  },
+  "airbridge": {
+    "concerns": [
+      "Mobile attribution",
+      "Deep linking",
+      "Cross-device"
+    ],
+    "aliases": [
+      "air bridge"
+    ]
+  },
+  "tune": {
+    "concerns": [
+      "Mobile attribution",
+      "Marketing analytics",
+      "Branch acquired"
+    ],
+    "aliases": [
+      "tune inc",
+      "hasoffers"
+    ]
+  },
+  "admob": {
+    "concerns": [
+      "Google mobile ads",
+      "Behavioral targeting",
+      "Mediation"
+    ],
+    "aliases": [
+      "google admob",
+      "admob sdk"
+    ]
+  },
+  "facebook audience network": {
+    "concerns": [
+      "Meta mobile ads",
+      "Cross-app tracking",
+      "Behavioral targeting"
+    ],
+    "aliases": [
+      "fan",
+      "fb audience network",
+      "meta audience network"
+    ]
+  },
+  "mopub": {
+    "concerns": [
+      "Twitter mobile ads",
+      "Mediation",
+      "AppLovin acquired"
+    ],
+    "aliases": [
+      "mo pub"
+    ]
+  },
+  "tapjoy": {
+    "concerns": [
+      "Rewarded ads",
+      "Offerwall",
+      "User engagement"
+    ],
+    "aliases": [
+      "tap joy",
+      "tapjoy inc"
+    ]
+  },
+  "pangle": {
+    "concerns": [
+      "ByteDance ads",
+      "TikTok network",
+      "Global reach"
+    ],
+    "aliases": [
+      "pangle ads",
+      "bytedance pangle"
+    ]
+  },
+  "startapp": {
+    "concerns": [
+      "Mobile ad network",
+      "Interstitial ads",
+      "User data"
+    ],
+    "aliases": [
+      "start app",
+      "start.io"
+    ]
+  },
+  "loopme": {
+    "concerns": [
+      "Mobile video ads",
+      "Attribution",
+      "AI optimization"
+    ],
+    "aliases": [
+      "loop me"
+    ]
+  },
+  "ogury": {
+    "concerns": [
+      "Mobile advertising",
+      "Personified advertising",
+      "Survey data"
+    ],
+    "aliases": [
+      "ogury ltd"
+    ]
+  },
+  "crashlytics": {
+    "concerns": [
+      "Crash reporting",
+      "User tracking",
+      "Device info",
+      "Firebase/Google"
+    ],
+    "aliases": [
+      "firebase crashlytics",
+      "fabric crashlytics"
+    ]
+  },
+  "bugly": {
+    "concerns": [
+      "Tencent crash reporting",
+      "Chinese market",
+      "Device tracking"
+    ],
+    "aliases": [
+      "tencent bugly"
+    ]
+  },
+  "instabug": {
+    "concerns": [
+      "Bug reporting",
+      "Session replay",
+      "User feedback"
+    ],
+    "aliases": [
+      "insta bug"
+    ]
+  },
+  "embrace": {
+    "concerns": [
+      "Mobile observability",
+      "Session replay",
+      "User tracking"
+    ],
+    "aliases": [
+      "embrace.io"
+    ]
+  },
+  "appdynamics mobile": {
+    "concerns": [
+      "Mobile APM",
+      "User tracking",
+      "Cisco owned"
+    ],
+    "aliases": [
+      "appdynamics apm"
+    ]
+  },
+  "branch io": {
+    "concerns": [
+      "Deep linking",
+      "Attribution",
+      "Cross-platform identity"
+    ],
+    "aliases": [
+      "branch",
+      "branch metrics"
+    ]
+  },
+  "appsflyer sdk": {
+    "concerns": [
+      "Attribution",
+      "Deep linking",
+      "Fraud prevention"
+    ],
+    "aliases": [
+      "appsflyer"
+    ]
+  },
+  "adjust sdk": {
+    "concerns": [
+      "Attribution",
+      "Analytics",
+      "Fraud prevention"
+    ],
+    "aliases": [
+      "adjust"
+    ]
+  },
+  "tenjin": {
+    "concerns": [
+      "Mobile attribution",
+      "Ad monetization",
+      "Analytics"
+    ],
+    "aliases": [
+      "tenjin inc"
+    ]
+  },
+  "apsalar": {
+    "concerns": [
+      "Mobile attribution",
+      "Singular acquired",
+      "Cross-device"
+    ],
+    "aliases": [
+      "apsalar inc"
+    ]
+  },
+  "radar": {
+    "concerns": [
+      "Location SDK",
+      "Geofencing",
+      "Place detection"
+    ],
+    "aliases": [
+      "radar.io",
+      "radar labs"
+    ]
+  },
+  "gimbal": {
+    "concerns": [
+      "Location tracking",
+      "Beacons",
+      "Proximity marketing"
+    ],
+    "aliases": [
+      "gimbal inc"
+    ]
+  },
+  "bluedot": {
+    "concerns": [
+      "Geolocation",
+      "Geofencing",
+      "Location data"
+    ],
+    "aliases": [
+      "blue dot",
+      "bluedot innovation"
+    ]
+  },
+  "mapbox": {
+    "concerns": [
+      "Maps SDK",
+      "Location data",
+      "Telemetry"
+    ],
+    "aliases": [
+      "mapbox inc"
+    ]
+  },
+  "here": {
+    "concerns": [
+      "Location services",
+      "Mapping",
+      "Automotive data"
+    ],
+    "aliases": [
+      "here technologies",
+      "here maps"
+    ]
+  },
+  "tomtom": {
+    "concerns": [
+      "Navigation SDK",
+      "Location data",
+      "Driving behavior"
+    ],
+    "aliases": [
+      "tom tom",
+      "tomtom nv"
+    ]
+  },
+  "facebook sdk": {
+    "concerns": [
+      "Social login",
+      "Event tracking",
+      "App events",
+      "Meta data collection"
+    ],
+    "aliases": [
+      "fb sdk",
+      "meta sdk",
+      "facebook login"
+    ]
+  },
+  "google sign-in": {
+    "concerns": [
+      "Social login",
+      "Account linking",
+      "Profile data"
+    ],
+    "aliases": [
+      "google signin",
+      "google identity"
+    ]
+  },
+  "twitter kit": {
+    "concerns": [
+      "Social login",
+      "Tweet sharing",
+      "X Corp"
+    ],
+    "aliases": [
+      "twitter sdk",
+      "x sdk"
+    ]
+  },
+  "line sdk": {
+    "concerns": [
+      "Messaging platform",
+      "Social login",
+      "Asian market"
+    ],
+    "aliases": [
+      "line corporation"
+    ]
+  },
+  "kakao sdk": {
+    "concerns": [
+      "Korean messaging",
+      "Social login",
+      "User data"
+    ],
+    "aliases": [
+      "kakaotalk sdk"
+    ]
+  },
+  "wechat sdk": {
+    "concerns": [
+      "Chinese messaging",
+      "Social login",
+      "Payment",
+      "Tencent"
+    ],
+    "aliases": [
+      "weixin sdk"
+    ]
+  },
+  "comscore sdk": {
+    "concerns": [
+      "Audience measurement",
+      "Cross-platform",
+      "Device data"
+    ],
+    "aliases": [
+      "comscore mobile"
+    ]
+  },
+  "nielsen sdk": {
+    "concerns": [
+      "Audience measurement",
+      "Content tracking",
+      "Demographics"
+    ],
+    "aliases": [
+      "nielsen mobile"
+    ]
+  },
+  "sensorium": {
+    "concerns": [
+      "Audio ACR",
+      "Content recognition",
+      "Ad measurement"
+    ],
+    "aliases": [
+      "sensorium sdk"
+    ]
+  },
+  "placed": {
+    "concerns": [
+      "Location attribution",
+      "Foot traffic",
+      "Foursquare owned"
+    ],
+    "aliases": [
+      "placed sdk",
+      "foursquare attribution"
+    ]
+  },
+  "gameanalytics": {
+    "concerns": [
+      "Game telemetry",
+      "Player behavior",
+      "Retention analytics"
+    ],
+    "aliases": [
+      "game analytics"
+    ]
+  },
+  "deltadna": {
+    "concerns": [
+      "Game analytics",
+      "Player segmentation",
+      "Unity owned"
+    ],
+    "aliases": [
+      "delta dna"
+    ]
+  },
+  "tenjin gaming": {
+    "concerns": [
+      "Gaming analytics",
+      "Ad revenue",
+      "Attribution"
+    ],
+    "aliases": [
+      "tenjin games"
+    ]
+  },
+  "supersonic": {
+    "concerns": [
+      "Game monetization",
+      "IronSource/Unity",
+      "Player data"
+    ],
+    "aliases": [
+      "supersonic ads"
+    ]
+  }
+}

@@ -11,7 +11,7 @@
  */
 
 import type { TrackedCookie, TrackedScript, NetworkRequest, StorageItem, ConsentDetails } from '../types.js'
-import { TRACKING_SCRIPTS } from '../data/tracking-scripts.js'
+import { getTrackingScripts } from '../data/index.js'
 import { createLogger } from '../utils/logger.js'
 import { getPartnerRiskSummary } from './partner-classification.js'
 
@@ -443,8 +443,9 @@ function calculateThirdPartyScore(
     ...networkRequests.map(r => r.url)
   ]
 
+  const trackingScripts = getTrackingScripts()
   for (const url of allUrls) {
-    for (const pattern of TRACKING_SCRIPTS) {
+    for (const pattern of trackingScripts) {
       if (pattern.pattern.test(url)) {
         const match = url.match(/https?:\/\/([^/]+)/)?.[1]
         if (match) knownTrackers.add(match)
@@ -866,8 +867,9 @@ function calculateConsentScore(
   let points = 0
 
   // Check for tracking before consent - this is a serious violation
+  const trackingPatterns = getTrackingScripts()
   const trackingScripts = scripts.filter(s => 
-    TRACKING_SCRIPTS.some(t => t.pattern.test(s.url))
+    trackingPatterns.some(t => t.pattern.test(s.url))
   )
   
   if (trackingScripts.length > 5) {

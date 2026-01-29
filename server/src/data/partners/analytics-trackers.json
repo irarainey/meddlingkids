@@ -1,0 +1,747 @@
+{
+  "google analytics": {
+    "concerns": [
+      "Page views",
+      "User journeys",
+      "Demographics",
+      "Interests",
+      "Cross-site with Google signals"
+    ],
+    "aliases": [
+      "ga4",
+      "universal analytics",
+      "google analytics 4",
+      "gtag"
+    ]
+  },
+  "google tag manager": {
+    "concerns": [
+      "Tag container",
+      "Script injection",
+      "Event tracking"
+    ],
+    "aliases": [
+      "gtm"
+    ]
+  },
+  "adobe analytics": {
+    "concerns": [
+      "Enterprise analytics",
+      "User tracking",
+      "Detailed behavioral data"
+    ],
+    "aliases": [
+      "omniture",
+      "sitecatalyst",
+      "adobe experience cloud"
+    ]
+  },
+  "matomo": {
+    "concerns": [
+      "Analytics platform",
+      "Can be privacy-respecting if self-hosted"
+    ],
+    "aliases": [
+      "piwik",
+      "matomo analytics"
+    ]
+  },
+  "plausible": {
+    "concerns": [
+      "Privacy-focused but still collects page views"
+    ],
+    "aliases": [
+      "plausible.io"
+    ]
+  },
+  "fathom": {
+    "concerns": [
+      "Privacy-focused analytics",
+      "Aggregate data"
+    ],
+    "aliases": [
+      "fathom analytics",
+      "usefathom"
+    ]
+  },
+  "simple analytics": {
+    "concerns": [
+      "Privacy-focused",
+      "No cookies",
+      "Still collects referrer data"
+    ],
+    "aliases": [
+      "simpleanalytics"
+    ]
+  },
+  "chartbeat": {
+    "concerns": [
+      "Real-time analytics",
+      "Attention tracking",
+      "Scroll depth"
+    ],
+    "aliases": [
+      "chartbeat inc"
+    ]
+  },
+  "parsely": {
+    "concerns": [
+      "Content analytics",
+      "Audience tracking",
+      "Automattic owned"
+    ],
+    "aliases": [
+      "parse.ly"
+    ]
+  },
+  "piano": {
+    "concerns": [
+      "Analytics",
+      "Paywall",
+      "Subscription tracking",
+      "User identification"
+    ],
+    "aliases": [
+      "piano.io",
+      "at internet",
+      "cxense"
+    ]
+  },
+  "hubspot": {
+    "concerns": [
+      "Marketing automation",
+      "Lead tracking",
+      "Email tracking",
+      "CRM integration"
+    ],
+    "aliases": [
+      "hubspot inc"
+    ]
+  },
+  "marketo": {
+    "concerns": [
+      "Marketing automation",
+      "Lead scoring",
+      "Behavioral tracking",
+      "Adobe owned"
+    ],
+    "aliases": [
+      "marketo inc",
+      "adobe marketo"
+    ]
+  },
+  "pardot": {
+    "concerns": [
+      "B2B marketing",
+      "Lead tracking",
+      "Email tracking",
+      "Salesforce owned"
+    ],
+    "aliases": [
+      "salesforce pardot"
+    ]
+  },
+  "eloqua": {
+    "concerns": [
+      "Marketing automation",
+      "Lead tracking",
+      "Oracle owned"
+    ],
+    "aliases": [
+      "oracle eloqua"
+    ]
+  },
+  "mailchimp": {
+    "concerns": [
+      "Email tracking",
+      "Open rates",
+      "Click tracking",
+      "Audience building"
+    ],
+    "aliases": [
+      "mailchimp inc",
+      "intuit mailchimp"
+    ]
+  },
+  "klaviyo": {
+    "concerns": [
+      "Email marketing",
+      "Customer profiles",
+      "Behavioral tracking"
+    ],
+    "aliases": [
+      "klaviyo inc"
+    ]
+  },
+  "braze": {
+    "concerns": [
+      "Customer engagement",
+      "Push notifications",
+      "Cross-channel tracking"
+    ],
+    "aliases": [
+      "braze inc",
+      "appboy"
+    ]
+  },
+  "iterable": {
+    "concerns": [
+      "Marketing automation",
+      "Cross-channel",
+      "User tracking"
+    ],
+    "aliases": [
+      "iterable inc"
+    ]
+  },
+  "customer.io": {
+    "concerns": [
+      "Marketing automation",
+      "Behavioral messaging",
+      "User tracking"
+    ],
+    "aliases": [
+      "customerio"
+    ]
+  },
+  "intercom": {
+    "concerns": [
+      "Customer messaging",
+      "User tracking",
+      "Behavior triggers"
+    ],
+    "aliases": [
+      "intercom inc"
+    ]
+  },
+  "drift": {
+    "concerns": [
+      "Conversational marketing",
+      "User tracking",
+      "Lead identification"
+    ],
+    "aliases": [
+      "drift.com"
+    ]
+  },
+  "zendesk": {
+    "concerns": [
+      "Customer support tracking",
+      "User identification",
+      "Ticket history"
+    ],
+    "aliases": [
+      "zendesk inc"
+    ]
+  },
+  "freshworks": {
+    "concerns": [
+      "CRM",
+      "Customer tracking",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "freshdesk",
+      "freshsales"
+    ]
+  },
+  "tealium": {
+    "concerns": [
+      "Tag management",
+      "CDP",
+      "Data layer",
+      "Identity resolution"
+    ],
+    "aliases": [
+      "tealium inc",
+      "tealium iq"
+    ]
+  },
+  "ensighten": {
+    "concerns": [
+      "Tag management",
+      "Privacy compliance",
+      "Data collection"
+    ],
+    "aliases": [
+      "ensighten inc"
+    ]
+  },
+  "commanders act": {
+    "concerns": [
+      "Tag management",
+      "European focus",
+      "Server-side tracking"
+    ],
+    "aliases": [
+      "commandersact",
+      "tagcommander"
+    ]
+  },
+  "signal": {
+    "concerns": [
+      "Tag management",
+      "Data onboarding",
+      "TransUnion owned"
+    ],
+    "aliases": [
+      "signal digital"
+    ]
+  },
+  "countly": {
+    "concerns": [
+      "Product analytics",
+      "Mobile and web",
+      "Session tracking"
+    ],
+    "aliases": [
+      "count.ly"
+    ]
+  },
+  "woopra": {
+    "concerns": [
+      "Customer analytics",
+      "Real-time tracking",
+      "User journeys"
+    ],
+    "aliases": [
+      "woopra inc"
+    ]
+  },
+  "clicky": {
+    "concerns": [
+      "Real-time analytics",
+      "Heatmaps",
+      "Individual visitor tracking"
+    ],
+    "aliases": [
+      "clicky web analytics"
+    ]
+  },
+  "statcounter": {
+    "concerns": [
+      "Web analytics",
+      "Visitor tracking",
+      "Free tier"
+    ],
+    "aliases": [
+      "stat counter"
+    ]
+  },
+  "gauges": {
+    "concerns": [
+      "Real-time analytics",
+      "Visitor tracking",
+      "GitHub owned"
+    ],
+    "aliases": [
+      "gaug.es"
+    ]
+  },
+  "goatcounter": {
+    "concerns": [
+      "Privacy-friendly analytics",
+      "Minimal tracking",
+      "Open source"
+    ],
+    "aliases": [
+      "goat counter"
+    ]
+  },
+  "umami": {
+    "concerns": [
+      "Privacy-focused analytics",
+      "Self-hosted option",
+      "Open source"
+    ],
+    "aliases": [
+      "umami.is"
+    ]
+  },
+  "pirsch": {
+    "concerns": [
+      "Privacy-first analytics",
+      "GDPR compliant",
+      "No cookies"
+    ],
+    "aliases": [
+      "pirsch analytics"
+    ]
+  },
+  "splitbee": {
+    "concerns": [
+      "Product analytics",
+      "A/B testing",
+      "Vercel acquired"
+    ],
+    "aliases": [
+      "split bee"
+    ]
+  },
+  "usermaven": {
+    "concerns": [
+      "Privacy-first analytics",
+      "Attribution",
+      "Auto-capture"
+    ],
+    "aliases": [
+      "user maven"
+    ]
+  },
+  "oribi": {
+    "concerns": [
+      "Marketing analytics",
+      "Auto-tracking",
+      "LinkedIn acquired"
+    ],
+    "aliases": [
+      "oribi analytics"
+    ]
+  },
+  "shopify analytics": {
+    "concerns": [
+      "E-commerce tracking",
+      "Purchase behavior",
+      "Customer profiles"
+    ],
+    "aliases": [
+      "shopify pixel"
+    ]
+  },
+  "nosto": {
+    "concerns": [
+      "E-commerce personalization",
+      "Product recommendations",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "nosto solutions"
+    ]
+  },
+  "klevu": {
+    "concerns": [
+      "E-commerce search",
+      "Product discovery",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "klevu oy"
+    ]
+  },
+  "algolia": {
+    "concerns": [
+      "Search analytics",
+      "Click tracking",
+      "Personalization"
+    ],
+    "aliases": [
+      "algolia inc"
+    ]
+  },
+  "searchspring": {
+    "concerns": [
+      "E-commerce search",
+      "Merchandising",
+      "Behavioral tracking"
+    ],
+    "aliases": [
+      "search spring"
+    ]
+  },
+  "yotpo": {
+    "concerns": [
+      "E-commerce marketing",
+      "Reviews",
+      "SMS tracking",
+      "Loyalty programs"
+    ],
+    "aliases": [
+      "yotpo ltd"
+    ]
+  },
+  "okendo": {
+    "concerns": [
+      "Reviews platform",
+      "Customer data",
+      "E-commerce"
+    ],
+    "aliases": [
+      "okendo inc"
+    ]
+  },
+  "stamped": {
+    "concerns": [
+      "Reviews and loyalty",
+      "Customer tracking",
+      "E-commerce"
+    ],
+    "aliases": [
+      "stamped.io"
+    ]
+  },
+  "loox": {
+    "concerns": [
+      "Photo reviews",
+      "E-commerce tracking",
+      "Social proof"
+    ],
+    "aliases": [
+      "loox reviews"
+    ]
+  },
+  "trustpilot": {
+    "concerns": [
+      "Review platform",
+      "Customer data",
+      "Business reviews"
+    ],
+    "aliases": [
+      "trust pilot"
+    ]
+  },
+  "bazaarvoice": {
+    "concerns": [
+      "UGC platform",
+      "Reviews",
+      "Shopper data",
+      "Syndication network"
+    ],
+    "aliases": [
+      "bazaar voice"
+    ]
+  },
+  "powerreviews": {
+    "concerns": [
+      "Reviews platform",
+      "Q&A",
+      "Consumer insights"
+    ],
+    "aliases": [
+      "power reviews"
+    ]
+  },
+  "onesignal": {
+    "concerns": [
+      "Push notifications",
+      "User segmentation",
+      "Behavioral triggers"
+    ],
+    "aliases": [
+      "one signal"
+    ]
+  },
+  "pushwoosh": {
+    "concerns": [
+      "Push notifications",
+      "User tracking",
+      "Multi-channel"
+    ],
+    "aliases": [
+      "push woosh"
+    ]
+  },
+  "airship": {
+    "concerns": [
+      "Push notifications",
+      "Customer engagement",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "urban airship"
+    ]
+  },
+  "pushcrew": {
+    "concerns": [
+      "Push notifications",
+      "Subscriber tracking",
+      "VWO owned"
+    ],
+    "aliases": [
+      "push crew",
+      "vwo engage"
+    ]
+  },
+  "webpushr": {
+    "concerns": [
+      "Push notifications",
+      "Segmentation",
+      "Automation"
+    ],
+    "aliases": [
+      "web pushr"
+    ]
+  },
+  "pushengage": {
+    "concerns": [
+      "Push notifications",
+      "Cart abandonment",
+      "Segmentation"
+    ],
+    "aliases": [
+      "push engage"
+    ]
+  },
+  "subscribers": {
+    "concerns": [
+      "Push platform",
+      "User tracking",
+      "Re-engagement"
+    ],
+    "aliases": [
+      "subscribers.com"
+    ]
+  },
+  "dynamic yield": {
+    "concerns": [
+      "Personalization",
+      "A/B testing",
+      "Behavioral data",
+      "Mastercard owned"
+    ],
+    "aliases": [
+      "dynamicyield"
+    ]
+  },
+  "monetate": {
+    "concerns": [
+      "Personalization",
+      "Testing",
+      "Customer data",
+      "Kibo owned"
+    ],
+    "aliases": [
+      "monetate inc"
+    ]
+  },
+  "evergage": {
+    "concerns": [
+      "Real-time personalization",
+      "CDP",
+      "Salesforce owned"
+    ],
+    "aliases": [
+      "salesforce interaction studio"
+    ]
+  },
+  "certona": {
+    "concerns": [
+      "Personalization",
+      "Recommendations",
+      "Kibo owned"
+    ],
+    "aliases": [
+      "certona corporation"
+    ]
+  },
+  "richrelevance": {
+    "concerns": [
+      "Personalization",
+      "Recommendations",
+      "E-commerce"
+    ],
+    "aliases": [
+      "rich relevance",
+      "algonomy"
+    ]
+  },
+  "barilliance": {
+    "concerns": [
+      "E-commerce personalization",
+      "Behavioral tracking",
+      "Email"
+    ],
+    "aliases": [
+      "barilliance ltd"
+    ]
+  },
+  "fresh relevance": {
+    "concerns": [
+      "Personalization",
+      "Email content",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "freshrelevance"
+    ]
+  },
+  "qubit": {
+    "concerns": [
+      "Personalization",
+      "A/B testing",
+      "Coveo acquired"
+    ],
+    "aliases": [
+      "qubit digital"
+    ]
+  },
+  "coveo": {
+    "concerns": [
+      "AI search",
+      "Personalization",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "coveo solutions"
+    ]
+  },
+  "triple whale": {
+    "concerns": [
+      "E-commerce attribution",
+      "Customer journey",
+      "Ad tracking"
+    ],
+    "aliases": [
+      "triplewhale"
+    ]
+  },
+  "northbeam": {
+    "concerns": [
+      "Marketing attribution",
+      "MMM",
+      "Cross-channel"
+    ],
+    "aliases": [
+      "north beam"
+    ]
+  },
+  "wicked reports": {
+    "concerns": [
+      "Marketing attribution",
+      "Customer journey",
+      "LTV tracking"
+    ],
+    "aliases": [
+      "wickedreports"
+    ]
+  },
+  "hyros": {
+    "concerns": [
+      "Ad tracking",
+      "Attribution",
+      "Call tracking"
+    ],
+    "aliases": [
+      "hyros.com"
+    ]
+  },
+  "cometly": {
+    "concerns": [
+      "Ad attribution",
+      "Server-side tracking",
+      "Cross-channel"
+    ],
+    "aliases": [
+      "cometly inc"
+    ]
+  },
+  "attribution": {
+    "concerns": [
+      "Multi-touch attribution",
+      "Marketing analytics",
+      "Cross-channel"
+    ],
+    "aliases": [
+      "attribution.io"
+    ]
+  }
+}

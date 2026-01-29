@@ -5,7 +5,7 @@
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
 import { SCRIPT_ANALYSIS_SYSTEM_PROMPT, buildScriptAnalysisUserPrompt } from '../prompts/index.js'
-import { TRACKING_SCRIPTS, BENIGN_SCRIPTS } from '../data/index.js'
+import { getTrackingScripts, getBenignScripts } from '../data/index.js'
 import { createLogger, getErrorMessage, withRetry } from '../utils/index.js'
 import type { TrackedScript } from '../types.js'
 
@@ -19,7 +19,7 @@ const MAX_SCRIPT_LENGTH = 30000
  * @returns Description if it's a tracking script, null otherwise
  */
 function identifyTrackingScript(url: string): string | null {
-  for (const { pattern, description } of TRACKING_SCRIPTS) {
+  for (const { pattern, description } of getTrackingScripts()) {
     if (pattern.test(url)) {
       return description
     }
@@ -32,7 +32,7 @@ function identifyTrackingScript(url: string): string | null {
  * @returns Description if it's benign, null otherwise
  */
 function identifyBenignScript(url: string): string | null {
-  for (const { pattern, description } of BENIGN_SCRIPTS) {
+  for (const { pattern, description } of getBenignScripts()) {
     if (pattern.test(url)) {
       return description
     }

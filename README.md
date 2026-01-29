@@ -97,7 +97,9 @@ meddlingkids/
 │   └── src/
 │       ├── routes/            # API endpoints (SSE streaming)
 │       ├── services/          # Business logic (browser, analysis, consent)
-│       ├── data/              # Tracking script databases
+│       ├── data/              # Tracking databases (JSON) & data loader
+│       │   ├── partners/      # Partner risk databases (8 JSON files)
+│       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       ├── prompts/           # AI prompt templates
 │       └── utils/             # Utility functions
 ├── Dockerfile                 # Multi-stage production build

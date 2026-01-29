@@ -6,7 +6,7 @@
  */
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
-import { calculatePrivacyScore, type PrivacyScoreBreakdown } from './privacy-score.js'
+import { calculatePrivacyScore } from './privacy-score.js'
 import {
   TRACKING_ANALYSIS_SYSTEM_PROMPT,
   SUMMARY_FINDINGS_SYSTEM_PROMPT,

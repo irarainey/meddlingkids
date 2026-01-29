@@ -1,0 +1,342 @@
+{
+  "onetrust": {
+    "concerns": [
+      "Consent management",
+      "Shares consent data with partners",
+      "Cookie scanning"
+    ],
+    "aliases": [
+      "one trust",
+      "onetrust llc"
+    ]
+  },
+  "cookiebot": {
+    "concerns": [
+      "Consent management",
+      "Cookie scanning",
+      "Consent data sharing"
+    ],
+    "aliases": [
+      "cybot",
+      "usercentrics cookiebot"
+    ]
+  },
+  "usercentrics": {
+    "concerns": [
+      "Consent management",
+      "German focused",
+      "CMP"
+    ],
+    "aliases": [
+      "user centrics"
+    ]
+  },
+  "trustarc": {
+    "concerns": [
+      "Consent management",
+      "Privacy compliance",
+      "TrustE"
+    ],
+    "aliases": [
+      "trust arc",
+      "truste"
+    ]
+  },
+  "quantcast choice": {
+    "concerns": [
+      "Consent management",
+      "TCF",
+      "Part of Quantcast tracking"
+    ],
+    "aliases": [
+      "quantcast cmp"
+    ]
+  },
+  "didomi": {
+    "concerns": [
+      "Consent management",
+      "Preference center",
+      "European focus"
+    ],
+    "aliases": [
+      "didomi inc"
+    ]
+  },
+  "sourcepoint": {
+    "concerns": [
+      "Consent management",
+      "Adblock detection",
+      "Messaging"
+    ],
+    "aliases": [
+      "source point"
+    ]
+  },
+  "termly": {
+    "concerns": [
+      "Consent management",
+      "Policy generation",
+      "Cookie consent"
+    ],
+    "aliases": [
+      "termly inc"
+    ]
+  },
+  "cookiefirst": {
+    "concerns": [
+      "Consent management",
+      "Cookie scanning",
+      "Dutch"
+    ],
+    "aliases": [
+      "cookie first"
+    ]
+  },
+  "consentmanager": {
+    "concerns": [
+      "Consent management",
+      "German",
+      "TCF certified"
+    ],
+    "aliases": [
+      "consent manager"
+    ]
+  },
+  "iubenda": {
+    "concerns": [
+      "Consent management",
+      "Policy generation",
+      "Cookie solution"
+    ],
+    "aliases": [
+      "iubenda srl"
+    ]
+  },
+  "osano": {
+    "concerns": [
+      "Consent management",
+      "Data mapping",
+      "Privacy platform"
+    ],
+    "aliases": [
+      "osano inc"
+    ]
+  },
+  "liveramp privacy": {
+    "concerns": [
+      "Consent orchestration",
+      "Privacy management",
+      "Data connectivity"
+    ],
+    "aliases": [
+      "liveramp cmp"
+    ]
+  },
+  "securiti": {
+    "concerns": [
+      "Privacy automation",
+      "Consent management",
+      "Data discovery"
+    ],
+    "aliases": [
+      "securiti.ai"
+    ]
+  },
+  "bigid": {
+    "concerns": [
+      "Data intelligence",
+      "Privacy automation",
+      "Consent tracking"
+    ],
+    "aliases": [
+      "big id"
+    ]
+  },
+  "wirewheel": {
+    "concerns": [
+      "Privacy management",
+      "Consent",
+      "Data subject requests"
+    ],
+    "aliases": [
+      "wire wheel"
+    ]
+  },
+  "transcend": {
+    "concerns": [
+      "Privacy infrastructure",
+      "Consent",
+      "Data mapping"
+    ],
+    "aliases": [
+      "transcend.io"
+    ]
+  },
+  "ketch": {
+    "concerns": [
+      "Privacy platform",
+      "Consent management",
+      "Data control"
+    ],
+    "aliases": [
+      "ketch.com"
+    ]
+  },
+  "ethyca": {
+    "concerns": [
+      "Privacy engineering",
+      "Consent management",
+      "Open source fides"
+    ],
+    "aliases": [
+      "ethyca inc",
+      "fides"
+    ]
+  },
+  "privacera": {
+    "concerns": [
+      "Data governance",
+      "Access control",
+      "Privacy compliance"
+    ],
+    "aliases": [
+      "privacera inc"
+    ]
+  },
+  "complianz": {
+    "concerns": [
+      "WordPress consent",
+      "Cookie management",
+      "GDPR compliance"
+    ],
+    "aliases": [
+      "complianz gdpr"
+    ]
+  },
+  "cookie notice": {
+    "concerns": [
+      "WordPress plugin",
+      "Consent popup",
+      "Basic compliance"
+    ],
+    "aliases": [
+      "cookie notice by hu-manity"
+    ]
+  },
+  "cookie law info": {
+    "concerns": [
+      "WordPress plugin",
+      "GDPR consent",
+      "Cookie categories"
+    ],
+    "aliases": [
+      "cookielawinfo",
+      "webtoffee"
+    ]
+  },
+  "borlabs": {
+    "concerns": [
+      "WordPress consent",
+      "Cookie management",
+      "German market"
+    ],
+    "aliases": [
+      "borlabs cookie"
+    ]
+  },
+  "real cookie banner": {
+    "concerns": [
+      "WordPress consent",
+      "TCF support",
+      "Cookie scanning"
+    ],
+    "aliases": [
+      "realcookiebanner",
+      "devowl"
+    ]
+  },
+  "axeptio": {
+    "concerns": [
+      "Consent management",
+      "French market",
+      "Cookie wall"
+    ],
+    "aliases": [
+      "axeptio sas"
+    ]
+  },
+  "sirdata cmp": {
+    "concerns": [
+      "Consent management",
+      "TCF vendor",
+      "European"
+    ],
+    "aliases": [
+      "sirdata consent"
+    ]
+  },
+  "crownpeak": {
+    "concerns": [
+      "Consent management",
+      "DXP",
+      "Tag governance"
+    ],
+    "aliases": [
+      "crown peak",
+      "evidon"
+    ]
+  },
+  "commander act cmp": {
+    "concerns": [
+      "Consent management",
+      "Tag management",
+      "Server-side"
+    ],
+    "aliases": [
+      "trustcommander"
+    ]
+  },
+  "appConsent": {
+    "concerns": [
+      "Mobile consent",
+      "App CMP",
+      "SDK tracking"
+    ],
+    "aliases": [
+      "app consent",
+      "sfbx"
+    ]
+  },
+  "funding choices": {
+    "concerns": [
+      "Google CMP",
+      "Ad recovery",
+      "Consent collection"
+    ],
+    "aliases": [
+      "google funding choices"
+    ]
+  },
+  "admiral": {
+    "concerns": [
+      "Adblock recovery",
+      "Consent management",
+      "Visitor recovery"
+    ],
+    "aliases": [
+      "admiral inc",
+      "getadmiral"
+    ]
+  },
+  "blockthrough": {
+    "concerns": [
+      "Adblock recovery",
+      "Acceptable ads",
+      "Consent"
+    ],
+    "aliases": [
+      "block through",
+      "eyeo partner"
+    ]
+  }
+}

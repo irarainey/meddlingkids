@@ -1,0 +1,1168 @@
+{
+  "google": {
+    "concerns": [
+      "Tracks across 80%+ of websites",
+      "Search history",
+      "YouTube viewing",
+      "Gmail scanning",
+      "Android data"
+    ],
+    "aliases": [
+      "google llc",
+      "google ireland",
+      "google ads",
+      "doubleclick",
+      "google marketing",
+      "google adsense",
+      "admob",
+      "google ad manager"
+    ]
+  },
+  "meta": {
+    "concerns": [
+      "Facebook pixel on millions of sites",
+      "Instagram tracking",
+      "WhatsApp metadata",
+      "Shadow profiles",
+      "Off-Facebook activity"
+    ],
+    "aliases": [
+      "facebook",
+      "meta platforms",
+      "facebook inc",
+      "fb",
+      "instagram",
+      "facebook pixel",
+      "meta pixel"
+    ]
+  },
+  "amazon": {
+    "concerns": [
+      "Purchase history",
+      "Cross-site advertising",
+      "Alexa recordings",
+      "Ring doorbell data",
+      "AWS tracking"
+    ],
+    "aliases": [
+      "amazon advertising",
+      "amazon.com",
+      "amazon ads",
+      "amazon dsp",
+      "amazon publisher services"
+    ]
+  },
+  "microsoft": {
+    "concerns": [
+      "LinkedIn data",
+      "Bing search tracking",
+      "Windows telemetry",
+      "Xbox gaming data",
+      "Office 365 usage"
+    ],
+    "aliases": [
+      "microsoft advertising",
+      "microsoft corporation",
+      "bing ads",
+      "msn",
+      "xandr"
+    ]
+  },
+  "apple": {
+    "concerns": [
+      "App Store data",
+      "Apple Search Ads",
+      "First-party tracking",
+      "SKAdNetwork"
+    ],
+    "aliases": [
+      "apple inc",
+      "apple advertising",
+      "apple search ads"
+    ]
+  },
+  "criteo": {
+    "concerns": [
+      "Retargeting across millions of sites",
+      "Behavioral profiling",
+      "Email matching",
+      "Shopper graph"
+    ],
+    "aliases": [
+      "criteo sa",
+      "criteo inc"
+    ]
+  },
+  "xandr": {
+    "concerns": [
+      "AT&T data",
+      "Programmatic advertising",
+      "Cross-device",
+      "Microsoft owned"
+    ],
+    "aliases": [
+      "appnexus",
+      "at&t advertising",
+      "xandr inc"
+    ]
+  },
+  "magnite": {
+    "concerns": [
+      "Largest independent SSP",
+      "CTV tracking",
+      "Real-time bidding"
+    ],
+    "aliases": [
+      "rubicon project",
+      "telaria",
+      "spotx",
+      "springserve"
+    ]
+  },
+  "pubmatic": {
+    "concerns": [
+      "Ad exchange",
+      "Real-time bidding",
+      "Publisher data",
+      "Identity hub"
+    ],
+    "aliases": [
+      "pubmatic inc"
+    ]
+  },
+  "openx": {
+    "concerns": [
+      "Ad exchange",
+      "Header bidding",
+      "Apollo owned"
+    ],
+    "aliases": [
+      "openx technologies",
+      "openx software"
+    ]
+  },
+  "index exchange": {
+    "concerns": [
+      "Ad marketplace",
+      "Header bidding",
+      "Publisher exchange"
+    ],
+    "aliases": [
+      "indexexchange",
+      "casalemedia",
+      "ix"
+    ]
+  },
+  "sovrn": {
+    "concerns": [
+      "Publisher monetization",
+      "Signal data",
+      "Commerce tracking"
+    ],
+    "aliases": [
+      "sovrn holdings",
+      "lijit"
+    ]
+  },
+  "triplelift": {
+    "concerns": [
+      "Native advertising",
+      "CTV",
+      "Programmatic"
+    ],
+    "aliases": [
+      "triple lift"
+    ]
+  },
+  "viant": {
+    "concerns": [
+      "Adelphic DSP",
+      "Household data",
+      "CTV"
+    ],
+    "aliases": [
+      "adelphic",
+      "myspace data"
+    ]
+  },
+  "mediamath": {
+    "concerns": [
+      "DSP",
+      "Identity linking",
+      "Cross-device",
+      "Bankrupt but data persists"
+    ],
+    "aliases": [
+      "media math"
+    ]
+  },
+  "amobee": {
+    "concerns": [
+      "DSP",
+      "TV data",
+      "Cross-platform",
+      "Tremor owned"
+    ],
+    "aliases": [
+      "amobee inc",
+      "turn"
+    ]
+  },
+  "basis": {
+    "concerns": [
+      "DSP",
+      "Programmatic",
+      "Centro platform"
+    ],
+    "aliases": [
+      "basis technologies",
+      "centro"
+    ]
+  },
+  "taboola": {
+    "concerns": [
+      "Content recommendation on 9000+ sites",
+      "Behavioral profiling",
+      "Click tracking"
+    ],
+    "aliases": [
+      "taboola inc",
+      "taboola.com"
+    ]
+  },
+  "outbrain": {
+    "concerns": [
+      "Content recommendation",
+      "Behavioral tracking",
+      "Interest profiling"
+    ],
+    "aliases": [
+      "outbrain inc"
+    ]
+  },
+  "revcontent": {
+    "concerns": [
+      "Content recommendation",
+      "Native ads",
+      "Behavioral tracking"
+    ],
+    "aliases": [
+      "rev content"
+    ]
+  },
+  "mgid": {
+    "concerns": [
+      "Native advertising",
+      "Content recommendation",
+      "Global tracking"
+    ],
+    "aliases": [
+      "mgid inc"
+    ]
+  },
+  "nativo": {
+    "concerns": [
+      "Native advertising",
+      "Brand content",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "nativo inc"
+    ]
+  },
+  "tiktok": {
+    "concerns": [
+      "Behavioral tracking",
+      "Video viewing",
+      "Interest profiling",
+      "ByteDance data sharing"
+    ],
+    "aliases": [
+      "tiktok inc",
+      "bytedance",
+      "tiktok for business",
+      "tiktok pixel"
+    ]
+  },
+  "twitter": {
+    "concerns": [
+      "Interest tracking",
+      "Social graph",
+      "Tweet engagement",
+      "Now X Corp"
+    ],
+    "aliases": [
+      "twitter inc",
+      "x corp",
+      "twitter ads",
+      "x ads"
+    ]
+  },
+  "pinterest": {
+    "concerns": [
+      "Visual interest tracking",
+      "Shopping behavior",
+      "Pin engagement",
+      "Conversion API"
+    ],
+    "aliases": [
+      "pinterest inc"
+    ]
+  },
+  "snap": {
+    "concerns": [
+      "Location tracking",
+      "Camera/AR data",
+      "Social interactions",
+      "Spectacles data"
+    ],
+    "aliases": [
+      "snapchat",
+      "snap inc",
+      "snap pixel"
+    ]
+  },
+  "linkedin": {
+    "concerns": [
+      "Professional profile data",
+      "Job interest tracking",
+      "B2B targeting",
+      "Microsoft owned"
+    ],
+    "aliases": [
+      "linkedin corporation",
+      "linkedin ireland",
+      "linkedin insight tag"
+    ]
+  },
+  "reddit": {
+    "concerns": [
+      "Interest community data",
+      "Engagement tracking",
+      "Conversation API"
+    ],
+    "aliases": [
+      "reddit inc",
+      "reddit ads"
+    ]
+  },
+  "quora": {
+    "concerns": [
+      "Interest tracking",
+      "Question engagement",
+      "B2B targeting"
+    ],
+    "aliases": [
+      "quora inc",
+      "quora pixel"
+    ]
+  },
+  "tradingdesk": {
+    "concerns": [
+      "Agency trading desk",
+      "Programmatic buying",
+      "Data aggregation"
+    ],
+    "aliases": [
+      "trading desk"
+    ]
+  },
+  "adform": {
+    "concerns": [
+      "European DSP",
+      "Cross-device",
+      "Flow ID"
+    ],
+    "aliases": [
+      "adform a/s"
+    ]
+  },
+  "smartadserver": {
+    "concerns": [
+      "Ad serving",
+      "European focus",
+      "Equativ owned"
+    ],
+    "aliases": [
+      "smart adserver",
+      "equativ"
+    ]
+  },
+  "sizmek": {
+    "concerns": [
+      "Ad serving",
+      "DCO",
+      "Amazon owned"
+    ],
+    "aliases": [
+      "sizmek inc"
+    ]
+  },
+  "flashtalking": {
+    "concerns": [
+      "Ad serving",
+      "DCO",
+      "Cross-device",
+      "Mediaocean owned"
+    ],
+    "aliases": [
+      "flash talking"
+    ]
+  },
+  "innovid": {
+    "concerns": [
+      "CTV advertising",
+      "Video tracking",
+      "Cross-platform"
+    ],
+    "aliases": [
+      "innovid inc"
+    ]
+  },
+  "spotx": {
+    "concerns": [
+      "Video advertising",
+      "CTV",
+      "Magnite owned"
+    ],
+    "aliases": [
+      "spot x"
+    ]
+  },
+  "freewheel": {
+    "concerns": [
+      "TV advertising",
+      "Video tracking",
+      "Comcast owned"
+    ],
+    "aliases": [
+      "free wheel",
+      "freewheel media"
+    ]
+  },
+  "criteo retail": {
+    "concerns": [
+      "Retail media",
+      "Purchase data",
+      "On-site tracking"
+    ],
+    "aliases": [
+      "criteo retail media"
+    ]
+  },
+  "citrusad": {
+    "concerns": [
+      "Retail media",
+      "On-site ads",
+      "First-party data"
+    ],
+    "aliases": [
+      "citrus ad"
+    ]
+  },
+  "instacart ads": {
+    "concerns": [
+      "Grocery purchase data",
+      "Shopping behavior",
+      "CPG targeting"
+    ],
+    "aliases": [
+      "instacart advertising"
+    ]
+  },
+  "walmart connect": {
+    "concerns": [
+      "Purchase data",
+      "Retail media",
+      "In-store tracking"
+    ],
+    "aliases": [
+      "walmart advertising",
+      "walmart dsp"
+    ]
+  },
+  "moat": {
+    "concerns": [
+      "Ad verification with tracking",
+      "Viewability",
+      "Oracle owned"
+    ],
+    "aliases": [
+      "moat analytics",
+      "oracle moat"
+    ]
+  },
+  "doubleverify": {
+    "concerns": [
+      "Ad verification",
+      "Brand safety",
+      "Attention metrics"
+    ],
+    "aliases": [
+      "double verify",
+      "dv"
+    ]
+  },
+  "integral ad science": {
+    "concerns": [
+      "Ad verification",
+      "Brand safety",
+      "Context tracking"
+    ],
+    "aliases": [
+      "ias",
+      "integral ad"
+    ]
+  },
+  "verizon media": {
+    "concerns": [
+      "Yahoo tracking",
+      "AOL data",
+      "Cross-property profiling"
+    ],
+    "aliases": [
+      "oath",
+      "yahoo",
+      "aol",
+      "yahoo advertising",
+      "yahoo dsp"
+    ]
+  },
+  "sonobi": {
+    "concerns": [
+      "Header bidding",
+      "Publisher monetization",
+      "JetStream"
+    ],
+    "aliases": [
+      "sonobi inc"
+    ]
+  },
+  "sharethrough": {
+    "concerns": [
+      "Native advertising",
+      "Header bidding",
+      "Equativ merged"
+    ],
+    "aliases": [
+      "share through"
+    ]
+  },
+  "33across": {
+    "concerns": [
+      "Header bidding",
+      "Publisher identity",
+      "Lexicon ID"
+    ],
+    "aliases": [
+      "33 across"
+    ]
+  },
+  "gumgum": {
+    "concerns": [
+      "Contextual advertising",
+      "Image recognition",
+      "In-image ads"
+    ],
+    "aliases": [
+      "gum gum"
+    ]
+  },
+  "undertone": {
+    "concerns": [
+      "High-impact ads",
+      "Video advertising",
+      "Perion owned"
+    ],
+    "aliases": [
+      "undertone networks"
+    ]
+  },
+  "vibrant": {
+    "concerns": [
+      "In-text advertising",
+      "Contextual",
+      "Undertone owned"
+    ],
+    "aliases": [
+      "vibrant media"
+    ]
+  },
+  "yieldmo": {
+    "concerns": [
+      "Mobile advertising",
+      "Attention analytics",
+      "Scroll depth"
+    ],
+    "aliases": [
+      "yield mo"
+    ]
+  },
+  "teads": {
+    "concerns": [
+      "Outstream video",
+      "Native video",
+      "Attention metrics"
+    ],
+    "aliases": [
+      "teads sa"
+    ]
+  },
+  "seedtag": {
+    "concerns": [
+      "Contextual advertising",
+      "AI targeting",
+      "Cookieless"
+    ],
+    "aliases": [
+      "seed tag"
+    ]
+  },
+  "adcolony": {
+    "concerns": [
+      "Mobile video ads",
+      "SDK tracking",
+      "In-app advertising"
+    ],
+    "aliases": [
+      "ad colony",
+      "digital turbine adcolony"
+    ]
+  },
+  "unity ads": {
+    "concerns": [
+      "Gaming ad network",
+      "Player profiling",
+      "Cross-game tracking"
+    ],
+    "aliases": [
+      "unity technologies",
+      "ironsource",
+      "unityads"
+    ]
+  },
+  "applovin": {
+    "concerns": [
+      "Mobile ad network",
+      "App monetization",
+      "Cross-app tracking"
+    ],
+    "aliases": [
+      "app lovin",
+      "applovin corporation",
+      "max"
+    ]
+  },
+  "chartboost": {
+    "concerns": [
+      "Gaming ads",
+      "Cross-promotion",
+      "Player data"
+    ],
+    "aliases": [
+      "chart boost"
+    ]
+  },
+  "vungle": {
+    "concerns": [
+      "Video ads in apps",
+      "Mobile attribution",
+      "Liftoff owned"
+    ],
+    "aliases": [
+      "vungle inc"
+    ]
+  },
+  "fyber": {
+    "concerns": [
+      "Mobile ad mediation",
+      "SDK tracking",
+      "Digital Turbine owned"
+    ],
+    "aliases": [
+      "fyber gmbh",
+      "inneractive"
+    ]
+  },
+  "mintegral": {
+    "concerns": [
+      "Chinese ad network",
+      "Mobile programmatic",
+      "Global reach"
+    ],
+    "aliases": [
+      "mint egral"
+    ]
+  },
+  "inmobi": {
+    "concerns": [
+      "Indian ad network",
+      "Mobile advertising",
+      "Location data"
+    ],
+    "aliases": [
+      "in mobi",
+      "inmobi pte"
+    ]
+  },
+  "smaato": {
+    "concerns": [
+      "Mobile ad exchange",
+      "Real-time bidding",
+      "Verve owned"
+    ],
+    "aliases": [
+      "smaato inc"
+    ]
+  },
+  "verve": {
+    "concerns": [
+      "Mobile advertising",
+      "Location data",
+      "MGI owned"
+    ],
+    "aliases": [
+      "verve group"
+    ]
+  },
+  "liftoff": {
+    "concerns": [
+      "Mobile marketing",
+      "ML optimization",
+      "Vungle owner"
+    ],
+    "aliases": [
+      "lift off"
+    ]
+  },
+  "moloco": {
+    "concerns": [
+      "ML advertising",
+      "Mobile DSP",
+      "Programmatic"
+    ],
+    "aliases": [
+      "moloco inc"
+    ]
+  },
+  "digital turbine": {
+    "concerns": [
+      "Mobile app distribution",
+      "Device pre-install",
+      "Ad network"
+    ],
+    "aliases": [
+      "digitalturbine"
+    ]
+  },
+  "beeswax": {
+    "concerns": [
+      "Custom DSP",
+      "Programmatic",
+      "Comcast owned"
+    ],
+    "aliases": [
+      "beeswax.io"
+    ]
+  },
+  "stackadapt": {
+    "concerns": [
+      "Native advertising DSP",
+      "Programmatic",
+      "Multi-channel"
+    ],
+    "aliases": [
+      "stack adapt"
+    ]
+  },
+  "adroll": {
+    "concerns": [
+      "Retargeting",
+      "Cross-device",
+      "Nextroll owned"
+    ],
+    "aliases": [
+      "ad roll",
+      "nextroll"
+    ]
+  },
+  "simplifi": {
+    "concerns": [
+      "Programmatic DSP",
+      "Location targeting",
+      "CTV"
+    ],
+    "aliases": [
+      "simpli.fi",
+      "simplifi holdings"
+    ]
+  },
+  "jampp": {
+    "concerns": [
+      "Mobile retargeting",
+      "Programmatic",
+      "Affle owned"
+    ],
+    "aliases": [
+      "jampp inc"
+    ]
+  },
+  "remerge": {
+    "concerns": [
+      "Mobile retargeting",
+      "DSP",
+      "App re-engagement"
+    ],
+    "aliases": [
+      "remerge gmbh"
+    ]
+  },
+  "adelphic": {
+    "concerns": [
+      "People-based DSP",
+      "Cross-device",
+      "Viant owned"
+    ],
+    "aliases": [
+      "adelphic llc"
+    ]
+  },
+  "yahoo ssp": {
+    "concerns": [
+      "SSP",
+      "Native exchange",
+      "Yahoo data"
+    ],
+    "aliases": [
+      "yahoo exchange"
+    ]
+  },
+  "kargo": {
+    "concerns": [
+      "Mobile ad formats",
+      "Premium inventory",
+      "Brand ads"
+    ],
+    "aliases": [
+      "kargo global"
+    ]
+  },
+  "adyoulike": {
+    "concerns": [
+      "Native advertising",
+      "Content to commerce",
+      "European"
+    ],
+    "aliases": [
+      "ad you like"
+    ]
+  },
+  "unruly": {
+    "concerns": [
+      "Video advertising",
+      "Emotional targeting",
+      "Tremor owned"
+    ],
+    "aliases": [
+      "unruly group"
+    ]
+  },
+  "connatix": {
+    "concerns": [
+      "Video technology",
+      "Player tracking",
+      "Contextual video"
+    ],
+    "aliases": [
+      "connatix inc"
+    ]
+  },
+  "primis": {
+    "concerns": [
+      "Video discovery",
+      "Content recommendation",
+      "Video ads"
+    ],
+    "aliases": [
+      "primis ltd"
+    ]
+  },
+  "ex.co": {
+    "concerns": [
+      "Video platform",
+      "Content insights",
+      "Player tracking"
+    ],
+    "aliases": [
+      "exco",
+      "playbuzz"
+    ]
+  },
+  "dailymotion": {
+    "concerns": [
+      "Video platform",
+      "Viewer tracking",
+      "Vivendi owned"
+    ],
+    "aliases": [
+      "daily motion",
+      "dm"
+    ]
+  },
+  "impact": {
+    "concerns": [
+      "Affiliate tracking",
+      "Partnership platform",
+      "Conversion tracking"
+    ],
+    "aliases": [
+      "impact.com",
+      "impact radius"
+    ]
+  },
+  "partnerize": {
+    "concerns": [
+      "Partner marketing",
+      "Affiliate tracking",
+      "Attribution"
+    ],
+    "aliases": [
+      "partnerize inc"
+    ]
+  },
+  "awin": {
+    "concerns": [
+      "Affiliate network",
+      "Performance marketing",
+      "Axel Springer owned"
+    ],
+    "aliases": [
+      "awin ag",
+      "affiliate window",
+      "zanox"
+    ]
+  },
+  "cj affiliate": {
+    "concerns": [
+      "Affiliate network",
+      "Performance tracking",
+      "Publicis owned"
+    ],
+    "aliases": [
+      "commission junction",
+      "cj",
+      "conversant"
+    ]
+  },
+  "rakuten advertising": {
+    "concerns": [
+      "Affiliate network",
+      "Display ads",
+      "Cross-channel"
+    ],
+    "aliases": [
+      "rakuten marketing",
+      "linkshare"
+    ]
+  },
+  "shareasale": {
+    "concerns": [
+      "Affiliate network",
+      "Merchant tracking",
+      "Awin owned"
+    ],
+    "aliases": [
+      "share a sale"
+    ]
+  },
+  "skimlinks": {
+    "concerns": [
+      "Commerce content",
+      "Link affiliation",
+      "Purchase tracking"
+    ],
+    "aliases": [
+      "skim links",
+      "taboola owned"
+    ]
+  },
+  "sovrn commerce": {
+    "concerns": [
+      "Affiliate links",
+      "Commerce tracking",
+      "VigLink"
+    ],
+    "aliases": [
+      "viglink",
+      "sovrn//commerce"
+    ]
+  },
+  "button": {
+    "concerns": [
+      "Mobile commerce",
+      "Deep linking",
+      "Attribution"
+    ],
+    "aliases": [
+      "button inc",
+      "usebutton"
+    ]
+  },
+  "pepperjam": {
+    "concerns": [
+      "Affiliate network",
+      "Partner marketing",
+      "Performance"
+    ],
+    "aliases": [
+      "pepper jam",
+      "pepperjam network"
+    ]
+  },
+  "roku": {
+    "concerns": [
+      "CTV advertising",
+      "Viewing data",
+      "ACR technology"
+    ],
+    "aliases": [
+      "roku inc",
+      "roku ads"
+    ]
+  },
+  "samsung ads": {
+    "concerns": [
+      "Smart TV data",
+      "ACR tracking",
+      "Cross-device"
+    ],
+    "aliases": [
+      "samsung advertising"
+    ]
+  },
+  "vizio": {
+    "concerns": [
+      "Smart TV data",
+      "Inscape ACR",
+      "Viewing data"
+    ],
+    "aliases": [
+      "vizio inscape",
+      "vizio ads"
+    ]
+  },
+  "lg ads": {
+    "concerns": [
+      "Smart TV tracking",
+      "ACR data",
+      "Cross-device"
+    ],
+    "aliases": [
+      "lg advertising",
+      "alphonso lg"
+    ]
+  },
+  "alphonso": {
+    "concerns": [
+      "ACR technology",
+      "TV ad measurement",
+      "Cross-device"
+    ],
+    "aliases": [
+      "alphonso inc"
+    ]
+  },
+  "samba tv": {
+    "concerns": [
+      "ACR technology",
+      "TV viewing data",
+      "Cross-screen"
+    ],
+    "aliases": [
+      "sambatv",
+      "samba tv inc"
+    ]
+  },
+  "tvision": {
+    "concerns": [
+      "TV attention data",
+      "Viewing measurement",
+      "Panel data"
+    ],
+    "aliases": [
+      "tvision insights"
+    ]
+  },
+  "tubi": {
+    "concerns": [
+      "AVOD platform",
+      "Viewing data",
+      "Fox owned"
+    ],
+    "aliases": [
+      "tubi tv",
+      "tubi inc"
+    ]
+  },
+  "pluto tv": {
+    "concerns": [
+      "AVOD platform",
+      "Viewing data",
+      "Paramount owned"
+    ],
+    "aliases": [
+      "plutotv",
+      "pluto"
+    ]
+  },
+  "xumo": {
+    "concerns": [
+      "CTV platform",
+      "Viewing data",
+      "Comcast owned"
+    ],
+    "aliases": [
+      "xumo play"
+    ]
+  },
+  "vistar media": {
+    "concerns": [
+      "DOOH advertising",
+      "Location data",
+      "Programmatic OOH"
+    ],
+    "aliases": [
+      "vistarmedia"
+    ]
+  },
+  "hivestack": {
+    "concerns": [
+      "DOOH SSP",
+      "Location tracking",
+      "Perion owned"
+    ],
+    "aliases": [
+      "hive stack"
+    ]
+  },
+  "place exchange": {
+    "concerns": [
+      "DOOH marketplace",
+      "Location targeting",
+      "OOH programmatic"
+    ],
+    "aliases": [
+      "placeexchange"
+    ]
+  },
+  "broadsign": {
+    "concerns": [
+      "DOOH platform",
+      "Billboard tracking",
+      "Audience measurement"
+    ],
+    "aliases": [
+      "broad sign"
+    ]
+  }
+}

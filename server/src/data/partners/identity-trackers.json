@@ -1,0 +1,560 @@
+{
+  "the trade desk": {
+    "concerns": [
+      "Unified ID 2.0 creator",
+      "Cross-site tracking",
+      "Email-based identity",
+      "Programmatic advertising"
+    ],
+    "aliases": [
+      "thetradedesk",
+      "trade desk",
+      "ttd",
+      "uid2",
+      "unified id"
+    ]
+  },
+  "id5": {
+    "concerns": [
+      "Universal ID",
+      "Cross-site identity",
+      "Cookie replacement",
+      "Publisher identity"
+    ],
+    "aliases": [
+      "id5 technology",
+      "id5.io"
+    ]
+  },
+  "liveramp ats": {
+    "concerns": [
+      "Authenticated Traffic Solution",
+      "Email-based tracking",
+      "Cross-publisher identity"
+    ],
+    "aliases": [
+      "ats",
+      "authenticated traffic"
+    ]
+  },
+  "digitrust": {
+    "concerns": [
+      "Universal ID consortium",
+      "Cross-site identity",
+      "IAB standard"
+    ],
+    "aliases": [
+      "digi trust"
+    ]
+  },
+  "sharedid": {
+    "concerns": [
+      "Prebid universal ID",
+      "First-party cookie ID",
+      "Cross-site linking"
+    ],
+    "aliases": [
+      "shared id",
+      "pubcommon"
+    ]
+  },
+  "lotame panorama": {
+    "concerns": [
+      "People-based identity",
+      "Cookie-less tracking",
+      "Cross-device graph"
+    ],
+    "aliases": [
+      "panorama id"
+    ]
+  },
+  "merkle": {
+    "concerns": [
+      "Merkury identity platform",
+      "Cross-device resolution",
+      "CRM onboarding"
+    ],
+    "aliases": [
+      "merkle inc",
+      "merkury"
+    ]
+  },
+  "infutor": {
+    "concerns": [
+      "Identity resolution",
+      "Consumer data",
+      "Real-time identity"
+    ],
+    "aliases": [
+      "infutor data"
+    ]
+  },
+  "tapad": {
+    "concerns": [
+      "Cross-device tracking",
+      "Device graph with billions of devices",
+      "Probabilistic matching"
+    ],
+    "aliases": [
+      "tapad inc"
+    ]
+  },
+  "drawbridge": {
+    "concerns": [
+      "Cross-device identity",
+      "Probabilistic matching",
+      "Connected consumer graph"
+    ],
+    "aliases": [
+      "drawbridge inc"
+    ]
+  },
+  "crosswise": {
+    "concerns": [
+      "Cross-device targeting",
+      "Oracle owned",
+      "Device linking"
+    ],
+    "aliases": [
+      "cross wise"
+    ]
+  },
+  "screen6": {
+    "concerns": [
+      "Cross-device identity",
+      "Device graphs",
+      "IPG Mediabrands owned"
+    ],
+    "aliases": [
+      "screen 6"
+    ]
+  },
+  "adbrain": {
+    "concerns": [
+      "Cross-device tracking",
+      "Identity graph",
+      "Machine learning matching"
+    ],
+    "aliases": [
+      "ad brain"
+    ]
+  },
+  "zeotap": {
+    "concerns": [
+      "Identity resolution",
+      "Customer data platform",
+      "Cross-device matching",
+      "European focus"
+    ],
+    "aliases": [
+      "zeotap gmbh"
+    ]
+  },
+  "mparticle": {
+    "concerns": [
+      "Customer data platform",
+      "Identity resolution",
+      "Mobile app tracking"
+    ],
+    "aliases": [
+      "m particle"
+    ]
+  },
+  "segment": {
+    "concerns": [
+      "Customer data platform",
+      "Event tracking",
+      "Identity stitching",
+      "Twilio owned"
+    ],
+    "aliases": [
+      "segment.io",
+      "twilio segment"
+    ]
+  },
+  "tealium": {
+    "concerns": [
+      "Customer data platform",
+      "Tag management",
+      "Identity resolution"
+    ],
+    "aliases": [
+      "tealium inc"
+    ]
+  },
+  "blueconic": {
+    "concerns": [
+      "Customer data platform",
+      "Profile unification",
+      "Real-time identity"
+    ],
+    "aliases": [
+      "blue conic"
+    ]
+  },
+  "actioniq": {
+    "concerns": [
+      "Customer data platform",
+      "Identity resolution",
+      "Enterprise data"
+    ],
+    "aliases": [
+      "action iq"
+    ]
+  },
+  "amperity": {
+    "concerns": [
+      "Customer data platform",
+      "Identity resolution",
+      "ML-based matching"
+    ],
+    "aliases": [
+      "amperity inc"
+    ]
+  },
+  "treasure data": {
+    "concerns": [
+      "Customer data platform",
+      "Identity graphs",
+      "Enterprise CDP"
+    ],
+    "aliases": [
+      "treasuredata"
+    ]
+  },
+  "fingerprintjs": {
+    "concerns": [
+      "Browser fingerprinting",
+      "Device identification",
+      "Fraud detection with tracking"
+    ],
+    "aliases": [
+      "fingerprint.js",
+      "fpjs",
+      "fingerprint pro",
+      "fingerprint.com"
+    ]
+  },
+  "iovation": {
+    "concerns": [
+      "Device fingerprinting",
+      "Fraud prevention",
+      "Device reputation"
+    ],
+    "aliases": [
+      "iovation inc",
+      "transunion iovation"
+    ]
+  },
+  "threatmetrix": {
+    "concerns": [
+      "Device fingerprinting",
+      "Digital identity",
+      "LexisNexis owned"
+    ],
+    "aliases": [
+      "threat metrix"
+    ]
+  },
+  "forter": {
+    "concerns": [
+      "Device fingerprinting",
+      "Fraud prevention",
+      "Identity network"
+    ],
+    "aliases": [
+      "forter inc"
+    ]
+  },
+  "sift": {
+    "concerns": [
+      "Device fingerprinting",
+      "Fraud detection",
+      "Behavioral analysis"
+    ],
+    "aliases": [
+      "sift science"
+    ]
+  },
+  "kount": {
+    "concerns": [
+      "Device fingerprinting",
+      "Identity trust",
+      "Equifax owned"
+    ],
+    "aliases": [
+      "kount inc"
+    ]
+  },
+  "branch": {
+    "concerns": [
+      "Mobile attribution",
+      "Deep linking",
+      "Cross-platform identity"
+    ],
+    "aliases": [
+      "branch.io",
+      "branch metrics"
+    ]
+  },
+  "appsflyer": {
+    "concerns": [
+      "Mobile attribution",
+      "Cross-device tracking",
+      "Install tracking"
+    ],
+    "aliases": [
+      "apps flyer"
+    ]
+  },
+  "adjust": {
+    "concerns": [
+      "Mobile attribution",
+      "App tracking",
+      "Cross-device"
+    ],
+    "aliases": [
+      "adjust gmbh"
+    ]
+  },
+  "singular": {
+    "concerns": [
+      "Mobile attribution",
+      "Cross-platform measurement",
+      "Marketing analytics"
+    ],
+    "aliases": [
+      "singular.net"
+    ]
+  },
+  "kochava": {
+    "concerns": [
+      "Mobile attribution",
+      "Fraud prevention",
+      "Cross-device"
+    ],
+    "aliases": [
+      "kochava inc"
+    ]
+  },
+  "throtle": {
+    "concerns": [
+      "Identity resolution",
+      "Household data",
+      "CRM onboarding"
+    ],
+    "aliases": [
+      "throtle inc"
+    ]
+  },
+  "signal co": {
+    "concerns": [
+      "Identity resolution",
+      "Real-time signals",
+      "Cross-device"
+    ],
+    "aliases": [
+      "signal.co"
+    ]
+  },
+  "narrativ": {
+    "concerns": [
+      "Commerce identity",
+      "Purchase attribution",
+      "Link monetization"
+    ],
+    "aliases": [
+      "narrativ inc"
+    ]
+  },
+  "hadron": {
+    "concerns": [
+      "Identity platform",
+      "Data connectivity",
+      "Audience activation"
+    ],
+    "aliases": [
+      "hadron id"
+    ]
+  },
+  "optable": {
+    "concerns": [
+      "Data collaboration",
+      "Clean room identity",
+      "Publisher ID"
+    ],
+    "aliases": [
+      "optable inc"
+    ]
+  },
+  "infosum": {
+    "concerns": [
+      "Data clean rooms",
+      "Privacy-safe matching",
+      "Identity bunker"
+    ],
+    "aliases": [
+      "info sum"
+    ]
+  },
+  "habu": {
+    "concerns": [
+      "Data clean rooms",
+      "Identity collaboration",
+      "Cross-platform"
+    ],
+    "aliases": [
+      "habu inc"
+    ]
+  },
+  "permutive": {
+    "concerns": [
+      "Publisher data platform",
+      "Cohort-based targeting",
+      "Edge computing"
+    ],
+    "aliases": [
+      "permutive inc"
+    ]
+  },
+  "flashpoint": {
+    "concerns": [
+      "Cross-device ID",
+      "Japanese market",
+      "Programmatic identity"
+    ],
+    "aliases": []
+  },
+  "sirdata": {
+    "concerns": [
+      "European identity",
+      "Consent-based targeting",
+      "Publisher data"
+    ],
+    "aliases": [
+      "sirdata sas"
+    ]
+  },
+  "liveintent": {
+    "concerns": [
+      "Email identity",
+      "Newsletter monetization",
+      "Identity resolution"
+    ],
+    "aliases": [
+      "live intent"
+    ]
+  },
+  "powerinbox": {
+    "concerns": [
+      "Email identity",
+      "Newsletter tracking",
+      "Identity graph"
+    ],
+    "aliases": [
+      "power inbox",
+      "jeeng"
+    ]
+  },
+  "sailthru": {
+    "concerns": [
+      "Email personalization",
+      "Identity profiles",
+      "Marigold owned"
+    ],
+    "aliases": [
+      "sail thru"
+    ]
+  },
+  "movable ink": {
+    "concerns": [
+      "Email personalization",
+      "Real-time content",
+      "Open tracking"
+    ],
+    "aliases": [
+      "movableink"
+    ]
+  },
+  "litmus": {
+    "concerns": [
+      "Email analytics",
+      "Open tracking",
+      "Device fingerprinting"
+    ],
+    "aliases": [
+      "litmus software"
+    ]
+  },
+  "audigent": {
+    "concerns": [
+      "Publisher data monetization",
+      "Hadron ID",
+      "Identity resolution"
+    ],
+    "aliases": [
+      "audigent llc"
+    ]
+  },
+  "publift": {
+    "concerns": [
+      "Publisher monetization",
+      "Header bidding",
+      "Identity wrapper"
+    ],
+    "aliases": [
+      "pub lift"
+    ]
+  },
+  "carbon": {
+    "concerns": [
+      "Publisher identity",
+      "Alternative ID",
+      "Contextual data"
+    ],
+    "aliases": [
+      "carbon ai",
+      "carbon rta"
+    ]
+  },
+  "fabrick": {
+    "concerns": [
+      "Identity fabric",
+      "Cross-platform ID",
+      "Neustar owned"
+    ],
+    "aliases": [
+      "fabrick id"
+    ]
+  },
+  "verizon custom": {
+    "concerns": [
+      "ISP browsing data",
+      "Cross-device via network",
+      "Telco tracking"
+    ],
+    "aliases": [
+      "verizon precision"
+    ]
+  },
+  "att data": {
+    "concerns": [
+      "Telco subscriber data",
+      "TV viewing",
+      "Cross-device"
+    ],
+    "aliases": [
+      "att advertising"
+    ]
+  },
+  "zeotap id": {
+    "concerns": [
+      "Telco data",
+      "European identity",
+      "Deterministic matching"
+    ],
+    "aliases": [
+      "zeotap id plus"
+    ]
+  }
+}

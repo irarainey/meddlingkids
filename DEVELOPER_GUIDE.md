@@ -175,8 +175,8 @@ All data captured
    │
    ├── analyzeScripts(scripts, maxLLM=20)
    │   │
-   │   ├── Match against TRACKING_SCRIPTS patterns (300+)
-   │   ├── Match against BENIGN_SCRIPTS patterns (~55)
+   │   ├── Match against tracking patterns (495 patterns from JSON)
+   │   ├── Match against benign patterns (51 patterns from JSON)
    │   └── LLM analysis for unknown scripts
    │
    └── runTrackingAnalysis(cookies, storage, network, scripts, url, consent)
@@ -322,8 +322,11 @@ App.vue
 
 | Module | Content |
 |--------|---------|
-| `data/tracking-scripts.ts` | 300+ regex patterns for known trackers |
-| `data/benign-scripts.ts` | ~55 patterns for safe libraries |
+| `data/loader.ts` | JSON data loader with lazy loading and caching |
+| `data/types.ts` | TypeScript type definitions for all data structures |
+| `data/trackers/tracking-scripts.json` | 495 regex patterns for known trackers |
+| `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
+| `data/partners/*.json` | 504 partner entries across 8 risk categories |
 
 ### Prompt Templates
 

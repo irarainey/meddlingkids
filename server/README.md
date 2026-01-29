@@ -39,8 +39,20 @@ server/src/
 │   └── consent-click.ts      # Consent button click strategies
 ├── data/
 │   ├── index.ts              # Data exports
-│   ├── tracking-scripts.ts   # 300+ known tracking script patterns
-│   └── benign-scripts.ts     # Known benign library patterns
+│   ├── types.ts              # Type definitions for data structures
+│   ├── loader.ts             # JSON data loader with lazy loading & caching
+│   ├── partners/             # Partner risk classification databases
+│   │   ├── ad-networks.json        # 106 advertising networks
+│   │   ├── analytics-trackers.json # 72 analytics providers
+│   │   ├── consent-platforms.json  # 33 consent management platforms
+│   │   ├── data-brokers.json       # 89 data brokers
+│   │   ├── identity-trackers.json  # 54 identity resolution providers
+│   │   ├── mobile-sdk-trackers.json# 46 mobile tracking SDKs
+│   │   ├── session-replay.json     # 61 session replay tools
+│   │   └── social-trackers.json    # 43 social media trackers
+│   └── trackers/             # Script pattern databases
+│       ├── tracking-scripts.json   # 495 known tracking script patterns
+│       └── benign-scripts.json     # 51 known benign library patterns
 ├── prompts/
 │   ├── index.ts              # Prompt exports
 │   ├── consent-detection.ts  # Detection system prompt
@@ -163,7 +175,8 @@ Calculates a **deterministic privacy score** (0-100) based on quantifiable facto
 | Consent Issues | 10 | Partner count, pre-consent tracking, vague purposes |
 
 **Known Trackers Identified:**
-- 300+ tracking script patterns (Google, Facebook, Criteo, etc.)
+- 495 tracking script patterns (Google, Facebook, Criteo, etc.)
+- 504 classified partners across 8 risk categories
 - High-risk trackers: session replay (Hotjar, FullStory), fingerprinting, data brokers
 - Advertising networks: Google Ads, Facebook Ads, Amazon, programmatic exchanges
 - Social media: Facebook SDK, Twitter widgets, LinkedIn Insight
@@ -181,8 +194,8 @@ Identifies and analyzes JavaScript files loaded by the page:
 - **`analyzeScripts(scripts, maxLLMAnalyses, onProgress)`** - Analyzes scripts to determine their purpose
 
 **Analysis Flow:**
-1. Match scripts against 300+ known tracking patterns (instant identification)
-2. Match scripts against ~55 known benign library patterns (skip LLM)
+1. Match scripts against 495 known tracking patterns (instant identification)
+2. Match scripts against 51 known benign library patterns (skip LLM)
 3. Use LLM to analyze remaining unknown scripts (limited to `maxLLMAnalyses`)
 
 ### Retry Handling (`utils/retry.ts`)
@@ -209,10 +222,27 @@ const result = await withRetry(
 
 ### Data Modules (`data/`)
 
-Pre-compiled databases of known script patterns:
+JSON databases of known trackers and partners, loaded lazily with caching:
 
-- **`tracking-scripts.ts`** - 300+ tracking script patterns with descriptions (Google Analytics, Facebook Pixel, etc.)
-- **`benign-scripts.ts`** - ~55 benign library patterns (jQuery, React, CDN libraries, etc.)
+**Script Pattern Databases (`data/trackers/`):**
+- **`tracking-scripts.json`** - 495 tracking script patterns with descriptions (Google Analytics, Facebook Pixel, etc.)
+- **`benign-scripts.json`** - 51 benign library patterns (jQuery, React, CDN libraries, etc.)
+
+**Partner Risk Databases (`data/partners/`):**
+- **`data-brokers.json`** - 89 data brokers (Acxiom, Oracle Data Cloud, etc.)
+- **`ad-networks.json`** - 106 advertising networks (Google Ads, Criteo, etc.)
+- **`analytics-trackers.json`** - 72 analytics providers (Google Analytics, Adobe Analytics, etc.)
+- **`session-replay.json`** - 61 session replay tools (Hotjar, FullStory, etc.)
+- **`identity-trackers.json`** - 54 identity resolution providers (LiveRamp, The Trade Desk, etc.)
+- **`social-trackers.json`** - 43 social media trackers (Facebook Pixel, Twitter, etc.)
+- **`mobile-sdk-trackers.json`** - 46 mobile tracking SDKs (Adjust, AppsFlyer, etc.)
+- **`consent-platforms.json`** - 33 consent management platforms (OneTrust, CookieBot, etc.)
+
+**Data Loader (`loader.ts`):**
+- Lazy loading - data loaded on first access
+- Caching - loaded data cached in memory
+- Type safety - full TypeScript types for all data
+- RegExp compilation - patterns compiled from JSON strings
 
 ## Data Types
 

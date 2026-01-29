@@ -1,0 +1,657 @@
+{
+  "hotjar": {
+    "concerns": [
+      "Session recording",
+      "Mouse tracking",
+      "Form field capture",
+      "Heatmaps",
+      "Survey data"
+    ],
+    "aliases": [
+      "hotjar ltd"
+    ]
+  },
+  "fullstory": {
+    "concerns": [
+      "Full session replay",
+      "All clicks/inputs recorded",
+      "Rage click detection",
+      "Privacy concerns"
+    ],
+    "aliases": [
+      "fullstory inc"
+    ]
+  },
+  "logrocket": {
+    "concerns": [
+      "Session replay",
+      "Console logging",
+      "Network request capture",
+      "User identification"
+    ],
+    "aliases": [
+      "logrocket inc"
+    ]
+  },
+  "mouseflow": {
+    "concerns": [
+      "Mouse tracking",
+      "Session recording",
+      "Form analytics",
+      "Friction detection"
+    ],
+    "aliases": [
+      "mouseflow inc"
+    ]
+  },
+  "clarity": {
+    "concerns": [
+      "Microsoft session replay",
+      "Free but Microsoft collects data",
+      "Heatmaps",
+      "Click tracking"
+    ],
+    "aliases": [
+      "microsoft clarity",
+      "clarity.ms"
+    ]
+  },
+  "smartlook": {
+    "concerns": [
+      "Session recording",
+      "Event tracking",
+      "User identification",
+      "Mobile recording"
+    ],
+    "aliases": [
+      "smartlook.com"
+    ]
+  },
+  "lucky orange": {
+    "concerns": [
+      "Session recordings",
+      "Dynamic heatmaps",
+      "Form analytics",
+      "Chat integration"
+    ],
+    "aliases": [
+      "luckyorange",
+      "lucky orange inc"
+    ]
+  },
+  "inspectlet": {
+    "concerns": [
+      "Session recording",
+      "Eye tracking heatmaps",
+      "Form analytics"
+    ],
+    "aliases": [
+      "inspectlet inc"
+    ]
+  },
+  "heap": {
+    "concerns": [
+      "Auto-capture ALL interactions",
+      "Retroactive analytics",
+      "Session replay",
+      "User tracking"
+    ],
+    "aliases": [
+      "heap inc",
+      "heap analytics"
+    ]
+  },
+  "amplitude": {
+    "concerns": [
+      "Product analytics",
+      "Session replay",
+      "User behavior",
+      "Cohort tracking"
+    ],
+    "aliases": [
+      "amplitude inc",
+      "amplitude analytics"
+    ]
+  },
+  "mixpanel": {
+    "concerns": [
+      "Event tracking",
+      "User analytics",
+      "Session replay add-on",
+      "Profile tracking"
+    ],
+    "aliases": [
+      "mixpanel inc"
+    ]
+  },
+  "pendo": {
+    "concerns": [
+      "Product analytics",
+      "Session replay",
+      "In-app tracking",
+      "User identification"
+    ],
+    "aliases": [
+      "pendo.io",
+      "pendo inc"
+    ]
+  },
+  "gainsight px": {
+    "concerns": [
+      "Product experience",
+      "User tracking",
+      "Session data",
+      "B2B focus"
+    ],
+    "aliases": [
+      "gainsight",
+      "aptrinsic"
+    ]
+  },
+  "walkme": {
+    "concerns": [
+      "Digital adoption",
+      "User tracking",
+      "Session data",
+      "Behavior analysis"
+    ],
+    "aliases": [
+      "walk me"
+    ]
+  },
+  "whatfix": {
+    "concerns": [
+      "Digital adoption",
+      "User tracking",
+      "In-app guidance"
+    ],
+    "aliases": [
+      "what fix"
+    ]
+  },
+  "qualtrics": {
+    "concerns": [
+      "Survey data",
+      "Experience tracking",
+      "Website intercepts",
+      "SAP owned"
+    ],
+    "aliases": [
+      "qualtrics xm",
+      "qualtrics inc"
+    ]
+  },
+  "medallia": {
+    "concerns": [
+      "Experience tracking",
+      "Customer feedback",
+      "Session data"
+    ],
+    "aliases": [
+      "medallia inc"
+    ]
+  },
+  "usertesting": {
+    "concerns": [
+      "User session recording",
+      "Think-aloud recordings",
+      "Behavioral observation"
+    ],
+    "aliases": [
+      "user testing"
+    ]
+  },
+  "userzoom": {
+    "concerns": [
+      "UX research",
+      "Session recording",
+      "User tracking"
+    ],
+    "aliases": [
+      "user zoom"
+    ]
+  },
+  "sentry": {
+    "concerns": [
+      "Error tracking",
+      "Session replay",
+      "Breadcrumbs of user actions"
+    ],
+    "aliases": [
+      "sentry.io",
+      "getsentry"
+    ]
+  },
+  "bugsnag": {
+    "concerns": [
+      "Error tracking",
+      "User data",
+      "Session breadcrumbs"
+    ],
+    "aliases": [
+      "bug snag"
+    ]
+  },
+  "rollbar": {
+    "concerns": [
+      "Error tracking",
+      "User context",
+      "Session info"
+    ],
+    "aliases": [
+      "rollbar inc"
+    ]
+  },
+  "raygun": {
+    "concerns": [
+      "Error tracking",
+      "User tracking",
+      "Session data"
+    ],
+    "aliases": [
+      "ray gun",
+      "mindscape"
+    ]
+  },
+  "datadog rum": {
+    "concerns": [
+      "Real user monitoring",
+      "Session tracking",
+      "User journeys"
+    ],
+    "aliases": [
+      "datadog",
+      "datadog rum"
+    ]
+  },
+  "new relic": {
+    "concerns": [
+      "APM with user tracking",
+      "Browser monitoring",
+      "Session traces"
+    ],
+    "aliases": [
+      "newrelic",
+      "new relic inc"
+    ]
+  },
+  "dynatrace": {
+    "concerns": [
+      "APM",
+      "Real user monitoring",
+      "Session replay",
+      "User journey"
+    ],
+    "aliases": [
+      "dynatrace llc"
+    ]
+  },
+  "appdynamics": {
+    "concerns": [
+      "APM",
+      "End user monitoring",
+      "Session data",
+      "Cisco owned"
+    ],
+    "aliases": [
+      "app dynamics"
+    ]
+  },
+  "optimizely": {
+    "concerns": [
+      "A/B testing",
+      "User bucketing",
+      "Behavior tracking",
+      "Session data"
+    ],
+    "aliases": [
+      "optimizely inc",
+      "episerver"
+    ]
+  },
+  "vwo": {
+    "concerns": [
+      "A/B testing",
+      "Session recording",
+      "Heatmaps",
+      "User tracking"
+    ],
+    "aliases": [
+      "visual website optimizer",
+      "wingify"
+    ]
+  },
+  "abtasty": {
+    "concerns": [
+      "A/B testing",
+      "User segmentation",
+      "Personalization"
+    ],
+    "aliases": [
+      "ab tasty"
+    ]
+  },
+  "kameleoon": {
+    "concerns": [
+      "A/B testing",
+      "AI personalization",
+      "User tracking"
+    ],
+    "aliases": [
+      "kameleoon sas"
+    ]
+  },
+  "convert": {
+    "concerns": [
+      "A/B testing",
+      "User bucketing",
+      "Privacy-focused but tracks"
+    ],
+    "aliases": [
+      "convert.com"
+    ]
+  },
+  "contentsquare": {
+    "concerns": [
+      "Digital experience analytics",
+      "Session replay",
+      "Heatmaps",
+      "Clicktale acquired"
+    ],
+    "aliases": [
+      "content square",
+      "clicktale"
+    ]
+  },
+  "glassbox": {
+    "concerns": [
+      "Session replay",
+      "Struggle analytics",
+      "Customer journey"
+    ],
+    "aliases": [
+      "glass box"
+    ]
+  },
+  "quantum metric": {
+    "concerns": [
+      "Digital analytics",
+      "Session replay",
+      "Business impact"
+    ],
+    "aliases": [
+      "quantummetric"
+    ]
+  },
+  "decibel": {
+    "concerns": [
+      "Digital experience",
+      "Session scoring",
+      "Frustration detection"
+    ],
+    "aliases": [
+      "decibel insight",
+      "medallia decibel"
+    ]
+  },
+  "auryc": {
+    "concerns": [
+      "Experience intelligence",
+      "Session replay",
+      "Journey analysis"
+    ],
+    "aliases": [
+      "auryc inc"
+    ]
+  },
+  "usabilla": {
+    "concerns": [
+      "User feedback",
+      "Surveys",
+      "Session context",
+      "SurveyMonkey owned"
+    ],
+    "aliases": [
+      "usabilla bv"
+    ]
+  },
+  "surveymonkey": {
+    "concerns": [
+      "Survey platform",
+      "User feedback",
+      "Behavioral data"
+    ],
+    "aliases": [
+      "survey monkey",
+      "momentive"
+    ]
+  },
+  "uxcam": {
+    "concerns": [
+      "Mobile session replay",
+      "App analytics",
+      "Touch heatmaps"
+    ],
+    "aliases": [
+      "ux cam"
+    ]
+  },
+  "appsee": {
+    "concerns": [
+      "Mobile session recording",
+      "Touch heatmaps",
+      "ServiceNow owned"
+    ],
+    "aliases": [
+      "app see"
+    ]
+  },
+  "posthog": {
+    "concerns": [
+      "Product analytics",
+      "Session recording",
+      "Feature flags",
+      "Open source core"
+    ],
+    "aliases": [
+      "post hog"
+    ]
+  },
+  "june": {
+    "concerns": [
+      "B2B product analytics",
+      "User tracking",
+      "Segment integration"
+    ],
+    "aliases": [
+      "june.so"
+    ]
+  },
+  "koala": {
+    "concerns": [
+      "Visitor identification",
+      "Intent tracking",
+      "B2B focus"
+    ],
+    "aliases": [
+      "koala.com",
+      "getkoala"
+    ]
+  },
+  "mutiny": {
+    "concerns": [
+      "Website personalization",
+      "Visitor identification",
+      "B2B"
+    ],
+    "aliases": [
+      "mutiny corp",
+      "mutinyhq"
+    ]
+  },
+  "clearbit reveal": {
+    "concerns": [
+      "IP to company matching",
+      "Visitor identification",
+      "B2B tracking"
+    ],
+    "aliases": [
+      "clearbit reveal"
+    ]
+  },
+  "leadfeeder": {
+    "concerns": [
+      "B2B visitor tracking",
+      "IP identification",
+      "Lead generation"
+    ],
+    "aliases": [
+      "lead feeder",
+      "dealfront"
+    ]
+  },
+  "albacross": {
+    "concerns": [
+      "B2B lead generation",
+      "Visitor identification",
+      "IP tracking"
+    ],
+    "aliases": [
+      "alba cross"
+    ]
+  },
+  "demandbase": {
+    "concerns": [
+      "B2B advertising",
+      "Account identification",
+      "Intent data"
+    ],
+    "aliases": [
+      "demand base"
+    ]
+  },
+  "6sense": {
+    "concerns": [
+      "B2B intent data",
+      "Account identification",
+      "Predictive analytics"
+    ],
+    "aliases": [
+      "6 sense",
+      "sixsense"
+    ]
+  },
+  "terminus": {
+    "concerns": [
+      "ABM platform",
+      "B2B advertising",
+      "Account tracking"
+    ],
+    "aliases": [
+      "terminus software"
+    ]
+  },
+  "rollworks": {
+    "concerns": [
+      "ABM platform",
+      "B2B advertising",
+      "NextRoll owned"
+    ],
+    "aliases": [
+      "roll works"
+    ]
+  },
+  "livechat": {
+    "concerns": [
+      "Chat widget",
+      "Visitor tracking",
+      "User identification"
+    ],
+    "aliases": [
+      "live chat",
+      "livechat inc"
+    ]
+  },
+  "tawk.to": {
+    "concerns": [
+      "Free chat widget",
+      "Visitor tracking",
+      "Session data"
+    ],
+    "aliases": [
+      "tawk",
+      "tawkto"
+    ]
+  },
+  "crisp": {
+    "concerns": [
+      "Chat platform",
+      "Visitor tracking",
+      "Co-browsing"
+    ],
+    "aliases": [
+      "crisp.chat"
+    ]
+  },
+  "tidio": {
+    "concerns": [
+      "Chat bots",
+      "Visitor tracking",
+      "Behavioral triggers"
+    ],
+    "aliases": [
+      "tidio llc"
+    ]
+  },
+  "olark": {
+    "concerns": [
+      "Chat widget",
+      "Visitor info",
+      "CRM integration"
+    ],
+    "aliases": [
+      "olark inc"
+    ]
+  },
+  "chatra": {
+    "concerns": [
+      "Chat software",
+      "Visitor tracking",
+      "Real-time monitoring"
+    ],
+    "aliases": [
+      "chatra.io"
+    ]
+  },
+  "gorgias": {
+    "concerns": [
+      "E-commerce support",
+      "Customer tracking",
+      "Order history"
+    ],
+    "aliases": [
+      "gorgias inc"
+    ]
+  },
+  "kustomer": {
+    "concerns": [
+      "Customer service",
+      "Unified timeline",
+      "Behavioral data",
+      "Meta owned"
+    ],
+    "aliases": [
+      "kustomer inc"
+    ]
+  },
+  "gladly": {
+    "concerns": [
+      "Customer service",
+      "Unified customer view",
+      "History tracking"
+    ],
+    "aliases": [
+      "gladly inc"
+    ]
+  }
+}

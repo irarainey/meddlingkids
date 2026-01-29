@@ -1,0 +1,455 @@
+{
+  "sharethis": {
+    "concerns": [
+      "Social sharing widgets",
+      "Cross-site tracking",
+      "Interest profiling"
+    ],
+    "aliases": [
+      "share this",
+      "sharethis inc"
+    ]
+  },
+  "addthis": {
+    "concerns": [
+      "Social sharing",
+      "Oracle owned",
+      "Cross-site tracking",
+      "Now deprecated"
+    ],
+    "aliases": [
+      "add this"
+    ]
+  },
+  "addtoany": {
+    "concerns": [
+      "Share buttons",
+      "Analytics",
+      "Cross-site"
+    ],
+    "aliases": [
+      "add to any"
+    ]
+  },
+  "shareaholic": {
+    "concerns": [
+      "Social sharing",
+      "Content recommendations",
+      "Analytics"
+    ],
+    "aliases": [
+      "share a holic"
+    ]
+  },
+  "sumo": {
+    "concerns": [
+      "Share buttons",
+      "Email capture",
+      "User tracking"
+    ],
+    "aliases": [
+      "sumo.com",
+      "sumome"
+    ]
+  },
+  "po.st": {
+    "concerns": [
+      "URL shortening",
+      "Share tracking",
+      "Analytics"
+    ],
+    "aliases": [
+      "post",
+      "radiumone"
+    ]
+  },
+  "gigya": {
+    "concerns": [
+      "Social login",
+      "Identity management",
+      "SAP owned"
+    ],
+    "aliases": [
+      "sap gigya",
+      "gigya inc"
+    ]
+  },
+  "auth0": {
+    "concerns": [
+      "Identity platform",
+      "Social login",
+      "User tracking",
+      "Okta owned"
+    ],
+    "aliases": [
+      "auth 0"
+    ]
+  },
+  "okta": {
+    "concerns": [
+      "Identity management",
+      "SSO",
+      "User tracking"
+    ],
+    "aliases": [
+      "okta inc"
+    ]
+  },
+  "onelogin": {
+    "concerns": [
+      "SSO provider",
+      "Identity",
+      "User tracking",
+      "OneIdentity owned"
+    ],
+    "aliases": [
+      "one login"
+    ]
+  },
+  "loginradius": {
+    "concerns": [
+      "CIAM",
+      "Social login",
+      "User profiles"
+    ],
+    "aliases": [
+      "login radius"
+    ]
+  },
+  "janrain": {
+    "concerns": [
+      "Social login",
+      "Identity",
+      "Akamai acquired"
+    ],
+    "aliases": [
+      "jan rain"
+    ]
+  },
+  "facebook like": {
+    "concerns": [
+      "Like button tracking",
+      "Shadow profiles",
+      "Cross-site"
+    ],
+    "aliases": [
+      "fb like",
+      "facebook button"
+    ]
+  },
+  "twitter buttons": {
+    "concerns": [
+      "Tweet button tracking",
+      "Social graph",
+      "Cross-site"
+    ],
+    "aliases": [
+      "x buttons",
+      "twitter share"
+    ]
+  },
+  "linkedin buttons": {
+    "concerns": [
+      "Share button tracking",
+      "Professional profiling"
+    ],
+    "aliases": [
+      "linkedin share"
+    ]
+  },
+  "pinterest widget": {
+    "concerns": [
+      "Pin button tracking",
+      "Visual interest",
+      "Cross-site"
+    ],
+    "aliases": [
+      "pinterest button"
+    ]
+  },
+  "instagram embed": {
+    "concerns": [
+      "Embed tracking",
+      "Meta data collection",
+      "Cross-site"
+    ],
+    "aliases": [
+      "ig embed"
+    ]
+  },
+  "tiktok embed": {
+    "concerns": [
+      "Video embed tracking",
+      "ByteDance data",
+      "Cross-site"
+    ],
+    "aliases": [
+      "tiktok widget"
+    ]
+  },
+  "youtube embed": {
+    "concerns": [
+      "Video embed tracking",
+      "Google data",
+      "Watch history"
+    ],
+    "aliases": [
+      "youtube iframe",
+      "yt embed"
+    ]
+  },
+  "vimeo embed": {
+    "concerns": [
+      "Video embed tracking",
+      "View analytics",
+      "Cross-site"
+    ],
+    "aliases": [
+      "vimeo player"
+    ]
+  },
+  "spotify embed": {
+    "concerns": [
+      "Audio embed tracking",
+      "Listening data",
+      "Cross-site"
+    ],
+    "aliases": [
+      "spotify player",
+      "spotify widget"
+    ]
+  },
+  "soundcloud embed": {
+    "concerns": [
+      "Audio embed tracking",
+      "Listening analytics"
+    ],
+    "aliases": [
+      "soundcloud player"
+    ]
+  },
+  "disqus": {
+    "concerns": [
+      "Comment system",
+      "User tracking",
+      "Advertising",
+      "Cross-site profiles"
+    ],
+    "aliases": [
+      "disqus inc"
+    ]
+  },
+  "facebook comments": {
+    "concerns": [
+      "Comment plugin",
+      "Meta tracking",
+      "Cross-site"
+    ],
+    "aliases": [
+      "fb comments"
+    ]
+  },
+  "spot.im": {
+    "concerns": [
+      "Comment platform",
+      "Engagement",
+      "User tracking",
+      "Now OpenWeb"
+    ],
+    "aliases": [
+      "spotim",
+      "openweb"
+    ]
+  },
+  "coral": {
+    "concerns": [
+      "Comment system",
+      "Moderation",
+      "User tracking",
+      "Vox Media"
+    ],
+    "aliases": [
+      "coral project"
+    ]
+  },
+  "livefyre": {
+    "concerns": [
+      "Social engagement",
+      "Comments",
+      "Adobe owned"
+    ],
+    "aliases": [
+      "live fyre"
+    ]
+  },
+  "vuukle": {
+    "concerns": [
+      "Comment system",
+      "Engagement",
+      "User data"
+    ],
+    "aliases": [
+      "vuukle inc"
+    ]
+  },
+  "yotpo social": {
+    "concerns": [
+      "Social curation",
+      "UGC collection",
+      "Customer data"
+    ],
+    "aliases": [
+      "yotpo ugc"
+    ]
+  },
+  "curalate": {
+    "concerns": [
+      "Social commerce",
+      "UGC",
+      "Visual recognition",
+      "Bazaarvoice owned"
+    ],
+    "aliases": [
+      "curalate inc"
+    ]
+  },
+  "stackla": {
+    "concerns": [
+      "UGC platform",
+      "Social aggregation",
+      "Nosto owned"
+    ],
+    "aliases": [
+      "stackla inc"
+    ]
+  },
+  "olapic": {
+    "concerns": [
+      "Visual commerce",
+      "UGC",
+      "Social data",
+      "Emplifi owned"
+    ],
+    "aliases": [
+      "olapic inc"
+    ]
+  },
+  "pixlee": {
+    "concerns": [
+      "UGC platform",
+      "Social content",
+      "Customer data",
+      "Emplifi owned"
+    ],
+    "aliases": [
+      "pixlee inc",
+      "emplifi"
+    ]
+  },
+  "sprinklr": {
+    "concerns": [
+      "Social listening",
+      "Customer experience",
+      "Cross-platform data"
+    ],
+    "aliases": [
+      "sprinklr inc"
+    ]
+  },
+  "brandwatch": {
+    "concerns": [
+      "Social listening",
+      "Consumer intelligence",
+      "Cision owned"
+    ],
+    "aliases": [
+      "brand watch"
+    ]
+  },
+  "talkwalker": {
+    "concerns": [
+      "Social listening",
+      "Analytics",
+      "Consumer insights",
+      "Hootsuite merged"
+    ],
+    "aliases": [
+      "talk walker"
+    ]
+  },
+  "mention": {
+    "concerns": [
+      "Social monitoring",
+      "Brand tracking",
+      "Influencer data"
+    ],
+    "aliases": [
+      "mention.com"
+    ]
+  },
+  "meltwater": {
+    "concerns": [
+      "Media intelligence",
+      "Social monitoring",
+      "PR analytics"
+    ],
+    "aliases": [
+      "meltwater inc"
+    ]
+  },
+  "cision": {
+    "concerns": [
+      "PR monitoring",
+      "Media tracking",
+      "Influencer database"
+    ],
+    "aliases": [
+      "cision inc",
+      "pr newswire"
+    ]
+  },
+  "shop social": {
+    "concerns": [
+      "Social shopping",
+      "Purchase tracking",
+      "User behavior"
+    ],
+    "aliases": [
+      "social commerce"
+    ]
+  },
+  "like to know it": {
+    "concerns": [
+      "Affiliate social",
+      "Shopping tracking",
+      "LTK owned"
+    ],
+    "aliases": [
+      "liketoknowit",
+      "ltk",
+      "rewardstyle"
+    ]
+  },
+  "shopmy": {
+    "concerns": [
+      "Creator commerce",
+      "Affiliate tracking",
+      "Shopping data"
+    ],
+    "aliases": [
+      "shop my",
+      "shopmy.us"
+    ]
+  },
+  "collective voice": {
+    "concerns": [
+      "Influencer commerce",
+      "Affiliate links",
+      "Shopping behavior"
+    ],
+    "aliases": [
+      "collectivevoice",
+      "shopstyle collective"
+    ]
+  }
+}
