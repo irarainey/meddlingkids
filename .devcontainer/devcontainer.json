@@ -1,10 +1,13 @@
 {
-  "name": "Node.js",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "name": "Meddling Kids",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
   "mounts": [
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
   ],
   "remoteUser": "node",
+  "containerEnv": {
+    "DISPLAY": ":99"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,6 +17,5 @@
       ]
     }
   },
-  "postCreateCommand": "npm install && npx playwright install --with-deps chromium && sudo apt-get update && sudo apt-get install -y xvfb",
-  "postStartCommand": "Xvfb :99 -screen 0 1920x1080x24 -ac &"
+  "postStartCommand": ".devcontainer/init.sh"
 }
