@@ -79,6 +79,14 @@ export interface ConsentPartner {
   name: string
   purpose: string
   dataCollected: string[]
+  /** Risk classification (added during analysis) */
+  riskLevel?: 'critical' | 'high' | 'medium' | 'low' | 'unknown'
+  /** Category of partner business */
+  riskCategory?: string
+  /** Risk score contribution (0-10) */
+  riskScore?: number
+  /** Specific privacy concerns */
+  concerns?: string[]
 }
 
 /**

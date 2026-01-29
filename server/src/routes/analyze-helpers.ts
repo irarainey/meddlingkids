@@ -10,6 +10,7 @@ import type { BrowserSession } from '../services/browser-session.js'
 import { detectCookieConsent } from '../services/consent-detection.js'
 import { extractConsentDetails } from '../services/consent-extraction.js'
 import { tryClickConsentButton } from '../services/consent-click.js'
+import { getPartnerRiskSummary, classifyPartnerByPatternSync } from '../services/partner-classification.js'
 import { createLogger } from '../utils/index.js'
 import type { ConsentDetails, CookieConsentDetection, StorageItem } from '../types.js'
 
@@ -135,6 +136,34 @@ export async function handleOverlays(
       consentDetails = await extractConsentDetails(page, screenshot)
       log.endTimer('consent-extraction', 'Consent details extracted')
       log.info('Consent details', { categories: consentDetails.categories.length, partners: consentDetails.partners.length, purposes: consentDetails.purposes.length })
+
+      // Enrich partners with risk classification
+      if (consentDetails.partners.length > 0) {
+        log.startTimer('partner-classification')
+        sendProgress(res, 'partner-classify', 'Analyzing partner risk levels...', progressBase + 2)
+        
+        const riskSummary = getPartnerRiskSummary(consentDetails.partners)
+        log.info('Partner risk summary', { 
+          critical: riskSummary.criticalCount, 
+          high: riskSummary.highCount,
+          totalRisk: riskSummary.totalRiskScore 
+        })
+        
+        // Enrich each partner with classification
+        for (const partner of consentDetails.partners) {
+          const classification = classifyPartnerByPatternSync(partner)
+          if (classification) {
+            partner.riskLevel = classification.riskLevel
+            partner.riskCategory = classification.category
+            partner.riskScore = classification.riskScore
+            partner.concerns = classification.concerns
+          } else {
+            partner.riskLevel = 'unknown'
+            partner.riskScore = 3 // Default moderate risk for unknowns
+          }
+        }
+        log.endTimer('partner-classification', 'Partner classification complete')
+      }
 
       sendEvent(res, 'consentDetails', {
         categories: consentDetails.categories,

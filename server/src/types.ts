@@ -154,6 +154,14 @@ export interface ConsentPartner {
   purpose: string
   /** Types of data collected by this partner */
   dataCollected: string[]
+  /** Risk classification (added during analysis) */
+  riskLevel?: 'critical' | 'high' | 'medium' | 'low' | 'unknown'
+  /** Category of partner business */
+  riskCategory?: string
+  /** Risk score contribution (0-10) */
+  riskScore?: number
+  /** Specific privacy concerns */
+  concerns?: string[]
 }
 
 // ============================================================================
@@ -240,10 +248,17 @@ export interface AnalysisResult {
   analysis?: string
   /** Structured summary findings for the summary tab */
   summaryFindings?: SummaryFinding[]
-  /** Privacy risk score (0-100) */
+  /** Privacy risk score (0-100) - calculated deterministically */
   privacyScore?: number
   /** One-sentence summary for the results dialog */
   privacySummary?: string
+  /** Detailed breakdown of how the score was calculated */
+  scoreBreakdown?: {
+    totalScore: number
+    categories: Record<string, { points: number; maxPoints: number; issues: string[] }>
+    factors: string[]
+    summary: string
+  }
   /** Tracking data summary used for the analysis */
   summary?: TrackingSummary
   /** Error message if analysis failed */

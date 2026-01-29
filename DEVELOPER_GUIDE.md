@@ -185,9 +185,10 @@ All data captured
        │
        ├── Main analysis prompt → Full markdown report
        │
-       └── Parallel:
-           ├── Summary findings prompt → Structured JSON findings
-           └── Privacy score prompt → 0-100 score + summary
+       ├── calculatePrivacyScore() → Deterministic 0-100 score
+       │   (based on cookies, trackers, fingerprinting, ads, social, consent)
+       │
+       └── Summary findings prompt → Structured JSON findings
 ```
 
 ### Phase 6: Complete
@@ -328,7 +329,7 @@ App.vue
 
 | Prompt | Purpose |
 |--------|---------|
-| `tracking-analysis.ts` | Main analysis, summary findings, privacy score |
+| `tracking-analysis.ts` | Main analysis, summary findings |
 | `consent-detection.ts` | AI vision for overlay detection |
 | `consent-extraction.ts` | Extract consent categories/partners |
 | `script-analysis.ts` | Describe unknown scripts |
@@ -568,7 +569,7 @@ log.success('Done!', { result: data })
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
-- Main analysis runs first, then summary + score in parallel
+- Privacy score is calculated deterministically (no LLM variance)
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
 ### Rate Limit Handling

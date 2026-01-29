@@ -32,6 +32,7 @@ server/src/
 │   ├── access-detection.ts   # Bot blocking detection patterns
 │   ├── openai.ts             # Azure OpenAI / OpenAI client
 │   ├── analysis.ts           # AI tracking analysis
+│   ├── privacy-score.ts      # Deterministic privacy score calculation
 │   ├── script-analysis.ts    # Script identification & LLM analysis
 │   ├── consent-detection.ts  # AI consent banner detection
 │   ├── consent-extraction.ts # AI consent details extraction
@@ -139,10 +140,33 @@ Manages Chromium browser sessions via Playwright. Runs in headed mode on a virtu
 Runs AI-powered tracking analysis:
 
 - **`runTrackingAnalysis(...)`** - Analyzes all tracking data and generates:
-  - Full markdown privacy report
-  - Summary content for the summary tab
-  - Privacy score (0-100) and one-sentence summary
+  - Full markdown privacy report (AI-generated)
+  - Summary findings for the summary tab (AI-generated)
+  - Privacy score (0-100) calculated deterministically
   - Tracking data summary
+
+### Privacy Score Service (`services/privacy-score.ts`)
+
+Calculates a **deterministic privacy score** (0-100) based on quantifiable factors. This ensures consistent scores across repeated scans of the same site.
+
+**Scoring Categories (max 100 points):**
+
+| Category | Max Points | Factors |
+|----------|------------|---------|
+| Cookies | 15 | Total count, third-party cookies, tracking cookies, long-lived cookies |
+| Third-Party Trackers | 20 | Number of domains, request count, known trackers |
+| Data Collection | 10 | Storage usage, tracking beacons, POST requests |
+| Fingerprinting | 15 | Session replay tools, device fingerprinting, cross-device tracking |
+| Advertising | 15 | Ad networks count, retargeting cookies, programmatic bidding |
+| Social Media | 10 | Social trackers, embedded plugins |
+| Sensitive Data | 10 | Location tracking, political profiling, identity resolution |
+| Consent Issues | 10 | Partner count, pre-consent tracking, vague purposes |
+
+**Known Trackers Identified:**
+- 300+ tracking script patterns (Google, Facebook, Criteo, etc.)
+- High-risk trackers: session replay (Hotjar, FullStory), fingerprinting, data brokers
+- Advertising networks: Google Ads, Facebook Ads, Amazon, programmatic exchanges
+- Social media: Facebook SDK, Twitter widgets, LinkedIn Insight
 
 ### Consent Services
 
@@ -305,7 +329,7 @@ PORT=3001
 
 # OpenAI Configuration
 OPENAI_API_KEY=your-api-key
-OPENAI_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5.1-chat
 
 # Optional: Custom base URL for OpenAI-compatible APIs
 # OPENAI_BASE_URL=https://api.openai.com/v1
@@ -316,7 +340,7 @@ OPENAI_MODEL=gpt-4o
 ### Prerequisites
 
 - Node.js 22+ (uses native TypeScript support)
-- OpenAI API key or Azure OpenAI resource (GPT-4o recommended for vision)
+- OpenAI API key or Azure OpenAI resource (GPT-5.1 recommended for vision)
 - Xvfb (virtual display) for browser automation
 
 ### Installation
@@ -389,7 +413,9 @@ If consent found:
   → Wait for page update
   → Recapture tracking data
      ↓
-Run AI privacy analysis (parallel: analysis + score)
+Calculate deterministic privacy score
+     ↓
+Run AI privacy analysis (markdown report + summary findings)
      ↓
 Return complete results with privacy score
 ```
@@ -481,7 +507,7 @@ Ensure you have configured either Azure OpenAI or standard OpenAI:
 
 **Standard OpenAI:**
 - `OPENAI_API_KEY`
-- `OPENAI_MODEL` (optional, defaults to `gpt-4o`)
+- `OPENAI_MODEL` (optional, defaults to `gpt-5.1-chat`)
 
 ### Consent button not clicking
 

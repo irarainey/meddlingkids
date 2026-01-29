@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConsentDetails } from '../../types'
+import type { ConsentDetails, ConsentPartner } from '../../types'
 
 /**
  * Tab panel displaying consent dialog details.
@@ -15,6 +15,68 @@ defineProps<{
 function hasContent(details: ConsentDetails | null): boolean {
   if (!details) return false
   return details.partners.length > 0 || details.categories.length > 0
+}
+
+/**
+ * Get CSS class for risk level badge.
+ */
+function getRiskClass(level: string | undefined): string {
+  switch (level) {
+    case 'critical': return 'risk-critical'
+    case 'high': return 'risk-high'
+    case 'medium': return 'risk-medium'
+    case 'low': return 'risk-low'
+    default: return 'risk-unknown'
+  }
+}
+
+/**
+ * Get emoji for risk level.
+ */
+function getRiskEmoji(level: string | undefined): string {
+  switch (level) {
+    case 'critical': return '🚨'
+    case 'high': return '⚠️'
+    case 'medium': return '📊'
+    case 'low': return '✅'
+    default: return '❓'
+  }
+}
+
+/**
+ * Get display label for risk level.
+ */
+function getRiskLabel(level: string | undefined): string {
+  switch (level) {
+    case 'critical': return 'Critical Risk'
+    case 'high': return 'High Risk'
+    case 'medium': return 'Medium Risk'
+    case 'low': return 'Low Risk'
+    default: return 'Unknown'
+  }
+}
+
+/**
+ * Sort partners by risk (critical first).
+ */
+function sortPartnersByRisk(partners: ConsentPartner[]): ConsentPartner[] {
+  const order = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 }
+  return [...partners].sort((a, b) => {
+    const aOrder = order[a.riskLevel ?? 'unknown'] ?? 4
+    const bOrder = order[b.riskLevel ?? 'unknown'] ?? 4
+    return aOrder - bOrder
+  })
+}
+
+/**
+ * Count partners by risk level.
+ */
+function countByRisk(partners: ConsentPartner[]): { critical: number; high: number; medium: number; low: number; unknown: number } {
+  return partners.reduce((acc, p) => {
+    const level = p.riskLevel ?? 'unknown'
+    acc[level] = (acc[level] || 0) + 1
+    return acc
+  }, { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 })
 }
 </script>
 
@@ -60,14 +122,51 @@ function hasContent(details: ConsentDetails | null): boolean {
         <p class="section-hint">
           These are the third parties that will receive your data when you click "Accept All"
         </p>
+        
+        <!-- Risk summary -->
+        <div class="risk-summary">
+          <span v-if="countByRisk(consentDetails!.partners).critical > 0" class="risk-count risk-critical">
+            🚨 {{ countByRisk(consentDetails!.partners).critical }} Critical
+          </span>
+          <span v-if="countByRisk(consentDetails!.partners).high > 0" class="risk-count risk-high">
+            ⚠️ {{ countByRisk(consentDetails!.partners).high }} High Risk
+          </span>
+          <span v-if="countByRisk(consentDetails!.partners).medium > 0" class="risk-count risk-medium">
+            📊 {{ countByRisk(consentDetails!.partners).medium }} Medium
+          </span>
+          <span v-if="countByRisk(consentDetails!.partners).low > 0" class="risk-count risk-low">
+            ✅ {{ countByRisk(consentDetails!.partners).low }} Low Risk
+          </span>
+          <span v-if="countByRisk(consentDetails!.partners).unknown > 0" class="risk-count risk-unknown">
+            ❓ {{ countByRisk(consentDetails!.partners).unknown }} Unknown
+          </span>
+        </div>
+
         <div class="partners-grid">
           <div
-            v-for="partner in consentDetails!.partners"
+            v-for="partner in sortPartnersByRisk(consentDetails!.partners)"
             :key="partner.name"
-            class="partner-card"
+            :class="['partner-card', getRiskClass(partner.riskLevel)]"
           >
-            <div class="partner-name">{{ partner.name }}</div>
+            <div class="partner-header">
+              <div class="partner-name">{{ partner.name }}</div>
+              <span :class="['risk-badge', getRiskClass(partner.riskLevel)]">
+                {{ getRiskEmoji(partner.riskLevel) }} {{ getRiskLabel(partner.riskLevel) }}
+              </span>
+            </div>
+            <div v-if="partner.riskCategory" class="partner-category">
+              {{ partner.riskCategory.replace(/-/g, ' ') }}
+            </div>
             <div class="partner-purpose">{{ partner.purpose }}</div>
+            <div
+              v-if="partner.concerns && partner.concerns.length > 0"
+              class="partner-concerns"
+            >
+              <span class="concerns-label">⚠️ Concerns:</span>
+              <ul class="concerns-list">
+                <li v-for="concern in partner.concerns" :key="concern">{{ concern }}</li>
+              </ul>
+            </div>
             <div
               v-if="partner.dataCollected && partner.dataCollected.length > 0"
               class="partner-data"
@@ -184,12 +283,145 @@ function hasContent(details: ConsentDetails | null): boolean {
   border: 1px solid #3d4663;
   border-radius: 6px;
   padding: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.partner-card.risk-critical {
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #1e2235 0%, #2a1a1a 100%);
+}
+
+.partner-card.risk-high {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #1e2235 0%, #2a2415 100%);
+}
+
+.partner-card.risk-medium {
+  border-color: #3b82f6;
+}
+
+.partner-card.risk-low {
+  border-color: #10b981;
+}
+
+.partner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .partner-name {
   font-weight: 600;
   color: #e0e7ff;
+}
+
+.partner-category {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: capitalize;
   margin-bottom: 0.25rem;
+}
+
+.risk-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.risk-badge.risk-critical {
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.risk-badge.risk-high {
+  background: #451a03;
+  color: #fed7aa;
+}
+
+.risk-badge.risk-medium {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.risk-badge.risk-low {
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+.risk-badge.risk-unknown {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.risk-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #1e2235;
+  border-radius: 6px;
+}
+
+.risk-count {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.risk-count.risk-critical {
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.risk-count.risk-high {
+  background: #451a03;
+  color: #fed7aa;
+}
+
+.risk-count.risk-medium {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.risk-count.risk-low {
+  background: #064e3b;
+  color: #a7f3d0;
+}
+
+.risk-count.risk-unknown {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.partner-concerns {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #2a2f45;
+  border-radius: 4px;
+  border-left: 2px solid #f59e0b;
+}
+
+.concerns-label {
+  font-size: 0.75rem;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.concerns-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: #fde68a;
+}
+
+.concerns-list li {
+  margin-bottom: 0.15rem;
 }
 
 .partner-purpose {

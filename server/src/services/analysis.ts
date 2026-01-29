@@ -2,16 +2,16 @@
  * @fileoverview AI-powered tracking analysis service.
  * Uses Azure OpenAI to analyze collected tracking data and generate
  * comprehensive privacy reports with risk assessments.
+ * Privacy score is calculated deterministically for consistency.
  */
 
 import { getOpenAIClient, getDeploymentName } from './openai.js'
+import { calculatePrivacyScore, type PrivacyScoreBreakdown } from './privacy-score.js'
 import {
   TRACKING_ANALYSIS_SYSTEM_PROMPT,
   SUMMARY_FINDINGS_SYSTEM_PROMPT,
-  PRIVACY_SCORE_SYSTEM_PROMPT,
   buildTrackingAnalysisUserPrompt,
   buildSummaryFindingsUserPrompt,
-  buildPrivacyScoreUserPrompt,
 } from '../prompts/index.js'
 import { getErrorMessage, buildTrackingSummary, createLogger, withRetry } from '../utils/index.js'
 import type { TrackedCookie, TrackedScript, StorageItem, NetworkRequest, ConsentDetails, AnalysisResult, SummaryFinding } from '../types.js'
@@ -23,7 +23,7 @@ const log = createLogger('AI-Analysis')
  * Analyzes cookies, scripts, network requests, and storage to generate
  * a detailed privacy report and structured summary findings.
  * 
- * Optimized to run secondary analyses (summary findings, score) in parallel.
+ * Privacy score is calculated deterministically for consistent results.
  *
  * @param cookies - Captured cookies from the browser
  * @param localStorage - localStorage items from the page
@@ -83,59 +83,44 @@ export async function runTrackingAnalysis(
     log.endTimer('main-analysis', 'Main analysis complete')
     log.info('Analysis generated', { length: analysis.length })
 
-    // Step 2: Run summary findings and privacy score in PARALLEL (both depend on main analysis)
-    log.startTimer('parallel-analysis')
-    log.info('Running summary and score generation in parallel...')
+    // Step 2: Calculate deterministic privacy score (consistent, no LLM variance)
+    log.startTimer('score-calculation')
+    const scoreBreakdown = calculatePrivacyScore(
+      cookies,
+      scripts,
+      networkRequests,
+      localStorage,
+      sessionStorage,
+      analyzedUrl,
+      consentDetails
+    )
+    log.endTimer('score-calculation', 'Privacy score calculated')
+    log.info('Privacy score breakdown', { 
+      total: scoreBreakdown.totalScore,
+      factors: scoreBreakdown.factors.length 
+    })
+
+    // Step 3: Generate summary findings from the analysis (LLM-based)
+    log.startTimer('summary-generation')
+    log.info('Generating summary findings...')
     
-    const [summaryResult, scoreResult] = await Promise.all([
-      // Summary findings
-      (async () => {
-        log.startTimer('summary-generation')
-        try {
-          const result = await withRetry(
-            () => client.chat.completions.create({
-              model: deployment,
-              messages: [
-                { role: 'system', content: SUMMARY_FINDINGS_SYSTEM_PROMPT },
-                { role: 'user', content: buildSummaryFindingsUserPrompt(analysis) },
-              ],
-              max_completion_tokens: 500,
-            }),
-            { context: 'Summary findings' }
-          )
-          log.endTimer('summary-generation', 'Summary generated')
-          return result
-        } catch (err) {
-          log.error('Failed to generate summary', { error: getErrorMessage(err) })
-          return null
-        }
-      })(),
-      
-      // Privacy score
-      (async () => {
-        log.startTimer('score-generation')
-        try {
-          const result = await withRetry(
-            () => client.chat.completions.create({
-              model: deployment,
-              messages: [
-                { role: 'system', content: PRIVACY_SCORE_SYSTEM_PROMPT },
-                { role: 'user', content: buildPrivacyScoreUserPrompt(analysis, analyzedUrl) },
-              ],
-              max_completion_tokens: 200,
-            }),
-            { context: 'Privacy score' }
-          )
-          log.endTimer('score-generation', 'Score generated')
-          return result
-        } catch (err) {
-          log.error('Failed to generate privacy score', { error: getErrorMessage(err) })
-          return null
-        }
-      })()
-    ])
-    
-    log.endTimer('parallel-analysis', 'Parallel analysis complete')
+    let summaryResult = null
+    try {
+      summaryResult = await withRetry(
+        () => client.chat.completions.create({
+          model: deployment,
+          messages: [
+            { role: 'system', content: SUMMARY_FINDINGS_SYSTEM_PROMPT },
+            { role: 'user', content: buildSummaryFindingsUserPrompt(analysis) },
+          ],
+          max_completion_tokens: 500,
+        }),
+        { context: 'Summary findings' }
+      )
+      log.endTimer('summary-generation', 'Summary generated')
+    } catch (err) {
+      log.error('Failed to generate summary', { error: getErrorMessage(err) })
+    }
 
     // Process summary findings result
     let summaryFindings: SummaryFinding[] = []
@@ -157,41 +142,15 @@ export async function runTrackingAnalysis(
       }
     }
 
-    // Process privacy score result
-    let privacyScore: number | undefined
-    let privacySummary: string | undefined
-    
-    if (scoreResult) {
-      const scoreContent = scoreResult.choices[0]?.message?.content || ''
-      log.debug('Privacy score response', { content: scoreContent })
-      try {
-        const scoreData = JSON.parse(scoreContent)
-        privacyScore = Math.min(100, Math.max(0, Number(scoreData.score) || 50))
-        privacySummary = scoreData.summary || ''
-        
-        // Ensure the domain at the start of the summary is lowercase
-        // LLM sometimes capitalizes it despite instructions
-        if (privacySummary) {
-          let siteName: string
-          try {
-            siteName = new URL(analyzedUrl).hostname.replace(/^www\./, '').toLowerCase()
-          } catch {
-            siteName = analyzedUrl.toLowerCase()
-          }
-          if (privacySummary.toLowerCase().startsWith(siteName)) {
-            privacySummary = siteName + privacySummary.slice(siteName.length)
-          }
-        }
-        
-        log.success('Privacy score calculated', { score: privacyScore })
-      } catch (parseError) {
-        log.error('Failed to parse privacy score JSON', { error: getErrorMessage(parseError) })
-        privacyScore = 50
-        privacySummary = 'Unable to generate summary'
-      }
-    }
+    // Use deterministic score from the breakdown
+    const privacyScore = scoreBreakdown.totalScore
+    const privacySummary = scoreBreakdown.summary
 
-    log.success('Analysis complete', { findingsCount: summaryFindings.length, privacyScore })
+    log.success('Analysis complete', { 
+      findingsCount: summaryFindings.length, 
+      privacyScore,
+      scoreFactors: scoreBreakdown.factors.slice(0, 3)
+    })
 
     return {
       success: true,
@@ -199,6 +158,7 @@ export async function runTrackingAnalysis(
       summaryFindings,
       privacyScore,
       privacySummary,
+      scoreBreakdown,
       summary: trackingSummary,
     }
   } catch (error) {
@@ -206,3 +166,4 @@ export async function runTrackingAnalysis(
     return { success: false, error: getErrorMessage(error) }
   }
 }
+

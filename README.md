@@ -131,13 +131,13 @@ Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat
 ```
 
 **Option B: Standard OpenAI**
 ```env
 OPENAI_API_KEY=your-api-key
-OPENAI_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5.1-chat
 ```
 
 ### 3. Run Development Server
@@ -163,7 +163,7 @@ Pull and run the latest image:
 docker run -p 3001:3001 \
   -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
   -e AZURE_OPENAI_API_KEY=your-api-key \
-  -e AZURE_OPENAI_DEPLOYMENT=gpt-4o \
+  -e AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat \
   ghcr.io/irarainey/meddlingkids:latest
 ```
 
@@ -171,7 +171,7 @@ docker run -p 3001:3001 \
 ```bash
 docker run -p 3001:3001 \
   -e OPENAI_API_KEY=your-api-key \
-  -e OPENAI_MODEL=gpt-4o \
+  -e OPENAI_MODEL=gpt-5.1-chat \
   ghcr.io/irarainey/meddlingkids:latest
 ```
 

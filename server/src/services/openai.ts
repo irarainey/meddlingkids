@@ -25,7 +25,7 @@ let isAzure = false
  *
  * Standard OpenAI (fallback):
  * - OPENAI_API_KEY: API key for authentication
- * - OPENAI_MODEL: Model name (default: 'gpt-4o')
+ * - OPENAI_MODEL: Model name (default: 'gpt-5.1-chat')
  * - OPENAI_BASE_URL: Optional custom base URL for OpenAI-compatible APIs
  *
  * @returns Configured OpenAI client or null if not configured
@@ -82,7 +82,7 @@ export function getDeploymentName(): string {
   if (isAzure) {
     return process.env.AZURE_OPENAI_DEPLOYMENT || ''
   }
-  return process.env.OPENAI_MODEL || 'gpt-4o'
+  return process.env.OPENAI_MODEL || 'gpt-5.1-chat'
 }
 
 /**
