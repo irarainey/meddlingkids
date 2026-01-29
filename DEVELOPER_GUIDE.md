@@ -176,7 +176,7 @@ All data captured
    ├── analyzeScripts(scripts)
    │   │
    │   ├── Group similar scripts (chunks, vendor bundles)
-   │   ├── Match against tracking patterns (495 patterns from JSON)
+│   ├── Match against tracking patterns (506 patterns from JSON)
    │   ├── Match against benign patterns (51 patterns from JSON)
    │   └── Batch LLM analysis for unknown scripts (10 per batch)
    │
@@ -317,6 +317,7 @@ App.vue
 | `openai.ts` | OpenAI/Azure OpenAI client management |
 | `analysis.ts` | Main tracking analysis with LLM |
 | `script-analysis.ts` | Script identification (patterns + LLM) |
+| `partner-classification.ts` | Classify consent partners by risk level |
 | `consent-detection.ts` | AI vision to detect consent dialogs |
 | `consent-extraction.ts` | AI to extract consent details |
 | `consent-click.ts` | Click strategies for consent buttons |
@@ -327,7 +328,7 @@ App.vue
 |--------|---------||
 | `data/loader.ts` | JSON data loader with lazy loading and caching |
 | `data/types.ts` | TypeScript type definitions for all data structures |
-| `data/trackers/tracking-scripts.json` | 495 regex patterns for known trackers |
+| `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 504 partner entries across 8 risk categories |
 

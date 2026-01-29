@@ -8,4 +8,5 @@ export {
   buildTrackingAnalysisUserPrompt,
   buildSummaryFindingsUserPrompt,
 } from './tracking-analysis.js'
-export { SCRIPT_ANALYSIS_SYSTEM_PROMPT, buildScriptAnalysisUserPrompt } from './script-analysis.js'
+// Note: script-analysis.ts exports are not re-exported here as the script analysis
+// service uses its own inline batch prompts for efficiency

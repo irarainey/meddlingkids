@@ -33,6 +33,7 @@ server/src/
 │   ├── openai.ts             # Azure OpenAI / OpenAI client
 │   ├── analysis.ts           # AI tracking analysis
 │   ├── privacy-score.ts      # Deterministic privacy score calculation
+│   ├── partner-classification.ts # Partner risk classification
 │   ├── script-analysis.ts    # Script identification & LLM analysis
 │   ├── consent-detection.ts  # AI consent banner detection
 │   ├── consent-extraction.ts # AI consent details extraction
@@ -51,7 +52,7 @@ server/src/
 │   │   ├── session-replay.json     # 61 session replay tools
 │   │   └── social-trackers.json    # 43 social media trackers
 │   └── trackers/             # Script pattern databases
-│       ├── tracking-scripts.json   # 495 known tracking script patterns
+│       ├── tracking-scripts.json   # 506 known tracking script patterns
 │       └── benign-scripts.json     # 51 known benign library patterns
 ├── prompts/
 │   ├── index.ts              # Prompt exports
@@ -175,11 +176,28 @@ Calculates a **deterministic privacy score** (0-100) based on quantifiable facto
 | Consent Issues | 10 | Partner count, pre-consent tracking, vague purposes |
 
 **Known Trackers Identified:**
-- 495 tracking script patterns (Google, Facebook, Criteo, etc.)
+- 506 tracking script patterns (Google, Facebook, Criteo, etc.)
 - 504 classified partners across 8 risk categories
 - High-risk trackers: session replay (Hotjar, FullStory), fingerprinting, data brokers
 - Advertising networks: Google Ads, Facebook Ads, Amazon, programmatic exchanges
 - Social media: Facebook SDK, Twitter widgets, LinkedIn Insight
+
+### Partner Classification Service (`services/partner-classification.ts`)
+
+Classifies consent partners by risk level based on their business practices:
+
+- **`classifyPartnerByPatternSync(partner)`** - Synchronous pattern-based classification
+- **`getPartnerRiskSummary(partners)`** - Generates risk summary statistics for partners
+
+**Classification Flow:**
+1. **Pattern Matching** - Match partner names against known databases (504 entries across 8 categories)
+2. **Risk Assessment** - Assign risk levels: critical, high, medium, low, or unknown
+
+**Risk Categories:**
+- **Critical** - Data brokers, identity resolution providers
+- **High** - Ad networks, programmatic exchanges, session replay tools
+- **Medium** - Analytics providers, social trackers, mobile SDKs
+- **Low** - Consent platforms, functional services
 
 ### Consent Services
 
@@ -196,7 +214,7 @@ Identifies and analyzes JavaScript files loaded by the page:
 
 **Analysis Flow:**
 1. **Grouping** - Identify and group similar scripts (app chunks, vendor bundles, lazy modules)
-2. **Pattern Matching** - Match scripts against 495 known tracking patterns (instant identification)
+2. **Pattern Matching** - Match scripts against 506 known tracking patterns (instant identification)
 3. **Benign Detection** - Match scripts against 51 known benign library patterns (skip LLM)
 4. **Batch LLM Analysis** - Analyze remaining unknown scripts in batches of up to 10
 
@@ -238,7 +256,7 @@ const result = await withRetry(
 JSON databases of known trackers and partners, loaded lazily with caching:
 
 **Script Pattern Databases (`data/trackers/`):**
-- **`tracking-scripts.json`** - 495 tracking script patterns with descriptions (Google Analytics, Facebook Pixel, etc.)
+- **`tracking-scripts.json`** - 506 tracking script patterns with descriptions (Google Analytics, Facebook Pixel, etc.)
 - **`benign-scripts.json`** - 51 benign library patterns (jQuery, React, CDN libraries, etc.)
 
 **Partner Risk Databases (`data/partners/`):**

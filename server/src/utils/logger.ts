@@ -333,9 +333,6 @@ function formatValue(value: unknown): string {
 // Exports
 // ============================================================================
 
-/** Main logger instance */
-export const logger = new Logger('Server')
-
 /** Create a logger for a specific module */
 export function createLogger(context: string): Logger {
   return new Logger(context)

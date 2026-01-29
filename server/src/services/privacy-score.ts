@@ -993,14 +993,3 @@ function generateSummary(siteName: string, score: number, factors: string[]): st
 
   return `${siteName} has ${severity} tracking ${description}.`
 }
-
-/**
- * Get Scooby-Doo themed rating based on score.
- */
-export function getScoobyRating(score: number): { rating: string; emoji: string } {
-  if (score >= 80) return { rating: 'Zoinks!', emoji: '😱' }
-  if (score >= 60) return { rating: 'Jinkies!', emoji: '😰' }
-  if (score >= 40) return { rating: 'Ruh-Roh!', emoji: '😟' }
-  if (score >= 20) return { rating: 'Hmm...', emoji: '🤔' }
-  return { rating: 'Scooby Snack!', emoji: '🏆' }
-}

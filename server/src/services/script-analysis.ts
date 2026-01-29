@@ -402,7 +402,7 @@ export interface ScriptAnalysisResult {
  * 
  * Process:
  * 1. Group similar scripts (chunks, vendor bundles) - these skip LLM analysis
- * 2. Match remaining scripts against known patterns (495 tracking + 51 benign)
+ * 2. Match remaining scripts against known patterns (506 tracking + 51 benign)
  * 3. Send only truly unknown scripts to LLM for analysis
  * 
  * @param scripts - Array of tracked scripts to analyze

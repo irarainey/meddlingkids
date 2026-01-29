@@ -30,6 +30,4 @@ export {
   getBenignScripts,
   getPartnerDatabase,
   getAllPartnerDatabases,
-  preloadAllData,
-  getDataStats,
 } from './loader.js'
