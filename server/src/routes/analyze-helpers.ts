@@ -56,12 +56,12 @@ const MAX_OVERLAYS = 5
  */
 function getOverlayMessage(type: string | null): string {
   switch (type) {
-    case 'cookie-consent': return 'Cookie consent overlay detected'
-    case 'sign-in': return 'Sign-in overlay detected'
-    case 'newsletter': return 'Newsletter overlay detected'
-    case 'paywall': return 'Paywall overlay detected'
-    case 'age-verification': return 'Age verification overlay detected'
-    default: return 'Page overlay detected'
+    case 'cookie-consent': return 'Cookie consent detected'
+    case 'sign-in': return 'Sign-in prompt detected'
+    case 'newsletter': return 'Newsletter popup detected'
+    case 'paywall': return 'Paywall detected'
+    case 'age-verification': return 'Age verification detected'
+    default: return 'Overlay detected'
   }
 }
 
@@ -108,7 +108,7 @@ export async function handleOverlays(
     if (!consentDetection.found || !consentDetection.selector) {
       if (overlayCount === 0) {
         log.info('No overlay detected')
-        sendProgress(res, 'overlay-none', 'No page overlays detected', 70)
+        sendProgress(res, 'consent-none', 'No overlay detected', 70)
         sendEvent(res, 'consent', {
           detected: false,
           clicked: false,
@@ -132,7 +132,7 @@ export async function handleOverlays(
     // Extract detailed consent information BEFORE accepting (only for first cookie consent)
     if (consentDetection.overlayType === 'cookie-consent' && !consentDetails) {
       log.startTimer('consent-extraction')
-      sendProgress(res, 'overlay-extract', 'Extracting overlay details...', progressBase + 1)
+      sendProgress(res, 'consent-extract', 'Extracting consent details...', progressBase + 1)
       consentDetails = await extractConsentDetails(page, screenshot)
       log.endTimer('consent-extraction', 'Consent details extracted')
       log.info('Consent details', { categories: consentDetails.categories.length, partners: consentDetails.partners.length, purposes: consentDetails.purposes.length })
