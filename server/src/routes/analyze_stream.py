@@ -16,6 +16,8 @@ from src.routes.analyze_helpers import (
     format_progress_event,
     format_sse_event,
     handle_overlays,
+    serialize_consent_details,
+    serialize_score_breakdown,
     to_camel_case_dict,
 )
 from src.services.analysis import run_tracking_analysis
@@ -178,8 +180,8 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "cookies": cookie_count,
             "scripts": script_count,
             "requests": request_count,
-            "localStorage": len(storage["localStorage"]),
-            "sessionStorage": len(storage["sessionStorage"]),
+            "localStorage": len(storage["local_storage"]),
+            "sessionStorage": len(storage["session_storage"]),
         })
 
         yield format_progress_event(
@@ -193,8 +195,8 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
             "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
             "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
-            "localStorage": [to_camel_case_dict(i) for i in storage["localStorage"]],
-            "sessionStorage": [to_camel_case_dict(i) for i in storage["sessionStorage"]],
+            "localStorage": [to_camel_case_dict(i) for i in storage["local_storage"]],
+            "sessionStorage": [to_camel_case_dict(i) for i in storage["session_storage"]],
         })
 
         # ====================================================================
@@ -321,8 +323,8 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             try:
                 result = await run_tracking_analysis(
                     final_cookies,
-                    storage["localStorage"],
-                    storage["sessionStorage"],
+                    storage["local_storage"],
+                    storage["session_storage"],
                     final_requests,
                     final_scripts,
                     url,
@@ -366,42 +368,14 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         yield format_progress_event("complete", "Investigation complete!", 100)
 
         # Build consent details for response
-        consent_details_dict: dict[str, Any] | None = None
-        if consent_details:
-            consent_details_dict = {
-                "categories": [
-                    {"name": c.name, "description": c.description, "required": c.required}
-                    for c in consent_details.categories
-                ],
-                "partners": [
-                    {
-                        "name": p.name,
-                        "purpose": p.purpose,
-                        "dataCollected": p.data_collected,
-                        "riskLevel": p.risk_level,
-                        "riskCategory": p.risk_category,
-                        "riskScore": p.risk_score,
-                        "concerns": p.concerns,
-                    }
-                    for p in consent_details.partners
-                ],
-                "purposes": consent_details.purposes,
-                "hasManageOptions": consent_details.has_manage_options,
-            }
+        consent_details_dict = serialize_consent_details(consent_details) if consent_details else None
 
         # Build score breakdown dict
-        score_breakdown_dict: dict[str, Any] | None = None
-        if analysis_result.score_breakdown:
-            sb = analysis_result.score_breakdown
-            score_breakdown_dict = {
-                "totalScore": sb.total_score,
-                "categories": {
-                    name: {"points": cat.points, "maxPoints": cat.max_points, "issues": cat.issues}
-                    for name, cat in sb.categories.items()
-                },
-                "factors": sb.factors,
-                "summary": sb.summary,
-            }
+        score_breakdown_dict = (
+            serialize_score_breakdown(analysis_result.score_breakdown)
+            if analysis_result.score_breakdown
+            else None
+        )
 
         yield format_sse_event("complete", {
             "success": True,
@@ -438,17 +412,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "analysisError": analysis_result.error if not analysis_result.success else None,
             "consentDetails": consent_details_dict,
             "scripts": [to_camel_case_dict(s) for s in script_analysis_result.scripts],
-            "scriptGroups": [
-                {
-                    "id": g.id,
-                    "name": g.name,
-                    "description": g.description,
-                    "count": g.count,
-                    "exampleUrls": g.example_urls,
-                    "domain": g.domain,
-                }
-                for g in script_analysis_result.groups
-            ],
+            "scriptGroups": [to_camel_case_dict(g) for g in script_analysis_result.groups],
         })
 
     except Exception as error:

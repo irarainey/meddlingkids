@@ -10,11 +10,11 @@ from pathlib import Path
 
 import dotenv
 import uvicorn
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sse_starlette.sse import EventSourceResponse
+from starlette.responses import StreamingResponse
 
 from src.routes.analyze_stream import analyze_url_stream
 from src.utils.logger import create_logger
@@ -26,6 +26,7 @@ app = FastAPI(title="Meddling Kids Python Server")
 
 HOST = os.environ.get("UVICORN_HOST", "0.0.0.0")
 PORT = int(os.environ.get("UVICORN_PORT", "3001"))
+IS_PRODUCTION = os.environ.get("ENVIRONMENT", "development") == "production"
 
 # ============================================================================
 # Middleware
@@ -48,24 +49,16 @@ app.add_middleware(
 async def analyze_endpoint(
     url: str = Query(..., description="The URL to analyze"),
     device: str = Query("ipad", description="Device type to emulate"),
-) -> EventSourceResponse:
+) -> StreamingResponse:
     """
     Analyze tracking on a URL with streaming progress via SSE.
     """
     async def event_generator():
         async for event_str in analyze_url_stream(url, device):
-            # The analyze_url_stream already produces formatted SSE strings
-            # EventSourceResponse expects raw data; we yield the pre-formatted strings
-            yield {"data": "", "event": "", "_raw": event_str}
-
-    # Use a raw SSE approach since our events are pre-formatted
-    async def raw_generator():
-        async for event_str in analyze_url_stream(url, device):
             yield event_str
 
-    from starlette.responses import StreamingResponse
     return StreamingResponse(
-        raw_generator(),
+        event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -81,7 +74,7 @@ async def analyze_endpoint(
 
 dist_path = Path(__file__).resolve().parent.parent.parent / "dist"
 
-if os.environ.get("NODE_ENV") == "production" and dist_path.exists():
+if IS_PRODUCTION and dist_path.exists():
     log.info("Serving static files", {"path": str(dist_path)})
     app.mount("/assets", StaticFiles(directory=str(dist_path / "assets")), name="assets")
 
@@ -100,16 +93,16 @@ if os.environ.get("NODE_ENV") == "production" and dist_path.exists():
 
 def main() -> None:
     """Entry point for running the server."""
-    log.section("Meddling Kids Python Server Started")
+    log.section("Meddling Kids Server Started")
     log.success(f"Server listening on {HOST}:{PORT}")
-    log.info("Environment", {"env": os.environ.get("NODE_ENV", "development")})
+    log.info("Environment", {"env": "production" if IS_PRODUCTION else "development"})
     log.info("Open your browser", {"url": f"http://localhost:{PORT}"})
 
     uvicorn.run(
         "src.app:app",
         host=HOST,
         port=PORT,
-        reload=os.environ.get("NODE_ENV") != "production",
+        reload=not IS_PRODUCTION,
     )
 
 

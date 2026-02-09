@@ -10,6 +10,10 @@ import os
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
+from src.utils.logger import create_logger
+
+log = create_logger("OpenAI")
+
 _openai_client: AsyncOpenAI | AsyncAzureOpenAI | None = None
 _is_azure: bool = False
 
@@ -30,7 +34,7 @@ def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
     azure_deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT")
 
     if azure_endpoint and azure_api_key and azure_deployment:
-        print("Using Azure OpenAI")
+        log.info("Using Azure OpenAI")
         _is_azure = True
         _openai_client = AsyncAzureOpenAI(
             azure_endpoint=azure_endpoint,
@@ -42,7 +46,7 @@ def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
 
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if openai_api_key:
-        print("Using standard OpenAI")
+        log.info("Using standard OpenAI")
         _is_azure = False
         _openai_client = AsyncOpenAI(
             api_key=openai_api_key,
@@ -50,7 +54,7 @@ def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
         )
         return _openai_client
 
-    print(
+    log.warn(
         "OpenAI not configured. Set either:\n"
         "  Azure: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n"
         "  OpenAI: OPENAI_API_KEY (and optionally OPENAI_MODEL, OPENAI_BASE_URL)"

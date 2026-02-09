@@ -197,19 +197,19 @@ class SummaryFinding:
 class CategoryScore:
     """Score for an individual category."""
 
-    points: int
-    max_points: int
-    issues: list[str]
+    points: int = 0
+    max_points: int = 0
+    issues: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ScoreBreakdown:
     """Detailed breakdown of how the score was calculated."""
 
-    total_score: int
-    categories: dict[str, CategoryScore]
-    factors: list[str]
-    summary: str
+    total_score: int = 0
+    categories: dict[str, CategoryScore] = field(default_factory=dict)
+    factors: list[str] = field(default_factory=list)
+    summary: str = ""
 
 
 @dataclass

@@ -3,10 +3,6 @@ Error handling utilities for consistent error message extraction.
 """
 
 
-def get_error_message(error: BaseException | object) -> str:
-    """
-    Safely extract an error message from an unknown error type.
-    """
-    if isinstance(error, Exception):
-        return str(error)
-    return "Unknown error"
+def get_error_message(error: BaseException) -> str:
+    """Extract a human-readable error message from an exception."""
+    return str(error) or type(error).__name__

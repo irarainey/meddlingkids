@@ -12,13 +12,15 @@ Major scoring factors:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+import time
 
 from src.data.loader import get_tracking_scripts
 from src.services.partner_classification import get_partner_risk_summary
 from src.types.tracking import (
+    CategoryScore,
     ConsentDetails,
     NetworkRequest,
+    ScoreBreakdown,
     StorageItem,
     TrackedCookie,
     TrackedScript,
@@ -26,27 +28,6 @@ from src.types.tracking import (
 from src.utils.logger import create_logger
 
 log = create_logger("PrivacyScore")
-
-
-# ============================================================================
-# Types
-# ============================================================================
-
-@dataclass
-class CategoryScore:
-    """Score for an individual category."""
-    points: int = 0
-    max_points: int = 0
-    issues: list[str] = field(default_factory=list)
-
-
-@dataclass
-class PrivacyScoreBreakdown:
-    """Detailed breakdown of the privacy score calculation."""
-    total_score: int = 0
-    categories: dict[str, CategoryScore] = field(default_factory=dict)
-    factors: list[str] = field(default_factory=list)
-    summary: str = ""
 
 
 # ============================================================================
@@ -235,7 +216,7 @@ def calculate_privacy_score(
     session_storage: list[StorageItem],
     analyzed_url: str,
     consent_details: ConsentDetails | None = None,
-) -> PrivacyScoreBreakdown:
+) -> ScoreBreakdown:
     """Calculate the complete privacy score breakdown."""
     log.info("Calculating privacy score", {
         "cookies": len(cookies),
@@ -310,7 +291,7 @@ def calculate_privacy_score(
         if cat.issues:
             log.info(f"Score detail [{name}]", {"points": cat.points, "max": cat.max_points, "issues": cat.issues})
 
-    return PrivacyScoreBreakdown(
+    return ScoreBreakdown(
         total_score=total_score,
         categories={
             "cookies": cookie_score,
@@ -332,7 +313,6 @@ def _calculate_cookie_score(cookies: list[TrackedCookie], base_domain: str) -> C
     issues: list[str] = []
     points = 0
 
-    import time
     now = time.time()
 
     third_party_cookies = [
@@ -806,9 +786,9 @@ def _calculate_consent_score(
 
     if partner_count > 0:
         risk_summary = get_partner_risk_summary(consent_details.partners)
-        critical_count = risk_summary["criticalCount"]
-        high_count = risk_summary["highCount"]
-        worst_partners = risk_summary["worstPartners"]
+        critical_count = risk_summary["critical_count"]
+        high_count = risk_summary["high_count"]
+        worst_partners = risk_summary["worst_partners"]
 
         if critical_count > 5:  # type: ignore[operator]
             points += 8

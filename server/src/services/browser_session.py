@@ -10,7 +10,7 @@ import asyncio
 import os
 from datetime import datetime, timezone
 
-from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+from playwright.async_api import Browser, BrowserContext, Page, Request, Response, async_playwright
 
 from src.services.access_detection import check_for_access_denied
 from src.services.device_configs import DEVICE_CONFIGS
@@ -145,7 +145,7 @@ class BrowserSession:
         self._page.on("request", self._on_request)
         self._page.on("response", self._on_response)
 
-    def _on_request(self, request) -> None:
+    def _on_request(self, request: Request) -> None:
         """Handle intercepted network requests."""
         resource_type = request.resource_type
         request_url = request.url
@@ -177,7 +177,7 @@ class BrowserSession:
                 )
             )
 
-    def _on_response(self, response) -> None:
+    def _on_response(self, response: Response) -> None:
         """Handle intercepted responses to capture status codes."""
         request_url = response.url
         for req in self._tracked_network_requests:
@@ -293,7 +293,7 @@ class BrowserSession:
     async def capture_storage(self) -> dict[str, list[StorageItem]]:
         """Capture localStorage and sessionStorage contents."""
         if not self._page:
-            return {"localStorage": [], "sessionStorage": []}
+            return {"local_storage": [], "session_storage": []}
 
         try:
             storage_data = await self._page.evaluate(
@@ -315,17 +315,17 @@ class BrowserSession:
 
             now = datetime.now(timezone.utc).isoformat()
             return {
-                "localStorage": [
+                "local_storage": [
                     StorageItem(key=item["key"], value=item["value"], timestamp=now)
                     for item in storage_data["localStorage"]
                 ],
-                "sessionStorage": [
+                "session_storage": [
                     StorageItem(key=item["key"], value=item["value"], timestamp=now)
                     for item in storage_data["sessionStorage"]
                 ],
             }
         except Exception:
-            return {"localStorage": [], "sessionStorage": []}
+            return {"local_storage": [], "session_storage": []}
 
     async def take_screenshot(self, full_page: bool = False) -> bytes:
         """Take a PNG screenshot of the current page."""

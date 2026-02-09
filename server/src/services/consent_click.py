@@ -8,6 +8,8 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from playwright.async_api import Frame, Page
@@ -427,12 +429,12 @@ ExpansionStep = dict[str, str]
 ExpansionStepCallback = Callable[[ExpansionStep], Any]
 
 
+@dataclass
 class ExpansionResult:
     """Result of expanding the consent dialog."""
 
-    def __init__(self) -> None:
-        self.expanded: bool = False
-        self.steps: list[ExpansionStep] = []
+    expanded: bool = False
+    steps: list[ExpansionStep] = field(default_factory=list)
 
 
 async def expand_partner_list(
@@ -443,8 +445,6 @@ async def expand_partner_list(
     Expand consent dialog to reveal partner/vendor information.
     Informational only — gathers data about partners before accepting.
     """
-    import time
-
     log.info("Starting partner info expansion (informational only)...")
     result = ExpansionResult()
 
@@ -550,8 +550,6 @@ async def expand_partner_list(
 
 async def _wait_for_dom_update(page: Page, max_wait: int) -> None:
     """Wait for DOM to update after a click action."""
-    import time
-
     start = time.monotonic()
     log.debug("Waiting for DOM update...", {"maxWait": max_wait})
     try:

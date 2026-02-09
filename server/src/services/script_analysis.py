@@ -6,6 +6,7 @@ Groups similar scripts (like application chunks) to reduce noise.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from dataclasses import dataclass, field
@@ -72,14 +73,12 @@ async def _fetch_script_content(url: str, retries: int = 2) -> str | None:
                 async with session.get(url, headers=headers) as response:
                     if response.status >= 400:
                         if attempt < retries and (response.status >= 500 or response.status == 429):
-                            import asyncio
                             await asyncio.sleep(0.5 * (attempt + 1))
                             continue
                         return None
                     return await response.text()
         except Exception:
             if attempt < retries:
-                import asyncio
                 await asyncio.sleep(0.5 * (attempt + 1))
                 continue
             return None
@@ -347,8 +346,6 @@ async def analyze_scripts(
     2. Match remaining against known patterns (tracking + benign)
     3. Send only truly unknown scripts to LLM for batch analysis
     """
-    import asyncio
-
     grouped = group_similar_scripts(scripts)
     results: list[TrackedScript] = list(grouped.all_scripts)
     unknown_scripts: list[tuple[TrackedScript, int]] = []

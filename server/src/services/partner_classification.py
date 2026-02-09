@@ -16,7 +16,7 @@ from src.types.tracking import (
 
 def _matches_partner(name_lower: str, key: str, aliases: list[str]) -> bool:
     """Check if a partner name matches a database entry."""
-    return name_lower.find(key) >= 0 or any(name_lower.find(a) >= 0 for a in aliases)
+    return key in name_lower or any(a in name_lower for a in aliases)
 
 
 def _classify_against_database(
@@ -152,8 +152,8 @@ def get_partner_risk_summary(
             total_risk_score += 3  # Default for unknown
 
     return {
-        "criticalCount": critical_count,
-        "highCount": high_count,
-        "totalRiskScore": total_risk_score,
-        "worstPartners": worst_partners,
+        "critical_count": critical_count,
+        "high_count": high_count,
+        "total_risk_score": total_risk_score,
+        "worst_partners": worst_partners,
     }

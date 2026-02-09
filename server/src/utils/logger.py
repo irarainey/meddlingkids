@@ -7,9 +7,11 @@ Optionally writes logs to a timestamped file when WRITE_LOG_TO_FILE is set.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
+from io import TextIOWrapper
 from pathlib import Path
 
 
@@ -24,7 +26,7 @@ _timers: dict[str, float] = {}
 # ============================================================================
 
 _write_to_file = os.environ.get("WRITE_LOG_TO_FILE", "").lower() == "true"
-_log_file_stream: object | None = None
+_log_file_stream: TextIOWrapper | None = None
 _log_file_path: str | None = None
 
 
@@ -68,10 +70,9 @@ def _write_to_log_file(line: str) -> None:
     """Write a line to the log file (without ANSI colours)."""
     if _log_file_stream is None:
         return
-    import re
 
     clean = re.sub(r"\033\[[0-9;]*m", "", line)
-    _log_file_stream.write(clean + "\n")  # type: ignore[union-attr]
+    _log_file_stream.write(clean + "\n")
 
 
 # ============================================================================
@@ -128,9 +129,9 @@ def _format_duration(ms: float) -> str:
 def _format_value(value: object) -> str:
     c = _colours
     if value is None:
-        return f"{c['dim']}null{c['reset']}"
+        return f"{c['dim']}None{c['reset']}"
     if isinstance(value, bool):
-        return f"{c['green']}true{c['reset']}" if value else f"{c['red']}false{c['reset']}"
+        return f"{c['green']}True{c['reset']}" if value else f"{c['red']}False{c['reset']}"
     if isinstance(value, (int, float)):
         return f"{c['yellow']}{value}{c['reset']}"
     if isinstance(value, str):

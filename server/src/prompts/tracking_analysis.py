@@ -5,9 +5,11 @@ Contains system prompts and user prompt builders for LLM-based analysis.
 
 from __future__ import annotations
 
-from src.types.tracking import ConsentDetails, TrackingSummary
-from dataclasses import asdict
 import json
+from dataclasses import asdict
+from urllib.parse import urlparse
+
+from src.types.tracking import ConsentDetails, ConsentPartner, TrackingSummary
 
 TRACKING_ANALYSIS_SYSTEM_PROMPT = """You are a privacy and web tracking expert analyst. Your task is to analyze tracking data collected from a website and provide comprehensive insights about:
 
@@ -115,12 +117,8 @@ def _build_consent_section(consent_details: ConsentDetails) -> str:
 """
 
 
-def _format_partner(p: object) -> str:
+def _format_partner(p: ConsentPartner) -> str:
     """Format a single partner for the prompt."""
-    from src.types.tracking import ConsentPartner
-
-    if not isinstance(p, ConsentPartner):
-        return str(p)
     risk = f" [{p.risk_level.upper()} RISK]" if p.risk_level else ""
     category = f" ({p.risk_category})" if p.risk_category else ""
     data = f" | Data: {', '.join(p.data_collected)}" if p.data_collected else ""
@@ -176,8 +174,6 @@ def build_summary_findings_user_prompt(analysis: str) -> str:
 
 def build_privacy_score_user_prompt(analysis: str, site_url: str) -> str:
     """Build the user prompt for privacy score generation."""
-    from urllib.parse import urlparse
-
     try:
         hostname = urlparse(site_url).hostname or site_url
         site_name = hostname.removeprefix("www.").lower()

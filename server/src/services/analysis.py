@@ -18,9 +18,10 @@ from src.prompts.tracking_analysis import (
     build_tracking_analysis_user_prompt,
 )
 from src.services.openai_client import get_deployment_name, get_openai_client
-from src.services.privacy_score import CategoryScore, calculate_privacy_score
+from src.services.privacy_score import calculate_privacy_score
 from src.types.tracking import (
     AnalysisResult,
+    CategoryScore,
     ConsentDetails,
     NetworkRequest,
     StorageItem,
@@ -172,7 +173,7 @@ async def run_tracking_analysis(
 
         log.info("Privacy score details", {
             "total": privacy_score,
-            "cookies": score_breakdown.categories.get("cookies", CategoryScore()).points if hasattr(score_breakdown.categories.get("cookies"), "points") else 0,
+            "cookies": score_breakdown.categories.get("cookies", CategoryScore()).points,
         })
 
         log.success("Analysis complete", {

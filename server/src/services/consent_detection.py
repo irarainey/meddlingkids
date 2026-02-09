@@ -5,6 +5,7 @@ Uses OpenAI to analyse screenshots and find "Accept All" buttons.
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 
@@ -48,8 +49,6 @@ async def detect_cookie_consent(
 
     log.start_timer("vision-detection")
     log.info("Analysing screenshot for overlays...")
-
-    import base64
 
     b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
 
@@ -136,8 +135,7 @@ async def detect_cookie_consent(
 
 def _detect_from_html_only(html: str) -> CookieConsentDetection:
     """Fallback detection using HTML patterns only (no vision)."""
-    log2 = create_logger("Consent-Detect")
-    log2.info("Attempting HTML-only overlay detection...")
+    log.info("Attempting HTML-only overlay detection...")
 
     consent_patterns = [
         (r'id=["\']?onetrust-accept-btn-handler["\']?', "#onetrust-accept-btn-handler"),
@@ -156,7 +154,7 @@ def _detect_from_html_only(html: str) -> CookieConsentDetection:
 
     for pattern, selector in consent_patterns:
         if re.search(pattern, html, re.IGNORECASE):
-            log2.success(
+            log.success(
                 "Found overlay via HTML pattern matching",
                 {"selector": selector},
             )
@@ -169,7 +167,7 @@ def _detect_from_html_only(html: str) -> CookieConsentDetection:
                 reason="Detected via HTML pattern matching (vision unavailable due to content filter)",
             )
 
-    log2.info("No overlay detected via HTML patterns")
+    log.info("No overlay detected via HTML patterns")
     return CookieConsentDetection(
         found=False,
         overlay_type=None,

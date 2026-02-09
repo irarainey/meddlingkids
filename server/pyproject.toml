@@ -5,14 +5,13 @@ description = "Python server for Meddling Kids"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.32.0",
-    "sse-starlette>=2.1.0",
-    "openai>=1.50.0",
-    "playwright>=1.48.0",
-    "python-dotenv>=1.0.0",
-    "aiohttp>=3.10.0",
-    "pydantic>=2.9.0",
+    "fastapi>=0.128.0",
+    "uvicorn>=0.40.0",
+    "openai>=2.18.0",
+    "playwright>=1.58.0",
+    "python-dotenv>=1.2.0",
+    "aiohttp>=3.13.0",
+    "pydantic>=2.12.0",
 ]
 
 [project.scripts]

@@ -8,7 +8,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-from typing import Any, AsyncGenerator
+from dataclasses import dataclass, field
+from typing import Any
 
 from playwright.async_api import Page
 
@@ -20,7 +21,7 @@ from src.services.partner_classification import (
     classify_partner_by_pattern_sync,
     get_partner_risk_summary,
 )
-from src.types.tracking import ConsentDetails, CookieConsentDetection, StorageItem
+from src.types.tracking import ConsentDetails, CookieConsentDetection, ScoreBreakdown, StorageItem
 from src.utils.logger import create_logger
 
 log = create_logger("Overlays")
@@ -35,6 +36,43 @@ def _snake_to_camel(name: str) -> str:
 def to_camel_case_dict(obj: object) -> dict[str, Any]:
     """Convert a dataclass instance to a dict with camelCase keys."""
     return {_snake_to_camel(k): v for k, v in obj.__dict__.items()}
+
+
+def serialize_consent_details(details: ConsentDetails) -> dict[str, Any]:
+    """Serialize ConsentDetails to a camelCase dict for SSE transport."""
+    return {
+        "categories": [
+            {"name": c.name, "description": c.description, "required": c.required}
+            for c in details.categories
+        ],
+        "partners": [
+            {
+                "name": p.name,
+                "purpose": p.purpose,
+                "dataCollected": p.data_collected,
+                "riskLevel": p.risk_level,
+                "riskCategory": p.risk_category,
+                "riskScore": p.risk_score,
+                "concerns": p.concerns,
+            }
+            for p in details.partners
+        ],
+        "purposes": details.purposes,
+        "hasManageOptions": details.has_manage_options,
+    }
+
+
+def serialize_score_breakdown(sb: ScoreBreakdown) -> dict[str, Any]:
+    """Serialize ScoreBreakdown to a camelCase dict for SSE transport."""
+    return {
+        "totalScore": sb.total_score,
+        "categories": {
+            name: {"points": cat.points, "maxPoints": cat.max_points, "issues": cat.issues}
+            for name, cat in sb.categories.items()
+        },
+        "factors": sb.factors,
+        "summary": sb.summary,
+    }
 
 
 # ============================================================================
@@ -70,19 +108,18 @@ def _get_overlay_message(overlay_type: str | None) -> str:
     return messages.get(overlay_type or "", "Overlay detected")
 
 
+@dataclass
 class OverlayHandlingResult:
     """Result of handling overlays."""
 
-    def __init__(self) -> None:
-        self.overlay_count: int = 0
-        self.dismissed_overlays: list[CookieConsentDetection] = []
-        self.consent_details: ConsentDetails | None = None
-        self.final_screenshot: bytes = b""
-        self.final_storage: dict[str, list[StorageItem]] = {
-            "localStorage": [],
-            "sessionStorage": [],
-        }
-        self.events: list[str] = []
+    overlay_count: int = 0
+    dismissed_overlays: list[CookieConsentDetection] = field(default_factory=list)
+    consent_details: ConsentDetails | None = None
+    final_screenshot: bytes = b""
+    final_storage: dict[str, list[StorageItem]] = field(
+        default_factory=lambda: {"local_storage": [], "session_storage": []}
+    )
+    events: list[str] = field(default_factory=list)
 
 
 async def handle_overlays(
@@ -160,9 +197,9 @@ async def handle_overlays(
 
                 risk_summary = get_partner_risk_summary(result.consent_details.partners)
                 log.info("Partner risk summary", {
-                    "critical": risk_summary["criticalCount"],
-                    "high": risk_summary["highCount"],
-                    "totalRisk": risk_summary["totalRiskScore"],
+                    "critical": risk_summary["critical_count"],
+                    "high": risk_summary["high_count"],
+                    "totalRisk": risk_summary["total_risk_score"],
                 })
 
                 for partner in result.consent_details.partners:
@@ -178,26 +215,8 @@ async def handle_overlays(
 
                 log.end_timer("partner-classification", "Partner classification complete")
 
-            result.events.append(format_sse_event("consentDetails", {
-                "categories": [
-                    {"name": c.name, "description": c.description, "required": c.required}
-                    for c in result.consent_details.categories
-                ],
-                "partners": [
-                    {
-                        "name": p.name,
-                        "purpose": p.purpose,
-                        "dataCollected": p.data_collected,
-                        "riskLevel": p.risk_level,
-                        "riskCategory": p.risk_category,
-                        "riskScore": p.risk_score,
-                        "concerns": p.concerns,
-                    }
-                    for p in result.consent_details.partners
-                ],
-                "purposes": result.consent_details.purposes,
-                "hasManageOptions": result.consent_details.has_manage_options,
-            }))
+            result.events.append(format_sse_event("consentDetails",
+                serialize_consent_details(result.consent_details)))
 
         # Try to click the dismiss/accept button
         try:
@@ -238,8 +257,8 @@ async def handle_overlays(
                     "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
                     "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
                     "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
-                    "localStorage": [to_camel_case_dict(i) for i in storage["localStorage"]],
-                    "sessionStorage": [to_camel_case_dict(i) for i in storage["sessionStorage"]],
+                    "localStorage": [to_camel_case_dict(i) for i in storage["local_storage"]],
+                    "sessionStorage": [to_camel_case_dict(i) for i in storage["session_storage"]],
                     "overlayDismissed": consent_detection.overlay_type,
                 }))
 

@@ -6,6 +6,9 @@ and prepares data for LLM analysis.
 
 from __future__ import annotations
 
+from collections import defaultdict
+from urllib.parse import urlparse
+
 from src.types.tracking import (
     DomainBreakdown,
     DomainData,
@@ -23,21 +26,15 @@ def _group_by_domain(
     network_requests: list[NetworkRequest],
 ) -> dict[str, DomainData]:
     """Group tracking data (cookies, scripts, network requests) by domain."""
-    domain_data: dict[str, DomainData] = {}
+    domain_data: dict[str, DomainData] = defaultdict(DomainData)
 
-    for cookie in cookies or []:
-        if cookie.domain not in domain_data:
-            domain_data[cookie.domain] = DomainData()
+    for cookie in cookies:
         domain_data[cookie.domain].cookies.append(cookie)
 
-    for script in scripts or []:
-        if script.domain not in domain_data:
-            domain_data[script.domain] = DomainData()
+    for script in scripts:
         domain_data[script.domain].scripts.append(script)
 
-    for request in network_requests or []:
-        if request.domain not in domain_data:
-            domain_data[request.domain] = DomainData()
+    for request in network_requests:
         domain_data[request.domain].network_requests.append(request)
 
     return domain_data
@@ -47,17 +44,13 @@ def _get_third_party_domains(
     domain_data: dict[str, DomainData], analyzed_url: str
 ) -> list[str]:
     """Identify third-party domains relative to the analyzed URL."""
-    from urllib.parse import urlparse
+    page_hostname = urlparse(analyzed_url).hostname or ""
+    page_base = ".".join(page_hostname.split(".")[-2:])
 
     results = []
     for domain in domain_data:
-        try:
-            page_hostname = urlparse(analyzed_url).hostname or ""
-            page_base = ".".join(page_hostname.split(".")[-2:])
-            domain_base = ".".join(domain.split(".")[-2:])
-            if page_base != domain_base:
-                results.append(domain)
-        except Exception:
+        domain_base = ".".join(domain.split(".")[-2:])
+        if page_base != domain_base:
             results.append(domain)
     return results
 
@@ -79,7 +72,7 @@ def _build_domain_breakdown(domain_data: dict[str, DomainData]) -> list[DomainBr
 
 def _build_storage_preview(items: list[StorageItem]) -> list[dict[str, str]]:
     """Build preview of storage items for analysis."""
-    return [{"key": item.key, "valuePreview": item.value[:100]} for item in (items or [])]
+    return [{"key": item.key, "valuePreview": item.value[:100]} for item in items]
 
 
 def build_tracking_summary(
@@ -95,11 +88,11 @@ def build_tracking_summary(
 
     return TrackingSummary(
         analyzed_url=analyzed_url,
-        total_cookies=len(cookies) if cookies else 0,
-        total_scripts=len(scripts) if scripts else 0,
-        total_network_requests=len(network_requests) if network_requests else 0,
-        local_storage_items=len(local_storage) if local_storage else 0,
-        session_storage_items=len(session_storage) if session_storage else 0,
+        total_cookies=len(cookies),
+        total_scripts=len(scripts),
+        total_network_requests=len(network_requests),
+        local_storage_items=len(local_storage),
+        session_storage_items=len(session_storage),
         third_party_domains=_get_third_party_domains(domain_data, analyzed_url),
         domain_breakdown=_build_domain_breakdown(domain_data),
         local_storage=_build_storage_preview(local_storage),
