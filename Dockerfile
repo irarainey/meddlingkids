@@ -84,7 +84,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 WORKDIR /app
 
 # Copy Python server files and install dependencies
-COPY server/pyproject.toml server/uv.lock* ./server/
+COPY server/pyproject.toml server/uv.lock* server/README.md ./server/
 RUN cd server && uv sync --frozen --no-dev
 
 # Copy Python server source
