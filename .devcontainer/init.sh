@@ -8,10 +8,16 @@
 
 set -e
 
-# Install dependencies if node_modules doesn't exist
+# Install Node.js dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
     echo "🔧 Installing npm dependencies..."
     npm install
+fi
+
+# Install Python server dependencies via uv
+if [ -f "server-python/pyproject.toml" ]; then
+    echo "🐍 Installing Python dependencies via uv..."
+    (cd server-python && uv sync)
 fi
 
 # Install Playwright browsers if not present
