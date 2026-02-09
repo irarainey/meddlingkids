@@ -57,17 +57,19 @@ src/
 │   ├── browser_session.py    # Playwright async browser session
 │   ├── analysis.py           # Main tracking analysis with LLM
 │   ├── script_analysis.py    # Script identification (patterns + LLM)
+│   ├── script_grouping.py    # Group similar scripts to reduce noise
 │   ├── consent_detection.py  # AI vision for consent dialogs
 │   ├── consent_extraction.py # AI consent detail extraction
 │   ├── consent_click.py      # Click strategies for consent buttons
+│   ├── consent_expansion.py  # Expand consent dialogs for partner/vendor lists
 │   ├── access_detection.py   # Bot blocking detection
 │   ├── device_configs.py     # Device emulation profiles
 │   ├── openai_client.py      # OpenAI/Azure OpenAI client
 │   ├── partner_classification.py  # Consent partner risk classification
-│   └── privacy_score.py      # Deterministic privacy scoring
+│   ├── privacy_score.py      # Deterministic privacy scoring
+│   └── tracker_patterns.py   # Regex patterns for tracker classification
 ├── data/
 │   ├── loader.py             # JSON data loader with caching
-│   ├── types.py              # Data type definitions
 │   ├── partners/             # Partner risk databases (8 JSON files)
 │   └── trackers/             # Script pattern databases (2 JSON files)
 ├── prompts/

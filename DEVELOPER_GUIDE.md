@@ -317,18 +317,20 @@ App.vue
 | `openai_client.py` | OpenAI/Azure OpenAI client management |
 | `analysis.py` | Main tracking analysis with LLM |
 | `script_analysis.py` | Script identification (patterns + LLM) |
+| `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `partner_classification.py` | Classify consent partners by risk level |
 | `consent_detection.py` | AI vision to detect consent dialogs |
 | `consent_extraction.py` | AI to extract consent details |
 | `consent_click.py` | Click strategies for consent buttons |
+| `consent_expansion.py` | Expand consent dialogs to reveal partner/vendor lists |
 | `privacy_score.py` | Deterministic privacy scoring (0-100) |
+| `tracker_patterns.py` | Regex pattern data for tracker classification |
 
 ### Data Layer
 
 | Module | Content |
 |--------|--------|
 | `data/loader.py` | JSON data loader with lazy loading and caching |
-| `data/types.py` | Pydantic models and type definitions for data structures |
 | `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 504 partner entries across 8 risk categories |
@@ -418,8 +420,9 @@ class TrackedCookie:
 class TrackedScript:
     url: str
     domain: str
-    timestamp: str
+    timestamp: str = ""
     description: str | None = None   # Added by script analysis
+    resource_type: str = "script"    # Resource type (script, xhr, etc.)
     group_id: str | None = None      # Group ID if part of a grouped category
     is_grouped: bool | None = None   # Whether this script was grouped with similar scripts
 ```
@@ -446,6 +449,7 @@ class NetworkRequest:
     resource_type: str
     is_third_party: bool
     timestamp: str
+    status_code: int | None = None
 ```
 
 ### ConsentDetails

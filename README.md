@@ -103,7 +103,7 @@ meddlingkids/
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       ├── prompts/           # AI prompt templates
-│       ├── types/             # Pydantic models & type definitions
+│       ├── types/             # Dataclass type definitions
 │       └── utils/             # Utility functions (including file logging)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
@@ -228,8 +228,8 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 | `npm run dev:server` | Start only the FastAPI/uvicorn server |
 | `npm run build` | Build the client for production |
 | `npm run preview` | Preview the production build |
-| `npm run lint` | Check for lint errors |
-| `npm run lint:fix` | Auto-fix lint errors |
+| `npm run lint:ts` | Check for TypeScript/Vue lint errors |
+| `npm run lint:ts:fix` | Auto-fix TypeScript/Vue lint errors |
 
 ## Project Documentation
 

@@ -9,8 +9,8 @@
     "dev:server": "cd server && uv run uvicorn src.app:app --reload --env-file ../.env",
     "build": "vue-tsc -b && vite build --emptyOutDir",
     "preview": "vite preview",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:ts": "eslint .",
+    "lint:ts:fix": "eslint . --fix"
   },
   "dependencies": {
     "vue": "^3.5.24"

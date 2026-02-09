@@ -108,6 +108,9 @@ COPY --from=builder /app/dist ./dist
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
+# Create X11 socket directory for Xvfb (must exist before switching to non-root user)
+RUN mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
+
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app
 
@@ -115,7 +118,7 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 # Environment variables with defaults
-ENV NODE_ENV=production
+ENV ENVIRONMENT=production
 ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=3001
 ENV DISPLAY=:99
