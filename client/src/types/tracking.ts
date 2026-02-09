@@ -2,9 +2,8 @@
  * @fileoverview Type definitions for tracking data.
  * Shared interfaces for cookies, scripts, storage, network requests, and consent.
  * 
- * NOTE: These types are duplicated in server/src/types.ts. When modifying,
- * ensure both files are updated to maintain consistency. A shared types
- * package could be created in future to eliminate this duplication.
+ * NOTE: These types are duplicated in server-python/src/types/tracking.py.
+ * When modifying, ensure both files are updated to maintain consistency.
  */
 
 // ============================================================================

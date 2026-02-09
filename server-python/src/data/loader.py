@@ -2,8 +2,8 @@
 Data loader for tracker and partner databases.
 Loads JSON files and compiles patterns into regex objects.
 
-The JSON data files live in the Node server's data directory and are
-shared via a relative path reference. This avoids duplicating data.
+The JSON data files live alongside this module in partners/ and trackers/
+subdirectories.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Any
 
 from src.types.tracking import PartnerCategoryConfig, PartnerEntry, ScriptPattern
 
-# Resolve path to the shared data directory (in the Node server)
-_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "server" / "src" / "data"
+# Resolve path to the data directory (same directory as this module)
+_DATA_DIR = Path(__file__).resolve().parent
 
 # ============================================================================
 # JSON File Loading

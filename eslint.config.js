@@ -49,13 +49,5 @@ export default tseslint.config(
     },
   },
 
-  // Server-side rules - allow console.log for logging
-  {
-    files: ['server/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'off',
-    },
-  },
+
 )

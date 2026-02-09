@@ -12,7 +12,9 @@ node_modules/
 
 # Build outputs (will be built in container)
 dist/
-server/dist/
+
+# Python virtual environment
+server-python/.venv/
 
 # Development and IDE files
 .devcontainer/

@@ -2,7 +2,7 @@
 # =============================================================================
 # Docker Entrypoint Script
 # =============================================================================
-# Starts Xvfb (virtual display) and then the Node.js server.
+# Starts Xvfb (virtual display) and then the Python FastAPI server.
 # This allows the browser to run in headed mode without a visible window,
 # which helps ads load (ad networks often block automated/headless browsers).
 # =============================================================================
@@ -20,4 +20,5 @@ sleep 1
 export DISPLAY=:99
 
 echo "Starting server..."
-exec node --import tsx server/src/app.ts
+cd /app/server-python
+exec .venv/bin/uvicorn src.app:app --host "${UVICORN_HOST:-0.0.0.0}" --port "${UVICORN_PORT:-3001}"

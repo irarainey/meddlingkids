@@ -1,8 +1,8 @@
 # =============================================================================
 # Meddling Kids - Multi-stage Docker Build
 # =============================================================================
-# This Dockerfile builds both the Vue.js client and Node.js server in a
-# multi-stage build for optimal image size.
+# This Dockerfile builds the Vue.js client and runs the Python FastAPI server
+# in a multi-stage build for optimal image size.
 #
 # Build:
 #   docker build -t meddlingkids .
@@ -11,7 +11,7 @@
 #   docker run -p 3001:3001 --env-file .env meddlingkids
 #
 # Run on a custom port (e.g., 8080):
-#   docker run -p 8080:8080 -e PORT=8080 --env-file .env meddlingkids
+#   docker run -p 8080:8080 -e UVICORN_PORT=8080 --env-file .env meddlingkids
 #
 # Run with environment variables:
 #   docker run -p 3001:3001 \
@@ -37,18 +37,14 @@ RUN npm ci
 # Copy source files needed for client build
 COPY tsconfig*.json vite.config.ts ./
 COPY client/ ./client/
-# Copy server tsconfig.json (needed by root tsconfig.json references for vue-tsc)
-# and create a placeholder file to satisfy TypeScript's include pattern
-COPY server/tsconfig.json ./server/
-RUN mkdir -p server/src && echo "export {};" > server/src/placeholder.ts
 
 # Build the Vue.js client (outputs to /app/dist)
 RUN npm run build
 
 # -----------------------------------------------------------------------------
-# Stage 2: Production image with Playwright
+# Stage 2: Production image with Python and Playwright
 # -----------------------------------------------------------------------------
-FROM node:22-slim AS production
+FROM python:3.13-slim AS production
 
 # Install dependencies required by Playwright browsers
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -79,16 +75,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-color-emoji \
     # Utilities
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install uv for Python package management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
-# Copy package files and install production dependencies only
-COPY package*.json ./
-RUN npm ci --omit=dev
+# Copy Python server files and install dependencies
+COPY server-python/pyproject.toml server-python/uv.lock* ./server-python/
+RUN cd server-python && uv sync --frozen --no-dev
 
-# Install tsx for running TypeScript directly
-RUN npm install tsx
+# Copy Python server source
+COPY server-python/src/ ./server-python/src/
 
 # Create non-root user for security
 RUN groupadd --gid 1001 appgroup && \
@@ -98,14 +98,11 @@ RUN groupadd --gid 1001 appgroup && \
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 # Install Playwright browsers (Chromium only for smaller image)
-RUN npx playwright install chromium && \
+RUN cd server-python && .venv/bin/playwright install chromium && \
     chmod -R 755 /opt/playwright-browsers
 
 # Copy built client from builder stage
 COPY --from=builder /app/dist ./dist
-
-# Copy server source files (run TypeScript directly with Node 22)
-COPY server/ ./server/
 
 # Copy and prepare entrypoint script
 COPY docker-entrypoint.sh ./
@@ -119,7 +116,8 @@ USER appuser
 
 # Environment variables with defaults
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV UVICORN_HOST=0.0.0.0
+ENV UVICORN_PORT=3001
 ENV DISPLAY=:99
 
 # Azure OpenAI configuration (pass via --env-file or -e flags)
@@ -127,10 +125,9 @@ ENV DISPLAY=:99
 # ENV AZURE_OPENAI_API_KEY=
 # ENV AZURE_OPENAI_DEPLOYMENT=
 
-
-# Health check using the PORT environment variable
+# Health check using the UVICORN_PORT environment variable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://localhost:' + (process.env.PORT || 3001)).catch(() => process.exit(1))" || exit 1
+    CMD curl -f http://localhost:${UVICORN_PORT:-3001}/ || exit 1
 
 # Use tini as init process for proper signal handling (CTRL+C)
 ENTRYPOINT ["/usr/bin/tini", "--"]
