@@ -5,9 +5,9 @@
 Zoinks! There's something spooky going on with these websites... but don't worry, gang! This mystery-solving machine pulls the mask off sneaky trackers and exposes the villain underneath. Feed it any URL and watch as we unmask those cookies, scripts, network requests, and shady consent dialogs. And we would have never figured it out if it wasn't for those meddling kids!
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-22%2B-green.svg)
-![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 ![Vue](https://img.shields.io/badge/vue-3.x-brightgreen.svg)
+![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
 
 ## Features
 
@@ -77,9 +77,9 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 | Layer | Technology |
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite |
-| Backend | Express.js, TypeScript |
-| Browser Automation | Playwright (headed mode on Xvfb virtual display) |
-| AI | Azure OpenAI (GPT-4) |
+| Backend | Python, FastAPI, uvicorn |
+| Browser Automation | Playwright for Python (headed mode on Xvfb virtual display) |
+| AI | Azure OpenAI / OpenAI |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture
@@ -93,14 +93,17 @@ meddlingkids/
 │   │   ├── types/             # TypeScript interfaces
 │   │   └── utils/             # Formatting utilities
 │   └── public/                # Static assets
-├── server/                    # Express.js backend
+├── server/                    # Python FastAPI backend
+│   ├── pyproject.toml         # Python dependencies (managed with uv)
 │   └── src/
+│       ├── app.py             # FastAPI application entry point
 │       ├── routes/            # API endpoints (SSE streaming)
 │       ├── services/          # Business logic (browser, analysis, consent)
 │       ├── data/              # Tracking databases (JSON) & data loader
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       ├── prompts/           # AI prompt templates
+│       ├── types/             # Pydantic models & type definitions
 │       └── utils/             # Utility functions (including file logging)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
@@ -111,15 +114,18 @@ meddlingkids/
 
 ### Prerequisites
 
-- **Node.js 22+** (uses native TypeScript support)
-- **Azure OpenAI** account with API access
+- **Python 3.11+** with [uv](https://docs.astral.sh/uv/) package manager (for the server)
+- **Node.js 22+** (for building the Vue client)
+- **Azure OpenAI** or **OpenAI** account with API access
 
 ### 1. Clone and Install
 
 ```bash
 git clone https://github.com/irarainey/meddlingkids.git
 cd meddlingkids
-npm install
+npm install          # Install client dependencies
+cd server && uv sync # Install server dependencies
+cd ..
 ```
 
 ### 2. Configure Environment
@@ -157,7 +163,7 @@ npm run dev
 
 This starts both:
 - **Client**: http://localhost:5173 (Vite dev server)
-- **Server**: http://localhost:3001 (Express API)
+- **Server**: http://localhost:3001 (FastAPI with uvicorn)
 
 ## Docker Deployment
 
@@ -199,7 +205,7 @@ docker run -p 3001:3001 --env-file .env ghcr.io/irarainey/meddlingkids:latest
 To run on a different port (e.g., 8080):
 
 ```bash
-docker run -p 8080:8080 -e PORT=8080 --env-file .env ghcr.io/irarainey/meddlingkids:latest
+docker run -p 8080:8080 -e UVICORN_PORT=8080 --env-file .env ghcr.io/irarainey/meddlingkids:latest
 ```
 
 ### Build Locally (Optional)
@@ -219,7 +225,7 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 |---------|-------------|
 | `npm run dev` | Start both client and server in development mode |
 | `npm run dev:client` | Start only the Vite client dev server |
-| `npm run dev:server` | Start only the Express server |
+| `npm run dev:server` | Start only the FastAPI/uvicorn server |
 | `npm run build` | Build the client for production |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Check for lint errors |

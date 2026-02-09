@@ -1,6 +1,6 @@
-# Meddling Kids - Python Server
+# Meddling Kids - Server
 
-Alternative Python server implementation that mirrors the functionality of the Node.js server.
+Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection.
 
 ## Requirements
 
@@ -29,17 +29,58 @@ uv run playwright install chromium
 - `OPENAI_MODEL` - Model name (default: `gpt-5.1-chat`)
 - `OPENAI_BASE_URL` - Optional custom base URL
 
-### Other
-- `PORT` - Server port (default: `3001`)
-- `NODE_ENV` - Set to `production` for static file serving
+### Server
+- `UVICORN_HOST` - Server host (default: `0.0.0.0`)
+- `UVICORN_PORT` - Server port (default: `3001`)
 - `WRITE_LOG_TO_FILE` - Set to `true` to enable file logging
 
 ## Running
 
 ```bash
-# Development
-uv run python -m src.app
+# Development (from project root)
+npm run dev:server
 
-# Or with uvicorn directly
-uv run uvicorn src.app:app --host 0.0.0.0 --port 3001 --reload
+# Or directly
+cd server
+uv run uvicorn src.app:app --host 0.0.0.0 --port 3001 --reload --env-file ../.env
+```
+
+## Architecture
+
+```
+src/
+├── app.py                    # FastAPI application entry point
+├── routes/
+│   ├── analyze_stream.py     # SSE streaming endpoint
+│   └── analyze_helpers.py    # Route helper utilities
+├── services/
+│   ├── browser_session.py    # Playwright async browser session
+│   ├── analysis.py           # Main tracking analysis with LLM
+│   ├── script_analysis.py    # Script identification (patterns + LLM)
+│   ├── consent_detection.py  # AI vision for consent dialogs
+│   ├── consent_extraction.py # AI consent detail extraction
+│   ├── consent_click.py      # Click strategies for consent buttons
+│   ├── access_detection.py   # Bot blocking detection
+│   ├── device_configs.py     # Device emulation profiles
+│   ├── openai_client.py      # OpenAI/Azure OpenAI client
+│   ├── partner_classification.py  # Consent partner risk classification
+│   └── privacy_score.py      # Deterministic privacy scoring
+├── data/
+│   ├── loader.py             # JSON data loader with caching
+│   ├── types.py              # Data type definitions
+│   ├── partners/             # Partner risk databases (8 JSON files)
+│   └── trackers/             # Script pattern databases (2 JSON files)
+├── prompts/
+│   ├── tracking_analysis.py  # Main analysis & summary prompts
+│   ├── consent_detection.py  # Overlay detection prompt
+│   ├── consent_extraction.py # Consent extraction prompt
+│   └── script_analysis.py    # Script description prompt
+├── types/
+│   └── tracking.py           # Dataclass definitions
+└── utils/
+    ├── errors.py             # Error utilities
+    ├── logger.py             # Structured logger with color output
+    ├── retry.py              # Retry with exponential backoff
+    ├── tracking_summary.py   # Summary builder for LLM
+    └── url.py                # URL utilities
 ```

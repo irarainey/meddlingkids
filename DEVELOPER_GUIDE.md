@@ -21,8 +21,8 @@ This guide explains the architecture, workflow, and data flow of the Meddling Ki
 Meddling Kids is a full-stack application that analyzes website tracking behavior. It consists of:
 
 - **Client**: Vue 3 SPA that initiates analysis and displays results
-- **Server**: Express.js API that orchestrates browser automation and AI analysis
-- **Playwright**: Browser automation for page loading and data capture
+- **Server**: Python FastAPI application that orchestrates browser automation and AI analysis
+- **Playwright**: Browser automation (async Python API) for page loading and data capture
 - **Xvfb**: Virtual display that allows headed browser mode without a visible window
 - **OpenAI**: AI models for consent detection and privacy analysis
 
@@ -60,20 +60,20 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                                  SERVER                                    │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  analyze-stream.ts (Route Handler)                                   │  │
+│  │  analyze_stream.py (Route Handler)                                   │  │
 │  │  - Orchestrates the 6-phase analysis workflow                        │  │
 │  │  - Sends SSE events back to client                                   │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                       │
 │          ┌─────────────────────────┼─────────────────────────┐             │
 │          ▼                         ▼                         ▼             │
-│  ┌───────────────────┐  ┌─────────────────────┐     ┌─────────────────┐    │
-│  │ browser-session.ts│  │ consent-*.ts        │     │ analysis.ts     │    │
-│  │ - Playwright      │  │ - Detection (AI)    │     │ - OpenAI        │    │
-│  │ - Navigation      │  │ - Extraction (AI)   │     │ - Risk analysis │    │
-│  │ - Capture         │  │ - Click strategies  │     │ - Privacy score │    │
-│  │ - Per-request     │  └─────────────────────┘     └─────────────────┘    │
-│  └───────────────────┘                                                     │
+│  ┌────────────────────┐  ┌─────────────────────┐     ┌─────────────────┐   │
+│  │ browser_session.py │  │ consent_*.py        │     │ analysis.py     │   │
+│  │ - Playwright async │  │ - Detection (AI)    │     │ - OpenAI        │   │
+│  │ - Navigation       │  │ - Extraction (AI)   │     │ - Risk analysis │   │
+│  │ - Capture          │  │ - Click strategies  │     │ - Privacy score │   │
+│  │ - Per-request      │  └─────────────────────┘     └─────────────────┘   │
+│  └────────────────────┘                                                    │
 └────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      ▼
@@ -91,7 +91,7 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 
 ## Application Workflow
 
-The analysis follows a 6-phase workflow, orchestrated by `analyze-stream.ts`:
+The analysis follows a 6-phase workflow, orchestrated by `analyze_stream.py`:
 
 ### Phase 1: Browser Setup and Navigation
 ```
@@ -101,42 +101,42 @@ Client: User clicks "Unmask" button
 analyzeUrl() in useTrackingAnalysis.ts
    │ Creates EventSource connection
    ▼
-analyzeUrlStreamHandler() in analyze-stream.ts
+analyze_url_stream_handler() in analyze_stream.py
    │
-   ├── validateOpenAIConfig() → Check env vars
-   ├── new BrowserSession() → Create isolated session
-   ├── session.clearTrackingData() → Reset tracking arrays
-   ├── session.launchBrowser(deviceType) → Start Playwright browser
-   └── session.navigateTo(url) → Load target page
+   ├── validate_openai_config() → Check env vars
+   ├── BrowserSession() → Create isolated session
+   ├── session.clear_tracking_data() → Reset tracking arrays
+   ├── await session.launch_browser(device_type) → Start Playwright browser
+   └── await session.navigate_to(url) → Load target page
 ```
 
 ### Phase 2: Wait for Page Load and Check Access
 ```
-navigateTo() returns
+navigate_to() returns
    │
    ├── Check HTTP status code
-   │   └── If error → sendEvent('pageError', {...})
+   │   └── If error → send_event('pageError', {...})
    │
-   ├── waitForNetworkIdle(20000)
+   ├── wait_for_network_idle(20000)
    │   └── Wait for ad/tracking scripts to load
    │   └── Extra 3s wait if network still active (for ad auctions)
    │
-   ├── waitForTimeout(2000)
+   ├── wait_for_timeout(2000)
    │   └── Additional wait for lazy-loaded ads and deferred scripts
    │
-   └── checkForAccessDenied()
-       └── If blocked → sendEvent('pageError', {...}) + screenshot
+   └── check_for_access_denied()
+       └── If blocked → send_event('pageError', {...}) + screenshot
 ```
 
 ### Phase 3: Initial Data Capture
 ```
 Page loaded successfully
    │
-   ├── captureCurrentCookies() → Intercept all cookies
-   ├── captureStorage() → Read localStorage/sessionStorage
-   ├── takeScreenshot() → PNG screenshot
+   ├── capture_current_cookies() → Intercept all cookies
+   ├── capture_storage() → Read localStorage/sessionStorage
+   ├── take_screenshot() → PNG screenshot
    │
-   └── sendEvent('screenshot', {
+   └── send_event('screenshot', {
          screenshot,      // base64 PNG
          cookies,         // TrackedCookie[]
          scripts,         // TrackedScript[]
@@ -148,45 +148,45 @@ Page loaded successfully
 
 ### Phase 4: Overlay Detection and Handling
 ```
-handleOverlays() loop (up to 5 iterations)
+handle_overlays() loop (up to 5 iterations)
    │
-   ├── getPageContent() → Get current HTML
-   ├── detectCookieConsent(screenshot, html)
+   ├── get_page_content() → Get current HTML
+   ├── detect_cookie_consent(screenshot, html)
    │   └── AI vision analyzes screenshot + HTML
-   │       Returns: { hasConsent, overlayType, buttonLocation }
+   │       Returns: { has_consent, overlay_type, button_location }
    │
    ├── If cookie consent found (first time):
-   │   └── extractConsentDetails(screenshot, html)
+   │   └── extract_consent_details(screenshot, html)
    │       └── AI extracts partners, categories, purposes
-   │       └── sendEvent('consentDetails', {...})
+   │       └── send_event('consentDetails', {...})
    │
-   ├── tryClickConsentButton(detection)
+   ├── try_click_consent_button(detection)
    │   └── Multiple click strategies (coordinates, selectors)
    │
    ├── Wait for page changes
-   │   └── captureCurrentCookies() → New cookies after consent
+   │   └── capture_current_cookies() → New cookies after consent
    │
-   └── sendEvent('screenshot', {...}) → Post-consent screenshot
+   └── send_event('screenshot', {...}) → Post-consent screenshot
 ```
 
 ### Phase 5: AI Analysis
 ```
 All data captured
    │
-   ├── analyzeScripts(scripts)
+   ├── analyze_scripts(scripts)
    │   │
    │   ├── Group similar scripts (chunks, vendor bundles)
 │   ├── Match against tracking patterns (506 patterns from JSON)
    │   ├── Match against benign patterns (51 patterns from JSON)
    │   └── Batch LLM analysis for unknown scripts (10 per batch)
    │
-   └── runTrackingAnalysis(cookies, storage, network, scripts, url, consent)
+   └── run_tracking_analysis(cookies, storage, network, scripts, url, consent)
        │
-       ├── buildTrackingSummary() → Aggregate data for LLM
+       ├── build_tracking_summary() → Aggregate data for LLM
        │
        ├── Main analysis prompt → Full markdown report
        │
-       ├── calculatePrivacyScore() → Deterministic 0-100 score
+       ├── calculate_privacy_score() → Deterministic 0-100 score
        │   (based on cookies, trackers, fingerprinting, ads, social, consent)
        │
        └── Summary findings prompt → Structured JSON findings
@@ -196,7 +196,7 @@ All data captured
 ```
 Analysis complete
    │
-   └── sendEvent('complete', {
+   └── send_event('complete', {
          success,
          analysis,        // Full markdown report
          summaryFindings, // Structured findings array
@@ -207,7 +207,7 @@ Analysis complete
          scriptGroups     // Grouped similar scripts
        })
    │
-   └── session.close() → Cleanup Playwright (in finally block)
+   └── await session.close() → Cleanup Playwright (in finally block)
 ```
 
 ---
@@ -311,23 +311,24 @@ App.vue
 
 | Service | Responsibility |
 |---------|---------------|
-| `browser-session.ts` | Playwright browser session (per-request isolation for concurrency) |
-| `device-configs.ts` | Device emulation profiles (iPhone, iPad, Android, etc.) |
-| `access-detection.ts` | Bot blocking and access denial detection patterns |
-| `openai.ts` | OpenAI/Azure OpenAI client management |
-| `analysis.ts` | Main tracking analysis with LLM |
-| `script-analysis.ts` | Script identification (patterns + LLM) |
-| `partner-classification.ts` | Classify consent partners by risk level |
-| `consent-detection.ts` | AI vision to detect consent dialogs |
-| `consent-extraction.ts` | AI to extract consent details |
-| `consent-click.ts` | Click strategies for consent buttons |
+| `browser_session.py` | Playwright async browser session (per-request isolation for concurrency) |
+| `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
+| `access_detection.py` | Bot blocking and access denial detection patterns |
+| `openai_client.py` | OpenAI/Azure OpenAI client management |
+| `analysis.py` | Main tracking analysis with LLM |
+| `script_analysis.py` | Script identification (patterns + LLM) |
+| `partner_classification.py` | Classify consent partners by risk level |
+| `consent_detection.py` | AI vision to detect consent dialogs |
+| `consent_extraction.py` | AI to extract consent details |
+| `consent_click.py` | Click strategies for consent buttons |
+| `privacy_score.py` | Deterministic privacy scoring (0-100) |
 
 ### Data Layer
 
 | Module | Content |
-|--------|---------||
-| `data/loader.ts` | JSON data loader with lazy loading and caching |
-| `data/types.ts` | TypeScript type definitions for all data structures |
+|--------|--------|
+| `data/loader.py` | JSON data loader with lazy loading and caching |
+| `data/types.py` | Pydantic models and type definitions for data structures |
 | `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 504 partner entries across 8 risk categories |
@@ -335,11 +336,11 @@ App.vue
 ### Prompt Templates
 
 | Prompt | Purpose |
-|--------|---------|
-| `tracking-analysis.ts` | Main analysis, summary findings |
-| `consent-detection.ts` | AI vision for overlay detection |
-| `consent-extraction.ts` | Extract consent categories/partners |
-| `script-analysis.ts` | Describe unknown scripts |
+|--------|--------|
+| `tracking_analysis.py` | Main analysis, summary findings |
+| `consent_detection.py` | AI vision for overlay detection |
+| `consent_extraction.py` | Extract consent categories/partners |
+| `script_analysis.py` | Describe unknown scripts |
 
 ---
 
@@ -359,7 +360,7 @@ Playwright Browser
 BrowserSession tracking arrays
     │
     ▼
-sendEvent('screenshot', data) in analyze-stream.ts
+send_event('screenshot', data) in analyze_stream.py
     │
     ▼
 EventSource message received in client
@@ -377,7 +378,7 @@ UI components re-render
 Tracking data collected
     │
     ▼
-buildTrackingSummary() → Formatted text for LLM
+build_tracking_summary() → Formatted text for LLM
     │
     ▼
 OpenAI chat completion
@@ -386,7 +387,7 @@ OpenAI chat completion
 Parse response (markdown or JSON)
     │
     ▼
-sendEvent('complete', results)
+send_event('complete', results)
     │
     ▼
 Client displays analysis
@@ -397,64 +398,64 @@ Client displays analysis
 ## Key Data Types
 
 ### TrackedCookie
-```typescript
-interface TrackedCookie {
-  name: string
-  value: string
-  domain: string
-  path: string
-  expires: number
-  httpOnly: boolean
-  secure: boolean
-  sameSite: string
-  timestamp: string
-}
+```python
+@dataclass
+class TrackedCookie:
+    name: str
+    value: str
+    domain: str
+    path: str
+    expires: float
+    http_only: bool
+    secure: bool
+    same_site: str
+    timestamp: str
 ```
 
 ### TrackedScript
-```typescript
-interface TrackedScript {
-  url: string
-  domain: string
-  timestamp: string
-  description?: string  // Added by script analysis
-  groupId?: string      // Group ID if part of a grouped category
-  isGrouped?: boolean   // Whether this script was grouped with similar scripts
-}
+```python
+@dataclass
+class TrackedScript:
+    url: str
+    domain: str
+    timestamp: str
+    description: str | None = None   # Added by script analysis
+    group_id: str | None = None      # Group ID if part of a grouped category
+    is_grouped: bool | None = None   # Whether this script was grouped with similar scripts
 ```
 
 ### ScriptGroup
-```typescript
-interface ScriptGroup {
-  id: string              // Unique identifier (e.g., 'example.com:app-chunks')
-  name: string            // Human-readable name
-  description: string     // What this group represents
-  count: number           // Number of scripts in this group
-  exampleUrls: string[]   // Example URLs from the group
-  domain: string          // Common domain for the grouped scripts
-}
+```python
+@dataclass
+class ScriptGroup:
+    id: str                # Unique identifier (e.g., 'example.com:app-chunks')
+    name: str              # Human-readable name
+    description: str       # What this group represents
+    count: int             # Number of scripts in this group
+    example_urls: list[str]  # Example URLs from the group
+    domain: str            # Common domain for the grouped scripts
 ```
 
 ### NetworkRequest
-```typescript
-interface NetworkRequest {
-  url: string
-  domain: string
-  method: string
-  resourceType: string
-  isThirdParty: boolean
-  timestamp: string
-}
+```python
+@dataclass
+class NetworkRequest:
+    url: str
+    domain: str
+    method: str
+    resource_type: str
+    is_third_party: bool
+    timestamp: str
 ```
 
 ### ConsentDetails
-```typescript
-interface ConsentDetails {
-  hasManageOptions: boolean
-  categories: { name: string; description: string; enabled: boolean }[]
-  partners: { name: string; purposes: string[] }[]
-  purposes: { name: string; description: string }[]
-}
+```python
+@dataclass
+class ConsentDetails:
+    has_manage_options: bool
+    categories: list[dict]   # [{name, description, enabled}]
+    partners: list[dict]     # [{name, purposes}]
+    purposes: list[dict]     # [{name, description}]
 ```
 
 ---
@@ -484,8 +485,8 @@ interface ConsentDetails {
 
 ### Adding a New Tracking Data Type
 
-1. Add interface to `server/src/types.ts`
-2. Add capture method in `server/src/services/browser-session.ts`
+1. Add dataclass to `server/src/types/tracking.py`
+2. Add capture method in `server/src/services/browser_session.py`
 3. Include in screenshot event payload
 4. Add client interface in `client/src/types/tracking.ts`
 5. Add reactive state in `useTrackingAnalysis.ts`
@@ -495,17 +496,17 @@ interface ConsentDetails {
 
 1. Create prompt template in `server/src/prompts/`
 2. Add analysis function in `server/src/services/`
-3. Wrap OpenAI calls with `withRetry()` for rate limit handling
-4. Call from `analyze-stream.ts` (consider parallel execution)
+3. Wrap OpenAI calls with `with_retry()` for rate limit handling
+4. Call from `analyze_stream.py` (consider `asyncio.gather()` for parallel execution)
 5. Include in `complete` event payload
 6. Display in client
 
 ### Adding a New Overlay Type
 
-1. Update `CookieConsentDetection` type in `server/src/types.ts`
-2. Update detection prompt in `server/src/prompts/consent-detection.ts`
-3. Add click strategy in `server/src/services/consent-click.ts`
-4. Update `getOverlayMessage()` in `analyze-helpers.ts`
+1. Update `CookieConsentDetection` type in `server/src/types/tracking.py`
+2. Update detection prompt in `server/src/prompts/consent_detection.py`
+3. Add click strategy in `server/src/services/consent_click.py`
+4. Update `get_overlay_message()` in `analyze_helpers.py`
 
 ---
 
@@ -572,16 +573,16 @@ The server includes verbose logging with timestamps and timing information. Logs
 - `⏱` Timing - Operation duration measurements
 
 **Using the Logger:**
-```typescript
-import { createLogger } from '../utils/index.js'
+```python
+from src.utils import create_logger
 
-const log = createLogger('MyModule')
+log = create_logger('MyModule')
 
-log.info('Starting operation', { param: value })
-log.startTimer('my-operation')
-// ... do work ...
-log.endTimer('my-operation', 'Operation complete')
-log.success('Done!', { result: data })
+log.info('Starting operation', param=value)
+log.start_timer('my-operation')
+# ... do work ...
+log.end_timer('my-operation', 'Operation complete')
+log.success('Done!', result=data)
 ```
 
 **File Logging:**
@@ -619,21 +620,19 @@ All OpenAI API calls use automatic retry with exponential backoff:
 - **Jitter:** ±20% randomization to prevent thundering herd
 - **Header support:** Respects `Retry-After` headers from the API
 
-```typescript
-import { withRetry } from '../utils/index.js'
+```python
+from src.utils import with_retry
 
-const result = await withRetry(
-  () => client.chat.completions.create({ ... }),
-  { 
-    context: 'Main analysis',  // For logging
-    maxRetries: 3,             // Default: 3
-    initialDelayMs: 1000,      // Default: 1000
-    maxDelayMs: 30000,         // Default: 30000
-  }
+result = await with_retry(
+    lambda: client.chat.completions.create(...),
+    context='Main analysis',   # For logging
+    max_retries=3,             # Default: 3
+    initial_delay_ms=1000,     # Default: 1000
+    max_delay_ms=30000,        # Default: 30000
 )
 ```
 
 When rate limits are hit, you'll see logs like:
 ```
-[12:34:56.789] ⚠ [Retry] Retrying after transient error context="Main analysis" attempt=1 maxRetries=3 delayMs=1200 isRateLimit=true
+[12:34:56.789] ⚠ [Retry] Retrying after transient error context="Main analysis" attempt=1 max_retries=3 delay_ms=1200 is_rate_limit=True
 ```

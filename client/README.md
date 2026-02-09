@@ -271,7 +271,7 @@ The environment is configured via:
 
 ### Prerequisites
 
-- Node.js 22+ (uses native TypeScript support)
+- Node.js 22+ (for building the Vue client and running the dev server)
 - npm
 
 ### Setup
