@@ -45,16 +45,16 @@ Return ONLY the JSON array, no other text."""
 def _identify_tracking_script(url: str) -> str | None:
     """Check if a script is a known tracking script."""
     for entry in get_tracking_scripts():
-        if entry["pattern"].search(url):
-            return entry["description"]
+        if re.search(entry.pattern, url, re.IGNORECASE):
+            return entry.description
     return None
 
 
 def _identify_benign_script(url: str) -> str | None:
     """Check if a script is a known benign script (skip LLM analysis)."""
     for entry in get_benign_scripts():
-        if entry["pattern"].search(url):
-            return entry["description"]
+        if re.search(entry.pattern, url, re.IGNORECASE):
+            return entry.description
     return None
 
 

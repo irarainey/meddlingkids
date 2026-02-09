@@ -449,13 +449,13 @@ async def expand_partner_list(
     result = ExpansionResult()
 
     expansion_timeout = 10000  # 10 seconds max
-    start_time = time.time()
+    start_time = time.monotonic()
 
     def is_timed_out() -> bool:
-        return (time.time() - start_time) * 1000 > expansion_timeout
+        return (time.monotonic() - start_time) * 1000 > expansion_timeout
 
     def elapsed() -> int:
-        return int((time.time() - start_time) * 1000)
+        return int((time.monotonic() - start_time) * 1000)
 
     def get_frames_to_check() -> list[Frame]:
         frames = page.frames
@@ -552,18 +552,18 @@ async def _wait_for_dom_update(page: Page, max_wait: int) -> None:
     """Wait for DOM to update after a click action."""
     import time
 
-    start = time.time()
+    start = time.monotonic()
     log.debug("Waiting for DOM update...", {"maxWait": max_wait})
     try:
         await page.wait_for_load_state("domcontentloaded", timeout=max_wait)
     except Exception:
         pass
 
-    elapsed_ms = (time.time() - start) * 1000
+    elapsed_ms = (time.monotonic() - start) * 1000
     if elapsed_ms < 500:
         await page.wait_for_timeout(int(500 - elapsed_ms))
 
-    log.debug("DOM update wait complete", {"actualWait": int((time.time() - start) * 1000)})
+    log.debug("DOM update wait complete", {"actualWait": int((time.monotonic() - start) * 1000)})
 
 
 async def _try_click_expansion_button(

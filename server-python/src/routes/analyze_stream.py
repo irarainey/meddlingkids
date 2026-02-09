@@ -6,6 +6,7 @@ page loading, consent handling, and tracking analysis.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from typing import Any, AsyncGenerator
 from urllib.parse import urlparse
@@ -15,6 +16,7 @@ from src.routes.analyze_helpers import (
     format_progress_event,
     format_sse_event,
     handle_overlays,
+    to_camel_case_dict,
 )
 from src.services.analysis import run_tracking_analysis
 from src.services.browser_session import BrowserSession
@@ -132,9 +134,9 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
             yield format_sse_event("screenshot", {
                 "screenshot": f"data:image/png;base64,{b64}",
-                "cookies": [c.__dict__ for c in session.get_tracked_cookies()],
-                "scripts": [s.__dict__ for s in session.get_tracked_scripts()],
-                "networkRequests": [r.__dict__ for r in session.get_tracked_network_requests()],
+                "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+                "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+                "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
                 "localStorage": [],
                 "sessionStorage": [],
             })
@@ -188,11 +190,11 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         yield format_sse_event("screenshot", {
             "screenshot": f"data:image/png;base64,{b64_screenshot}",
-            "cookies": [c.__dict__ for c in session.get_tracked_cookies()],
-            "scripts": [s.__dict__ for s in session.get_tracked_scripts()],
-            "networkRequests": [r.__dict__ for r in session.get_tracked_network_requests()],
-            "localStorage": [i.__dict__ for i in storage["localStorage"]],
-            "sessionStorage": [i.__dict__ for i in storage["sessionStorage"]],
+            "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+            "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+            "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+            "localStorage": [to_camel_case_dict(i) for i in storage["localStorage"]],
+            "sessionStorage": [to_camel_case_dict(i) for i in storage["sessionStorage"]],
         })
 
         # ====================================================================
@@ -245,27 +247,100 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         # Script analysis
         log.start_timer("script-analysis")
 
-        def script_progress(phase: str, current: int, total: int, detail: str) -> None:
-            """Note: we can't yield from a callback, so we log instead."""
-            log.info(f"Script analysis progress: {phase} {current}/{total} - {detail}")
+        script_progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
-        script_analysis_result = await analyze_scripts(final_scripts, script_progress)
+        def script_progress(phase: str, current: int, total: int, detail: str) -> None:
+            """Push progress events onto an async queue for yielding."""
+            log.info(f"Script analysis progress: {phase} {current}/{total} - {detail}")
+            if phase == "matching":
+                if current == 0:
+                    script_progress_queue.put_nowait(
+                        format_progress_event("script-matching", detail or "Grouping and identifying scripts...", 77)
+                    )
+            elif phase == "fetching":
+                progress = 77 + int((current / max(total, 1)) * 2)
+                script_progress_queue.put_nowait(
+                    format_progress_event("script-fetching", detail or f"Fetching script {current}/{total}...", progress)
+                )
+            elif phase == "analyzing":
+                if total == 0:
+                    script_progress_queue.put_nowait(
+                        format_progress_event("script-analysis", detail or "All scripts identified", 82)
+                    )
+                else:
+                    progress = 79 + int((current / total) * 4)
+                    script_progress_queue.put_nowait(
+                        format_progress_event("script-analysis", detail or f"Analyzed {current}/{total} scripts...", progress)
+                    )
+
+        async def run_script_analysis() -> Any:
+            try:
+                result = await analyze_scripts(final_scripts, script_progress)
+                return result
+            finally:
+                script_progress_queue.put_nowait(None)  # always signal completion
+
+        script_task = asyncio.create_task(run_script_analysis())
+        while True:
+            event = await script_progress_queue.get()
+            if event is None:
+                break
+            yield event
+
+        script_analysis_result = await script_task
         log.end_timer("script-analysis", f"Script analysis complete ({len(script_analysis_result.scripts)} scripts, {len(script_analysis_result.groups)} groups)")
 
         yield format_progress_event("script-analysis", "Script analysis complete", 83)
 
         # Tracking analysis
         log.start_timer("tracking-analysis")
-        analysis_result = await run_tracking_analysis(
-            final_cookies,
-            storage["localStorage"],
-            storage["sessionStorage"],
-            final_requests,
-            final_scripts,
-            url,
-            consent_details,
-            lambda phase, detail: log.info(f"Analysis: {phase} - {detail}"),
-        )
+
+        analysis_progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+        def analysis_progress(phase: str, detail: str) -> None:
+            """Push AI analysis progress events onto an async queue."""
+            log.info(f"Analysis: {phase} - {detail}")
+            if phase == "preparing":
+                analysis_progress_queue.put_nowait(
+                    format_progress_event("ai-preparing", detail or "Preparing data for AI analysis...", 84)
+                )
+            elif phase == "analyzing":
+                analysis_progress_queue.put_nowait(
+                    format_progress_event("ai-analyzing", detail or "Generating privacy report...", 88)
+                )
+            elif phase == "scoring":
+                analysis_progress_queue.put_nowait(
+                    format_progress_event("ai-scoring", detail or "Calculating privacy score...", 94)
+                )
+            elif phase == "summarizing":
+                analysis_progress_queue.put_nowait(
+                    format_progress_event("ai-summarizing", detail or "Generating summary findings...", 97)
+                )
+
+        async def run_analysis() -> Any:
+            try:
+                result = await run_tracking_analysis(
+                    final_cookies,
+                    storage["localStorage"],
+                    storage["sessionStorage"],
+                    final_requests,
+                    final_scripts,
+                    url,
+                    consent_details,
+                    analysis_progress,
+                )
+                return result
+            finally:
+                analysis_progress_queue.put_nowait(None)  # always signal completion
+
+        analysis_task = asyncio.create_task(run_analysis())
+        while True:
+            event = await analysis_progress_queue.get()
+            if event is None:
+                break
+            yield event
+
+        analysis_result = await analysis_task
         log.end_timer("tracking-analysis", "Tracking analysis complete")
 
         log.end_timer("ai-analysis", "All AI analysis complete")
@@ -346,28 +421,23 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "scoreBreakdown": score_breakdown_dict if analysis_result.success else None,
             "analysisSummary": (
                 {
-                    "totalDomains": analysis_result.summary.total_domains if analysis_result.summary else 0,
-                    "thirdPartyDomains": analysis_result.summary.third_party_domains if analysis_result.summary else 0,
-                    "domains": (
-                        {
-                            name: {
-                                "totalRequests": d.total_requests,
-                                "resourceTypes": d.resource_types,
-                                "cookies": d.cookies,
-                                "scripts": d.scripts,
-                            }
-                            for name, d in (analysis_result.summary.domains or {}).items()
-                        }
-                        if analysis_result.summary
-                        else {}
-                    ),
+                    "analyzedUrl": analysis_result.summary.analyzed_url,
+                    "totalCookies": analysis_result.summary.total_cookies,
+                    "totalScripts": analysis_result.summary.total_scripts,
+                    "totalNetworkRequests": analysis_result.summary.total_network_requests,
+                    "localStorageItems": analysis_result.summary.local_storage_items,
+                    "sessionStorageItems": analysis_result.summary.session_storage_items,
+                    "thirdPartyDomains": analysis_result.summary.third_party_domains,
+                    "domainBreakdown": [to_camel_case_dict(d) for d in analysis_result.summary.domain_breakdown],
+                    "localStorage": analysis_result.summary.local_storage,
+                    "sessionStorage": analysis_result.summary.session_storage,
                 }
                 if analysis_result.summary
                 else None
             ),
             "analysisError": analysis_result.error if not analysis_result.success else None,
             "consentDetails": consent_details_dict,
-            "scripts": [s.__dict__ for s in script_analysis_result.scripts],
+            "scripts": [to_camel_case_dict(s) for s in script_analysis_result.scripts],
             "scriptGroups": [
                 {
                     "id": g.id,

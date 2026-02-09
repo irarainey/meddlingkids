@@ -18,7 +18,7 @@ from src.prompts.tracking_analysis import (
     build_tracking_analysis_user_prompt,
 )
 from src.services.openai_client import get_deployment_name, get_openai_client
-from src.services.privacy_score import calculate_privacy_score
+from src.services.privacy_score import CategoryScore, calculate_privacy_score
 from src.types.tracking import (
     AnalysisResult,
     ConsentDetails,
@@ -193,7 +193,3 @@ async def run_tracking_analysis(
     except Exception as error:
         log.error("Analysis failed", {"error": get_error_message(error)})
         return AnalysisResult(success=False, error=get_error_message(error))
-
-
-# Import for type reference only
-from src.services.privacy_score import CategoryScore as _CategoryScore  # noqa: E402, F401

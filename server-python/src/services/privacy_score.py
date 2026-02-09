@@ -287,12 +287,28 @@ def calculate_privacy_score(
 
     log.success("Privacy score calculated", {
         "totalScore": total_score,
-        "consent": consent_score.points,
-        "fingerprinting": fingerprint_score.points,
-        "thirdParty": third_party_score.points,
-        "advertising": advertising_score.points,
         "cookies": cookie_score.points,
+        "thirdParty": third_party_score.points,
+        "dataCollection": data_collection_score.points,
+        "fingerprinting": fingerprint_score.points,
+        "advertising": advertising_score.points,
+        "socialMedia": social_media_score.points,
+        "sensitiveData": sensitive_data_score.points,
+        "consent": consent_score.points,
     })
+
+    for name, cat in [
+        ("cookies", cookie_score),
+        ("thirdParty", third_party_score),
+        ("dataCollection", data_collection_score),
+        ("fingerprinting", fingerprint_score),
+        ("advertising", advertising_score),
+        ("socialMedia", social_media_score),
+        ("sensitiveData", sensitive_data_score),
+        ("consent", consent_score),
+    ]:
+        if cat.issues:
+            log.info(f"Score detail [{name}]", {"points": cat.points, "max": cat.max_points, "issues": cat.issues})
 
     return PrivacyScoreBreakdown(
         total_score=total_score,
@@ -390,7 +406,7 @@ def _calculate_third_party_score(
     tracking_scripts = get_tracking_scripts()
     for url in all_urls:
         for ts in tracking_scripts:
-            if ts["pattern"].search(url):
+            if re.search(ts.pattern, url, re.IGNORECASE):
                 m = re.search(r"https?://([^/]+)", url)
                 if m:
                     known_trackers.add(m.group(1))
@@ -745,7 +761,7 @@ def _calculate_consent_score(
     tracking_patterns = get_tracking_scripts()
     tracking_scripts = [
         s for s in scripts
-        if any(t["pattern"].search(s.url) for t in tracking_patterns)
+        if any(re.search(t.pattern, s.url, re.IGNORECASE) for t in tracking_patterns)
     ]
 
     if len(tracking_scripts) > 5:

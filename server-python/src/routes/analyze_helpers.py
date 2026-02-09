@@ -5,6 +5,7 @@ Extracts reusable logic for overlay handling, screenshot capture, etc.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from typing import Any, AsyncGenerator
@@ -23,6 +24,17 @@ from src.types.tracking import ConsentDetails, CookieConsentDetection, StorageIt
 from src.utils.logger import create_logger
 
 log = create_logger("Overlays")
+
+
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    parts = name.split("_")
+    return parts[0] + "".join(w.capitalize() for w in parts[1:])
+
+
+def to_camel_case_dict(obj: object) -> dict[str, Any]:
+    """Convert a dataclass instance to a dict with camelCase keys."""
+    return {_snake_to_camel(k): v for k, v in obj.__dict__.items()}
 
 
 # ============================================================================
@@ -198,12 +210,20 @@ async def handle_overlays(
             if clicked:
                 result.events.append(format_progress_event(f"overlay-{overlay_count}-wait", "Waiting for page to update...", progress_base + 4))
 
-                # Wait for DOM to settle
-                await session.wait_for_timeout(800)
-                try:
-                    await session.wait_for_load_state("domcontentloaded")
-                except Exception:
-                    pass
+                # Wait for DOM to settle (race timeout vs load state)
+                done, pending = await asyncio.wait(
+                    [
+                        asyncio.create_task(session.wait_for_timeout(800)),
+                        asyncio.create_task(session.wait_for_load_state("domcontentloaded")),
+                    ],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
 
                 result.events.append(format_progress_event(f"overlay-{overlay_count}-capture", "Capturing page state...", progress_base + 5))
                 await session.capture_current_cookies()
@@ -215,11 +235,11 @@ async def handle_overlays(
 
                 result.events.append(format_sse_event("screenshot", {
                     "screenshot": f"data:image/png;base64,{b64}",
-                    "cookies": [c.__dict__ for c in session.get_tracked_cookies()],
-                    "scripts": [s.__dict__ for s in session.get_tracked_scripts()],
-                    "networkRequests": [r.__dict__ for r in session.get_tracked_network_requests()],
-                    "localStorage": [i.__dict__ for i in storage["localStorage"]],
-                    "sessionStorage": [i.__dict__ for i in storage["sessionStorage"]],
+                    "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+                    "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+                    "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+                    "localStorage": [to_camel_case_dict(i) for i in storage["localStorage"]],
+                    "sessionStorage": [to_camel_case_dict(i) for i in storage["sessionStorage"]],
                     "overlayDismissed": consent_detection.overlay_type,
                 }))
 
@@ -247,6 +267,7 @@ async def handle_overlays(
                         "selector": consent_detection.selector,
                         "buttonText": consent_detection.button_text,
                         "confidence": consent_detection.confidence,
+                        "reason": consent_detection.reason,
                     },
                     "error": "Failed to click dismiss button",
                     "overlayNumber": overlay_count,
@@ -261,6 +282,9 @@ async def handle_overlays(
                     "found": consent_detection.found,
                     "overlayType": consent_detection.overlay_type,
                     "selector": consent_detection.selector,
+                    "buttonText": consent_detection.button_text,
+                    "confidence": consent_detection.confidence,
+                    "reason": consent_detection.reason,
                 },
                 "error": "Failed to click dismiss button",
                 "overlayNumber": overlay_count,

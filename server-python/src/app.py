@@ -24,7 +24,8 @@ dotenv.load_dotenv()
 log = create_logger("Server")
 app = FastAPI(title="Meddling Kids Python Server")
 
-PORT = int(os.environ.get("PORT", "3001"))
+HOST = os.environ.get("UVICORN_HOST", "0.0.0.0")
+PORT = int(os.environ.get("UVICORN_PORT", "3001"))
 
 # ============================================================================
 # Middleware
@@ -100,13 +101,13 @@ if os.environ.get("NODE_ENV") == "production" and dist_path.exists():
 def main() -> None:
     """Entry point for running the server."""
     log.section("Meddling Kids Python Server Started")
-    log.success(f"Server listening on port {PORT}")
+    log.success(f"Server listening on {HOST}:{PORT}")
     log.info("Environment", {"env": os.environ.get("NODE_ENV", "development")})
     log.info("Open your browser", {"url": f"http://localhost:{PORT}"})
 
     uvicorn.run(
         "src.app:app",
-        host="0.0.0.0",
+        host=HOST,
         port=PORT,
         reload=os.environ.get("NODE_ENV") != "production",
     )

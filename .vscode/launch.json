@@ -3,15 +3,15 @@
   "configurations": [
     {
       "name": "Debug Server",
-      "type": "node",
+      "type": "debugpy",
       "request": "launch",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "server/src/app.ts"],
-      "cwd": "${workspaceFolder}",
+      "module": "uvicorn",
+      "args": ["src.app:app", "--reload", "--env-file", "../.env"],
+      "python": "${workspaceFolder}/server-python/.venv/bin/python",
+      "cwd": "${workspaceFolder}/server-python",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {
-        "NODE_ENV": "development",
         "DISPLAY": ":99"
       }
     },
