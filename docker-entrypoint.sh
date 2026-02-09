@@ -20,5 +20,5 @@ sleep 1
 export DISPLAY=:99
 
 echo "Starting server..."
-cd /app/server-python
+cd /app/server
 exec .venv/bin/uvicorn src.app:app --host "${UVICORN_HOST:-0.0.0.0}" --port "${UVICORN_PORT:-3001}"

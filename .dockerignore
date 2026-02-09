@@ -14,7 +14,7 @@ node_modules/
 dist/
 
 # Python virtual environment
-server-python/.venv/
+server/.venv/
 
 # Development and IDE files
 .devcontainer/

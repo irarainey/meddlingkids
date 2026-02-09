@@ -7,8 +7,8 @@
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.app:app", "--reload", "--env-file", "../.env"],
-      "python": "${workspaceFolder}/server-python/.venv/bin/python",
-      "cwd": "${workspaceFolder}/server-python",
+      "python": "${workspaceFolder}/server/.venv/bin/python",
+      "cwd": "${workspaceFolder}/server",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "env": {

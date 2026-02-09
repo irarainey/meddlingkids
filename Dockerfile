@@ -84,11 +84,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 WORKDIR /app
 
 # Copy Python server files and install dependencies
-COPY server-python/pyproject.toml server-python/uv.lock* ./server-python/
-RUN cd server-python && uv sync --frozen --no-dev
+COPY server/pyproject.toml server/uv.lock* ./server/
+RUN cd server && uv sync --frozen --no-dev
 
 # Copy Python server source
-COPY server-python/src/ ./server-python/src/
+COPY server/src/ ./server/src/
 
 # Create non-root user for security
 RUN groupadd --gid 1001 appgroup && \
@@ -98,7 +98,7 @@ RUN groupadd --gid 1001 appgroup && \
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 # Install Playwright browsers (Chromium only for smaller image)
-RUN cd server-python && .venv/bin/playwright install chromium && \
+RUN cd server && .venv/bin/playwright install chromium && \
     chmod -R 755 /opt/playwright-browsers
 
 # Copy built client from builder stage

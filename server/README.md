@@ -11,7 +11,7 @@ Alternative Python server implementation that mirrors the functionality of the N
 ## Setup
 
 ```bash
-cd server-python
+cd server
 uv sync
 uv run playwright install chromium
 ```

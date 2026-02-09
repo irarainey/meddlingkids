@@ -15,9 +15,9 @@ if [ ! -d "node_modules" ]; then
 fi
 
 # Install Python server dependencies via uv
-if [ -f "server-python/pyproject.toml" ]; then
+if [ -f "server/pyproject.toml" ]; then
     echo "🐍 Installing Python dependencies via uv..."
-    (cd server-python && uv sync)
+    (cd server && uv sync)
 fi
 
 # Install Playwright browsers if not present
@@ -25,7 +25,7 @@ if [ ! -d "/home/node/.cache/ms-playwright" ]; then
     echo "🎭 Installing Playwright browsers and system dependencies..."
     npx playwright install --with-deps chromium
     echo "🎭 Installing Playwright browsers for Python..."
-    (cd server-python && .venv/bin/playwright install chromium)
+    (cd server && .venv/bin/playwright install chromium)
 fi
 
 # Install Xvfb if not present
