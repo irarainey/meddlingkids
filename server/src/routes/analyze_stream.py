@@ -11,11 +11,11 @@ from typing import Any, AsyncGenerator, cast
 from urllib import parse
 
 from src.routes import analyze_helpers
+from src.agents import config as agent_config
 from src.services import (
     analysis,
     browser_session,
     device_configs,
-    openai_client,
     script_analysis,
 )
 from src.types import browser
@@ -36,8 +36,8 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
     Each call creates its own isolated BrowserSession, enabling concurrent
     analyses without interference.
     """
-    # Validate OpenAI configuration
-    config_error = openai_client.validate_openai_config()
+    # Validate LLM configuration
+    config_error = agent_config.validate_llm_config()
     if config_error:
         yield analyze_helpers.format_sse_event("error", {"error": config_error})
         return
@@ -58,7 +58,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
     logger.start_log_file(domain)
 
     log.section(f"Analyzing: {url}")
-    log.info("Request received", {"url": url, "device": device_type, "model": openai_client.get_deployment_name()})
+    log.info("Request received", {"url": url, "device": device_type})
     log.start_timer("total-analysis")
 
     try:

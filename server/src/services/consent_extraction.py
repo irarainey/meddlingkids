@@ -1,21 +1,23 @@
 """
 Consent details extraction using LLM vision.
+
 Extracts detailed information about cookie categories, partners,
-and data collection purposes from consent dialogs.
+and data collection purposes from consent dialogs using the
+Microsoft Agent Framework ChatAgent with vision.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 import re
 
 from playwright import async_api
 
+from src.agents.chat_agent import get_chat_agent_service
+from src.agents.config import AGENT_CONSENT_EXTRACTION
 from src.prompts import consent_extraction
-from src.services import openai_client
 from src.types import consent
-from src.utils import errors, logger, retry
+from src.utils import errors, logger
 
 log = logger.create_logger("Consent-Extract")
 
@@ -27,9 +29,9 @@ async def extract_consent_details(
     Extract detailed consent information from a cookie preferences panel.
     Uses LLM vision to analyse the screenshot and extract structured data.
     """
-    client = openai_client.get_openai_client()
-    if not client:
-        log.warn("OpenAI not configured, skipping consent extraction")
+    agent_service = get_chat_agent_service()
+    if not agent_service.is_configured:
+        log.warn("LLM not configured, skipping consent extraction")
         return consent.ConsentDetails(
             has_manage_options=False,
             manage_options_selector=None,
@@ -39,7 +41,6 @@ async def extract_consent_details(
             raw_text="",
         )
 
-    deployment = openai_client.get_deployment_name()
     log.info("Extracting consent details from page...")
 
     log.start_timer("text-extraction")
@@ -119,38 +120,21 @@ async def extract_consent_details(
     log.start_timer("vision-extraction")
     log.info("Analysing consent dialog with vision...")
 
-    b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
     try:
-        response = await retry.with_retry(
-            lambda: client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": consent_extraction.CONSENT_EXTRACTION_SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{b64_screenshot}"
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": consent_extraction.build_consent_extraction_user_prompt(consent_text),
-                            },
-                        ],
-                    },
-                ],
-                max_completion_tokens=4000,
+        content = await agent_service.complete_with_vision(
+            system_prompt=consent_extraction.CONSENT_EXTRACTION_SYSTEM_PROMPT,
+            user_text=consent_extraction.build_consent_extraction_user_prompt(
+                consent_text
             ),
-            context="Consent extraction",
+            screenshot=screenshot,
+            agent_name=AGENT_CONSENT_EXTRACTION,
+            max_tokens=4000,
+            retry_context="Consent extraction",
         )
 
         log.end_timer("vision-extraction", "Vision extraction complete")
 
-        content = response.choices[0].message.content or "{}"
+        content = content or "{}"
         json_str = content.strip()
         if json_str.startswith("```"):
             json_str = re.sub(r"```json?\n?", "", json_str)

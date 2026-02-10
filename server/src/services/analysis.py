@@ -1,8 +1,10 @@
 """
 AI-powered tracking analysis service.
-Uses OpenAI to analyze collected tracking data and generate
-comprehensive privacy reports with risk assessments.
-Privacy score is calculated deterministically for consistency.
+
+Uses the Microsoft Agent Framework ChatAgent to analyse collected
+tracking data and generate comprehensive privacy reports with risk
+assessments.  Privacy score is calculated deterministically for
+consistency.
 """
 
 from __future__ import annotations
@@ -11,12 +13,16 @@ import json
 import re
 from typing import Callable
 
+from src.agents.chat_agent import get_chat_agent_service
+from src.agents.config import (
+    AGENT_SUMMARY_FINDINGS,
+    AGENT_TRACKING_ANALYSIS,
+)
 from src.prompts import tracking_analysis
-from src.services import openai_client
 from src.services import privacy_score as privacy_score_mod
 from src.types import consent, tracking_data
 from src.types import analysis as analysis_mod
-from src.utils import errors, logger, retry
+from src.utils import errors, logger
 from src.utils import tracking_summary as tracking_summary_mod
 
 log = logger.create_logger("AI-Analysis")
@@ -35,15 +41,17 @@ async def run_tracking_analysis(
     consent_details: consent.ConsentDetails | None = None,
     on_progress: AnalysisProgressCallback | None = None,
 ) -> analysis_mod.AnalysisResult:
+    """Run comprehensive tracking analysis using the LLM agent.
+
+    Analyses cookies, scripts, network requests, and storage to
+    generate a detailed privacy report and structured summary findings.
     """
-    Run comprehensive tracking analysis using OpenAI.
-    Analyzes cookies, scripts, network requests, and storage to generate
-    a detailed privacy report and structured summary findings.
-    """
-    client = openai_client.get_openai_client()
-    if not client:
-        log.error("OpenAI client not configured")
-        return analysis_mod.AnalysisResult(success=False, error="OpenAI not configured")
+    agent_service = get_chat_agent_service()
+    if not agent_service.is_configured:
+        log.error("LLM agent not configured")
+        return analysis_mod.AnalysisResult(
+            success=False, error="LLM not configured"
+        )
 
     log.info("Starting tracking analysis", {
         "url": analyzed_url,
@@ -62,9 +70,6 @@ async def run_tracking_analysis(
             local_storage, session_storage, analyzed_url,
         )
 
-        deployment = openai_client.get_deployment_name()
-        log.debug("Using deployment", {"deployment": deployment})
-
         # Step 1: Main analysis
         log.start_timer("main-analysis")
         log.info("Running main tracking analysis...")
@@ -72,19 +77,17 @@ async def run_tracking_analysis(
         if on_progress:
             on_progress("analyzing", "Generating privacy report...")
 
-        response = await retry.with_retry(
-            lambda: client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": tracking_analysis.TRACKING_ANALYSIS_SYSTEM_PROMPT},
-                    {"role": "user", "content": tracking_analysis.build_tracking_analysis_user_prompt(tracking_summary, consent_details)},
-                ],
-                max_completion_tokens=3000,
+        analysis = await agent_service.complete(
+            system_prompt=tracking_analysis.TRACKING_ANALYSIS_SYSTEM_PROMPT,
+            user_prompt=tracking_analysis.build_tracking_analysis_user_prompt(
+                tracking_summary, consent_details
             ),
-            context="Main tracking analysis",
+            agent_name=AGENT_TRACKING_ANALYSIS,
+            max_tokens=3000,
+            retry_context="Main tracking analysis",
         )
 
-        analysis = response.choices[0].message.content or "No analysis generated"
+        analysis = analysis or "No analysis generated"
         log.end_timer("main-analysis", "Main analysis complete")
         log.info("Analysis generated", {"length": len(analysis)})
 
@@ -112,28 +115,31 @@ async def run_tracking_analysis(
         if on_progress:
             on_progress("summarizing", "Generating summary findings...")
 
-        summary_result = None
+        summary_content: str | None = None
         try:
-            summary_result = await retry.with_retry(
-                lambda: client.chat.completions.create(
-                    model=deployment,
-                    messages=[
-                        {"role": "system", "content": tracking_analysis.SUMMARY_FINDINGS_SYSTEM_PROMPT},
-                        {"role": "user", "content": tracking_analysis.build_summary_findings_user_prompt(analysis)},
-                    ],
-                    max_completion_tokens=500,
+            summary_content = await agent_service.complete(
+                system_prompt=tracking_analysis.SUMMARY_FINDINGS_SYSTEM_PROMPT,
+                user_prompt=tracking_analysis.build_summary_findings_user_prompt(
+                    analysis
                 ),
-                context="Summary findings",
+                agent_name=AGENT_SUMMARY_FINDINGS,
+                max_tokens=500,
+                retry_context="Summary findings",
             )
             log.end_timer("summary-generation", "Summary generated")
         except Exception as err:
-            log.error("Failed to generate summary", {"error": errors.get_error_message(err)})
+            log.error(
+                "Failed to generate summary",
+                {"error": errors.get_error_message(err)},
+            )
 
         # Process summary findings
         summary_findings: list[analysis_mod.SummaryFinding] = []
-        if summary_result:
-            summary_content = summary_result.choices[0].message.content or "[]"
-            log.debug("Summary findings response", {"content": summary_content})
+        if summary_content:
+            log.debug(
+                "Summary findings response",
+                {"content": summary_content},
+            )
             try:
                 json_str = summary_content.strip()
                 if json_str.startswith("```"):

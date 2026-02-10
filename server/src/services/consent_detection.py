@@ -1,18 +1,20 @@
 """
 Cookie consent banner detection using LLM vision.
-Uses OpenAI to analyse screenshots and find "Accept All" buttons.
+
+Uses the Microsoft Agent Framework ChatAgent with vision to
+analyse screenshots and find overlay dismiss buttons.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 import re
 
+from src.agents.chat_agent import get_chat_agent_service
+from src.agents.config import AGENT_CONSENT_DETECTION
 from src.prompts import consent_detection
-from src.services import openai_client
 from src.types import consent
-from src.utils import errors, logger, retry
+from src.utils import errors, logger
 
 log = logger.create_logger("Consent-Detect")
 
@@ -23,19 +25,18 @@ async def detect_cookie_consent(
     """
     Detect blocking overlays (cookie consent, sign-in walls, etc.) using LLM vision.
     """
-    client = openai_client.get_openai_client()
-    if not client:
-        log.warn("OpenAI not configured, skipping consent detection")
+    agent_service = get_chat_agent_service()
+    if not agent_service.is_configured:
+        log.warn("LLM not configured, skipping consent detection")
         return consent.CookieConsentDetection(
             found=False,
             overlay_type=None,
             selector=None,
             button_text=None,
             confidence="low",
-            reason="OpenAI not configured",
+            reason="LLM not configured",
         )
 
-    deployment = openai_client.get_deployment_name()
     relevant_html = _extract_relevant_html(html)
     log.debug(
         "Extracted relevant HTML",
@@ -45,38 +46,21 @@ async def detect_cookie_consent(
     log.start_timer("vision-detection")
     log.info("Analysing screenshot for overlays...")
 
-    b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
     try:
-        response = await retry.with_retry(
-            lambda: client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": consent_detection.CONSENT_DETECTION_SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{b64_screenshot}"
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": consent_detection.build_consent_detection_user_prompt(relevant_html),
-                            },
-                        ],
-                    },
-                ],
-                max_completion_tokens=500,
+        content = await agent_service.complete_with_vision(
+            system_prompt=consent_detection.CONSENT_DETECTION_SYSTEM_PROMPT,
+            user_text=consent_detection.build_consent_detection_user_prompt(
+                relevant_html
             ),
-            context="Consent detection",
+            screenshot=screenshot,
+            agent_name=AGENT_CONSENT_DETECTION,
+            max_tokens=500,
+            retry_context="Consent detection",
         )
 
         log.end_timer("vision-detection", "Vision analysis complete")
 
-        content = response.choices[0].message.content or "{}"
+        content = content or "{}"
         json_str = content.strip()
         if json_str.startswith("```"):
             json_str = re.sub(r"```json?\n?", "", json_str)

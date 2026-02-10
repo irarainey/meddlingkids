@@ -1,7 +1,9 @@
 """
 Script analysis service using LLM.
-Analyzes JavaScript files to determine their purpose.
-Groups similar scripts (like application chunks) to reduce noise.
+
+Analyses JavaScript files to determine their purpose using the
+Microsoft Agent Framework ChatAgent.  Groups similar scripts
+(like application chunks) to reduce noise.
 """
 
 from __future__ import annotations
@@ -14,10 +16,12 @@ from typing import Callable
 import aiohttp
 import pydantic
 
+from src.agents.chat_agent import get_chat_agent_service
+from src.agents.config import AGENT_SCRIPT_ANALYSIS
 from src.data import loader
-from src.services import openai_client, script_grouping
+from src.services import script_grouping
 from src.types import tracking_data
-from src.utils import errors, logger, retry
+from src.utils import errors, logger
 
 log = logger.create_logger("Script-Analysis")
 
@@ -107,38 +111,48 @@ async def _fetch_script_content(
 async def _analyze_batch_with_llm(
     scripts: list[dict[str, str | None]],
 ) -> dict[str, str]:
-    """Analyze multiple scripts in a single LLM batch call."""
-    client = openai_client.get_openai_client()
+    """Analyse multiple scripts in a single LLM batch call.
+
+    Args:
+        scripts: List of dicts with ``url`` and ``content`` keys.
+
+    Returns:
+        Mapping of script URL to description string.
+    """
+    agent_service = get_chat_agent_service()
     results: dict[str, str] = {}
 
-    if not client or not scripts:
+    if not agent_service.is_configured or not scripts:
         return results
 
-    deployment = openai_client.get_deployment_name()
-
     batch_content = "\n".join(
-        f"Script {i + 1}: {s['url']}\n{(s['content'] or '[Content not available]')[:MAX_SCRIPT_CONTENT_LENGTH]}\n---"
+        f"Script {i + 1}: {s['url']}\n"
+        f"{(s['content'] or '[Content not available]')[:MAX_SCRIPT_CONTENT_LENGTH]}"
+        f"\n---"
         for i, s in enumerate(scripts)
     )
 
     try:
-        log.debug("Sending batch to LLM", {"scriptCount": len(scripts)})
+        log.debug(
+            "Sending batch to LLM",
+            {"scriptCount": len(scripts)},
+        )
 
-        response = await retry.with_retry(
-            lambda: client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": BATCH_SCRIPT_ANALYSIS_PROMPT},
-                    {"role": "user", "content": f"Analyze these {len(scripts)} scripts:\n\n{batch_content}"},
-                ],
-                max_completion_tokens=1000,
+        content = await agent_service.complete(
+            system_prompt=BATCH_SCRIPT_ANALYSIS_PROMPT,
+            user_prompt=(
+                f"Analyze these {len(scripts)} scripts:\n\n"
+                f"{batch_content}"
             ),
-            context=f"Batch script analysis ({len(scripts)} scripts)",
+            agent_name=AGENT_SCRIPT_ANALYSIS,
+            max_tokens=1000,
+            retry_context=(
+                f"Batch script analysis ({len(scripts)} scripts)"
+            ),
             max_retries=2,
         )
 
-        content = response.choices[0].message.content or "[]"
-        json_str = content.strip()
+        json_str = (content or "[]").strip()
         if json_str.startswith("```"):
             json_str = re.sub(r"```json?\n?", "", json_str)
             json_str = re.sub(r"```$", "", json_str).strip()
@@ -148,9 +162,15 @@ async def _analyze_batch_with_llm(
             if item.get("url") and item.get("description"):
                 results[item["url"]] = item["description"]
 
-        log.debug("Batch analysis complete", {"received": len(results), "expected": len(scripts)})
+        log.debug(
+            "Batch analysis complete",
+            {"received": len(results), "expected": len(scripts)},
+        )
     except Exception as error:
-        log.error("Batch script analysis failed", {"error": errors.get_error_message(error)})
+        log.error(
+            "Batch script analysis failed",
+            {"error": errors.get_error_message(error)},
+        )
         for script in scripts:
             url = script.get("url", "")
             if url:
