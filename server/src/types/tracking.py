@@ -286,6 +286,16 @@ class PartnerClassification:
     risk_score: int
 
 
+@dataclass
+class PartnerRiskSummary:
+    """Quick risk summary for a set of consent partners."""
+
+    critical_count: int
+    high_count: int
+    total_risk_score: int
+    worst_partners: list[str]
+
+
 # ============================================================================
 # Browser Session Types
 # ============================================================================

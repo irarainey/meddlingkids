@@ -112,11 +112,13 @@ _level_symbol = {
 
 
 def _get_timestamp() -> str:
+    """Return the current UTC time as HH:MM:SS.mmm."""
     now = datetime.now(timezone.utc)
     return now.strftime("%H:%M:%S.") + f"{now.microsecond // 1000:03d}"
 
 
 def _format_duration(ms: float) -> str:
+    """Format a duration in milliseconds for display."""
     if ms < 1000:
         return f"{int(ms)}ms"
     if ms < 60000:
@@ -127,6 +129,7 @@ def _format_duration(ms: float) -> str:
 
 
 def _format_value(value: object) -> str:
+    """Return an ANSI-coloured representation of *value*."""
     c = _colours
     if value is None:
         return f"{c['dim']}None{c['reset']}"
@@ -153,18 +156,25 @@ class Logger:
     """Structured logger with context prefix and timing support."""
 
     def __init__(self, context: str = "Server") -> None:
+        """Create a logger that prefixes messages with *context*."""
         self._context = context
 
     def child(self, context: str) -> Logger:
+        """Return a new Logger with a different context label."""
         return Logger(context)
 
     def _log(self, level: str, message: str, data: dict[str, object] | None = None) -> None:
+        """Format and emit a log line at the given level."""
         ts = _get_timestamp()
         colour = _level_colour.get(level, _colours["cyan"])
         symbol = _level_symbol.get(level, "ℹ")
         c = _colours
 
-        prefix = f"{c['gray']}[{ts}]{c['reset']} {colour}{symbol}{c['reset']} {c['bright']}[{self._context}]{c['reset']}"
+        prefix = (
+            f"{c['gray']}[{ts}]{c['reset']} "
+            f"{colour}{symbol}{c['reset']} "
+            f"{c['bright']}[{self._context}]{c['reset']}"
+        )
 
         if data:
             data_str = " ".join(
@@ -178,26 +188,33 @@ class Logger:
         _write_to_log_file(log_line)
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
+        """Log an informational message."""
         self._log("info", message, data)
 
     def success(self, message: str, data: dict[str, object] | None = None) -> None:
+        """Log a success message."""
         self._log("success", message, data)
 
     def warn(self, message: str, data: dict[str, object] | None = None) -> None:
+        """Log a warning message."""
         self._log("warn", message, data)
 
     def error(self, message: str, data: dict[str, object] | None = None) -> None:
+        """Log an error message."""
         self._log("error", message, data)
 
     def debug(self, message: str, data: dict[str, object] | None = None) -> None:
+        """Log a debug-level message."""
         self._log("debug", message, data)
 
     def start_timer(self, label: str) -> None:
+        """Start a named timer for performance measurement."""
         key = f"{self._context}:{label}"
         _timers[key] = time.monotonic() * 1000
         self._log("timing", f"Starting: {label}")
 
     def end_timer(self, label: str, message: str | None = None) -> float:
+        """Stop a named timer and log the elapsed time."""
         key = f"{self._context}:{label}"
         start = _timers.pop(key, None)
         if start is None:
@@ -212,6 +229,7 @@ class Logger:
         return duration
 
     def section(self, title: str) -> None:
+        """Print a prominent section divider with *title*."""
         c = _colours
         line = "─" * 60
         lines = [
@@ -226,6 +244,7 @@ class Logger:
             _write_to_log_file(ln)
 
     def subsection(self, title: str) -> None:
+        """Print a smaller sub-section header."""
         c = _colours
         output = f"\n{c['cyan']}  ▸ {title}{c['reset']}"
         print(output, file=sys.stderr)

@@ -11,9 +11,17 @@ import base64
 import io
 import os
 from datetime import datetime, timezone
+from typing import Literal
 
 from PIL import Image
-from playwright.async_api import Browser, BrowserContext, Page, Request, Response, async_playwright
+from playwright.async_api import (
+    Browser,
+    BrowserContext,
+    Page,
+    Request,
+    Response,
+    async_playwright,
+)
 
 from src.services.access_detection import check_for_access_denied
 from src.services.device_configs import DEVICE_CONFIGS
@@ -46,6 +54,7 @@ class BrowserSession:
     """
 
     def __init__(self) -> None:
+        """Initialise a new browser session with empty state."""
         self._playwright = None
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
@@ -56,20 +65,37 @@ class BrowserSession:
         self._tracked_scripts: list[TrackedScript] = []
         self._tracked_network_requests: list[NetworkRequest] = []
 
+    async def __aenter__(self) -> BrowserSession:
+        """Enter the async context manager."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Exit the async context manager, closing all resources."""
+        await self.close()
+
     # ==========================================================================
     # State Getters
     # ==========================================================================
 
     def get_page(self) -> Page | None:
+        """Return the active Playwright page, if any."""
         return self._page
 
     def get_tracked_cookies(self) -> list[TrackedCookie]:
+        """Return all cookies captured during this session."""
         return self._tracked_cookies
 
     def get_tracked_scripts(self) -> list[TrackedScript]:
+        """Return all scripts intercepted during this session."""
         return self._tracked_scripts
 
     def get_tracked_network_requests(self) -> list[NetworkRequest]:
+        """Return all network requests captured during this session."""
         return self._tracked_network_requests
 
     # ==========================================================================
@@ -77,19 +103,28 @@ class BrowserSession:
     # ==========================================================================
 
     def clear_tracking_data(self) -> None:
+        """Clear all captured cookies, scripts, and requests."""
         self._tracked_cookies.clear()
         self._tracked_scripts.clear()
         self._tracked_network_requests.clear()
 
     def set_current_page_url(self, url: str) -> None:
+        """Set the URL used to classify first- vs third-party requests."""
         self._current_page_url = url
 
     # ==========================================================================
     # Browser Lifecycle
     # ==========================================================================
 
-    async def launch_browser(self, device_type: DeviceType = "ipad") -> None:
+    async def launch_browser(
+        self, device_type: DeviceType = "ipad"
+    ) -> None:
         """Launch a new Chromium browser instance with device emulation."""
+        if device_type not in DEVICE_CONFIGS:
+            raise ValueError(
+                f"Unknown device type {device_type!r}. "
+                f"Valid types: {', '.join(DEVICE_CONFIGS)}"
+            )
         device_config = DEVICE_CONFIGS[device_type]
 
         # Close existing resources
@@ -175,15 +210,23 @@ class BrowserSession:
                     domain=domain,
                     method=request.method,
                     resource_type=resource_type,
-                    is_third_party=is_third_party(request_url, self._current_page_url),
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    is_third_party=is_third_party(
+                        request_url,
+                        self._current_page_url,
+                    ),
+                    timestamp=datetime.now(
+                        timezone.utc
+                    ).isoformat(),
                 )
             )
 
     def _on_response(self, response: Response) -> None:
         """Handle intercepted responses to capture status codes."""
         request_url = response.url
-        for req in self._tracked_network_requests:
+        # Reverse iterate — the matching request is almost always
+        # near the end of the list because responses arrive shortly
+        # after the corresponding request is appended.
+        for req in reversed(self._tracked_network_requests):
             if req.url == request_url and req.status_code is None:
                 req.status_code = response.status
                 break
@@ -195,7 +238,9 @@ class BrowserSession:
     async def navigate_to(
         self,
         url: str,
-        wait_until: str = "networkidle",
+        wait_until: Literal[
+            "commit", "domcontentloaded", "load", "networkidle"
+        ] = "networkidle",
         timeout: int = 90000,
     ) -> NavigationResult:
         """Navigate the current page to a URL and wait for it to load."""
@@ -378,12 +423,20 @@ class BrowserSession:
     # ==========================================================================
 
     async def wait_for_timeout(self, ms: int) -> None:
-        """Wait for a specified amount of time."""
-        if not self._page:
-            raise RuntimeError("No browser session active")
-        await self._page.wait_for_timeout(ms)
+        """Wait for a specified number of milliseconds.
 
-    async def wait_for_load_state(self, state: str = "load") -> None:
+        Uses ``asyncio.sleep`` instead of Playwright's
+        ``page.wait_for_timeout`` which is intended only
+        for debugging and should not be used in production.
+        """
+        await asyncio.sleep(ms / 1000)
+
+    async def wait_for_load_state(
+        self,
+        state: Literal[
+            "domcontentloaded", "load", "networkidle"
+        ] = "load",
+    ) -> None:
         """Wait for a specific page load state."""
         if not self._page:
             raise RuntimeError("No browser session active")

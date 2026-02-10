@@ -21,6 +21,7 @@ from src.routes.analyze_helpers import (
 )
 from src.services.analysis import run_tracking_analysis
 from src.services.browser_session import BrowserSession
+from src.services.device_configs import DEVICE_CONFIGS
 from src.services.openai_client import validate_openai_config
 from src.services.script_analysis import analyze_scripts
 from src.utils.errors import get_error_message
@@ -48,7 +49,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         return
 
     # Validate device type
-    valid_devices = ["iphone", "ipad", "android-phone", "android-tablet", "windows-chrome", "macos-safari"]
+    valid_devices = list(DEVICE_CONFIGS.keys())
     device_type = device if device in valid_devices else "ipad"
 
     if not url:
@@ -274,6 +275,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                     )
 
         async def run_script_analysis() -> Any:
+            """Run script analysis and signal the queue on completion."""
             try:
                 result = await analyze_scripts(final_scripts, script_progress)
                 return result
@@ -318,6 +320,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                 )
 
         async def run_analysis() -> Any:
+            """Run tracking analysis and signal the queue on completion."""
             try:
                 result = await run_tracking_analysis(
                     final_cookies,

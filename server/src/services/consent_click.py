@@ -115,14 +115,37 @@ async def _try_click_in_frame(
 
 
 async def _try_close_buttons(page: Page) -> bool:
-    """Try common close button patterns as a last resort."""
-    close_selectors = [
+    """Try common close button patterns as a last resort.
+
+    Prefers role-based locators (``get_by_role``) for accessibility,
+    then falls back to CSS attribute/class selectors.
+    """
+    # Role-based strategies first (preferred by Playwright guidelines)
+    role_strategies: list[tuple[str, object]] = [
+        (
+            "button[name~=close]",
+            page.get_by_role("button", name=re.compile(
+                r"close|dismiss", re.IGNORECASE
+            )),
+        ),
+    ]
+    for label, locator in role_strategies:
+        try:
+            log.debug("Trying close button", {"selector": label})
+            await locator.first.click(timeout=1000)
+            log.success("Close button clicked", {"selector": label})
+            return True
+        except Exception:
+            pass
+
+    # CSS fallback selectors
+    css_selectors = [
         '[aria-label*="close" i]',
         '[aria-label*="dismiss" i]',
         'button[class*="close"]',
         '[class*="modal-close"]',
     ]
-    for sel in close_selectors:
+    for sel in css_selectors:
         try:
             log.debug("Trying close button", {"selector": sel})
             await page.locator(sel).first.click(timeout=1000)

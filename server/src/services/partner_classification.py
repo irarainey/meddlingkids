@@ -9,8 +9,10 @@ from __future__ import annotations
 from src.data.loader import PARTNER_CATEGORIES, get_partner_database
 from src.types.tracking import (
     ConsentPartner,
+    PartnerCategoryConfig,
     PartnerClassification,
     PartnerEntry,
+    PartnerRiskSummary,
 )
 
 
@@ -23,18 +25,18 @@ def _classify_against_database(
     partner: ConsentPartner,
     name_lower: str,
     database: dict[str, PartnerEntry],
-    config: object,
+    config: PartnerCategoryConfig,
 ) -> PartnerClassification | None:
     """Classify a partner against a specific database."""
     for key, data in database.items():
         if _matches_partner(name_lower, key, data.aliases):
             return PartnerClassification(
                 name=partner.name,
-                risk_level=config.risk_level,  # type: ignore[attr-defined]
-                category=config.category,  # type: ignore[attr-defined]
-                reason=config.reason,  # type: ignore[attr-defined]
+                risk_level=config.risk_level,
+                category=config.category,
+                reason=config.reason,
                 concerns=data.concerns,
-                risk_score=config.risk_score,  # type: ignore[attr-defined]
+                risk_score=config.risk_score,
             )
     return None
 
@@ -127,9 +129,10 @@ def classify_partner_by_pattern_sync(
 
 def get_partner_risk_summary(
     partners: list[ConsentPartner],
-) -> dict[str, object]:
+) -> PartnerRiskSummary:
     """
     Get a quick risk summary for partners without full classification.
+
     Uses only pattern matching for speed.
     """
     critical_count = 0
@@ -151,9 +154,9 @@ def get_partner_risk_summary(
         else:
             total_risk_score += 3  # Default for unknown
 
-    return {
-        "critical_count": critical_count,
-        "high_count": high_count,
-        "total_risk_score": total_risk_score,
-        "worst_partners": worst_partners,
-    }
+    return PartnerRiskSummary(
+        critical_count=critical_count,
+        high_count=high_count,
+        total_risk_score=total_risk_score,
+        worst_partners=worst_partners,
+    )

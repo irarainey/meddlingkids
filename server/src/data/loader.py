@@ -24,10 +24,26 @@ _DATA_DIR = Path(__file__).resolve().parent
 
 
 def _load_json(relative_path: str) -> Any:
-    """Load and parse a JSON file relative to the data directory."""
+    """Load and parse a JSON file relative to the data directory.
+
+    Raises:
+        FileNotFoundError: If the JSON file does not exist.
+        json.JSONDecodeError: If the file contains invalid JSON.
+    """
     full_path = _DATA_DIR / relative_path
+    if not full_path.exists():
+        raise FileNotFoundError(
+            f"Data file not found: {relative_path}"
+        )
     with open(full_path, encoding="utf-8") as f:
-        return json.load(f)
+        try:
+            return json.load(f)
+        except json.JSONDecodeError as exc:
+            raise json.JSONDecodeError(
+                f"Invalid JSON in {relative_path}: {exc.msg}",
+                exc.doc,
+                exc.pos,
+            ) from exc
 
 
 # ============================================================================
@@ -38,7 +54,13 @@ def _load_json(relative_path: str) -> Any:
 def _load_script_patterns(filename: str) -> list[ScriptPattern]:
     """Load script patterns from a JSON file."""
     raw: list[dict[str, str]] = _load_json(f"trackers/{filename}")
-    return [ScriptPattern(pattern=entry["pattern"], description=entry["description"]) for entry in raw]
+    return [
+        ScriptPattern(
+            pattern=entry["pattern"],
+            description=entry["description"],
+        )
+        for entry in raw
+    ]
 
 
 _tracking_scripts: list[ScriptPattern] | None = None

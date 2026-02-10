@@ -20,7 +20,12 @@ from src.services.partner_classification import (
     classify_partner_by_pattern_sync,
     get_partner_risk_summary,
 )
-from src.types.tracking import ConsentDetails, CookieConsentDetection, ScoreBreakdown, StorageItem
+from src.types.tracking import (
+    ConsentDetails,
+    CookieConsentDetection,
+    ScoreBreakdown,
+    StorageItem,
+)
 from src.utils.logger import create_logger
 
 log = create_logger("Overlays")
@@ -197,11 +202,13 @@ async def handle_overlays(
                 log.start_timer("partner-classification")
                 yield format_progress_event("partner-classify", "Analyzing partner risk levels...", progress_base + 2)
 
-                risk_summary = get_partner_risk_summary(result.consent_details.partners)
+                risk_summary = get_partner_risk_summary(
+                    result.consent_details.partners
+                )
                 log.info("Partner risk summary", {
-                    "critical": risk_summary["critical_count"],
-                    "high": risk_summary["high_count"],
-                    "totalRisk": risk_summary["total_risk_score"],
+                    "critical": risk_summary.critical_count,
+                    "high": risk_summary.high_count,
+                    "totalRisk": risk_summary.total_risk_score,
                 })
 
                 for partner in result.consent_details.partners:

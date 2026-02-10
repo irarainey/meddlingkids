@@ -93,13 +93,25 @@ def calculate_privacy_score(
     site_hostname, base_domain = _parse_domain(analyzed_url)
 
     cookie_score = _calculate_cookie_score(cookies, base_domain)
-    third_party_score = _calculate_third_party_score(network_requests, scripts, base_domain)
-    data_collection_score = _calculate_data_collection_score(local_storage, session_storage, network_requests)
-    fingerprint_score = _calculate_fingerprint_score(cookies, scripts, network_requests)
-    advertising_score = _calculate_advertising_score(scripts, network_requests, cookies)
+    third_party_score = _calculate_third_party_score(
+        network_requests, scripts, base_domain
+    )
+    data_collection_score = _calculate_data_collection_score(
+        local_storage, session_storage, network_requests
+    )
+    fingerprint_score = _calculate_fingerprint_score(
+        cookies, scripts, network_requests
+    )
+    advertising_score = _calculate_advertising_score(
+        scripts, network_requests, cookies
+    )
     social_media_score = _calculate_social_media_score(scripts, network_requests)
-    sensitive_data_score = _calculate_sensitive_data_score(consent_details, scripts, network_requests)
-    consent_score = _calculate_consent_score(consent_details, cookies, scripts)
+    sensitive_data_score = _calculate_sensitive_data_score(
+        consent_details, scripts, network_requests
+    )
+    consent_score = _calculate_consent_score(
+        consent_details, cookies, scripts
+    )
 
     raw_total = (
         cookie_score.points
@@ -652,26 +664,26 @@ def _calculate_consent_score(
 
     if partner_count > 0:
         risk_summary = get_partner_risk_summary(consent_details.partners)
-        critical_count = risk_summary["critical_count"]
-        high_count = risk_summary["high_count"]
-        worst_partners = risk_summary["worst_partners"]
+        critical_count = risk_summary.critical_count
+        high_count = risk_summary.high_count
+        worst_partners = risk_summary.worst_partners
 
-        if critical_count > 5:  # type: ignore[operator]
+        if critical_count > 5:
             points += 8
             issues.append(f"{critical_count} data brokers/identity trackers identified")
-        elif critical_count > 2:  # type: ignore[operator]
+        elif critical_count > 2:
             points += 5
             issues.append(f"{critical_count} data brokers among partners")
-        elif critical_count > 0:  # type: ignore[operator]
+        elif critical_count > 0:
             points += 3
-            issues.append(f"Data broker detected: {worst_partners[0]}")  # type: ignore[index]
+            issues.append(f"Data broker detected: {worst_partners[0]}")
 
-        if high_count > 10:  # type: ignore[operator]
+        if high_count > 10:
             points += 5
             issues.append(f"{high_count} high-risk advertising/tracking partners")
-        elif high_count > 5:  # type: ignore[operator]
+        elif high_count > 5:
             points += 3
-        elif high_count > 0:  # type: ignore[operator]
+        elif high_count > 0:
             points += 2
 
     vague_re = re.compile(r"legitimate interest|necessary|essential|basic|functional", re.I)
