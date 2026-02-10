@@ -34,11 +34,18 @@ DeviceType = Literal[
 ]
 
 
+class ViewportSize(BaseModel):
+    """Viewport dimensions for browser emulation."""
+
+    width: int
+    height: int
+
+
 class DeviceConfig(BaseModel):
     """Device configuration for browser emulation."""
 
     user_agent: str
-    viewport: dict[str, int]
+    viewport: ViewportSize
     device_scale_factor: float
     is_mobile: bool
     has_touch: bool

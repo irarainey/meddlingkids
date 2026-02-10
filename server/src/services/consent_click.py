@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 
-from playwright.async_api import Frame, Page
+from playwright.async_api import Frame, Locator, Page
 
 from src.utils.logger import create_logger
 
@@ -121,7 +121,7 @@ async def _try_close_buttons(page: Page) -> bool:
     then falls back to CSS attribute/class selectors.
     """
     # Role-based strategies first (preferred by Playwright guidelines)
-    role_strategies: list[tuple[str, object]] = [
+    role_strategies: list[tuple[str, Locator]] = [
         (
             "button[name~=close]",
             page.get_by_role("button", name=re.compile(

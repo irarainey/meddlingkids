@@ -161,7 +161,7 @@ class BrowserSession:
 
         self._context = await self._browser.new_context(
             user_agent=device_config.user_agent,
-            viewport=device_config.viewport,
+            viewport={"width": device_config.viewport.width, "height": device_config.viewport.height},
             device_scale_factor=device_config.device_scale_factor,
             is_mobile=device_config.is_mobile,
             has_touch=device_config.has_touch,
@@ -310,24 +310,27 @@ class BrowserSession:
         now = datetime.now(timezone.utc).isoformat()
 
         for cookie in cookies:
+            name = cookie.get("name", "")
+            domain = cookie.get("domain", "")
+
             existing_idx = next(
                 (
                     i
                     for i, c in enumerate(self._tracked_cookies)
-                    if c.name == cookie["name"] and c.domain == cookie["domain"]
+                    if c.name == name and c.domain == domain
                 ),
                 None,
             )
 
             tracked = TrackedCookie(
-                name=cookie["name"],
-                value=cookie["value"],
-                domain=cookie["domain"],
-                path=cookie["path"],
-                expires=cookie["expires"],
-                http_only=cookie["httpOnly"],
-                secure=cookie["secure"],
-                same_site=cookie["sameSite"],
+                name=name,
+                value=cookie.get("value", ""),
+                domain=domain,
+                path=cookie.get("path", "/"),
+                expires=cookie.get("expires", -1),
+                http_only=cookie.get("httpOnly", False),
+                secure=cookie.get("secure", False),
+                same_site=cookie.get("sameSite", "None"),
                 timestamp=now,
             )
 
@@ -398,7 +401,7 @@ class BrowserSession:
             ratio = max_width / img.width
             img = img.resize(
                 (max_width, int(img.height * ratio)),
-                Image.LANCZOS,
+                Image.Resampling.LANCZOS,
             )
 
         # Convert to RGB (JPEG doesn't support alpha)
