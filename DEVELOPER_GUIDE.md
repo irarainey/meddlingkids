@@ -134,7 +134,8 @@ Page loaded successfully
    │
    ├── capture_current_cookies() → Intercept all cookies
    ├── capture_storage() → Read localStorage/sessionStorage
-   ├── take_optimized_screenshot() → JPEG screenshot (compressed)
+   ├── take_screenshot() → PNG screenshot (for AI vision)
+   │   └── optimize_screenshot_bytes() → Convert to JPEG (reuses PNG, no second capture)
    │
    └── send_event('screenshot', {
          screenshot,      // base64 JPEG
@@ -173,23 +174,24 @@ handle_overlays() loop (up to 5 iterations)
 ```
 All data captured
    │
-   ├── analyze_scripts(scripts)
-   │   │
-   │   ├── Group similar scripts (chunks, vendor bundles)
-│   ├── Match against tracking patterns (506 patterns from JSON)
-   │   ├── Match against benign patterns (51 patterns from JSON)
-   │   └── Batch LLM analysis for unknown scripts (10 per batch)
+   ├── ┌─────────────────── Run concurrently ──────────────────┐
+   │   │                                                       │
+   │   │  analyze_scripts(scripts)                              │
+   │   │   ├── Group similar scripts (chunks, vendor bundles)   │
+   │   │   ├── Match against tracking patterns (JSON)           │
+   │   │   ├── Match against benign patterns (JSON)             │
+   │   │   └── Batch LLM analysis for unknown scripts           │
+   │   │       (shared HTTP session, 10 per batch)              │
+   │   │                                                       │
+   │   │  run_tracking_analysis(cookies, storage, network, ...) │
+   │   │   ├── build_tracking_summary() → Data for LLM          │
+   │   │   ├── Main analysis prompt → Full markdown report      │
+   │   │   ├── calculate_privacy_score() → Deterministic 0-100  │
+   │   │   └── Summary findings prompt → Structured JSON        │
+   │   │                                                       │
+   │   └───────────────────────────────────────────────────────┘
    │
-   └── run_tracking_analysis(cookies, storage, network, scripts, url, consent)
-       │
-       ├── build_tracking_summary() → Aggregate data for LLM
-       │
-       ├── Main analysis prompt → Full markdown report
-       │
-       ├── calculate_privacy_score() → Deterministic 0-100 score
-       │   (based on cookies, trackers, fingerprinting, ads, social, consent)
-       │
-       └── Summary findings prompt → Structured JSON findings
+   └── Both tasks share a progress queue for merged SSE updates
 ```
 
 ### Phase 6: Complete
@@ -608,8 +610,13 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 ### Performance
 
 - Script analysis uses pattern matching first, LLM only for unknowns
+- Script patterns are pre-compiled to regex at load time (no re-compilation per match)
 - Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
 - Unknown scripts are analyzed in batches (up to 10 per LLM call) for efficiency
+- Script content fetches share a single HTTP session for connection reuse
+- Script analysis and tracking analysis run concurrently via `asyncio`
+- Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
+- Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance)
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
