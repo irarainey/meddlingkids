@@ -7,7 +7,7 @@ page loading, consent handling, and tracking analysis.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, cast
 from urllib.parse import urlparse
 
 from src.routes.analyze_helpers import (
@@ -24,6 +24,7 @@ from src.services.browser_session import BrowserSession
 from src.services.device_configs import DEVICE_CONFIGS
 from src.services.openai_client import get_deployment_name, validate_openai_config
 from src.services.script_analysis import analyze_scripts
+from src.types.browser import DeviceType
 from src.utils.errors import get_error_message
 from src.utils.logger import create_logger, start_log_file
 from src.utils.url import extract_domain
@@ -50,7 +51,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
     # Validate device type
     valid_devices = list(DEVICE_CONFIGS.keys())
-    device_type = device if device in valid_devices else "ipad"
+    device_type = cast(DeviceType, device if device in valid_devices else "ipad")
 
     if not url:
         yield format_sse_event("error", {"error": "URL is required"})
