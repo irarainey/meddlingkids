@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SummaryFinding, SummaryFindingType } from '../../types'
+import { getExclamation, getRiskLevel, getScoreClass } from '../../utils'
 
 /**
  * Tab panel displaying privacy summary with score and key findings.
@@ -10,42 +11,6 @@ defineProps<{
   /** Privacy score (0-100) */
   privacyScore: number | null
 }>()
-
-/**
- * Get the themed exclamation based on score.
- */
-function getExclamation(score: number | null): string {
-  const s = Number(score)
-  if (s >= 80) return 'Zoinks!'
-  if (s >= 60) return 'Jeepers!'
-  if (s >= 40) return 'Ruh-Roh!'
-  if (s >= 20) return 'Jinkies!'
-  return 'Scoob-tastic!'
-}
-
-/**
- * Get the risk level label based on score.
- */
-function getRiskLevel(score: number | null): string {
-  const s = Number(score)
-  if (s >= 80) return 'Critical Risk'
-  if (s >= 60) return 'High Risk'
-  if (s >= 40) return 'Moderate Risk'
-  if (s >= 20) return 'Low Risk'
-  return 'Very Low Risk'
-}
-
-/**
- * Get the CSS class for score styling based on risk level.
- */
-function getScoreClass(score: number | null): string {
-  const s = Number(score)
-  if (s >= 80) return 'score-critical'
-  if (s >= 60) return 'score-high'
-  if (s >= 40) return 'score-moderate'
-  if (s >= 20) return 'score-low'
-  return 'score-safe'
-}
 
 /**
  * Get the icon for a finding type.

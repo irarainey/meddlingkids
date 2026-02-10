@@ -3,7 +3,7 @@
  * Manages the state and logic for analyzing a URL's tracking behavior.
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import type {
   TrackedCookie,
   TrackedScript,
@@ -14,6 +14,8 @@ import type {
   TabId,
   SummaryFinding,
   ScriptGroup,
+  PageError,
+  ErrorDialogState,
 } from '../types'
 
 /**
@@ -70,19 +72,12 @@ export function useTrackingAnalysis() {
   const consentDetails = ref<ConsentDetails | null>(null)
   
   /** Page error information (access denied, server error, etc.) */
-  const pageError = ref<{
-    type: 'access-denied' | 'server-error' | null
-    message: string
-    statusCode: number | null
-  } | null>(null)
+  const pageError = ref<PageError | null>(null)
   /** Whether the page error dialog is visible */
   const showPageErrorDialog = ref(false)
 
   /** Generic error dialog state */
-  const errorDialog = ref<{
-    title: string
-    message: string
-  } | null>(null)
+  const errorDialog = ref<ErrorDialogState | null>(null)
   /** Whether the generic error dialog is visible */
   const showErrorDialog = ref(false)
 
@@ -95,6 +90,17 @@ export function useTrackingAnalysis() {
 
   /** Screenshot modal state */
   const selectedScreenshot = ref<ScreenshotModal | null>(null)
+
+  /** Active SSE connection (tracked for cleanup) */
+  let activeEventSource: EventSource | null = null
+
+  // Clean up SSE connection when the composable's owner component unmounts
+  onUnmounted(() => {
+    if (activeEventSource) {
+      activeEventSource.close()
+      activeEventSource = null
+    }
+  })
 
   // ============================================================================
   // Computed Properties
@@ -233,104 +239,136 @@ export function useTrackingAnalysis() {
       const eventSource = new EventSource(
         `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}`
       )
+      activeEventSource = eventSource
 
       eventSource.addEventListener('progress', (event) => {
-        const data = JSON.parse(event.data)
-        statusMessage.value = data.message
-        progressStep.value = data.step
-        progressPercent.value = data.progress
+        try {
+          const data = JSON.parse(event.data)
+          statusMessage.value = data.message
+          progressStep.value = data.step
+          progressPercent.value = data.progress
+        } catch {
+          console.error('[SSE] Failed to parse progress event')
+        }
       })
 
       eventSource.addEventListener('screenshot', (event) => {
-        const data = JSON.parse(event.data)
-        if (data.screenshot) {
-          screenshots.value.push(data.screenshot)
+        try {
+          const data = JSON.parse(event.data)
+          if (data.screenshot) {
+            screenshots.value.push(data.screenshot)
+          }
+          cookies.value = data.cookies || []
+          scripts.value = data.scripts || []
+          networkRequests.value = data.networkRequests || []
+          localStorage.value = data.localStorage || []
+          sessionStorage.value = data.sessionStorage || []
+        } catch {
+          console.error('[SSE] Failed to parse screenshot event')
         }
-        cookies.value = data.cookies || []
-        scripts.value = data.scripts || []
-        networkRequests.value = data.networkRequests || []
-        localStorage.value = data.localStorage || []
-        sessionStorage.value = data.sessionStorage || []
       })
 
       eventSource.addEventListener('pageError', (event) => {
-        const data = JSON.parse(event.data)
-        pageError.value = {
-          type: data.isAccessDenied ? 'access-denied' : 'server-error',
-          message: data.message || 'Failed to load page',
-          statusCode: data.statusCode,
+        try {
+          const data = JSON.parse(event.data)
+          pageError.value = {
+            type: data.isAccessDenied ? 'access-denied' : 'server-error',
+            message: data.message || 'Failed to load page',
+            statusCode: data.statusCode,
+          }
+          showPageErrorDialog.value = true
+          isLoading.value = false
+          eventSource.close()
+          activeEventSource = null
+        } catch {
+          console.error('[SSE] Failed to parse pageError event')
         }
-        showPageErrorDialog.value = true
-        isLoading.value = false
-        eventSource.close()
       })
 
       eventSource.addEventListener('consentDetails', (event) => {
-        const data = JSON.parse(event.data) as ConsentDetails
-        consentDetails.value = data
+        try {
+          const data = JSON.parse(event.data) as ConsentDetails
+          consentDetails.value = data
+        } catch {
+          console.error('[SSE] Failed to parse consentDetails event')
+        }
       })
 
       eventSource.addEventListener('complete', (event) => {
-        const data = JSON.parse(event.data)
+        try {
+          const data = JSON.parse(event.data)
 
-        if (data.summaryFindings) {
-          summaryFindings.value = data.summaryFindings
-        }
-        if (data.privacyScore !== null && data.privacyScore !== undefined) {
-          privacyScore.value = data.privacyScore
-          privacySummary.value = data.privacySummary || ''
-        }
-        if (data.analysis) {
-          analysisResult.value = data.analysis
-        }
-        if (data.analysisError) {
-          analysisError.value = data.analysisError
-        }
-        if (data.consentDetails) {
-          consentDetails.value = data.consentDetails
-        }
-        // Update scripts with analyzed descriptions if available
-        if (data.scripts) {
-          scripts.value = data.scripts
-        }
-        // Update script groups if available
-        if (data.scriptGroups) {
-          scriptGroups.value = data.scriptGroups
-        }
-
-        activeTab.value = data.summaryFindings?.length ? 'summary' : 'analysis'
-        statusMessage.value = data.message
-        progressPercent.value = 100
-        isComplete.value = true
-        
-        // Wait for the van animation to complete (500ms transition) before hiding progress and showing score dialog
-        setTimeout(() => {
-          isLoading.value = false
-          if (data.privacyScore !== null && data.privacyScore !== undefined) {
-            showScoreDialog.value = true
+          if (data.summaryFindings) {
+            summaryFindings.value = data.summaryFindings
           }
-        }, 700)
-        eventSource.close()
+          if (data.privacyScore !== null && data.privacyScore !== undefined) {
+            privacyScore.value = data.privacyScore
+            privacySummary.value = data.privacySummary || ''
+          }
+          if (data.analysis) {
+            analysisResult.value = data.analysis
+          }
+          if (data.analysisError) {
+            analysisError.value = data.analysisError
+          }
+          if (data.consentDetails) {
+            consentDetails.value = data.consentDetails
+          }
+          // Update scripts with analyzed descriptions if available
+          if (data.scripts) {
+            scripts.value = data.scripts
+          }
+          // Update script groups if available
+          if (data.scriptGroups) {
+            scriptGroups.value = data.scriptGroups
+          }
+
+          activeTab.value = data.summaryFindings?.length ? 'summary' : 'analysis'
+          statusMessage.value = data.message
+          progressPercent.value = 100
+          isComplete.value = true
+          
+          // Wait for the van animation to complete (500ms CSS transition + buffer)
+          // before hiding progress and showing score dialog
+          setTimeout(() => {
+            isLoading.value = false
+            if (data.privacyScore !== null && data.privacyScore !== undefined) {
+              showScoreDialog.value = true
+            }
+          }, 700)
+          eventSource.close()
+          activeEventSource = null
+        } catch {
+          console.error('[SSE] Failed to parse complete event')
+        }
       })
 
       eventSource.addEventListener('error', (event) => {
         if (event instanceof MessageEvent) {
-          const data = JSON.parse(event.data)
-          const error = data.error || 'An error occurred'
-          
-          // Check if this is a configuration error
-          if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
-            errorDialog.value = {
-              title: 'Configuration Error',
-              message: error,
+          try {
+            const data = JSON.parse(event.data)
+            const error = data.error || 'An error occurred'
+            
+            // Check if this is a configuration error
+            if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
+              errorDialog.value = {
+                title: 'Configuration Error',
+                message: error,
+              }
+            } else {
+              errorDialog.value = {
+                title: 'Error',
+                message: error,
+              }
             }
-          } else {
+            showErrorDialog.value = true
+          } catch {
             errorDialog.value = {
               title: 'Error',
-              message: error,
+              message: 'Received an invalid error response from the server.',
             }
+            showErrorDialog.value = true
           }
-          showErrorDialog.value = true
         } else {
           errorDialog.value = {
             title: 'Connection Error',
@@ -340,6 +378,7 @@ export function useTrackingAnalysis() {
         }
         isLoading.value = false
         eventSource.close()
+        activeEventSource = null
       })
 
       eventSource.onerror = () => {
@@ -353,6 +392,7 @@ export function useTrackingAnalysis() {
         showErrorDialog.value = true
         isLoading.value = false
         eventSource.close()
+        activeEventSource = null
       }
     } catch (error) {
       errorDialog.value = {

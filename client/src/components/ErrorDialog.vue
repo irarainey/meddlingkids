@@ -19,15 +19,15 @@ const emit = defineEmits<{
 
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="dialog-overlay" @click.self="emit('close')">
+    <div v-if="isOpen" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="error-dialog-title" @click.self="emit('close')" @keydown.escape="emit('close')">
       <div class="dialog-content">
-        <button class="dialog-close" @click="emit('close')">&times;</button>
+        <button class="dialog-close" aria-label="Close dialog" @click="emit('close')">&times;</button>
         
         <div class="error-icon">
           <span>⚠️</span>
         </div>
         
-        <h2 class="error-title">{{ title || 'Error' }}</h2>
+        <h2 id="error-dialog-title" class="error-title">{{ title || 'Error' }}</h2>
         
         <p class="error-message">{{ message }}</p>
         

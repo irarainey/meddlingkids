@@ -151,6 +151,23 @@ export interface ScreenshotModal {
 }
 
 /**
+ * Page-level error information (access denied, server error, etc.)
+ */
+export interface PageError {
+  type: 'access-denied' | 'server-error' | null
+  message: string
+  statusCode: number | null
+}
+
+/**
+ * Generic error dialog state.
+ */
+export interface ErrorDialogState {
+  title: string
+  message: string
+}
+
+/**
  * Tab identifiers for the main content area.
  */
 export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'summary'

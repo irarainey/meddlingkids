@@ -2,4 +2,10 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 
-createApp(App).mount('#app')
+const app = createApp(App)
+
+app.config.errorHandler = (err, instance, info) => {
+  console.error(`[Vue Error] ${info}:`, err)
+}
+
+app.mount('#app')

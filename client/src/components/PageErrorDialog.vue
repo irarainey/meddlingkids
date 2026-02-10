@@ -21,16 +21,16 @@ const emit = defineEmits<{
 
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="dialog-overlay" @click.self="emit('close')">
+    <div v-if="isOpen" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="page-error-title" @click.self="emit('close')" @keydown.escape="emit('close')">
       <div class="dialog-content">
-        <button class="dialog-close" @click="emit('close')">&times;</button>
+        <button class="dialog-close" aria-label="Close dialog" @click="emit('close')">&times;</button>
         
         <div class="error-icon" :class="errorType">
           <span v-if="errorType === 'access-denied'">🚫</span>
           <span v-else>⚠️</span>
         </div>
         
-        <h2 class="error-title">
+        <h2 id="page-error-title" class="error-title">
           {{ errorType === 'access-denied' ? 'Access Denied' : 'Page Load Error' }}
         </h2>
         

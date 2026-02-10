@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ConsentDetails, ConsentPartner } from '../../types'
 
 /**
  * Tab panel displaying consent dialog details.
  */
-defineProps<{
+const props = defineProps<{
   /** Consent details extracted from the page */
   consentDetails: ConsentDetails | null
 }>()
@@ -68,16 +69,15 @@ function sortPartnersByRisk(partners: ConsentPartner[]): ConsentPartner[] {
   })
 }
 
-/**
- * Count partners by risk level.
- */
-function countByRisk(partners: ConsentPartner[]): { critical: number; high: number; medium: number; low: number; unknown: number } {
+/** Partner counts by risk level (computed once, not per-render). */
+const riskCounts = computed(() => {
+  const partners = props.consentDetails?.partners ?? []
   return partners.reduce((acc, p) => {
     const level = p.riskLevel ?? 'unknown'
     acc[level] = (acc[level] || 0) + 1
     return acc
   }, { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 })
-}
+})
 </script>
 
 <template>
@@ -125,20 +125,20 @@ function countByRisk(partners: ConsentPartner[]): { critical: number; high: numb
         
         <!-- Risk summary -->
         <div class="risk-summary">
-          <span v-if="countByRisk(consentDetails!.partners).critical > 0" class="risk-count risk-critical">
-            🚨 {{ countByRisk(consentDetails!.partners).critical }} Critical
+          <span v-if="riskCounts.critical > 0" class="risk-count risk-critical">
+            🚨 {{ riskCounts.critical }} Critical
           </span>
-          <span v-if="countByRisk(consentDetails!.partners).high > 0" class="risk-count risk-high">
-            ⚠️ {{ countByRisk(consentDetails!.partners).high }} High Risk
+          <span v-if="riskCounts.high > 0" class="risk-count risk-high">
+            ⚠️ {{ riskCounts.high }} High Risk
           </span>
-          <span v-if="countByRisk(consentDetails!.partners).medium > 0" class="risk-count risk-medium">
-            📊 {{ countByRisk(consentDetails!.partners).medium }} Medium
+          <span v-if="riskCounts.medium > 0" class="risk-count risk-medium">
+            📊 {{ riskCounts.medium }} Medium
           </span>
-          <span v-if="countByRisk(consentDetails!.partners).low > 0" class="risk-count risk-low">
-            ✅ {{ countByRisk(consentDetails!.partners).low }} Low Risk
+          <span v-if="riskCounts.low > 0" class="risk-count risk-low">
+            ✅ {{ riskCounts.low }} Low Risk
           </span>
-          <span v-if="countByRisk(consentDetails!.partners).unknown > 0" class="risk-count risk-unknown">
-            ❓ {{ countByRisk(consentDetails!.partners).unknown }} Unknown
+          <span v-if="riskCounts.unknown > 0" class="risk-count risk-unknown">
+            ❓ {{ riskCounts.unknown }} Unknown
           </span>
         </div>
 

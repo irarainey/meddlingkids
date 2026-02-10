@@ -42,10 +42,10 @@ function getLabel(index: number): string {
 
   <!-- Screenshot Modal Overlay -->
   <Teleport to="body">
-    <div v-if="selectedScreenshot" class="modal-overlay" @click.self="emit('closeModal')">
+    <div v-if="selectedScreenshot" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="screenshot-modal-title" @click.self="emit('closeModal')" @keydown.escape="emit('closeModal')">
       <div class="modal-content">
-        <button class="modal-close" @click="emit('closeModal')">&times;</button>
-        <h3 class="modal-title">{{ selectedScreenshot.label }}</h3>
+        <button class="modal-close" aria-label="Close modal" @click="emit('closeModal')">&times;</button>
+        <h3 id="screenshot-modal-title" class="modal-title">{{ selectedScreenshot.label }}</h3>
         <div class="modal-image-container">
           <img :src="selectedScreenshot.src" :alt="selectedScreenshot.label" class="modal-image" />
         </div>

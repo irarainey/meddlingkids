@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getExclamation, getRiskLevel, getScoreClass } from '../utils'
+
 /**
  * Score dialog showing privacy risk assessment with themed exclamation.
  */
@@ -15,48 +17,15 @@ const emit = defineEmits<{
   /** Emitted when the dialog should close */
   close: []
 }>()
-
-/**
- * Get the themed exclamation based on score.
- */
-function getExclamation(score: number): string {
-  if (score >= 80) return 'Zoinks!'
-  if (score >= 60) return 'Jeepers!'
-  if (score >= 40) return 'Ruh-Roh!'
-  if (score >= 20) return 'Jinkies!'
-  return 'Scoob-tastic!'
-}
-
-/**
- * Get the risk level label based on score.
- */
-function getRiskLevel(score: number): string {
-  if (score >= 80) return 'Critical Risk'
-  if (score >= 60) return 'High Risk'
-  if (score >= 40) return 'Moderate Risk'
-  if (score >= 20) return 'Low Risk'
-  return 'Very Low Risk'
-}
-
-/**
- * Get the CSS class for score styling based on risk level.
- */
-function getScoreClass(score: number): string {
-  if (score >= 80) return 'score-critical'
-  if (score >= 60) return 'score-high'
-  if (score >= 40) return 'score-moderate'
-  if (score >= 20) return 'score-low'
-  return 'score-safe'
-}
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="dialog-overlay" @click.self="emit('close')">
+    <div v-if="isOpen" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="score-dialog-title" @click.self="emit('close')" @keydown.escape="emit('close')">
       <div class="dialog-content">
-        <button class="dialog-close" @click="emit('close')">&times;</button>
+        <button class="dialog-close" aria-label="Close dialog" @click="emit('close')">&times;</button>
         
-        <div class="exclamation" :class="getScoreClass(score)">
+        <div id="score-dialog-title" class="exclamation" :class="getScoreClass(score)">
           {{ getExclamation(score) }}
         </div>
         

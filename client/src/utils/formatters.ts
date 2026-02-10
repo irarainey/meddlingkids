@@ -2,6 +2,59 @@
  * @fileoverview Formatting utility functions for display.
  */
 
+// ============================================================================
+// Score Display Utilities
+// ============================================================================
+
+/**
+ * Get a themed exclamation phrase based on privacy risk score.
+ *
+ * @param score - Privacy risk score (0-100), or null
+ * @returns Scooby-Doo themed exclamation
+ */
+export function getExclamation(score: number | null): string {
+  const s = Number(score)
+  if (s >= 80) return 'Zoinks!'
+  if (s >= 60) return 'Jeepers!'
+  if (s >= 40) return 'Ruh-Roh!'
+  if (s >= 20) return 'Jinkies!'
+  return 'Scoob-tastic!'
+}
+
+/**
+ * Get the risk level label based on privacy score.
+ *
+ * @param score - Privacy risk score (0-100), or null
+ * @returns Human-readable risk level
+ */
+export function getRiskLevel(score: number | null): string {
+  const s = Number(score)
+  if (s >= 80) return 'Critical Risk'
+  if (s >= 60) return 'High Risk'
+  if (s >= 40) return 'Moderate Risk'
+  if (s >= 20) return 'Low Risk'
+  return 'Very Low Risk'
+}
+
+/**
+ * Get the CSS class for score styling based on risk level.
+ *
+ * @param score - Privacy risk score (0-100), or null
+ * @returns CSS class name for theming
+ */
+export function getScoreClass(score: number | null): string {
+  const s = Number(score)
+  if (s >= 80) return 'score-critical'
+  if (s >= 60) return 'score-high'
+  if (s >= 40) return 'score-moderate'
+  if (s >= 20) return 'score-low'
+  return 'score-safe'
+}
+
+// ============================================================================
+// Data Formatting Utilities
+// ============================================================================
+
 /**
  * Format a cookie expiry timestamp for display.
  *
@@ -50,8 +103,13 @@ export function getResourceTypeIcon(type: string): string {
  * Convert simple markdown to HTML for display.
  * Handles headers, bold, italic, code blocks, lists, and line breaks.
  *
+ * **Security note:** This output is used with `v-html` in AnalysisTab.
+ * HTML entities from the source text are escaped (`&`, `<`, `>`) before
+ * any markup tags are generated, mitigating XSS from raw AI output.
+ * Only whitelisted structural HTML tags are produced.
+ *
  * @param text - Markdown text to convert
- * @returns HTML string
+ * @returns HTML string (safe for v-html when input is server-controlled)
  */
 export function formatMarkdown(text: string): string {
   // Normalize whitespace: collapse multiple blank lines between list items
