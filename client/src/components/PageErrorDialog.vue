@@ -6,7 +6,7 @@ defineProps<{
   /** Whether the dialog is visible */
   isOpen: boolean
   /** Error type */
-  errorType: 'access-denied' | 'server-error' | null
+  errorType: 'access-denied' | 'overlay-blocked' | 'server-error' | null
   /** Error message */
   message: string
   /** HTTP status code if available */
@@ -27,11 +27,14 @@ const emit = defineEmits<{
         
         <div class="error-icon" :class="errorType">
           <span v-if="errorType === 'access-denied'">🚫</span>
+          <span v-else-if="errorType === 'overlay-blocked'">🪧</span>
           <span v-else>⚠️</span>
         </div>
         
         <h2 id="page-error-title" class="error-title">
-          {{ errorType === 'access-denied' ? 'Access Denied' : 'Page Load Error' }}
+          <template v-if="errorType === 'access-denied'">Access Denied</template>
+          <template v-else-if="errorType === 'overlay-blocked'">Overlay Blocked Page</template>
+          <template v-else>Page Load Error</template>
         </h2>
         
         <p class="error-message">{{ message }}</p>
@@ -51,6 +54,17 @@ const emit = defineEmits<{
               <li>Geo-restrictions</li>
             </ul>
             <p class="tip">💡 <strong>Tip:</strong> Try a different device type from the dropdown, or try again later.</p>
+          </template>
+          <template v-else-if="errorType === 'overlay-blocked'">
+            <p>A <strong>dialog or overlay</strong> was detected but could not be dismissed automatically.</p>
+            <p>Common causes:</p>
+            <ul>
+              <li>Cookie consent banners with non-standard buttons</li>
+              <li>Sign-in walls or subscription prompts</li>
+              <li>Age verification dialogs</li>
+              <li>Overlays inside iframes or shadow DOM</li>
+            </ul>
+            <p class="tip">💡 <strong>Tip:</strong> Try a different device type — some sites show simpler overlays on mobile.</p>
           </template>
           <template v-else>
             <p>The server returned an error when trying to load this page.</p>

@@ -87,8 +87,8 @@ class TrackingAnalysisAgent(BaseAgent):
 
     agent_name = AGENT_TRACKING_ANALYSIS
     instructions = _INSTRUCTIONS
-    max_tokens = 3000
-    max_retries = 3
+    max_tokens = 4096
+    max_retries = 5
     response_model = None  # Free-form markdown output
 
     async def analyze(

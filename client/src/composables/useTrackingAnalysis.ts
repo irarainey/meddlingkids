@@ -197,11 +197,19 @@ export function useTrackingAnalysis() {
    * Open the screenshot modal with a specific screenshot.
    *
    * @param src - Base64 data URL of the screenshot
-   * @param index - Index of the screenshot (0=Initial, 1=After Consent, 2=Final)
+   * @param index - Index of the screenshot in the gallery
    */
   function openScreenshotModal(src: string, index: number) {
-    const labels = ['Initial', 'After Consent', 'Final']
-    selectedScreenshot.value = { src, label: labels[index] || `Stage ${index + 1}` }
+    const total = screenshots.value.length
+    let label: string
+    if (index === 0) {
+      label = 'Initial'
+    } else if (index === total - 1) {
+      label = 'Before Analysis'
+    } else {
+      label = `After Overlay ${index}`
+    }
+    selectedScreenshot.value = { src, label }
   }
 
   /**
@@ -272,7 +280,7 @@ export function useTrackingAnalysis() {
         try {
           const data = JSON.parse(event.data)
           pageError.value = {
-            type: data.isAccessDenied ? 'access-denied' : 'server-error',
+            type: data.isAccessDenied ? 'access-denied' : data.isOverlayBlocked ? 'overlay-blocked' : 'server-error',
             message: data.message || 'Failed to load page',
             statusCode: data.statusCode,
           }

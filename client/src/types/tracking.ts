@@ -154,7 +154,7 @@ export interface ScreenshotModal {
  * Page-level error information (access denied, server error, etc.)
  */
 export interface PageError {
-  type: 'access-denied' | 'server-error' | null
+  type: 'access-denied' | 'overlay-blocked' | 'server-error' | null
   message: string
   statusCode: number | null
 }

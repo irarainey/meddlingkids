@@ -47,59 +47,80 @@ class _ConsentDetectionResponse(pydantic.BaseModel):
 
 _INSTRUCTIONS = """\
 You are an expert at detecting overlays, banners, and dialogs \
-on websites that require user DECISION or ACTION before full \
-access to content.
+on websites that block access to content until the user takes \
+an action.
 
-Your task is to analyze the screenshot and HTML to find \
-elements that REQUIRE user interaction to:
-- Accept or reject cookies/tracking
-- Dismiss a blocking popup/modal
-- Continue past a gate or wall
-- Make a choice (accept, decline, sign in, etc.)
+You will receive:
+1. A **screenshot** of the page as it currently appears
+2. **HTML snippets** extracted from the page
 
-Look for these types (check the entire page, including \
-corners, top, bottom, and center):
+Your task is to determine whether a blocking overlay is \
+present and, if so, identify the EXACT button to click to \
+dismiss or accept it.
 
-1. **Cookie/Consent Banners that ASK for consent**:
-   - Accept buttons: "Accept All", "Accept", "Allow", \
-"OK", "Agree", "I Accept"
-   - These request a DECISION from the user
+# What to look for
 
-2. **Sign-in / Account Prompts**:
-   - Look for DISMISS options: "Maybe Later", "Not Now", \
-"Skip", "No Thanks", "Close", "X"
-   - DO NOT click sign-in/register buttons — find the \
-dismiss/skip option
+Scan the ENTIRE screenshot — top, bottom, corners, and \
+center — for any of these overlay types:
 
-3. **Newsletter / Email Signup Popups**:
-   - Dismiss: "No Thanks", "Close", "X", "Maybe Later", \
-"Skip"
+1. **Cookie / Consent Banners** — ask the user to accept \
+or reject tracking. Look for buttons labelled "Accept", \
+"Accept All", "Allow", "OK", "Agree", "I Accept", \
+"Accept additional cookies", etc.
 
-4. **Paywalls / Subscription Walls**:
-   - Look for: "Continue reading", "Read for free", \
-"Close", "X"
+2. **Sign-in / Account Prompts** — block content until \
+the user logs in. Find the DISMISS option ("Maybe Later", \
+"Not Now", "Skip", "No Thanks", "Close", "X"). \
+NEVER select the sign-in or register button.
 
-5. **Age Verification Gates**:
-   - "I am over 18", "Yes", "Enter", "Confirm"
+3. **Newsletter / Email Signup Popups** — dismiss with \
+"No Thanks", "Close", "X", "Maybe Later", "Skip".
 
-IGNORE these (return found=false):
-- "Thank you" or confirmation banners
-- Informational banners with only a close/X button and \
-no accept/reject choice
-- Cookie preference confirmations
-- Success messages — "Your preferences have been saved"
+4. **Paywalls / Subscription Walls** — look for \
+"Continue reading", "Read for free", "Close", "X".
+
+5. **Age Verification Gates** — "I am over 18", "Yes", \
+"Enter", "Confirm".
+
+# What to IGNORE (return found=false)
+
+- Confirmation messages ("Your preferences have been saved")
+- "Thank you" banners that need no action
 - Small notification toasts that auto-dismiss
+- Informational banners that do not block content
 
-The key distinction: Does the banner REQUIRE a user \
-DECISION (accept/reject/choose), or is it just \
-INFORMATIONAL (thank you/confirmation)?
+The key question: does this overlay BLOCK access to the \
+page until the user makes a choice?
 
-For the selector, prefer:
-1. Unique IDs: #accept-cookies
-2. Data attributes: [data-action="accept"]
-3. ARIA labels: [aria-label="Accept cookies"]
-4. Button with specific text: button:has-text("Accept All")
-5. Class-based selectors as last resort
+# How to choose the selector
+
+The selector MUST be a **standard CSS selector** that can \
+be passed directly to `document.querySelector()`. \
+DO NOT use pseudo-selectors like `:has-text()` or \
+`:contains()` — these are not valid CSS.
+
+Selector priority (use the first one that uniquely \
+identifies the button):
+
+1. **ID** — `#accept-cookies`, `#onetrust-accept-btn-handler`
+2. **data attribute** — `[data-action="accept"]`, \
+`[data-testid="accept-button"]`
+3. **ARIA label** — `[aria-label="Accept cookies"]`, \
+`button[aria-label="Accept additional cookies"]`
+4. **Unique class** — `button.accept-btn`, `.sp_choice_type_11`
+5. **Combination** — `div.consent-banner button.primary`
+
+If none of the above can uniquely identify the button, \
+set `selector` to null and put the EXACT visible button \
+text in `buttonText` — the click handler will fall back \
+to text matching.
+
+# buttonText field
+
+ALWAYS set `buttonText` to the EXACT text shown on the \
+button in the screenshot (e.g. "Accept additional cookies", \
+"I Accept", "Accept All"). This is used as a fallback if \
+the CSS selector fails.
 
 Return ONLY a JSON object matching the required schema."""
 
@@ -116,7 +137,7 @@ class ConsentDetectionAgent(BaseAgent):
     agent_name = AGENT_CONSENT_DETECTION
     instructions = _INSTRUCTIONS
     max_tokens = 500
-    max_retries = 3
+    max_retries = 5
     response_model = _ConsentDetectionResponse
 
     async def detect(

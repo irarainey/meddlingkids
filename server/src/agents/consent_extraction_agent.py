@@ -100,8 +100,8 @@ class ConsentExtractionAgent(BaseAgent):
 
     agent_name = AGENT_CONSENT_EXTRACTION
     instructions = _INSTRUCTIONS
-    max_tokens = 4000
-    max_retries = 3
+    max_tokens = 4096
+    max_retries = 5
     response_model = _ConsentExtractionResponse
 
     async def extract(

@@ -50,8 +50,8 @@ class BaseAgent:
 
     agent_name: str = "BaseAgent"
     instructions: str = ""
-    max_tokens: int = 3000
-    max_retries: int = 3
+    max_tokens: int = 4096
+    max_retries: int = 5
     response_model: type[pydantic.BaseModel] | None = None
 
     def __init__(self) -> None:

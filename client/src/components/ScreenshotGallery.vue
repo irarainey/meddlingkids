@@ -4,7 +4,7 @@ import type { ScreenshotModal } from '../types'
 /**
  * Screenshot gallery with thumbnails and fullscreen modal.
  */
-defineProps<{
+const props = defineProps<{
   /** Array of base64 screenshot data URLs */
   screenshots: string[]
   /** Currently selected screenshot for modal display */
@@ -22,7 +22,10 @@ const emit = defineEmits<{
  * Get label for screenshot by index.
  */
 function getLabel(index: number): string {
-  return String(index + 1)
+  const total = props.screenshots.length
+  if (index === 0) return 'Initial'
+  if (index === total - 1) return 'Before Analysis'
+  return `After Overlay ${index}`
 }
 </script>
 
@@ -35,7 +38,7 @@ function getLabel(index: number): string {
       class="screenshot-thumb"
       @click="emit('openModal', shot, index)"
     >
-      <img :src="shot" :alt="'Stage ' + (index + 1)" />
+      <img :src="shot" :alt="getLabel(index)" />
       <span class="screenshot-label">{{ getLabel(index) }}</span>
     </div>
   </div>

@@ -77,7 +77,7 @@ class SummaryFindingsAgent(BaseAgent):
     agent_name = AGENT_SUMMARY_FINDINGS
     instructions = _INSTRUCTIONS
     max_tokens = 500
-    max_retries = 3
+    max_retries = 5
     response_model = _SummaryFindingsResponse
 
     async def summarise(

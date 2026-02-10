@@ -216,6 +216,33 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         log.end_timer("overlay-handling", "Overlay handling complete")
         log.info("Overlay handling result", {"overlaysFound": overlay_count, "hasConsentDetails": consent_details is not None})
 
+        # Capture a fresh screenshot after overlay handling.
+        yield analyze_helpers.format_progress_event("post-overlay-screenshot", "Capturing final page state...", 72)
+        screenshot = await session.take_screenshot(full_page=False)
+        optimized_screenshot = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
+        await session.capture_current_cookies()
+        storage = await session.capture_storage()
+
+        yield analyze_helpers.format_sse_event("screenshot", {
+            "screenshot": optimized_screenshot,
+            "cookies": [analyze_helpers.to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+            "scripts": [analyze_helpers.to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+            "networkRequests": [analyze_helpers.to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+            "localStorage": [analyze_helpers.to_camel_case_dict(i) for i in storage["local_storage"]],
+            "sessionStorage": [analyze_helpers.to_camel_case_dict(i) for i in storage["session_storage"]],
+        })
+
+        # Abort if an overlay could not be dismissed — the page is blocked.
+        if page and overlay_result.failed:
+            log.error("Overlay dismissal failed, aborting analysis", {"reason": overlay_result.failure_message})
+            yield analyze_helpers.format_sse_event("pageError", {
+                "type": "overlay-blocked",
+                "message": overlay_result.failure_message,
+                "isOverlayBlocked": True,
+            })
+            yield analyze_helpers.format_progress_event("overlay-blocked", "Could not dismiss page overlay", 100)
+            return
+
         # ====================================================================
         # Phase 5: AI Analysis
         # ====================================================================
@@ -265,7 +292,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                         analyze_helpers.format_progress_event("script-analysis", detail or "All scripts identified", 82)
                     )
                 else:
-                    progress = 79 + int((current / total) * 4)
+                    progress = 79 + int((current / total) * 11)
                     progress_queue.put_nowait(
                         analyze_helpers.format_progress_event("script-analysis", detail or f"Analyzed {current}/{total} scripts...", progress)
                     )
@@ -286,9 +313,6 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         async def run_streaming_analysis() -> None:
             """Stream tracking analysis and push chunks + progress to queue."""
             try:
-                progress_queue.put_nowait(
-                    analyze_helpers.format_progress_event("ai-analyzing", "Generating privacy report...", 84)
-                )
                 async for chunk in analysis.stream_tracking_analysis(
                     final_cookies,
                     storage["local_storage"],

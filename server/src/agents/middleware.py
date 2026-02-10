@@ -75,7 +75,7 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
 
 # ── Retry constants ────────────────────────────────────────────────
 
-_DEFAULT_MAX_RETRIES = 3
+_DEFAULT_MAX_RETRIES = 5
 _DEFAULT_INITIAL_DELAY_MS = 1000
 _DEFAULT_MAX_DELAY_MS = 30_000
 _BACKOFF_MULTIPLIER = 2.0

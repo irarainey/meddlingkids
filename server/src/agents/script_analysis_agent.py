@@ -50,7 +50,7 @@ class ScriptAnalysisAgent(BaseAgent):
     agent_name = AGENT_SCRIPT_ANALYSIS
     instructions = _INSTRUCTIONS
     max_tokens = 200
-    max_retries = 2
+    max_retries = 5
     response_model = _ScriptResult
 
     async def analyze_one(

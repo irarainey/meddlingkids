@@ -114,6 +114,8 @@ class OverlayHandlingResult(pydantic.BaseModel):
         default_factory=list
     )
     consent_details: consent.ConsentDetails | None = None
+    failed: bool = False
+    failure_message: str = ""
     final_screenshot: bytes = b""
     final_storage: dict[str, list[tracking_data.StorageItem]] = pydantic.Field(
         default_factory=lambda: {
@@ -183,58 +185,30 @@ async def handle_overlays(
         )
         result.dismissed_overlays.append(consent_detection)
 
-        # Extract consent details BEFORE accepting (first cookie consent only)
-        if consent_detection.overlay_type == "cookie-consent" and not result.consent_details:
-            log.start_timer("consent-extraction")
-            yield format_progress_event("consent-extract", "Extracting consent details...", progress_base + 1)
-            result.consent_details = await consent_extraction.extract_consent_details(page, screenshot)
-            log.end_timer("consent-extraction", "Consent details extracted")
-            log.info("Consent details", {
-                "categories": len(result.consent_details.categories),
-                "partners": len(result.consent_details.partners),
-                "purposes": len(result.consent_details.purposes),
-            })
+        # Whether this is the first cookie-consent overlay (used for
+        # post-click extraction).  We remember the pre-click screenshot
+        # so extraction can run AFTER the click succeeds.
+        is_first_cookie_consent = (
+            consent_detection.overlay_type == "cookie-consent"
+            and not result.consent_details
+        )
+        pre_click_screenshot = screenshot if is_first_cookie_consent else None
 
-            # Enrich partners with risk classification
-            if result.consent_details.partners:
-                log.start_timer("partner-classification")
-                yield format_progress_event("partner-classify", "Analyzing partner risk levels...", progress_base + 2)
-
-                risk_summary = partner_classification.get_partner_risk_summary(
-                    result.consent_details.partners
-                )
-                log.info("Partner risk summary", {
-                    "critical": risk_summary.critical_count,
-                    "high": risk_summary.high_count,
-                    "totalRisk": risk_summary.total_risk_score,
-                })
-
-                for partner in result.consent_details.partners:
-                    classification = partner_classification.classify_partner_by_pattern_sync(partner)
-                    if classification:
-                        partner.risk_level = classification.risk_level
-                        partner.risk_category = classification.category
-                        partner.risk_score = classification.risk_score
-                        partner.concerns = classification.concerns
-                    else:
-                        partner.risk_level = "unknown"
-                        partner.risk_score = 3
-
-                log.end_timer("partner-classification", "Partner classification complete")
-
-            yield format_sse_event("consentDetails",
-                serialize_consent_details(result.consent_details))
-
-        # Try to click the dismiss/accept button
+        # -----------------------------------------------------------
+        # Click the dismiss/accept button FIRST — before extraction.
+        # Extraction can take a very long time (LLM vision call) and
+        # some consent banners auto-dismiss after a timeout.  Clicking
+        # immediately keeps the page in a usable state.
+        # -----------------------------------------------------------
         try:
             log.start_timer(f"overlay-click-{overlay_count}")
-            yield format_progress_event(f"overlay-{overlay_count}-click", "Dismissing overlay...", progress_base + 3)
+            yield format_progress_event(f"overlay-{overlay_count}-click", "Dismissing overlay...", progress_base + 1)
 
             clicked = await consent_click.try_click_consent_button(page, consent_detection.selector, consent_detection.button_text)
             log.end_timer(f"overlay-click-{overlay_count}", "Click succeeded" if clicked else "Click failed")
 
             if clicked:
-                yield format_progress_event(f"overlay-{overlay_count}-wait", "Waiting for page to update...", progress_base + 4)
+                yield format_progress_event(f"overlay-{overlay_count}-wait", "Waiting for page to update...", progress_base + 2)
 
                 # Wait for DOM to settle (race timeout vs load state)
                 done, pending = await asyncio.wait(
@@ -251,7 +225,7 @@ async def handle_overlays(
                     except (asyncio.CancelledError, Exception):
                         pass
 
-                yield format_progress_event(f"overlay-{overlay_count}-capture", "Capturing page state...", progress_base + 5)
+                yield format_progress_event(f"overlay-{overlay_count}-capture", "Capturing page state...", progress_base + 3)
                 await session.capture_current_cookies()
                 storage = await session.capture_storage()
                 screenshot = await session.take_screenshot(full_page=False)
@@ -282,8 +256,59 @@ async def handle_overlays(
                     },
                     "overlayNumber": overlay_count,
                 })
+
+                # -------------------------------------------------------
+                # Extract consent details AFTER the click.  Uses the
+                # pre-click screenshot so we still see the consent dialog.
+                # -------------------------------------------------------
+                if is_first_cookie_consent and pre_click_screenshot is not None:
+                    log.start_timer("consent-extraction")
+                    yield format_progress_event("consent-extract", "Extracting consent details...", progress_base + 4)
+                    result.consent_details = await consent_extraction.extract_consent_details(page, pre_click_screenshot)
+                    log.end_timer("consent-extraction", "Consent details extracted")
+                    log.info("Consent details", {
+                        "categories": len(result.consent_details.categories),
+                        "partners": len(result.consent_details.partners),
+                        "purposes": len(result.consent_details.purposes),
+                    })
+
+                    # Enrich partners with risk classification
+                    if result.consent_details.partners:
+                        log.start_timer("partner-classification")
+                        yield format_progress_event("partner-classify", "Analyzing partner risk levels...", progress_base + 5)
+
+                        risk_summary = partner_classification.get_partner_risk_summary(
+                            result.consent_details.partners
+                        )
+                        log.info("Partner risk summary", {
+                            "critical": risk_summary.critical_count,
+                            "high": risk_summary.high_count,
+                            "totalRisk": risk_summary.total_risk_score,
+                        })
+
+                        for partner in result.consent_details.partners:
+                            classification = partner_classification.classify_partner_by_pattern_sync(partner)
+                            if classification:
+                                partner.risk_level = classification.risk_level
+                                partner.risk_category = classification.category
+                                partner.risk_score = classification.risk_score
+                                partner.concerns = classification.concerns
+                            else:
+                                partner.risk_level = "unknown"
+                                partner.risk_score = 3
+
+                        log.end_timer("partner-classification", "Partner classification complete")
+
+                    yield format_sse_event("consentDetails",
+                        serialize_consent_details(result.consent_details))
             else:
-                log.warn(f"Failed to click overlay {overlay_count}, stopping overlay detection")
+                msg = (
+                    f"Failed to dismiss {consent_detection.overlay_type or 'overlay'} "
+                    f"(button: '{consent_detection.button_text or consent_detection.selector}')"
+                )
+                log.error(f"Failed to click overlay {overlay_count}, aborting analysis")
+                result.failed = True
+                result.failure_message = msg
                 yield format_sse_event("consent", {
                     "detected": True,
                     "clicked": False,
@@ -295,12 +320,18 @@ async def handle_overlays(
                         "confidence": consent_detection.confidence,
                         "reason": consent_detection.reason,
                     },
-                    "error": "Failed to click dismiss button",
+                    "error": msg,
                     "overlayNumber": overlay_count,
                 })
                 break
         except Exception as click_error:
+            msg = (
+                f"Failed to dismiss {consent_detection.overlay_type or 'overlay'}: "
+                f"{click_error}"
+            )
             log.error(f"Failed to click overlay {overlay_count}", {"error": str(click_error)})
+            result.failed = True
+            result.failure_message = msg
             yield format_sse_event("consent", {
                 "detected": True,
                 "clicked": False,
@@ -312,7 +343,7 @@ async def handle_overlays(
                     "confidence": consent_detection.confidence,
                     "reason": consent_detection.reason,
                 },
-                "error": "Failed to click dismiss button",
+                "error": msg,
                 "overlayNumber": overlay_count,
             })
             break
