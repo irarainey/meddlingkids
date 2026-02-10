@@ -13,31 +13,14 @@ from __future__ import annotations
 
 import re
 import time
-from urllib.parse import urlparse
+from urllib import parse
 
-from src.data.loader import get_tracking_scripts
-from src.services.partner_classification import get_partner_risk_summary
-from src.services.tracker_patterns import (
-    ADVERTISING_TRACKERS,
-    ANALYTICS_TRACKERS,
-    FINGERPRINT_COOKIE_PATTERNS,
-    HIGH_RISK_TRACKERS,
-    SENSITIVE_PURPOSES,
-    SOCIAL_MEDIA_TRACKERS,
-    TRACKING_COOKIE_PATTERNS,
-    TRACKING_STORAGE_PATTERNS,
-)
-from src.types.analysis import CategoryScore, ScoreBreakdown
-from src.types.consent import ConsentDetails
-from src.types.tracking_data import (
-    NetworkRequest,
-    StorageItem,
-    TrackedCookie,
-    TrackedScript,
-)
-from src.utils.logger import create_logger
+from src.data import loader
+from src.services import partner_classification, tracker_patterns
+from src.types import analysis, consent, tracking_data
+from src.utils import logger
 
-log = create_logger("PrivacyScore")
+log = logger.create_logger("PrivacyScore")
 
 
 # ============================================================================
@@ -53,7 +36,7 @@ _TWO_PART_TLDS = frozenset([
 def _parse_domain(url: str) -> tuple[str, str]:
     """Return (site_hostname, base_domain) for URL."""
     try:
-        parsed = urlparse(url)
+        parsed = parse.urlparse(url)
         hostname = re.sub(r"^www\.", "", parsed.hostname or "").lower()
         parts = hostname.split(".")
         if len(parts) >= 2:
@@ -74,14 +57,14 @@ def _parse_domain(url: str) -> tuple[str, str]:
 # ============================================================================
 
 def calculate_privacy_score(
-    cookies: list[TrackedCookie],
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-    local_storage: list[StorageItem],
-    session_storage: list[StorageItem],
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+    local_storage: list[tracking_data.StorageItem],
+    session_storage: list[tracking_data.StorageItem],
     analyzed_url: str,
-    consent_details: ConsentDetails | None = None,
-) -> ScoreBreakdown:
+    consent_details: consent.ConsentDetails | None = None,
+) -> analysis.ScoreBreakdown:
     """Calculate the complete privacy score breakdown."""
     log.info("Calculating privacy score", {
         "cookies": len(cookies),
@@ -168,7 +151,7 @@ def calculate_privacy_score(
         if cat.issues:
             log.info(f"Score detail [{name}]", {"points": cat.points, "max": cat.max_points, "issues": cat.issues})
 
-    return ScoreBreakdown(
+    return analysis.ScoreBreakdown(
         total_score=total_score,
         categories={
             "cookies": cookie_score,
@@ -185,7 +168,7 @@ def calculate_privacy_score(
     )
 
 
-def _calculate_cookie_score(cookies: list[TrackedCookie], base_domain: str) -> CategoryScore:
+def _calculate_cookie_score(cookies: list[tracking_data.TrackedCookie], base_domain: str) -> analysis.CategoryScore:
     """Calculate cookie-related privacy score. Max 15 points."""
     issues: list[str] = []
     points = 0
@@ -198,7 +181,7 @@ def _calculate_cookie_score(cookies: list[TrackedCookie], base_domain: str) -> C
     ]
     tracking_cookies = [
         c for c in cookies
-        if any(p.search(c.name) for p in TRACKING_COOKIE_PATTERNS)
+        if any(p.search(c.name) for p in tracker_patterns.TRACKING_COOKIE_PATTERNS)
     ]
     long_lived_cookies = [
         c for c in cookies
@@ -236,14 +219,14 @@ def _calculate_cookie_score(cookies: list[TrackedCookie], base_domain: str) -> C
     elif len(long_lived_cookies) > 0:
         points += 1
 
-    return CategoryScore(points=min(15, points), max_points=15, issues=issues)
+    return analysis.CategoryScore(points=min(15, points), max_points=15, issues=issues)
 
 
 def _calculate_third_party_score(
-    network_requests: list[NetworkRequest],
-    scripts: list[TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+    scripts: list[tracking_data.TrackedScript],
     base_domain: str,
-) -> CategoryScore:
+) -> analysis.CategoryScore:
     """Calculate third-party tracker score. Max 20 points."""
     issues: list[str] = []
     points = 0
@@ -260,7 +243,7 @@ def _calculate_third_party_score(
 
     known_trackers: set[str] = set()
     all_urls = [s.url for s in scripts] + [r.url for r in network_requests]
-    tracking_scripts = get_tracking_scripts()
+    tracking_scripts = loader.get_tracking_scripts()
     for url in all_urls:
         for ts in tracking_scripts:
             if re.search(ts.pattern, url, re.IGNORECASE):
@@ -301,21 +284,21 @@ def _calculate_third_party_score(
     elif len(known_trackers) > 0:
         points += 2
 
-    return CategoryScore(points=min(20, points), max_points=20, issues=issues)
+    return analysis.CategoryScore(points=min(20, points), max_points=20, issues=issues)
 
 
 def _calculate_data_collection_score(
-    local_storage: list[StorageItem],
-    session_storage: list[StorageItem],
-    network_requests: list[NetworkRequest],
-) -> CategoryScore:
+    local_storage: list[tracking_data.StorageItem],
+    session_storage: list[tracking_data.StorageItem],
+    network_requests: list[tracking_data.NetworkRequest],
+) -> analysis.CategoryScore:
     """Calculate data collection score. Max 10 points."""
     issues: list[str] = []
     points = 0
 
     tracking_storage = [
         item for item in local_storage
-        if any(p.search(item.key) for p in TRACKING_STORAGE_PATTERNS)
+        if any(p.search(item.key) for p in tracker_patterns.TRACKING_STORAGE_PATTERNS)
     ]
     beacon_requests = [
         r for r in network_requests
@@ -327,7 +310,7 @@ def _calculate_data_collection_score(
     ]
     analytics_urls = [
         r for r in network_requests
-        if any(p.search(r.url) for p in ANALYTICS_TRACKERS)
+        if any(p.search(r.url) for p in tracker_patterns.ANALYTICS_TRACKERS)
     ]
 
     if len(local_storage) > 15:
@@ -356,14 +339,14 @@ def _calculate_data_collection_score(
         points += 2
         issues.append("Analytics tracking active")
 
-    return CategoryScore(points=min(10, points), max_points=10, issues=issues)
+    return analysis.CategoryScore(points=min(10, points), max_points=10, issues=issues)
 
 
 def _calculate_fingerprint_score(
-    cookies: list[TrackedCookie],
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-) -> CategoryScore:
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+) -> analysis.CategoryScore:
     """Calculate fingerprinting score. Max 20 points."""
     issues: list[str] = []
     points = 0
@@ -372,7 +355,7 @@ def _calculate_fingerprint_score(
 
     fingerprint_services: list[str] = []
     for url in all_urls:
-        for pattern in HIGH_RISK_TRACKERS:
+        for pattern in tracker_patterns.HIGH_RISK_TRACKERS:
             if pattern.search(url):
                 m = re.search(r"https?://([^/]+)", url)
                 if m and m.group(1) not in fingerprint_services:
@@ -402,7 +385,7 @@ def _calculate_fingerprint_score(
 
     fingerprint_cookies = [
         c for c in cookies
-        if any(p.search(c.name) for p in FINGERPRINT_COOKIE_PATTERNS)
+        if any(p.search(c.name) for p in tracker_patterns.FINGERPRINT_COOKIE_PATTERNS)
     ]
 
     if len(session_replay_services) > 1:
@@ -428,14 +411,14 @@ def _calculate_fingerprint_score(
         points += 3
         issues.append(f"{len(fingerprint_cookies)} fingerprint-related cookies")
 
-    return CategoryScore(points=min(20, points), max_points=20, issues=issues)
+    return analysis.CategoryScore(points=min(20, points), max_points=20, issues=issues)
 
 
 def _calculate_advertising_score(
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-    cookies: list[TrackedCookie],
-) -> CategoryScore:
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+    cookies: list[tracking_data.TrackedCookie],
+) -> analysis.CategoryScore:
     """Calculate advertising tracker score. Max 15 points."""
     issues: list[str] = []
     points = 0
@@ -443,7 +426,7 @@ def _calculate_advertising_score(
 
     ad_networks: set[str] = set()
     for url in all_urls:
-        for pattern in ADVERTISING_TRACKERS:
+        for pattern in tracker_patterns.ADVERTISING_TRACKERS:
             if pattern.search(url):
                 if re.search(r"doubleclick|googlesyndication|googleadservices", url, re.I):
                     ad_networks.add("Google Ads")
@@ -508,13 +491,13 @@ def _calculate_advertising_score(
         points += 4
         issues.append("Real-time ad bidding detected")
 
-    return CategoryScore(points=min(15, points), max_points=15, issues=issues)
+    return analysis.CategoryScore(points=min(15, points), max_points=15, issues=issues)
 
 
 def _calculate_social_media_score(
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-) -> CategoryScore:
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+) -> analysis.CategoryScore:
     """Calculate social media tracker score. Max 10 points."""
     issues: list[str] = []
     points = 0
@@ -522,7 +505,7 @@ def _calculate_social_media_score(
 
     social_trackers: set[str] = set()
     for url in all_urls:
-        for pattern in SOCIAL_MEDIA_TRACKERS:
+        for pattern in tracker_patterns.SOCIAL_MEDIA_TRACKERS:
             if pattern.search(url):
                 if re.search(r"facebook|fbcdn", url, re.I):
                     social_trackers.add("Facebook")
@@ -562,14 +545,14 @@ def _calculate_social_media_score(
         points += 3
         issues.append("Social media plugins embedded (tracks even without interaction)")
 
-    return CategoryScore(points=min(10, points), max_points=10, issues=issues)
+    return analysis.CategoryScore(points=min(10, points), max_points=10, issues=issues)
 
 
 def _calculate_sensitive_data_score(
-    consent_details: ConsentDetails | None,
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-) -> CategoryScore:
+    consent_details: consent.ConsentDetails | None,
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+) -> analysis.CategoryScore:
     """Calculate sensitive data tracking score. Max 10 points."""
     issues: list[str] = []
     points = 0
@@ -580,7 +563,7 @@ def _calculate_sensitive_data_score(
             *[c.description for c in consent_details.categories],
             consent_details.raw_text or "",
         ])
-        for p in SENSITIVE_PURPOSES:
+        for p in tracker_patterns.SENSITIVE_PURPOSES:
             if p.search(all_purposes):
                 points += 2
                 src = p.pattern
@@ -603,19 +586,19 @@ def _calculate_sensitive_data_score(
         points += 4
         issues.append("Cross-site identity tracking (identity resolution service)")
 
-    return CategoryScore(points=min(10, points), max_points=10, issues=issues)
+    return analysis.CategoryScore(points=min(10, points), max_points=10, issues=issues)
 
 
 def _calculate_consent_score(
-    consent_details: ConsentDetails | None,
-    cookies: list[TrackedCookie],
-    scripts: list[TrackedScript],
-) -> CategoryScore:
+    consent_details: consent.ConsentDetails | None,
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+) -> analysis.CategoryScore:
     """Calculate consent-related issues score. Max 25 points."""
     issues: list[str] = []
     points = 0
 
-    tracking_patterns = get_tracking_scripts()
+    tracking_patterns = loader.get_tracking_scripts()
     tracking_scripts = [
         s for s in scripts
         if any(re.search(t.pattern, s.url, re.IGNORECASE) for t in tracking_patterns)
@@ -636,7 +619,7 @@ def _calculate_consent_score(
         if has_tracking:
             points += 8
             issues.append("Tracking present without visible consent dialog")
-        return CategoryScore(points=min(25, points), max_points=25, issues=issues)
+        return analysis.CategoryScore(points=min(25, points), max_points=25, issues=issues)
 
     partner_count = len(consent_details.partners)
 
@@ -662,7 +645,7 @@ def _calculate_consent_score(
         points += 2
 
     if partner_count > 0:
-        risk_summary = get_partner_risk_summary(consent_details.partners)
+        risk_summary = partner_classification.get_partner_risk_summary(consent_details.partners)
         critical_count = risk_summary.critical_count
         high_count = risk_summary.high_count
         worst_partners = risk_summary.worst_partners
@@ -691,7 +674,7 @@ def _calculate_consent_score(
         points += 3
         issues.append("Consent uses vague terms to justify tracking")
 
-    return CategoryScore(points=min(25, points), max_points=25, issues=issues)
+    return analysis.CategoryScore(points=min(25, points), max_points=25, issues=issues)
 
 
 def _generate_summary(site_name: str, score: int, factors: list[str]) -> str:

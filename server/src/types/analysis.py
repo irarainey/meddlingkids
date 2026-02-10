@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+import pydantic
 
-from src.types.tracking_data import NetworkRequest, TrackedCookie, TrackedScript
+from src.types import tracking_data
 
 
-class DomainData(BaseModel):
+class DomainData(pydantic.BaseModel):
     """Tracking data grouped by domain."""
 
-    cookies: list[TrackedCookie] = Field(default_factory=list)
-    scripts: list[TrackedScript] = Field(default_factory=list)
-    network_requests: list[NetworkRequest] = Field(
+    cookies: list[tracking_data.TrackedCookie] = pydantic.Field(default_factory=list)
+    scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
+    network_requests: list[tracking_data.NetworkRequest] = pydantic.Field(
         default_factory=list
     )
 
 
-class DomainBreakdown(BaseModel):
+class DomainBreakdown(pydantic.BaseModel):
     """Summary statistics for a single domain's tracking activity."""
 
     domain: str
@@ -30,7 +30,7 @@ class DomainBreakdown(BaseModel):
     request_types: list[str]
 
 
-class TrackingSummary(BaseModel):
+class TrackingSummary(pydantic.BaseModel):
     """Complete summary of tracking data collected from a page."""
 
     analyzed_url: str
@@ -50,33 +50,33 @@ SummaryFindingType = Literal[
 ]
 
 
-class SummaryFinding(BaseModel):
+class SummaryFinding(pydantic.BaseModel):
     """A single finding in the summary."""
 
     type: SummaryFindingType
     text: str
 
 
-class CategoryScore(BaseModel):
+class CategoryScore(pydantic.BaseModel):
     """Score for an individual category."""
 
     points: int = 0
     max_points: int = 0
-    issues: list[str] = Field(default_factory=list)
+    issues: list[str] = pydantic.Field(default_factory=list)
 
 
-class ScoreBreakdown(BaseModel):
+class ScoreBreakdown(pydantic.BaseModel):
     """Detailed breakdown of how the score was calculated."""
 
     total_score: int = 0
-    categories: dict[str, CategoryScore] = Field(
+    categories: dict[str, CategoryScore] = pydantic.Field(
         default_factory=dict
     )
-    factors: list[str] = Field(default_factory=list)
+    factors: list[str] = pydantic.Field(default_factory=list)
     summary: str = ""
 
 
-class AnalysisResult(BaseModel):
+class AnalysisResult(pydantic.BaseModel):
     """Result of the AI-powered tracking analysis."""
 
     success: bool

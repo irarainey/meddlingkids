@@ -11,52 +11,39 @@ import json
 import re
 from typing import Callable
 
-from src.prompts.tracking_analysis import (
-    SUMMARY_FINDINGS_SYSTEM_PROMPT,
-    TRACKING_ANALYSIS_SYSTEM_PROMPT,
-    build_summary_findings_user_prompt,
-    build_tracking_analysis_user_prompt,
-)
-from src.services.openai_client import get_deployment_name, get_openai_client
-from src.services.privacy_score import calculate_privacy_score
-from src.types.analysis import AnalysisResult, CategoryScore, SummaryFinding
-from src.types.consent import ConsentDetails
-from src.types.tracking_data import (
-    NetworkRequest,
-    StorageItem,
-    TrackedCookie,
-    TrackedScript,
-)
-from src.utils.errors import get_error_message
-from src.utils.logger import create_logger
-from src.utils.retry import with_retry
-from src.utils.tracking_summary import build_tracking_summary
+from src.prompts import tracking_analysis
+from src.services import openai_client
+from src.services import privacy_score as privacy_score_mod
+from src.types import consent, tracking_data
+from src.types import analysis as analysis_mod
+from src.utils import errors, logger, retry
+from src.utils import tracking_summary as tracking_summary_mod
 
-log = create_logger("AI-Analysis")
+log = logger.create_logger("AI-Analysis")
 
 # Progress callback type
 AnalysisProgressCallback = Callable[[str, str], None]
 
 
 async def run_tracking_analysis(
-    cookies: list[TrackedCookie],
-    local_storage: list[StorageItem],
-    session_storage: list[StorageItem],
-    network_requests: list[NetworkRequest],
-    scripts: list[TrackedScript],
+    cookies: list[tracking_data.TrackedCookie],
+    local_storage: list[tracking_data.StorageItem],
+    session_storage: list[tracking_data.StorageItem],
+    network_requests: list[tracking_data.NetworkRequest],
+    scripts: list[tracking_data.TrackedScript],
     analyzed_url: str,
-    consent_details: ConsentDetails | None = None,
+    consent_details: consent.ConsentDetails | None = None,
     on_progress: AnalysisProgressCallback | None = None,
-) -> AnalysisResult:
+) -> analysis_mod.AnalysisResult:
     """
     Run comprehensive tracking analysis using OpenAI.
     Analyzes cookies, scripts, network requests, and storage to generate
     a detailed privacy report and structured summary findings.
     """
-    client = get_openai_client()
+    client = openai_client.get_openai_client()
     if not client:
         log.error("OpenAI client not configured")
-        return AnalysisResult(success=False, error="OpenAI not configured")
+        return analysis_mod.AnalysisResult(success=False, error="OpenAI not configured")
 
     log.info("Starting tracking analysis", {
         "url": analyzed_url,
@@ -70,12 +57,12 @@ async def run_tracking_analysis(
         if on_progress:
             on_progress("preparing", "Building tracking summary...")
 
-        tracking_summary = build_tracking_summary(
+        tracking_summary = tracking_summary_mod.build_tracking_summary(
             cookies, scripts, network_requests,
             local_storage, session_storage, analyzed_url,
         )
 
-        deployment = get_deployment_name()
+        deployment = openai_client.get_deployment_name()
         log.debug("Using deployment", {"deployment": deployment})
 
         # Step 1: Main analysis
@@ -85,12 +72,12 @@ async def run_tracking_analysis(
         if on_progress:
             on_progress("analyzing", "Generating privacy report...")
 
-        response = await with_retry(
+        response = await retry.with_retry(
             lambda: client.chat.completions.create(
                 model=deployment,
                 messages=[
-                    {"role": "system", "content": TRACKING_ANALYSIS_SYSTEM_PROMPT},
-                    {"role": "user", "content": build_tracking_analysis_user_prompt(tracking_summary, consent_details)},
+                    {"role": "system", "content": tracking_analysis.TRACKING_ANALYSIS_SYSTEM_PROMPT},
+                    {"role": "user", "content": tracking_analysis.build_tracking_analysis_user_prompt(tracking_summary, consent_details)},
                 ],
                 max_completion_tokens=3000,
             ),
@@ -107,7 +94,7 @@ async def run_tracking_analysis(
         if on_progress:
             on_progress("scoring", "Calculating privacy score...")
 
-        score_breakdown = calculate_privacy_score(
+        score_breakdown = privacy_score_mod.calculate_privacy_score(
             cookies, scripts, network_requests,
             local_storage, session_storage,
             analyzed_url, consent_details,
@@ -127,12 +114,12 @@ async def run_tracking_analysis(
 
         summary_result = None
         try:
-            summary_result = await with_retry(
+            summary_result = await retry.with_retry(
                 lambda: client.chat.completions.create(
                     model=deployment,
                     messages=[
-                        {"role": "system", "content": SUMMARY_FINDINGS_SYSTEM_PROMPT},
-                        {"role": "user", "content": build_summary_findings_user_prompt(analysis)},
+                        {"role": "system", "content": tracking_analysis.SUMMARY_FINDINGS_SYSTEM_PROMPT},
+                        {"role": "user", "content": tracking_analysis.build_summary_findings_user_prompt(analysis)},
                     ],
                     max_completion_tokens=500,
                 ),
@@ -140,10 +127,10 @@ async def run_tracking_analysis(
             )
             log.end_timer("summary-generation", "Summary generated")
         except Exception as err:
-            log.error("Failed to generate summary", {"error": get_error_message(err)})
+            log.error("Failed to generate summary", {"error": errors.get_error_message(err)})
 
         # Process summary findings
-        summary_findings: list[SummaryFinding] = []
+        summary_findings: list[analysis_mod.SummaryFinding] = []
         if summary_result:
             summary_content = summary_result.choices[0].message.content or "[]"
             log.debug("Summary findings response", {"content": summary_content})
@@ -154,7 +141,7 @@ async def run_tracking_analysis(
                     json_str = re.sub(r"```$", "", json_str).strip()
                 raw_findings = json.loads(json_str)
                 summary_findings = [
-                    SummaryFinding(
+                    analysis_mod.SummaryFinding(
                         type=f.get("type", "info"),
                         text=f.get("text", ""),
                     )
@@ -164,14 +151,14 @@ async def run_tracking_analysis(
                 for finding in summary_findings:
                     log.info(f"Finding [{finding.type}]: {finding.text}")
             except Exception as parse_error:
-                log.error("Failed to parse summary findings JSON", {"error": get_error_message(parse_error)})
+                log.error("Failed to parse summary findings JSON", {"error": errors.get_error_message(parse_error)})
 
         privacy_score = score_breakdown.total_score
         privacy_summary = score_breakdown.summary
 
         log.info("Privacy score details", {
             "total": privacy_score,
-            "cookies": score_breakdown.categories.get("cookies", CategoryScore()).points,
+            "cookies": score_breakdown.categories.get("cookies", analysis_mod.CategoryScore()).points,
         })
 
         log.success("Analysis complete", {
@@ -180,7 +167,7 @@ async def run_tracking_analysis(
             "scoreFactors": score_breakdown.factors[:3],
         })
 
-        return AnalysisResult(
+        return analysis_mod.AnalysisResult(
             success=True,
             analysis=analysis,
             summary_findings=summary_findings,
@@ -190,5 +177,5 @@ async def run_tracking_analysis(
             summary=tracking_summary,
         )
     except Exception as error:
-        log.error("Analysis failed", {"error": get_error_message(error)})
-        return AnalysisResult(success=False, error=get_error_message(error))
+        log.error("Analysis failed", {"error": errors.get_error_message(error)})
+        return analysis_mod.AnalysisResult(success=False, error=errors.get_error_message(error))

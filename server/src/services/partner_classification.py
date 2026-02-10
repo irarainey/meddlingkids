@@ -6,14 +6,9 @@ Uses pattern matching for known entities.
 
 from __future__ import annotations
 
-from src.data.loader import PARTNER_CATEGORIES, get_partner_database
-from src.types.consent import ConsentPartner
-from src.types.partners import (
-    PartnerCategoryConfig,
-    PartnerClassification,
-    PartnerEntry,
-    PartnerRiskSummary,
-)
+from src.data import loader
+from src.types import consent
+from src.types import partners as partners_mod
 
 
 def _matches_partner(name_lower: str, key: str, aliases: list[str]) -> bool:
@@ -22,15 +17,15 @@ def _matches_partner(name_lower: str, key: str, aliases: list[str]) -> bool:
 
 
 def _classify_against_database(
-    partner: ConsentPartner,
+    partner: consent.ConsentPartner,
     name_lower: str,
-    database: dict[str, PartnerEntry],
-    config: PartnerCategoryConfig,
-) -> PartnerClassification | None:
+    database: dict[str, partners_mod.PartnerEntry],
+    config: partners_mod.PartnerCategoryConfig,
+) -> partners_mod.PartnerClassification | None:
     """Classify a partner against a specific database."""
     for key, data in database.items():
         if _matches_partner(name_lower, key, data.aliases):
-            return PartnerClassification(
+            return partners_mod.PartnerClassification(
                 name=partner.name,
                 risk_level=config.risk_level,
                 category=config.category,
@@ -42,11 +37,11 @@ def _classify_against_database(
 
 
 def _classify_by_purpose(
-    partner: ConsentPartner, purpose_lower: str
-) -> PartnerClassification | None:
+    partner: consent.ConsentPartner, purpose_lower: str
+) -> partners_mod.PartnerClassification | None:
     """Classify a partner based on its purpose text."""
     if any(w in purpose_lower for w in ("sell", "broker", "data marketplace")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="critical",
             category="data-broker",
@@ -56,7 +51,7 @@ def _classify_by_purpose(
         )
 
     if any(w in purpose_lower for w in ("cross-site", "cross-device", "identity")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="high",
             category="cross-site-tracking",
@@ -66,7 +61,7 @@ def _classify_by_purpose(
         )
 
     if any(w in purpose_lower for w in ("advertising", "ads", "marketing")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="medium",
             category="advertising",
@@ -76,7 +71,7 @@ def _classify_by_purpose(
         )
 
     if any(w in purpose_lower for w in ("analytics", "measurement")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="medium",
             category="analytics",
@@ -86,7 +81,7 @@ def _classify_by_purpose(
         )
 
     if any(w in purpose_lower for w in ("fraud", "security", "bot")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="low",
             category="fraud-prevention",
@@ -96,7 +91,7 @@ def _classify_by_purpose(
         )
 
     if any(w in purpose_lower for w in ("cdn", "content delivery", "hosting")):
-        return PartnerClassification(
+        return partners_mod.PartnerClassification(
             name=partner.name,
             risk_level="low",
             category="content-delivery",
@@ -109,8 +104,8 @@ def _classify_by_purpose(
 
 
 def classify_partner_by_pattern_sync(
-    partner: ConsentPartner,
-) -> PartnerClassification | None:
+    partner: consent.ConsentPartner,
+) -> partners_mod.PartnerClassification | None:
     """
     Classify a single partner based on known databases.
     Synchronous version for quick classification without LLM.
@@ -118,8 +113,8 @@ def classify_partner_by_pattern_sync(
     name_lower = partner.name.lower().strip()
     purpose_lower = (partner.purpose or "").lower()
 
-    for config in PARTNER_CATEGORIES:
-        database = get_partner_database(config.file)
+    for config in loader.PARTNER_CATEGORIES:
+        database = loader.get_partner_database(config.file)
         result = _classify_against_database(partner, name_lower, database, config)
         if result:
             return result
@@ -128,8 +123,8 @@ def classify_partner_by_pattern_sync(
 
 
 def get_partner_risk_summary(
-    partners: list[ConsentPartner],
-) -> PartnerRiskSummary:
+    partners: list[consent.ConsentPartner],
+) -> partners_mod.PartnerRiskSummary:
     """
     Get a quick risk summary for partners without full classification.
 
@@ -154,7 +149,7 @@ def get_partner_risk_summary(
         else:
             total_risk_score += 3  # Default for unknown
 
-    return PartnerRiskSummary(
+    return partners_mod.PartnerRiskSummary(
         critical_count=critical_count,
         high_count=high_count,
         total_risk_score=total_risk_score,

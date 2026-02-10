@@ -7,15 +7,15 @@ from __future__ import annotations
 
 import re
 
-from playwright.async_api import Frame, Locator, Page
+from playwright import async_api
 
-from src.utils.logger import create_logger
+from src.utils import logger
 
-log = create_logger("Consent-Click")
+log = logger.create_logger("Consent-Click")
 
 
 async def try_click_consent_button(
-    page: Page,
+    page: async_api.Page,
     selector: str | None,
     button_text: str | None,
 ) -> bool:
@@ -71,7 +71,7 @@ async def try_click_consent_button(
 
 
 async def _try_click_in_frame(
-    frame: Frame,
+    frame: async_api.Frame,
     selector: str | None,
     button_text: str | None,
     timeout: int,
@@ -114,14 +114,14 @@ async def _try_click_in_frame(
     return False
 
 
-async def _try_close_buttons(page: Page) -> bool:
+async def _try_close_buttons(page: async_api.Page) -> bool:
     """Try common close button patterns as a last resort.
 
     Prefers role-based locators (``get_by_role``) for accessibility,
     then falls back to CSS attribute/class selectors.
     """
     # Role-based strategies first (preferred by Playwright guidelines)
-    role_strategies: list[tuple[str, Locator]] = [
+    role_strategies: list[tuple[str, async_api.Locator]] = [
         (
             "button[name~=close]",
             page.get_by_role("button", name=re.compile(

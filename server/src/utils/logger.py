@@ -6,12 +6,12 @@ Optionally writes logs to a timestamped file when WRITE_LOG_TO_FILE is set.
 
 from __future__ import annotations
 
+import io
 import os
 import re
 import sys
 import time
 from datetime import datetime, timezone
-from io import TextIOWrapper
 from pathlib import Path
 
 
@@ -26,7 +26,7 @@ _timers: dict[str, float] = {}
 # ============================================================================
 
 _write_to_file = os.environ.get("WRITE_LOG_TO_FILE", "").lower() == "true"
-_log_file_stream: TextIOWrapper | None = None
+_log_file_stream: io.TextIOWrapper | None = None
 _log_file_path: str | None = None
 
 

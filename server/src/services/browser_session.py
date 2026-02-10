@@ -14,25 +14,11 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from PIL import Image
-from playwright.async_api import (
-    Browser,
-    BrowserContext,
-    Page,
-    Request,
-    Response,
-    async_playwright,
-)
+from playwright import async_api
 
-from src.services.access_detection import check_for_access_denied
-from src.services.device_configs import DEVICE_CONFIGS
-from src.types.browser import AccessDenialResult, DeviceType, NavigationResult
-from src.types.tracking_data import (
-    NetworkRequest,
-    StorageItem,
-    TrackedCookie,
-    TrackedScript,
-)
-from src.utils.url import extract_domain, is_third_party
+from src.services import access_detection, device_configs
+from src.types import browser, tracking_data
+from src.utils import url as url_mod
 
 # ============================================================================
 # Constants
@@ -54,14 +40,14 @@ class BrowserSession:
     def __init__(self) -> None:
         """Initialise a new browser session with empty state."""
         self._playwright = None
-        self._browser: Browser | None = None
-        self._context: BrowserContext | None = None
-        self._page: Page | None = None
+        self._browser: async_api.Browser | None = None
+        self._context: async_api.BrowserContext | None = None
+        self._page: async_api.Page | None = None
         self._current_page_url: str = ""
 
-        self._tracked_cookies: list[TrackedCookie] = []
-        self._tracked_scripts: list[TrackedScript] = []
-        self._tracked_network_requests: list[NetworkRequest] = []
+        self._tracked_cookies: list[tracking_data.TrackedCookie] = []
+        self._tracked_scripts: list[tracking_data.TrackedScript] = []
+        self._tracked_network_requests: list[tracking_data.NetworkRequest] = []
 
         # O(1) lookup indexes for hot-path deduplication
         self._seen_script_urls: set[str] = set()
@@ -84,19 +70,19 @@ class BrowserSession:
     # State Getters
     # ==========================================================================
 
-    def get_page(self) -> Page | None:
+    def get_page(self) -> async_api.Page | None:
         """Return the active Playwright page, if any."""
         return self._page
 
-    def get_tracked_cookies(self) -> list[TrackedCookie]:
+    def get_tracked_cookies(self) -> list[tracking_data.TrackedCookie]:
         """Return all cookies captured during this session."""
         return self._tracked_cookies
 
-    def get_tracked_scripts(self) -> list[TrackedScript]:
+    def get_tracked_scripts(self) -> list[tracking_data.TrackedScript]:
         """Return all scripts intercepted during this session."""
         return self._tracked_scripts
 
-    def get_tracked_network_requests(self) -> list[NetworkRequest]:
+    def get_tracked_network_requests(self) -> list[tracking_data.NetworkRequest]:
         """Return all network requests captured during this session."""
         return self._tracked_network_requests
 
@@ -121,15 +107,15 @@ class BrowserSession:
     # ==========================================================================
 
     async def launch_browser(
-        self, device_type: DeviceType = "ipad"
+        self, device_type: browser.DeviceType = "ipad"
     ) -> None:
         """Launch a new Chromium browser instance with device emulation."""
-        if device_type not in DEVICE_CONFIGS:
+        if device_type not in device_configs.DEVICE_CONFIGS:
             raise ValueError(
                 f"Unknown device type {device_type!r}. "
-                f"Valid types: {', '.join(DEVICE_CONFIGS)}"
+                f"Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}"
             )
-        device_config = DEVICE_CONFIGS[device_type]
+        device_config = device_configs.DEVICE_CONFIGS[device_type]
 
         # Close existing resources
         if self._context:
@@ -152,7 +138,7 @@ class BrowserSession:
             self._playwright = None
         self._page = None
 
-        self._playwright = await async_playwright().start()
+        self._playwright = await async_api.async_playwright().start()
 
         self._browser = await self._playwright.chromium.launch(
             headless=False,
@@ -187,11 +173,11 @@ class BrowserSession:
         self._page.on("request", self._on_request)
         self._page.on("response", self._on_response)
 
-    def _on_request(self, request: Request) -> None:
+    def _on_request(self, request: async_api.Request) -> None:
         """Handle intercepted network requests."""
         resource_type = request.resource_type
         request_url = request.url
-        domain = extract_domain(request_url)
+        domain = url_mod.extract_domain(request_url)
 
         # Track scripts — O(1) set lookup for deduplication
         if resource_type == "script":
@@ -201,7 +187,7 @@ class BrowserSession:
             ):
                 self._seen_script_urls.add(request_url)
                 self._tracked_scripts.append(
-                    TrackedScript(
+                    tracking_data.TrackedScript(
                         url=request_url,
                         domain=domain,
                         timestamp=datetime.now(
@@ -214,12 +200,12 @@ class BrowserSession:
         if len(self._tracked_network_requests) < MAX_TRACKED_REQUESTS:
             idx = len(self._tracked_network_requests)
             self._tracked_network_requests.append(
-                NetworkRequest(
+                tracking_data.NetworkRequest(
                     url=request_url,
                     domain=domain,
                     method=request.method,
                     resource_type=resource_type,
-                    is_third_party=is_third_party(
+                    is_third_party=url_mod.is_third_party(
                         request_url,
                         self._current_page_url,
                     ),
@@ -233,7 +219,7 @@ class BrowserSession:
                 request_url, []
             ).append(idx)
 
-    def _on_response(self, response: Response) -> None:
+    def _on_response(self, response: async_api.Response) -> None:
         """Handle intercepted responses to capture status codes."""
         request_url = response.url
         indices = self._pending_responses.get(request_url)
@@ -256,7 +242,7 @@ class BrowserSession:
             "commit", "domcontentloaded", "load", "networkidle"
         ] = "networkidle",
         timeout: int = 90000,
-    ) -> NavigationResult:
+    ) -> browser.NavigationResult:
         """Navigate the current page to a URL and wait for it to load."""
         if not self._page:
             raise RuntimeError("No browser session active")
@@ -269,7 +255,7 @@ class BrowserSession:
 
             if status_code and status_code >= 400:
                 is_access_denied = status_code in (401, 403)
-                return NavigationResult(
+                return browser.NavigationResult(
                     success=False,
                     status_code=status_code,
                     status_text=status_text,
@@ -281,7 +267,7 @@ class BrowserSession:
                     ),
                 )
 
-            return NavigationResult(
+            return browser.NavigationResult(
                 success=True,
                 status_code=status_code,
                 status_text=status_text,
@@ -289,7 +275,7 @@ class BrowserSession:
                 error_message=None,
             )
         except Exception as error:
-            return NavigationResult(
+            return browser.NavigationResult(
                 success=False,
                 status_code=None,
                 status_text=None,
@@ -307,11 +293,11 @@ class BrowserSession:
         except Exception:
             return False
 
-    async def check_for_access_denied(self) -> AccessDenialResult:
+    async def check_for_access_denied(self) -> browser.AccessDenialResult:
         """Check if the current page indicates access denial."""
         if not self._page:
-            return AccessDenialResult(denied=False, reason=None)
-        return await check_for_access_denied(self._page)
+            return browser.AccessDenialResult(denied=False, reason=None)
+        return await access_detection.check_for_access_denied(self._page)
 
     # ==========================================================================
     # Data Capture
@@ -338,7 +324,7 @@ class BrowserSession:
                 None,
             )
 
-            tracked = TrackedCookie(
+            tracked = tracking_data.TrackedCookie(
                 name=name,
                 value=cookie.get("value", ""),
                 domain=domain,
@@ -355,7 +341,7 @@ class BrowserSession:
             else:
                 self._tracked_cookies.append(tracked)
 
-    async def capture_storage(self) -> dict[str, list[StorageItem]]:
+    async def capture_storage(self) -> dict[str, list[tracking_data.StorageItem]]:
         """Capture localStorage and sessionStorage contents."""
         if not self._page:
             return {"local_storage": [], "session_storage": []}
@@ -381,11 +367,11 @@ class BrowserSession:
             now = datetime.now(timezone.utc).isoformat()
             return {
                 "local_storage": [
-                    StorageItem(key=item["key"], value=item["value"], timestamp=now)
+                    tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now)
                     for item in storage_data["localStorage"]
                 ],
                 "session_storage": [
-                    StorageItem(key=item["key"], value=item["value"], timestamp=now)
+                    tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now)
                     for item in storage_data["sessionStorage"]
                 ],
             }

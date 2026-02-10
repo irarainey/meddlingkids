@@ -2,13 +2,13 @@
 URL and domain utility functions for tracking analysis.
 """
 
-from urllib.parse import urlparse
+from urllib import parse
 
 
 def extract_domain(url: str) -> str:
     """Extract the hostname from a URL string."""
     try:
-        parsed = urlparse(url)
+        parsed = parse.urlparse(url)
         return parsed.hostname or "unknown"
     except Exception:
         return "unknown"

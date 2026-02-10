@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+import pydantic
 
 PartnerRiskLevel = Literal[
     "critical", "high", "medium", "low", "unknown"
@@ -26,24 +26,24 @@ PartnerCategoryType = Literal[
 ]
 
 
-class PartnerEntry(BaseModel):
+class PartnerEntry(pydantic.BaseModel):
     """Partner entry as stored in JSON."""
 
     concerns: list[str]
     aliases: list[str]
 
 
-class ScriptPattern(BaseModel):
+class ScriptPattern(pydantic.BaseModel):
     """Script pattern with pre-compiled regex for matching."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     pattern: str
     description: str
-    compiled: re.Pattern[str] = Field(exclude=True)
+    compiled: re.Pattern[str] = pydantic.Field(exclude=True)
 
 
-class PartnerCategoryConfig(BaseModel):
+class PartnerCategoryConfig(pydantic.BaseModel):
     """Configuration for how a partner category should be classified."""
 
     file: str
@@ -53,7 +53,7 @@ class PartnerCategoryConfig(BaseModel):
     risk_score: int
 
 
-class PartnerClassification(BaseModel):
+class PartnerClassification(pydantic.BaseModel):
     """Classification result for a partner."""
 
     name: str
@@ -64,7 +64,7 @@ class PartnerClassification(BaseModel):
     risk_score: int
 
 
-class PartnerRiskSummary(BaseModel):
+class PartnerRiskSummary(pydantic.BaseModel):
     """Quick risk summary for a set of consent partners."""
 
     critical_count: int

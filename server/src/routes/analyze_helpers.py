@@ -9,24 +9,20 @@ import asyncio
 import json
 from typing import Any, AsyncGenerator
 
-from pydantic import BaseModel, Field
+import pydantic
+from playwright import async_api
 
-from playwright.async_api import Page
-
-from src.services.browser_session import BrowserSession
-from src.services.consent_click import try_click_consent_button
-from src.services.consent_detection import detect_cookie_consent
-from src.services.consent_extraction import extract_consent_details
-from src.services.partner_classification import (
-    classify_partner_by_pattern_sync,
-    get_partner_risk_summary,
+from src.services import (
+    browser_session,
+    consent_click,
+    consent_extraction,
+    partner_classification,
 )
-from src.types.analysis import ScoreBreakdown
-from src.types.consent import ConsentDetails, CookieConsentDetection
-from src.types.tracking_data import StorageItem
-from src.utils.logger import create_logger
+from src.services import consent_detection as consent_detection_mod
+from src.types import analysis, consent, tracking_data
+from src.utils import logger
 
-log = create_logger("Overlays")
+log = logger.create_logger("Overlays")
 
 
 def _snake_to_camel(name: str) -> str:
@@ -35,12 +31,12 @@ def _snake_to_camel(name: str) -> str:
     return parts[0] + "".join(w.capitalize() for w in parts[1:])
 
 
-def to_camel_case_dict(obj: BaseModel) -> dict[str, Any]:
+def to_camel_case_dict(obj: pydantic.BaseModel) -> dict[str, Any]:
     """Convert a Pydantic model instance to a dict with camelCase keys."""
     return {_snake_to_camel(k): v for k, v in obj.model_dump().items()}
 
 
-def serialize_consent_details(details: ConsentDetails) -> dict[str, Any]:
+def serialize_consent_details(details: consent.ConsentDetails) -> dict[str, Any]:
     """Serialize ConsentDetails to a camelCase dict for SSE transport."""
     return {
         "categories": [
@@ -64,7 +60,7 @@ def serialize_consent_details(details: ConsentDetails) -> dict[str, Any]:
     }
 
 
-def serialize_score_breakdown(sb: ScoreBreakdown) -> dict[str, Any]:
+def serialize_score_breakdown(sb: analysis.ScoreBreakdown) -> dict[str, Any]:
     """Serialize ScoreBreakdown to a camelCase dict for SSE transport."""
     return {
         "totalScore": sb.total_score,
@@ -110,16 +106,16 @@ def _get_overlay_message(overlay_type: str | None) -> str:
     return messages.get(overlay_type or "", "Overlay detected")
 
 
-class OverlayHandlingResult(BaseModel):
+class OverlayHandlingResult(pydantic.BaseModel):
     """Mutable state populated by the handle_overlays async generator."""
 
     overlay_count: int = 0
-    dismissed_overlays: list[CookieConsentDetection] = Field(
+    dismissed_overlays: list[consent.CookieConsentDetection] = pydantic.Field(
         default_factory=list
     )
-    consent_details: ConsentDetails | None = None
+    consent_details: consent.ConsentDetails | None = None
     final_screenshot: bytes = b""
-    final_storage: dict[str, list[StorageItem]] = Field(
+    final_storage: dict[str, list[tracking_data.StorageItem]] = pydantic.Field(
         default_factory=lambda: {
             "local_storage": [],
             "session_storage": [],
@@ -128,8 +124,8 @@ class OverlayHandlingResult(BaseModel):
 
 
 async def handle_overlays(
-    session: BrowserSession,
-    page: Page,
+    session: browser_session.BrowserSession,
+    page: async_api.Page,
     initial_screenshot: bytes,
     result: OverlayHandlingResult,
 ) -> AsyncGenerator[str, None]:
@@ -153,7 +149,7 @@ async def handle_overlays(
     while overlay_count < MAX_OVERLAYS:
         log.start_timer(f"overlay-detect-{overlay_count + 1}")
         html = await session.get_page_content()
-        consent_detection = await detect_cookie_consent(screenshot, html)
+        consent_detection = await consent_detection_mod.detect_cookie_consent(screenshot, html)
         log.end_timer(f"overlay-detect-{overlay_count + 1}", "Overlay detection complete")
 
         if not consent_detection.found or not consent_detection.selector:
@@ -191,7 +187,7 @@ async def handle_overlays(
         if consent_detection.overlay_type == "cookie-consent" and not result.consent_details:
             log.start_timer("consent-extraction")
             yield format_progress_event("consent-extract", "Extracting consent details...", progress_base + 1)
-            result.consent_details = await extract_consent_details(page, screenshot)
+            result.consent_details = await consent_extraction.extract_consent_details(page, screenshot)
             log.end_timer("consent-extraction", "Consent details extracted")
             log.info("Consent details", {
                 "categories": len(result.consent_details.categories),
@@ -204,7 +200,7 @@ async def handle_overlays(
                 log.start_timer("partner-classification")
                 yield format_progress_event("partner-classify", "Analyzing partner risk levels...", progress_base + 2)
 
-                risk_summary = get_partner_risk_summary(
+                risk_summary = partner_classification.get_partner_risk_summary(
                     result.consent_details.partners
                 )
                 log.info("Partner risk summary", {
@@ -214,7 +210,7 @@ async def handle_overlays(
                 })
 
                 for partner in result.consent_details.partners:
-                    classification = classify_partner_by_pattern_sync(partner)
+                    classification = partner_classification.classify_partner_by_pattern_sync(partner)
                     if classification:
                         partner.risk_level = classification.risk_level
                         partner.risk_category = classification.category
@@ -234,7 +230,7 @@ async def handle_overlays(
             log.start_timer(f"overlay-click-{overlay_count}")
             yield format_progress_event(f"overlay-{overlay_count}-click", "Dismissing overlay...", progress_base + 3)
 
-            clicked = await try_click_consent_button(page, consent_detection.selector, consent_detection.button_text)
+            clicked = await consent_click.try_click_consent_button(page, consent_detection.selector, consent_detection.button_text)
             log.end_timer(f"overlay-click-{overlay_count}", "Click succeeded" if clicked else "Click failed")
 
             if clicked:
@@ -259,7 +255,7 @@ async def handle_overlays(
                 await session.capture_current_cookies()
                 storage = await session.capture_storage()
                 screenshot = await session.take_screenshot(full_page=False)
-                optimized = BrowserSession.optimize_screenshot_bytes(screenshot)
+                optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
 
                 log.success(f"Overlay {overlay_count} ({consent_detection.overlay_type}) dismissed successfully")
 

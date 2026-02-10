@@ -9,29 +9,24 @@ import base64
 import json
 import re
 
-from src.prompts.consent_detection import (
-    CONSENT_DETECTION_SYSTEM_PROMPT,
-    build_consent_detection_user_prompt,
-)
-from src.services.openai_client import get_deployment_name, get_openai_client
-from src.types.consent import CookieConsentDetection
-from src.utils.errors import get_error_message
-from src.utils.logger import create_logger
-from src.utils.retry import with_retry
+from src.prompts import consent_detection
+from src.services import openai_client
+from src.types import consent
+from src.utils import errors, logger, retry
 
-log = create_logger("Consent-Detect")
+log = logger.create_logger("Consent-Detect")
 
 
 async def detect_cookie_consent(
     screenshot: bytes, html: str
-) -> CookieConsentDetection:
+) -> consent.CookieConsentDetection:
     """
     Detect blocking overlays (cookie consent, sign-in walls, etc.) using LLM vision.
     """
-    client = get_openai_client()
+    client = openai_client.get_openai_client()
     if not client:
         log.warn("OpenAI not configured, skipping consent detection")
-        return CookieConsentDetection(
+        return consent.CookieConsentDetection(
             found=False,
             overlay_type=None,
             selector=None,
@@ -40,7 +35,7 @@ async def detect_cookie_consent(
             reason="OpenAI not configured",
         )
 
-    deployment = get_deployment_name()
+    deployment = openai_client.get_deployment_name()
     relevant_html = _extract_relevant_html(html)
     log.debug(
         "Extracted relevant HTML",
@@ -53,11 +48,11 @@ async def detect_cookie_consent(
     b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
 
     try:
-        response = await with_retry(
+        response = await retry.with_retry(
             lambda: client.chat.completions.create(
                 model=deployment,
                 messages=[
-                    {"role": "system", "content": CONSENT_DETECTION_SYSTEM_PROMPT},
+                    {"role": "system", "content": consent_detection.CONSENT_DETECTION_SYSTEM_PROMPT},
                     {
                         "role": "user",
                         "content": [
@@ -69,7 +64,7 @@ async def detect_cookie_consent(
                             },
                             {
                                 "type": "text",
-                                "text": build_consent_detection_user_prompt(relevant_html),
+                                "text": consent_detection.build_consent_detection_user_prompt(relevant_html),
                             },
                         ],
                     },
@@ -88,7 +83,7 @@ async def detect_cookie_consent(
             json_str = re.sub(r"```$", "", json_str).strip()
 
         raw = json.loads(json_str)
-        result = CookieConsentDetection(
+        result = consent.CookieConsentDetection(
             found=raw.get("found", False),
             overlay_type=raw.get("overlayType"),
             selector=raw.get("selector"),
@@ -111,7 +106,7 @@ async def detect_cookie_consent(
 
         return result
     except Exception as error:
-        error_msg = get_error_message(error)
+        error_msg = errors.get_error_message(error)
 
         if any(
             kw in error_msg
@@ -123,7 +118,7 @@ async def detect_cookie_consent(
             return _detect_from_html_only(relevant_html)
 
         log.error("Overlay detection failed", {"error": error_msg})
-        return CookieConsentDetection(
+        return consent.CookieConsentDetection(
             found=False,
             overlay_type=None,
             selector=None,
@@ -133,7 +128,7 @@ async def detect_cookie_consent(
         )
 
 
-def _detect_from_html_only(html: str) -> CookieConsentDetection:
+def _detect_from_html_only(html: str) -> consent.CookieConsentDetection:
     """Fallback detection using HTML patterns only (no vision)."""
     log.info("Attempting HTML-only overlay detection...")
 
@@ -158,7 +153,7 @@ def _detect_from_html_only(html: str) -> CookieConsentDetection:
                 "Found overlay via HTML pattern matching",
                 {"selector": selector},
             )
-            return CookieConsentDetection(
+            return consent.CookieConsentDetection(
                 found=True,
                 overlay_type="cookie-consent",
                 selector=selector,
@@ -168,7 +163,7 @@ def _detect_from_html_only(html: str) -> CookieConsentDetection:
             )
 
     log.info("No overlay detected via HTML patterns")
-    return CookieConsentDetection(
+    return consent.CookieConsentDetection(
         found=False,
         overlay_type=None,
         selector=None,

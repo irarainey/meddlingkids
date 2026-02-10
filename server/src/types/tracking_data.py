@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+import pydantic
 
 
-class TrackedCookie(BaseModel):
+class TrackedCookie(pydantic.BaseModel):
     """Represents a cookie captured from the browser context."""
 
     name: str
@@ -19,7 +19,7 @@ class TrackedCookie(BaseModel):
     timestamp: str
 
 
-class TrackedScript(BaseModel):
+class TrackedScript(pydantic.BaseModel):
     """Represents a JavaScript script loaded by the page."""
 
     url: str
@@ -31,7 +31,7 @@ class TrackedScript(BaseModel):
     is_grouped: bool | None = None
 
 
-class ScriptGroup(BaseModel):
+class ScriptGroup(pydantic.BaseModel):
     """Represents a group of similar scripts."""
 
     id: str
@@ -42,7 +42,7 @@ class ScriptGroup(BaseModel):
     domain: str
 
 
-class StorageItem(BaseModel):
+class StorageItem(pydantic.BaseModel):
     """Represents an item stored in localStorage or sessionStorage."""
 
     key: str
@@ -50,7 +50,7 @@ class StorageItem(BaseModel):
     timestamp: str
 
 
-class NetworkRequest(BaseModel):
+class NetworkRequest(pydantic.BaseModel):
     """Represents an HTTP network request made by the page."""
 
     url: str

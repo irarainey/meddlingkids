@@ -8,28 +8,21 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, AsyncGenerator, cast
-from urllib.parse import urlparse
+from urllib import parse
 
-from src.routes.analyze_helpers import (
-    OverlayHandlingResult,
-    format_progress_event,
-    format_sse_event,
-    handle_overlays,
-    serialize_consent_details,
-    serialize_score_breakdown,
-    to_camel_case_dict,
+from src.routes import analyze_helpers
+from src.services import (
+    analysis,
+    browser_session,
+    device_configs,
+    openai_client,
+    script_analysis,
 )
-from src.services.analysis import run_tracking_analysis
-from src.services.browser_session import BrowserSession
-from src.services.device_configs import DEVICE_CONFIGS
-from src.services.openai_client import get_deployment_name, validate_openai_config
-from src.services.script_analysis import analyze_scripts
-from src.types.browser import DeviceType
-from src.utils.errors import get_error_message
-from src.utils.logger import create_logger, start_log_file
-from src.utils.url import extract_domain
+from src.types import browser
+from src.utils import errors, logger
+from src.utils import url as url_mod
 
-log = create_logger("Analyze")
+log = logger.create_logger("Analyze")
 
 
 async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[str, None]:
@@ -44,28 +37,28 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
     analyses without interference.
     """
     # Validate OpenAI configuration
-    config_error = validate_openai_config()
+    config_error = openai_client.validate_openai_config()
     if config_error:
-        yield format_sse_event("error", {"error": config_error})
+        yield analyze_helpers.format_sse_event("error", {"error": config_error})
         return
 
     # Validate device type
-    valid_devices = list(DEVICE_CONFIGS.keys())
-    device_type = cast(DeviceType, device if device in valid_devices else "ipad")
+    valid_devices = list(device_configs.DEVICE_CONFIGS.keys())
+    device_type = cast(browser.DeviceType, device if device in valid_devices else "ipad")
 
     if not url:
-        yield format_sse_event("error", {"error": "URL is required"})
+        yield analyze_helpers.format_sse_event("error", {"error": "URL is required"})
         return
 
     # Create isolated browser session
-    session = BrowserSession()
+    session = browser_session.BrowserSession()
 
     # Start file logging
-    domain = extract_domain(url)
-    start_log_file(domain)
+    domain = url_mod.extract_domain(url)
+    logger.start_log_file(domain)
 
     log.section(f"Analyzing: {url}")
-    log.info("Request received", {"url": url, "device": device_type, "model": get_deployment_name()})
+    log.info("Request received", {"url": url, "device": device_type, "model": openai_client.get_deployment_name()})
     log.start_timer("total-analysis")
 
     try:
@@ -73,20 +66,20 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         # Phase 1: Browser Setup and Navigation
         # ====================================================================
         log.subsection("Phase 1: Browser Setup")
-        yield format_progress_event("init", "Warming up...", 5)
+        yield analyze_helpers.format_progress_event("init", "Warming up...", 5)
 
         session.clear_tracking_data()
         session.set_current_page_url(url)
 
         log.start_timer("browser-launch")
-        yield format_progress_event("browser", "Launching browser...", 8)
+        yield analyze_helpers.format_progress_event("browser", "Launching browser...", 8)
         await session.launch_browser(device_type)
         log.end_timer("browser-launch", "Browser launched")
 
-        hostname = urlparse(url).hostname or url
+        hostname = parse.urlparse(url).hostname or url
         log.start_timer("navigation")
         log.info("Navigating to page", {"hostname": hostname})
-        yield format_progress_event("navigate", f"Connecting to {hostname}...", 12)
+        yield analyze_helpers.format_progress_event("navigate", f"Connecting to {hostname}...", 12)
 
         nav_result = await session.navigate_to(url, "domcontentloaded", 30000)
         log.end_timer("navigation", "Initial navigation complete")
@@ -95,13 +88,13 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         if not nav_result.success:
             error_type = "access-denied" if nav_result.is_access_denied else "server-error"
             log.error("Navigation failed", {"errorType": error_type, "statusCode": nav_result.status_code})
-            yield format_sse_event("pageError", {
+            yield analyze_helpers.format_sse_event("pageError", {
                 "type": error_type,
                 "statusCode": nav_result.status_code,
                 "message": nav_result.error_message,
                 "isAccessDenied": nav_result.is_access_denied,
             })
-            yield format_progress_event("error", nav_result.error_message or "Failed to load page", 100)
+            yield analyze_helpers.format_progress_event("error", nav_result.error_message or "Failed to load page", 100)
             return
 
         # ====================================================================
@@ -109,20 +102,20 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         # ====================================================================
         log.subsection("Phase 2: Page Load & Access Check")
         log.start_timer("network-idle")
-        yield format_progress_event("wait-network", f"Loading {hostname}...", 18)
+        yield analyze_helpers.format_progress_event("wait-network", f"Loading {hostname}...", 18)
 
         network_idle = await session.wait_for_network_idle(20000)
         log.end_timer("network-idle", "Network idle wait complete")
 
         if not network_idle:
             log.warn("Network still active (normal for ad-heavy sites), continuing...")
-            yield format_progress_event("wait-continue", "Page loaded, waiting for ads to render...", 25)
+            yield analyze_helpers.format_progress_event("wait-continue", "Page loaded, waiting for ads to render...", 25)
             await session.wait_for_timeout(3000)
         else:
             log.success("Network became idle")
-            yield format_progress_event("wait-done", "Page fully loaded", 28)
+            yield analyze_helpers.format_progress_event("wait-done", "Page fully loaded", 28)
 
-        yield format_progress_event("wait-ads", "Waiting for dynamic content...", 28)
+        yield analyze_helpers.format_progress_event("wait-ads", "Waiting for dynamic content...", 28)
         await session.wait_for_timeout(2000)
 
         # Check for access denied
@@ -133,24 +126,24 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         if access_check.denied:
             log.error("Access denied detected", {"reason": access_check.reason})
             screenshot = await session.take_screenshot(full_page=False)
-            optimized = BrowserSession.optimize_screenshot_bytes(screenshot)
+            optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
 
-            yield format_sse_event("screenshot", {
+            yield analyze_helpers.format_sse_event("screenshot", {
                 "screenshot": optimized,
-                "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
-                "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
-                "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+                "cookies": [analyze_helpers.to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+                "scripts": [analyze_helpers.to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+                "networkRequests": [analyze_helpers.to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
                 "localStorage": [],
                 "sessionStorage": [],
             })
-            yield format_sse_event("pageError", {
+            yield analyze_helpers.format_sse_event("pageError", {
                 "type": "access-denied",
                 "statusCode": nav_result.status_code,
                 "message": "Access denied - this site has bot protection that blocked our request",
                 "isAccessDenied": True,
                 "reason": access_check.reason,
             })
-            yield format_progress_event("blocked", "Site blocked access", 100)
+            yield analyze_helpers.format_progress_event("blocked", "Site blocked access", 100)
             return
 
         # ====================================================================
@@ -159,27 +152,27 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         log.subsection("Phase 3: Initial Data Capture")
         log.start_timer("initial-capture")
 
-        yield format_progress_event("cookies", "Capturing cookies...", 32)
+        yield analyze_helpers.format_progress_event("cookies", "Capturing cookies...", 32)
         await session.capture_current_cookies()
 
-        yield format_progress_event("storage", "Capturing storage data...", 35)
+        yield analyze_helpers.format_progress_event("storage", "Capturing storage data...", 35)
         storage = await session.capture_storage()
 
-        yield format_progress_event("overlay-wait", "Waiting for page overlays...", 37)
+        yield analyze_helpers.format_progress_event("overlay-wait", "Waiting for page overlays...", 37)
         await session.wait_for_timeout(2000)
 
-        yield format_progress_event("screenshot", "Taking screenshot...", 38)
+        yield analyze_helpers.format_progress_event("screenshot", "Taking screenshot...", 38)
         screenshot = await session.take_screenshot(full_page=False)
-        optimized_screenshot = BrowserSession.optimize_screenshot_bytes(screenshot)
+        optimized_screenshot = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
 
         # Send screenshot to client immediately
-        yield format_sse_event("screenshot", {
+        yield analyze_helpers.format_sse_event("screenshot", {
             "screenshot": optimized_screenshot,
-            "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
-            "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
-            "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
-            "localStorage": [to_camel_case_dict(i) for i in storage["local_storage"]],
-            "sessionStorage": [to_camel_case_dict(i) for i in storage["session_storage"]],
+            "cookies": [analyze_helpers.to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+            "scripts": [analyze_helpers.to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+            "networkRequests": [analyze_helpers.to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+            "localStorage": [analyze_helpers.to_camel_case_dict(i) for i in storage["local_storage"]],
+            "sessionStorage": [analyze_helpers.to_camel_case_dict(i) for i in storage["session_storage"]],
         })
 
         cookie_count = len(session.get_tracked_cookies())
@@ -195,7 +188,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "sessionStorage": len(storage["session_storage"]),
         })
 
-        yield format_progress_event(
+        yield analyze_helpers.format_progress_event(
             "captured",
             f"Found {cookie_count} cookies, {script_count} scripts, {request_count} requests",
             42,
@@ -206,15 +199,15 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         # ====================================================================
         log.subsection("Phase 4: Overlay Detection & Handling")
         log.start_timer("overlay-handling")
-        yield format_progress_event("overlay-detect", "Checking for page overlays...", 45)
+        yield analyze_helpers.format_progress_event("overlay-detect", "Checking for page overlays...", 45)
 
         page = session.get_page()
         consent_details = None
         overlay_count = 0
 
         if page:
-            overlay_result = OverlayHandlingResult()
-            async for event_str in handle_overlays(session, page, screenshot, overlay_result):
+            overlay_result = analyze_helpers.OverlayHandlingResult()
+            async for event_str in analyze_helpers.handle_overlays(session, page, screenshot, overlay_result):
                 yield event_str
             consent_details = overlay_result.consent_details
             overlay_count = overlay_result.overlay_count
@@ -227,7 +220,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         # Phase 5: AI Analysis
         # ====================================================================
         log.subsection("Phase 5: AI Analysis")
-        yield format_progress_event("analysis-prep", "Preparing tracking data for analysis...", 75)
+        yield analyze_helpers.format_progress_event("analysis-prep", "Preparing tracking data for analysis...", 75)
 
         final_cookies = session.get_tracked_cookies()
         final_scripts = session.get_tracked_scripts()
@@ -238,7 +231,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "scripts": len(final_scripts),
             "requests": len(final_requests),
         })
-        yield format_progress_event(
+        yield analyze_helpers.format_progress_event(
             "analysis-start",
             f"Found {len(final_cookies)} cookies, {len(final_scripts)} scripts, {len(final_requests)} requests",
             76,
@@ -259,28 +252,28 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             if phase == "matching":
                 if current == 0:
                     progress_queue.put_nowait(
-                        format_progress_event("script-matching", detail or "Grouping and identifying scripts...", 77)
+                        analyze_helpers.format_progress_event("script-matching", detail or "Grouping and identifying scripts...", 77)
                     )
             elif phase == "fetching":
                 progress = 77 + int((current / max(total, 1)) * 2)
                 progress_queue.put_nowait(
-                    format_progress_event("script-fetching", detail or f"Fetching script {current}/{total}...", progress)
+                    analyze_helpers.format_progress_event("script-fetching", detail or f"Fetching script {current}/{total}...", progress)
                 )
             elif phase == "analyzing":
                 if total == 0:
                     progress_queue.put_nowait(
-                        format_progress_event("script-analysis", detail or "All scripts identified", 82)
+                        analyze_helpers.format_progress_event("script-analysis", detail or "All scripts identified", 82)
                     )
                 else:
                     progress = 79 + int((current / total) * 4)
                     progress_queue.put_nowait(
-                        format_progress_event("script-analysis", detail or f"Analyzed {current}/{total} scripts...", progress)
+                        analyze_helpers.format_progress_event("script-analysis", detail or f"Analyzed {current}/{total} scripts...", progress)
                     )
 
         async def run_script_analysis() -> Any:
             """Run script analysis and signal the queue on completion."""
             try:
-                result = await analyze_scripts(final_scripts, script_progress)
+                result = await script_analysis.analyze_scripts(final_scripts, script_progress)
                 log.end_timer("script-analysis", f"Script analysis complete ({len(result.scripts)} scripts, {len(result.groups)} groups)")
                 return result
             finally:
@@ -294,25 +287,25 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             log.info(f"Analysis: {phase} - {detail}")
             if phase == "preparing":
                 progress_queue.put_nowait(
-                    format_progress_event("ai-preparing", detail or "Preparing data for AI analysis...", 84)
+                    analyze_helpers.format_progress_event("ai-preparing", detail or "Preparing data for AI analysis...", 84)
                 )
             elif phase == "analyzing":
                 progress_queue.put_nowait(
-                    format_progress_event("ai-analyzing", detail or "Generating privacy report...", 88)
+                    analyze_helpers.format_progress_event("ai-analyzing", detail or "Generating privacy report...", 88)
                 )
             elif phase == "scoring":
                 progress_queue.put_nowait(
-                    format_progress_event("ai-scoring", detail or "Calculating privacy score...", 94)
+                    analyze_helpers.format_progress_event("ai-scoring", detail or "Calculating privacy score...", 94)
                 )
             elif phase == "summarizing":
                 progress_queue.put_nowait(
-                    format_progress_event("ai-summarizing", detail or "Generating summary findings...", 97)
+                    analyze_helpers.format_progress_event("ai-summarizing", detail or "Generating summary findings...", 97)
                 )
 
         async def run_analysis() -> Any:
             """Run tracking analysis and signal the queue on completion."""
             try:
-                result = await run_tracking_analysis(
+                result = await analysis.run_tracking_analysis(
                     final_cookies,
                     storage["local_storage"],
                     storage["session_storage"],
@@ -363,19 +356,19 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             "privacyScore": analysis_result.privacy_score,
         })
 
-        yield format_progress_event("complete", "Investigation complete!", 100)
+        yield analyze_helpers.format_progress_event("complete", "Investigation complete!", 100)
 
         # Build consent details for response
-        consent_details_dict = serialize_consent_details(consent_details) if consent_details else None
+        consent_details_dict = analyze_helpers.serialize_consent_details(consent_details) if consent_details else None
 
         # Build score breakdown dict
         score_breakdown_dict = (
-            serialize_score_breakdown(analysis_result.score_breakdown)
+            analyze_helpers.serialize_score_breakdown(analysis_result.score_breakdown)
             if analysis_result.score_breakdown
             else None
         )
 
-        yield format_sse_event("complete", {
+        yield analyze_helpers.format_sse_event("complete", {
             "success": True,
             "message": (
                 "Tracking analyzed after dismissing overlays"
@@ -400,7 +393,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                     "localStorageItems": analysis_result.summary.local_storage_items,
                     "sessionStorageItems": analysis_result.summary.session_storage_items,
                     "thirdPartyDomains": analysis_result.summary.third_party_domains,
-                    "domainBreakdown": [to_camel_case_dict(d) for d in analysis_result.summary.domain_breakdown],
+                    "domainBreakdown": [analyze_helpers.to_camel_case_dict(d) for d in analysis_result.summary.domain_breakdown],
                     "localStorage": analysis_result.summary.local_storage,
                     "sessionStorage": analysis_result.summary.session_storage,
                 }
@@ -409,17 +402,17 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             ),
             "analysisError": analysis_result.error if not analysis_result.success else None,
             "consentDetails": consent_details_dict,
-            "scripts": [to_camel_case_dict(s) for s in script_analysis_result.scripts],
-            "scriptGroups": [to_camel_case_dict(g) for g in script_analysis_result.groups],
+            "scripts": [analyze_helpers.to_camel_case_dict(s) for s in script_analysis_result.scripts],
+            "scriptGroups": [analyze_helpers.to_camel_case_dict(g) for g in script_analysis_result.groups],
         })
 
     except Exception as error:
-        log.error("Analysis failed with exception", {"error": get_error_message(error)})
-        yield format_sse_event("error", {"error": get_error_message(error)})
+        log.error("Analysis failed with exception", {"error": errors.get_error_message(error)})
+        yield analyze_helpers.format_sse_event("error", {"error": errors.get_error_message(error)})
     finally:
         log.debug("Cleaning up browser resources...")
         try:
             await session.close()
         except Exception as err:
-            log.warn("Error during browser cleanup", {"error": get_error_message(err)})
+            log.warn("Error during browser cleanup", {"error": errors.get_error_message(err)})
         log.debug("Browser cleanup complete")

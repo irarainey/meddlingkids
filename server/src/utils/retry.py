@@ -9,9 +9,9 @@ import asyncio
 import random
 from typing import Awaitable, Callable, TypeVar
 
-from .logger import create_logger
+from src.utils import logger
 
-log = create_logger("Retry")
+log = logger.create_logger("Retry")
 
 T = TypeVar("T")
 

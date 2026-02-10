@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+import pydantic
 
 
-class NavigationResult(BaseModel):
+class NavigationResult(pydantic.BaseModel):
     """Result of a navigation attempt."""
 
     success: bool
@@ -17,7 +17,7 @@ class NavigationResult(BaseModel):
     error_message: str | None
 
 
-class AccessDenialResult(BaseModel):
+class AccessDenialResult(pydantic.BaseModel):
     """Result of an access denial check."""
 
     denied: bool
@@ -34,14 +34,14 @@ DeviceType = Literal[
 ]
 
 
-class ViewportSize(BaseModel):
+class ViewportSize(pydantic.BaseModel):
     """Viewport dimensions for browser emulation."""
 
     width: int
     height: int
 
 
-class DeviceConfig(BaseModel):
+class DeviceConfig(pydantic.BaseModel):
     """Device configuration for browser emulation."""
 
     user_agent: str

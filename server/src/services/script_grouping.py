@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, ConfigDict, Field
+import pydantic
 
-from src.types.tracking_data import ScriptGroup, TrackedScript
-from src.utils.logger import create_logger
+from src.types import tracking_data
+from src.utils import logger
 
-log = create_logger("Script-Grouping")
+log = logger.create_logger("Script-Grouping")
 
 MIN_GROUP_SIZE = 3
 
@@ -24,10 +24,10 @@ MIN_GROUP_SIZE = 3
 # ---------------------------------------------------------------------------
 
 
-class GroupPattern(BaseModel):
+class GroupPattern(pydantic.BaseModel):
     """Pattern definition for matching groups of related scripts."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 
     id: str
     name: str
@@ -102,14 +102,14 @@ GROUPABLE_PATTERNS: list[GroupPattern] = [
 # Result type
 # ---------------------------------------------------------------------------
 
-class GroupedScriptsResult(BaseModel):
+class GroupedScriptsResult(pydantic.BaseModel):
     """Result of grouping similar scripts together."""
 
-    individual_scripts: list[TrackedScript] = Field(
+    individual_scripts: list[tracking_data.TrackedScript] = pydantic.Field(
         default_factory=list
     )
-    groups: list[ScriptGroup] = Field(default_factory=list)
-    all_scripts: list[TrackedScript] = Field(default_factory=list)
+    groups: list[tracking_data.ScriptGroup] = pydantic.Field(default_factory=list)
+    all_scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +117,11 @@ class GroupedScriptsResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def group_similar_scripts(scripts: list[TrackedScript]) -> GroupedScriptsResult:
+def group_similar_scripts(scripts: list[tracking_data.TrackedScript]) -> GroupedScriptsResult:
     """Group similar scripts together to reduce noise."""
-    domain_groups: dict[str, dict[str, list[TrackedScript]]] = {}
-    individual_scripts: list[TrackedScript] = []
-    all_scripts: list[TrackedScript] = []
+    domain_groups: dict[str, dict[str, list[tracking_data.TrackedScript]]] = {}
+    individual_scripts: list[tracking_data.TrackedScript] = []
+    all_scripts: list[tracking_data.TrackedScript] = []
 
     for script in scripts:
         gp = _get_groupable_pattern(script.url)
@@ -136,7 +136,7 @@ def group_similar_scripts(scripts: list[TrackedScript]) -> GroupedScriptsResult:
             individual_scripts.append(script)
             all_scripts.append(script)
 
-    groups: list[ScriptGroup] = []
+    groups: list[tracking_data.ScriptGroup] = []
     for key, pattern_map in domain_groups.items():
         domain, pattern_id = key.split(":", 1)
         pattern_info = next((p for p in GROUPABLE_PATTERNS if p.id == pattern_id), None)
@@ -144,7 +144,7 @@ def group_similar_scripts(scripts: list[TrackedScript]) -> GroupedScriptsResult:
         for _, scripts_in_group in pattern_map.items():
             if len(scripts_in_group) >= MIN_GROUP_SIZE and pattern_info:
                 group_id = f"{domain}-{pattern_id}"
-                groups.append(ScriptGroup(
+                groups.append(tracking_data.ScriptGroup(
                     id=group_id,
                     name=pattern_info.name,
                     description=f"{len(scripts_in_group)} {pattern_info.description.lower()}",
@@ -153,7 +153,7 @@ def group_similar_scripts(scripts: list[TrackedScript]) -> GroupedScriptsResult:
                     domain=domain,
                 ))
                 for s in scripts_in_group:
-                    all_scripts.append(TrackedScript(
+                    all_scripts.append(tracking_data.TrackedScript(
                         url=s.url,
                         domain=s.domain,
                         description=pattern_info.description,

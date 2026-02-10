@@ -11,19 +11,15 @@ import json
 import re
 from typing import Callable
 
-from pydantic import BaseModel, Field
-
 import aiohttp
+import pydantic
 
-from src.data.loader import get_benign_scripts, get_tracking_scripts
-from src.services.openai_client import get_deployment_name, get_openai_client
-from src.services.script_grouping import group_similar_scripts
-from src.types.tracking_data import ScriptGroup, TrackedScript
-from src.utils.errors import get_error_message
-from src.utils.logger import create_logger
-from src.utils.retry import with_retry
+from src.data import loader
+from src.services import openai_client, script_grouping
+from src.types import tracking_data
+from src.utils import errors, logger, retry
 
-log = create_logger("Script-Analysis")
+log = logger.create_logger("Script-Analysis")
 
 MAX_BATCH_SIZE = 15
 MAX_BATCH_CONTENT_LENGTH = 75000
@@ -46,7 +42,7 @@ Return ONLY the JSON array, no other text."""
 
 def _identify_tracking_script(url: str) -> str | None:
     """Check if a script is a known tracking script."""
-    for entry in get_tracking_scripts():
+    for entry in loader.get_tracking_scripts():
         if entry.compiled.search(url):
             return entry.description
     return None
@@ -54,7 +50,7 @@ def _identify_tracking_script(url: str) -> str | None:
 
 def _identify_benign_script(url: str) -> str | None:
     """Check if a script is a known benign script (skip LLM analysis)."""
-    for entry in get_benign_scripts():
+    for entry in loader.get_benign_scripts():
         if entry.compiled.search(url):
             return entry.description
     return None
@@ -112,13 +108,13 @@ async def _analyze_batch_with_llm(
     scripts: list[dict[str, str | None]],
 ) -> dict[str, str]:
     """Analyze multiple scripts in a single LLM batch call."""
-    client = get_openai_client()
+    client = openai_client.get_openai_client()
     results: dict[str, str] = {}
 
     if not client or not scripts:
         return results
 
-    deployment = get_deployment_name()
+    deployment = openai_client.get_deployment_name()
 
     batch_content = "\n".join(
         f"Script {i + 1}: {s['url']}\n{(s['content'] or '[Content not available]')[:MAX_SCRIPT_CONTENT_LENGTH]}\n---"
@@ -128,7 +124,7 @@ async def _analyze_batch_with_llm(
     try:
         log.debug("Sending batch to LLM", {"scriptCount": len(scripts)})
 
-        response = await with_retry(
+        response = await retry.with_retry(
             lambda: client.chat.completions.create(
                 model=deployment,
                 messages=[
@@ -154,7 +150,7 @@ async def _analyze_batch_with_llm(
 
         log.debug("Batch analysis complete", {"received": len(results), "expected": len(scripts)})
     except Exception as error:
-        log.error("Batch script analysis failed", {"error": get_error_message(error)})
+        log.error("Batch script analysis failed", {"error": errors.get_error_message(error)})
         for script in scripts:
             url = script.get("url", "")
             if url:
@@ -195,15 +191,15 @@ def _infer_from_url(url: str) -> str:
 ScriptAnalysisProgressCallback = Callable[[str, int, int, str], None]
 
 
-class ScriptAnalysisResult(BaseModel):
+class ScriptAnalysisResult(pydantic.BaseModel):
     """Result of analyzing a set of scripts."""
 
-    scripts: list[TrackedScript] = Field(default_factory=list)
-    groups: list[ScriptGroup] = Field(default_factory=list)
+    scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
+    groups: list[tracking_data.ScriptGroup] = pydantic.Field(default_factory=list)
 
 
 async def analyze_scripts(
-    scripts: list[TrackedScript],
+    scripts: list[tracking_data.TrackedScript],
     on_progress: ScriptAnalysisProgressCallback | None = None,
 ) -> ScriptAnalysisResult:
     """
@@ -214,9 +210,9 @@ async def analyze_scripts(
     2. Match remaining against known patterns (tracking + benign)
     3. Send only truly unknown scripts to LLM for batch analysis
     """
-    grouped = group_similar_scripts(scripts)
-    results: list[TrackedScript] = list(grouped.all_scripts)
-    unknown_scripts: list[tuple[TrackedScript, int]] = []
+    grouped = script_grouping.group_similar_scripts(scripts)
+    results: list[tracking_data.TrackedScript] = list(grouped.all_scripts)
+    unknown_scripts: list[tuple[tracking_data.TrackedScript, int]] = []
 
     grouped_count = sum(1 for s in grouped.all_scripts if s.is_grouped)
 
@@ -235,7 +231,7 @@ async def analyze_scripts(
 
         tracking_desc = _identify_tracking_script(script.url)
         if tracking_desc:
-            results[i] = TrackedScript(
+            results[i] = tracking_data.TrackedScript(
                 url=script.url, domain=script.domain, description=tracking_desc,
                 resource_type=script.resource_type,
             )
@@ -243,13 +239,13 @@ async def analyze_scripts(
 
         benign_desc = _identify_benign_script(script.url)
         if benign_desc:
-            results[i] = TrackedScript(
+            results[i] = tracking_data.TrackedScript(
                 url=script.url, domain=script.domain, description=benign_desc,
                 resource_type=script.resource_type,
             )
             continue
 
-        results[i] = TrackedScript(
+        results[i] = tracking_data.TrackedScript(
             url=script.url, domain=script.domain, description="Analyzing...",
             resource_type=script.resource_type,
         )
@@ -281,7 +277,7 @@ async def analyze_scripts(
         fetched_count = 0
 
         async def fetch_one(
-            script: TrackedScript,
+            script: tracking_data.TrackedScript,
             http_session: aiohttp.ClientSession,
         ) -> dict[str, str | None]:
             nonlocal fetched_count
@@ -344,7 +340,7 @@ async def analyze_scripts(
                 url = entry["url"] or ""
                 description = batch_results.get(url, _infer_from_url(url))
                 old = results[result_index]
-                results[result_index] = TrackedScript(
+                results[result_index] = tracking_data.TrackedScript(
                     url=old.url, domain=old.domain, description=description,
                     resource_type=old.resource_type,
                 )

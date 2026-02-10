@@ -10,32 +10,27 @@ import base64
 import json
 import re
 
-from playwright.async_api import Page
+from playwright import async_api
 
-from src.prompts.consent_extraction import (
-    CONSENT_EXTRACTION_SYSTEM_PROMPT,
-    build_consent_extraction_user_prompt,
-)
-from src.services.openai_client import get_deployment_name, get_openai_client
-from src.types.consent import ConsentCategory, ConsentDetails, ConsentPartner
-from src.utils.errors import get_error_message
-from src.utils.logger import create_logger
-from src.utils.retry import with_retry
+from src.prompts import consent_extraction
+from src.services import openai_client
+from src.types import consent
+from src.utils import errors, logger, retry
 
-log = create_logger("Consent-Extract")
+log = logger.create_logger("Consent-Extract")
 
 
 async def extract_consent_details(
-    page: Page, screenshot: bytes
-) -> ConsentDetails:
+    page: async_api.Page, screenshot: bytes
+) -> consent.ConsentDetails:
     """
     Extract detailed consent information from a cookie preferences panel.
     Uses LLM vision to analyse the screenshot and extract structured data.
     """
-    client = get_openai_client()
+    client = openai_client.get_openai_client()
     if not client:
         log.warn("OpenAI not configured, skipping consent extraction")
-        return ConsentDetails(
+        return consent.ConsentDetails(
             has_manage_options=False,
             manage_options_selector=None,
             categories=[],
@@ -44,7 +39,7 @@ async def extract_consent_details(
             raw_text="",
         )
 
-    deployment = get_deployment_name()
+    deployment = openai_client.get_deployment_name()
     log.info("Extracting consent details from page...")
 
     log.start_timer("text-extraction")
@@ -127,11 +122,11 @@ async def extract_consent_details(
     b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
 
     try:
-        response = await with_retry(
+        response = await retry.with_retry(
             lambda: client.chat.completions.create(
                 model=deployment,
                 messages=[
-                    {"role": "system", "content": CONSENT_EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "system", "content": consent_extraction.CONSENT_EXTRACTION_SYSTEM_PROMPT},
                     {
                         "role": "user",
                         "content": [
@@ -143,7 +138,7 @@ async def extract_consent_details(
                             },
                             {
                                 "type": "text",
-                                "text": build_consent_extraction_user_prompt(consent_text),
+                                "text": consent_extraction.build_consent_extraction_user_prompt(consent_text),
                             },
                         ],
                     },
@@ -163,11 +158,11 @@ async def extract_consent_details(
 
         raw = json.loads(json_str)
 
-        result = ConsentDetails(
+        result = consent.ConsentDetails(
             has_manage_options=raw.get("hasManageOptions", False),
             manage_options_selector=raw.get("manageOptionsSelector"),
             categories=[
-                ConsentCategory(
+                consent.ConsentCategory(
                     name=c.get("name", ""),
                     description=c.get("description", ""),
                     required=c.get("required", False),
@@ -175,7 +170,7 @@ async def extract_consent_details(
                 for c in raw.get("categories", [])
             ],
             partners=[
-                ConsentPartner(
+                consent.ConsentPartner(
                     name=p.get("name", ""),
                     purpose=p.get("purpose", ""),
                     data_collected=p.get("dataCollected", []),
@@ -197,8 +192,8 @@ async def extract_consent_details(
 
         return result
     except Exception as error:
-        log.error("Consent extraction failed", {"error": get_error_message(error)})
-        return ConsentDetails(
+        log.error("Consent extraction failed", {"error": errors.get_error_message(error)})
+        return consent.ConsentDetails(
             has_manage_options=False,
             manage_options_selector=None,
             categories=[],

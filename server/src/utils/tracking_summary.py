@@ -6,29 +6,19 @@ and prepares data for LLM analysis.
 
 from __future__ import annotations
 
-from collections import defaultdict
-from urllib.parse import urlparse
+import collections
+from urllib import parse
 
-from src.types.analysis import (
-    DomainBreakdown,
-    DomainData,
-    TrackingSummary,
-)
-from src.types.tracking_data import (
-    NetworkRequest,
-    StorageItem,
-    TrackedCookie,
-    TrackedScript,
-)
+from src.types import analysis, tracking_data
 
 
 def _group_by_domain(
-    cookies: list[TrackedCookie],
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-) -> dict[str, DomainData]:
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+) -> dict[str, analysis.DomainData]:
     """Group tracking data (cookies, scripts, network requests) by domain."""
-    domain_data: dict[str, DomainData] = defaultdict(DomainData)
+    domain_data: dict[str, analysis.DomainData] = collections.defaultdict(analysis.DomainData)
 
     for cookie in cookies:
         domain_data[cookie.domain].cookies.append(cookie)
@@ -43,10 +33,10 @@ def _group_by_domain(
 
 
 def _get_third_party_domains(
-    domain_data: dict[str, DomainData], analyzed_url: str
+    domain_data: dict[str, analysis.DomainData], analyzed_url: str
 ) -> list[str]:
     """Identify third-party domains relative to the analyzed URL."""
-    page_hostname = urlparse(analyzed_url).hostname or ""
+    page_hostname = parse.urlparse(analyzed_url).hostname or ""
     page_base = ".".join(page_hostname.split(".")[-2:])
 
     results = []
@@ -57,10 +47,10 @@ def _get_third_party_domains(
     return results
 
 
-def _build_domain_breakdown(domain_data: dict[str, DomainData]) -> list[DomainBreakdown]:
+def _build_domain_breakdown(domain_data: dict[str, analysis.DomainData]) -> list[analysis.DomainBreakdown]:
     """Build a summary breakdown for each domain's tracking activity."""
     return [
-        DomainBreakdown(
+        analysis.DomainBreakdown(
             domain=domain,
             cookie_count=len(data.cookies),
             cookie_names=[c.name for c in data.cookies],
@@ -72,23 +62,23 @@ def _build_domain_breakdown(domain_data: dict[str, DomainData]) -> list[DomainBr
     ]
 
 
-def _build_storage_preview(items: list[StorageItem]) -> list[dict[str, str]]:
+def _build_storage_preview(items: list[tracking_data.StorageItem]) -> list[dict[str, str]]:
     """Build preview of storage items for analysis."""
     return [{"key": item.key, "valuePreview": item.value[:100]} for item in items]
 
 
 def build_tracking_summary(
-    cookies: list[TrackedCookie],
-    scripts: list[TrackedScript],
-    network_requests: list[NetworkRequest],
-    local_storage: list[StorageItem],
-    session_storage: list[StorageItem],
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+    network_requests: list[tracking_data.NetworkRequest],
+    local_storage: list[tracking_data.StorageItem],
+    session_storage: list[tracking_data.StorageItem],
     analyzed_url: str,
-) -> TrackingSummary:
+) -> analysis.TrackingSummary:
     """Build a complete tracking summary for LLM privacy analysis."""
     domain_data = _group_by_domain(cookies, scripts, network_requests)
 
-    return TrackingSummary(
+    return analysis.TrackingSummary(
         analyzed_url=analyzed_url,
         total_cookies=len(cookies),
         total_scripts=len(scripts),

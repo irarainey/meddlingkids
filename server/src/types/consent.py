@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+import pydantic
 
 OverlayType = Literal[
     "cookie-consent",
@@ -18,7 +18,7 @@ OverlayType = Literal[
 ConfidenceLevel = Literal["high", "medium", "low"]
 
 
-class CookieConsentDetection(BaseModel):
+class CookieConsentDetection(pydantic.BaseModel):
     """Result of LLM vision analysis for detecting consent banners."""
 
     found: bool
@@ -29,7 +29,7 @@ class CookieConsentDetection(BaseModel):
     reason: str
 
 
-class ConsentCategory(BaseModel):
+class ConsentCategory(pydantic.BaseModel):
     """A cookie category disclosed in a consent dialog."""
 
     name: str
@@ -37,7 +37,7 @@ class ConsentCategory(BaseModel):
     required: bool
 
 
-class ConsentPartner(BaseModel):
+class ConsentPartner(pydantic.BaseModel):
     """A third-party partner/vendor listed in a consent dialog."""
 
     name: str
@@ -49,7 +49,7 @@ class ConsentPartner(BaseModel):
     concerns: list[str] | None = None
 
 
-class ConsentDetails(BaseModel):
+class ConsentDetails(pydantic.BaseModel):
     """Detailed information extracted from a cookie consent dialog."""
 
     has_manage_options: bool

@@ -8,17 +8,17 @@ from __future__ import annotations
 
 import os
 
-from openai import AsyncAzureOpenAI, AsyncOpenAI
+import openai
 
-from src.utils.logger import create_logger
+from src.utils import logger
 
-log = create_logger("OpenAI")
+log = logger.create_logger("OpenAI")
 
-_openai_client: AsyncOpenAI | AsyncAzureOpenAI | None = None
+_openai_client: openai.AsyncOpenAI | openai.AsyncAzureOpenAI | None = None
 _is_azure: bool = False
 
 
-def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
+def get_openai_client() -> openai.AsyncOpenAI | openai.AsyncAzureOpenAI | None:
     """
     Get or initialise the OpenAI client.
     Automatically detects whether to use Azure or standard OpenAI
@@ -36,7 +36,7 @@ def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
     if azure_endpoint and azure_api_key and azure_deployment:
         log.info("Using Azure OpenAI")
         _is_azure = True
-        _openai_client = AsyncAzureOpenAI(
+        _openai_client = openai.AsyncAzureOpenAI(
             azure_endpoint=azure_endpoint,
             api_key=azure_api_key,
             api_version=os.environ.get("OPENAI_API_VERSION", "2024-12-01-preview"),
@@ -48,7 +48,7 @@ def get_openai_client() -> AsyncOpenAI | AsyncAzureOpenAI | None:
     if openai_api_key:
         log.info("Using standard OpenAI")
         _is_azure = False
-        _openai_client = AsyncOpenAI(
+        _openai_client = openai.AsyncOpenAI(
             api_key=openai_api_key,
             base_url=os.environ.get("OPENAI_BASE_URL"),
         )
