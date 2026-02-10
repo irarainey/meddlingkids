@@ -101,7 +101,7 @@ function handleViewReport(): void {
         <option value="macos-safari">macOS Safari</option>
       </select>
       <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
-        {{ isLoading ? 'Spookscouting...' : 'Unmask' }}
+        {{ isLoading ? 'Investigating...' : 'Unmask' }}
       </button>
     </div>
 
