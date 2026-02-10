@@ -7,7 +7,6 @@ page loading, consent handling, and tracking analysis.
 from __future__ import annotations
 
 import asyncio
-import base64
 from typing import Any, AsyncGenerator
 from urllib.parse import urlparse
 
@@ -132,10 +131,10 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         if access_check.denied:
             log.error("Access denied detected", {"reason": access_check.reason})
             screenshot = await session.take_screenshot(full_page=False)
-            b64 = base64.b64encode(screenshot).decode("utf-8")
+            optimized = await session.take_optimized_screenshot(full_page=False)
 
             yield format_sse_event("screenshot", {
-                "screenshot": f"data:image/png;base64,{b64}",
+                "screenshot": optimized,
                 "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
                 "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
                 "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
@@ -169,7 +168,17 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         yield format_progress_event("screenshot", "Taking screenshot...", 38)
         screenshot = await session.take_screenshot(full_page=False)
-        b64_screenshot = base64.b64encode(screenshot).decode("utf-8")
+        optimized_screenshot = await session.take_optimized_screenshot(full_page=False)
+
+        # Send screenshot to client immediately
+        yield format_sse_event("screenshot", {
+            "screenshot": optimized_screenshot,
+            "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+            "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+            "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+            "localStorage": [to_camel_case_dict(i) for i in storage["local_storage"]],
+            "sessionStorage": [to_camel_case_dict(i) for i in storage["session_storage"]],
+        })
 
         cookie_count = len(session.get_tracked_cookies())
         script_count = len(session.get_tracked_scripts())
@@ -190,15 +199,6 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             42,
         )
 
-        yield format_sse_event("screenshot", {
-            "screenshot": f"data:image/png;base64,{b64_screenshot}",
-            "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
-            "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
-            "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
-            "localStorage": [to_camel_case_dict(i) for i in storage["local_storage"]],
-            "sessionStorage": [to_camel_case_dict(i) for i in storage["session_storage"]],
-        })
-
         # ====================================================================
         # Phase 4: Overlay Detection and Handling
         # ====================================================================
@@ -211,14 +211,12 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         overlay_count = 0
 
         if page:
-            overlay_result = await handle_overlays(session, page, screenshot)
+            overlay_result = OverlayHandlingResult()
+            async for event_str in handle_overlays(session, page, screenshot, overlay_result):
+                yield event_str
             consent_details = overlay_result.consent_details
             overlay_count = overlay_result.overlay_count
             storage = overlay_result.final_storage
-
-            # Emit all collected events
-            for event_str in overlay_result.events:
-                yield event_str
 
         log.end_timer("overlay-handling", "Overlay handling complete")
         log.info("Overlay handling result", {"overlaysFound": overlay_count, "hasConsentDetails": consent_details is not None})

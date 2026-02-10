@@ -7,9 +7,12 @@ allowing multiple concurrent URL analyses without interference.
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
 import os
 from datetime import datetime, timezone
 
+from PIL import Image
 from playwright.async_api import Browser, BrowserContext, Page, Request, Response, async_playwright
 
 from src.services.access_detection import check_for_access_denied
@@ -328,10 +331,41 @@ class BrowserSession:
             return {"local_storage": [], "session_storage": []}
 
     async def take_screenshot(self, full_page: bool = False) -> bytes:
-        """Take a PNG screenshot of the current page."""
+        """Take a PNG screenshot of the current page (for AI analysis)."""
         if not self._page:
             raise RuntimeError("No browser session active")
         return await self._page.screenshot(type="png", full_page=full_page)
+
+    async def take_optimized_screenshot(self, full_page: bool = False) -> str:
+        """
+        Take a JPEG screenshot optimized for client display.
+
+        Returns a base64 data URL string ready for embedding.
+        Uses JPEG compression and downscaling for smaller payloads.
+        """
+        if not self._page:
+            raise RuntimeError("No browser session active")
+
+        png_bytes = await self._page.screenshot(type="png", full_page=full_page)
+        img = Image.open(io.BytesIO(png_bytes))
+
+        # Downscale if wider than 1280px to reduce payload
+        max_width = 1280
+        if img.width > max_width:
+            ratio = max_width / img.width
+            img = img.resize(
+                (max_width, int(img.height * ratio)),
+                Image.LANCZOS,
+            )
+
+        # Convert to RGB (JPEG doesn't support alpha)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=72, optimize=True)
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{b64}"
 
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""

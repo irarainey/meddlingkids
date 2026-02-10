@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.2.0",
     "aiohttp>=3.13.0",
     "pydantic>=2.12.0",
+    "Pillow>=12.1.0",
 ]
 
 [project.scripts]
