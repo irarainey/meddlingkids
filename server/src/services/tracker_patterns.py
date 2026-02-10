@@ -133,6 +133,32 @@ FINGERPRINT_COOKIE_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 # ============================================================================
+# Sub-category Patterns (subsets of HIGH_RISK_TRACKERS)
+# ============================================================================
+
+SESSION_REPLAY_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"hotjar", re.I),
+    re.compile(r"fullstory", re.I),
+    re.compile(r"logrocket", re.I),
+    re.compile(r"clarity\.ms", re.I),
+    re.compile(r"mouseflow", re.I),
+    re.compile(r"smartlook", re.I),
+    re.compile(r"luckyorange", re.I),
+    re.compile(r"inspectlet", re.I),
+]
+
+CROSS_DEVICE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"liveramp", re.I),
+    re.compile(r"tapad", re.I),
+    re.compile(r"drawbridge", re.I),
+    re.compile(r"unified.?id", re.I),
+    re.compile(r"id5", re.I),
+    re.compile(r"thetradedesk", re.I),
+    re.compile(r"lotame", re.I),
+    re.compile(r"zeotap", re.I),
+]
+
+# ============================================================================
 # Storage Patterns
 # ============================================================================
 

@@ -7,9 +7,9 @@ and prepares data for LLM analysis.
 from __future__ import annotations
 
 import collections
-from urllib import parse
 
 from src.types import analysis, tracking_data
+from src.utils import url as url_mod
 
 
 def _group_by_domain(
@@ -36,13 +36,11 @@ def _get_third_party_domains(
     domain_data: dict[str, analysis.DomainData], analyzed_url: str
 ) -> list[str]:
     """Identify third-party domains relative to the analyzed URL."""
-    page_hostname = parse.urlparse(analyzed_url).hostname or ""
-    page_base = ".".join(page_hostname.split(".")[-2:])
+    page_base = url_mod.get_base_domain(url_mod.extract_domain(analyzed_url))
 
     results = []
     for domain in domain_data:
-        domain_base = ".".join(domain.split(".")[-2:])
-        if page_base != domain_base:
+        if url_mod.get_base_domain(domain) != page_base:
             results.append(domain)
     return results
 

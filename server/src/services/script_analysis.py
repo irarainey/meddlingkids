@@ -1,43 +1,31 @@
-"""
-Script analysis service using LLM.
+"""Script analysis service.
 
-Analyses JavaScript files to determine their purpose using the
-Microsoft Agent Framework ChatAgent.  Groups similar scripts
-(like application chunks) to reduce noise.
+Analyses JavaScript files to determine their purpose.
+Groups similar scripts (like application chunks), matches
+against known patterns, and delegates only truly unknown
+scripts to the ``ScriptAnalysisAgent`` for LLM-based
+identification — each script analysed individually with
+concurrent execution bounded by a semaphore.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 from typing import Callable
 
 import aiohttp
 import pydantic
 
-from src.agents.chat_agent import get_chat_agent_service
-from src.agents.config import AGENT_SCRIPT_ANALYSIS
+from src.agents import get_script_analysis_agent
 from src.data import loader
 from src.services import script_grouping
 from src.types import tracking_data
-from src.utils import errors, logger
+from src.utils import logger
 
 log = logger.create_logger("Script-Analysis")
 
-MAX_BATCH_SIZE = 15
-MAX_BATCH_CONTENT_LENGTH = 75000
-MAX_SCRIPT_CONTENT_LENGTH = 2000
-
-BATCH_SCRIPT_ANALYSIS_PROMPT = """You are a web security analyst. Analyze each script URL and briefly describe its purpose.
-
-For each script, provide a SHORT description (max 10 words) of what the script does.
-Focus on: tracking, analytics, advertising, functionality, UI framework, etc.
-
-Return a JSON array with objects containing "url" and "description" for each script.
-Example: [{"url": "https://example.com/script.js", "description": "User analytics tracking"}]
-
-Return ONLY the JSON array, no other text."""
+# Maximum number of concurrent LLM calls for script analysis.
+MAX_CONCURRENCY = 5
 
 
 # ============================================================================
@@ -105,78 +93,28 @@ async def _fetch_script_content(
 
 
 # ============================================================================
-# LLM batch analysis
+# LLM analysis
 # ============================================================================
 
-async def _analyze_batch_with_llm(
-    scripts: list[dict[str, str | None]],
-) -> dict[str, str]:
-    """Analyse multiple scripts in a single LLM batch call.
+async def _analyze_one_with_llm(
+    url: str,
+    content: str | None,
+) -> tuple[str, str]:
+    """Analyse a single script via the LLM agent.
 
     Args:
-        scripts: List of dicts with ``url`` and ``content`` keys.
+        url: Script URL.
+        content: Fetched script content (may be *None*).
 
     Returns:
-        Mapping of script URL to description string.
+        A ``(url, description)`` tuple.
     """
-    agent_service = get_chat_agent_service()
-    results: dict[str, str] = {}
+    agent = get_script_analysis_agent()
+    if not agent.is_configured:
+        return url, _infer_from_url(url)
 
-    if not agent_service.is_configured or not scripts:
-        return results
-
-    batch_content = "\n".join(
-        f"Script {i + 1}: {s['url']}\n"
-        f"{(s['content'] or '[Content not available]')[:MAX_SCRIPT_CONTENT_LENGTH]}"
-        f"\n---"
-        for i, s in enumerate(scripts)
-    )
-
-    try:
-        log.debug(
-            "Sending batch to LLM",
-            {"scriptCount": len(scripts)},
-        )
-
-        content = await agent_service.complete(
-            system_prompt=BATCH_SCRIPT_ANALYSIS_PROMPT,
-            user_prompt=(
-                f"Analyze these {len(scripts)} scripts:\n\n"
-                f"{batch_content}"
-            ),
-            agent_name=AGENT_SCRIPT_ANALYSIS,
-            max_tokens=1000,
-            retry_context=(
-                f"Batch script analysis ({len(scripts)} scripts)"
-            ),
-            max_retries=2,
-        )
-
-        json_str = (content or "[]").strip()
-        if json_str.startswith("```"):
-            json_str = re.sub(r"```json?\n?", "", json_str)
-            json_str = re.sub(r"```$", "", json_str).strip()
-
-        parsed = json.loads(json_str)
-        for item in parsed:
-            if item.get("url") and item.get("description"):
-                results[item["url"]] = item["description"]
-
-        log.debug(
-            "Batch analysis complete",
-            {"received": len(results), "expected": len(scripts)},
-        )
-    except Exception as error:
-        log.error(
-            "Batch script analysis failed",
-            {"error": errors.get_error_message(error)},
-        )
-        for script in scripts:
-            url = script.get("url", "")
-            if url:
-                results[url] = _infer_from_url(url)
-
-    return results
+    description = await agent.analyze_one(url, content)
+    return url, description or _infer_from_url(url)
 
 
 def _infer_from_url(url: str) -> str:
@@ -228,7 +166,7 @@ async def analyze_scripts(
     Process:
     1. Group similar scripts (chunks, vendor bundles) — skip LLM analysis
     2. Match remaining against known patterns (tracking + benign)
-    3. Send only truly unknown scripts to LLM for batch analysis
+    3. Send truly unknown scripts to the LLM agent concurrently
     """
     grouped = script_grouping.group_similar_scripts(scripts)
     results: list[tracking_data.TrackedScript] = list(grouped.all_scripts)
@@ -299,7 +237,7 @@ async def analyze_scripts(
         async def fetch_one(
             script: tracking_data.TrackedScript,
             http_session: aiohttp.ClientSession,
-        ) -> dict[str, str | None]:
+        ) -> tuple[str, str | None]:
             nonlocal fetched_count
             content = await _fetch_script_content(
                 script.url, http_session
@@ -307,7 +245,7 @@ async def analyze_scripts(
             fetched_count += 1
             if on_progress and (fetched_count % 5 == 0 or fetched_count == total_to_analyze):
                 on_progress("fetching", fetched_count, total_to_analyze, f"Fetched {fetched_count}/{total_to_analyze} scripts...")
-            return {"url": script.url, "content": content}
+            return script.url, content
 
         async with aiohttp.ClientSession(
             timeout=_FETCH_TIMEOUT
@@ -316,68 +254,55 @@ async def analyze_scripts(
                 *(fetch_one(s, http_session) for s, _ in unknown_scripts)
             )
 
-        # Create batches
-        batches: list[list[tuple[dict[str, str | None], int]]] = []
-        current_batch: list[tuple[dict[str, str | None], int]] = []
-        current_content_len = 0
+        # Build a lookup from URL → (content, result_index)
+        url_to_info: dict[str, tuple[str | None, int]] = {}
+        for i, (_, result_index) in enumerate(unknown_scripts):
+            url, content = script_contents[i]
+            url_to_info[url] = (content, result_index)
 
-        for i_idx, (script, result_index) in enumerate(unknown_scripts):
-            content_entry = script_contents[i_idx]
-            content_len = len(content_entry.get("content") or "")
-
-            if (
-                len(current_batch) >= MAX_BATCH_SIZE
-                or (current_content_len + content_len > MAX_BATCH_CONTENT_LENGTH and current_batch)
-            ):
-                batches.append(current_batch)
-                current_batch = []
-                current_content_len = 0
-
-            current_batch.append((content_entry, result_index))
-            current_content_len += content_len
-
-        if current_batch:
-            batches.append(current_batch)
-
-        log.info("Processing scripts in batches", {"batches": len(batches), "totalScripts": total_to_analyze})
+        # Analyse each script concurrently with a semaphore to
+        # avoid overwhelming the LLM endpoint with too many
+        # parallel requests.
+        semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
+        completed_count = 0
 
         if on_progress:
-            on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts in {len(batches)} batches...")
+            on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts...")
 
-        completed_count = 0
-        for batch_idx, batch in enumerate(batches):
+        async def analyze_with_progress(url: str, content: str | None) -> tuple[str, str]:
+            nonlocal completed_count
+            async with semaphore:
+                result = await _analyze_one_with_llm(url, content)
+            completed_count += 1
             if on_progress:
                 on_progress(
                     "analyzing", completed_count, total_to_analyze,
-                    f"Analyzing unknown script batch {batch_idx + 1} of {len(batches)}...",
+                    f"Analyzed {completed_count}/{total_to_analyze} scripts...",
                 )
+            return result
 
-            batch_results = await _analyze_batch_with_llm(
-                [{"url": entry["url"], "content": entry.get("content")} for entry, _ in batch]
+        llm_results = await asyncio.gather(
+            *(
+                analyze_with_progress(url, content)
+                for url, (content, _) in url_to_info.items()
             )
+        )
 
-            for entry, result_index in batch:
-                url = entry["url"] or ""
-                description = batch_results.get(url, _infer_from_url(url))
-                old = results[result_index]
-                results[result_index] = tracking_data.TrackedScript(
-                    url=old.url, domain=old.domain, description=description,
-                    resource_type=old.resource_type,
-                )
-                completed_count += 1
-
-            if on_progress:
-                on_progress(
-                    "analyzing", completed_count, total_to_analyze,
-                    f"Completed batch {batch_idx + 1} of {len(batches)} ({completed_count}/{total_to_analyze} scripts)",
-                )
+        # Write descriptions back into the results list.
+        for url, description in llm_results:
+            _, result_index = url_to_info[url]
+            old = results[result_index]
+            results[result_index] = tracking_data.TrackedScript(
+                url=old.url, domain=old.domain, description=description,
+                resource_type=old.resource_type,
+            )
 
         if on_progress:
             on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete")
 
         log.success("Script analysis complete", {
-            "analyzed": completed_count,
-            "batches": len(batches),
+            "analyzed": total_to_analyze,
+            "concurrency": MAX_CONCURRENCY,
             "grouped": grouped_count,
             "total": len(results),
         })

@@ -28,6 +28,18 @@ class CookieConsentDetection(pydantic.BaseModel):
     confidence: ConfidenceLevel
     reason: str
 
+    @classmethod
+    def not_found(cls, reason: str = "") -> CookieConsentDetection:
+        """Return a default *not-found* detection result."""
+        return cls(
+            found=False,
+            overlay_type=None,
+            selector=None,
+            button_text=None,
+            confidence="low",
+            reason=reason,
+        )
+
 
 class ConsentCategory(pydantic.BaseModel):
     """A cookie category disclosed in a consent dialog."""
@@ -59,3 +71,15 @@ class ConsentDetails(pydantic.BaseModel):
     purposes: list[str]
     raw_text: str
     expanded: bool | None = None
+
+    @classmethod
+    def empty(cls, raw_text: str = "") -> ConsentDetails:
+        """Return a default empty consent-details result."""
+        return cls(
+            has_manage_options=False,
+            manage_options_selector=None,
+            categories=[],
+            partners=[],
+            purposes=[],
+            raw_text=raw_text,
+        )

@@ -239,15 +239,15 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         log.start_timer("ai-analysis")
 
-        # ---- Shared progress queue for both concurrent analyses ----
+        # ---- Shared progress queue for concurrent tasks ----
         progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
-        _tasks_remaining = 2  # script analysis + tracking analysis
+        _tasks_remaining = 2  # script analysis + streaming analysis
 
-        # Script analysis
+        # ---- Script analysis (runs concurrently) ----
         log.start_timer("script-analysis")
 
         def script_progress(phase: str, current: int, total: int, detail: str) -> None:
-            """Push progress events onto an async queue for yielding."""
+            """Push progress events onto the async queue."""
             log.info(f"Script analysis progress: {phase} {current}/{total} - {detail}")
             if phase == "matching":
                 if current == 0:
@@ -271,7 +271,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                     )
 
         async def run_script_analysis() -> Any:
-            """Run script analysis and signal the queue on completion."""
+            """Run script analysis and signal the queue."""
             try:
                 result = await script_analysis.analyze_scripts(final_scripts, script_progress)
                 log.end_timer("script-analysis", f"Script analysis complete ({len(result.scripts)} scripts, {len(result.groups)} groups)")
@@ -279,33 +279,17 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             finally:
                 progress_queue.put_nowait(None)
 
-        # Tracking analysis (runs concurrently with script analysis)
+        # ---- Streaming tracking analysis (runs concurrently) ----
         log.start_timer("tracking-analysis")
+        analysis_chunks: list[str] = []
 
-        def analysis_progress(phase: str, detail: str) -> None:
-            """Push AI analysis progress events onto the shared queue."""
-            log.info(f"Analysis: {phase} - {detail}")
-            if phase == "preparing":
-                progress_queue.put_nowait(
-                    analyze_helpers.format_progress_event("ai-preparing", detail or "Preparing data for AI analysis...", 84)
-                )
-            elif phase == "analyzing":
-                progress_queue.put_nowait(
-                    analyze_helpers.format_progress_event("ai-analyzing", detail or "Generating privacy report...", 88)
-                )
-            elif phase == "scoring":
-                progress_queue.put_nowait(
-                    analyze_helpers.format_progress_event("ai-scoring", detail or "Calculating privacy score...", 94)
-                )
-            elif phase == "summarizing":
-                progress_queue.put_nowait(
-                    analyze_helpers.format_progress_event("ai-summarizing", detail or "Generating summary findings...", 97)
-                )
-
-        async def run_analysis() -> Any:
-            """Run tracking analysis and signal the queue on completion."""
+        async def run_streaming_analysis() -> None:
+            """Stream tracking analysis and push chunks + progress to queue."""
             try:
-                result = await analysis.run_tracking_analysis(
+                progress_queue.put_nowait(
+                    analyze_helpers.format_progress_event("ai-analyzing", "Generating privacy report...", 84)
+                )
+                async for chunk in analysis.stream_tracking_analysis(
                     final_cookies,
                     storage["local_storage"],
                     storage["session_storage"],
@@ -313,17 +297,19 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                     final_scripts,
                     url,
                     consent_details,
-                    analysis_progress,
-                )
-                return result
+                ):
+                    analysis_chunks.append(chunk)
+                    progress_queue.put_nowait(
+                        analyze_helpers.format_sse_event("analysis-chunk", {"text": chunk})
+                    )
             finally:
                 progress_queue.put_nowait(None)
 
-        # Launch both analyses concurrently
+        # Launch both concurrently
         script_task = asyncio.create_task(run_script_analysis())
-        analysis_task = asyncio.create_task(run_analysis())
+        analysis_stream_task = asyncio.create_task(run_streaming_analysis())
 
-        # Drain progress events until both tasks signal completion
+        # Drain progress events until both signal completion
         finished = 0
         while finished < _tasks_remaining:
             event = await progress_queue.get()
@@ -332,19 +318,49 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                 continue
             yield event
 
-        script_analysis_result = await script_task
-        analysis_result = await analysis_task
+        await script_task
+        await analysis_stream_task
+        script_analysis_result = script_task.result()
 
         log.end_timer("tracking-analysis", "Tracking analysis complete")
+
+        # ---- Post-streaming: scoring + summary findings ----
+        full_analysis_text = "".join(analysis_chunks)
+        log.info("Analysis streamed", {"length": len(full_analysis_text)})
+
+        yield analyze_helpers.format_progress_event("ai-scoring", "Calculating privacy score...", 94)
+        from src.services import privacy_score as privacy_score_mod
+        from src.utils import tracking_summary as tracking_summary_mod
+
+        tracking_summary = tracking_summary_mod.build_tracking_summary(
+            final_cookies, final_scripts, final_requests,
+            storage["local_storage"], storage["session_storage"], url,
+        )
+
+        score_breakdown = privacy_score_mod.calculate_privacy_score(
+            final_cookies, final_scripts, final_requests,
+            storage["local_storage"], storage["session_storage"],
+            url, consent_details,
+        )
+
+        yield analyze_helpers.format_progress_event("ai-summarizing", "Generating summary findings...", 97)
+        from src.agents import get_summary_findings_agent
+        summary_agent = get_summary_findings_agent()
+        summary_findings = await summary_agent.summarise(full_analysis_text)
+
         log.end_timer("ai-analysis", "All AI analysis complete")
 
-        if analysis_result.success:
+        analysis_success = bool(full_analysis_text)
+        privacy_score = score_breakdown.total_score
+        privacy_summary = score_breakdown.summary
+
+        if analysis_success:
             log.success("Analysis succeeded", {
-                "privacyScore": analysis_result.privacy_score,
-                "analysisLength": len(analysis_result.analysis or ""),
+                "privacyScore": privacy_score,
+                "analysisLength": len(full_analysis_text),
             })
         else:
-            log.error("Analysis failed", {"error": analysis_result.error})
+            log.error("Analysis produced no output")
 
         # ====================================================================
         # Phase 6: Complete
@@ -353,7 +369,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         log.success("Investigation complete!", {
             "totalTime": f"{(total_time / 1000):.2f}s",
             "overlaysDismissed": overlay_count,
-            "privacyScore": analysis_result.privacy_score,
+            "privacyScore": privacy_score,
         })
 
         yield analyze_helpers.format_progress_event("complete", "Investigation complete!", 100)
@@ -363,8 +379,8 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         # Build score breakdown dict
         score_breakdown_dict = (
-            analyze_helpers.serialize_score_breakdown(analysis_result.score_breakdown)
-            if analysis_result.score_breakdown
+            analyze_helpers.serialize_score_breakdown(score_breakdown)
+            if score_breakdown
             else None
         )
 
@@ -375,32 +391,32 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                 if overlay_count > 0
                 else "Tracking analyzed"
             ),
-            "analysis": analysis_result.analysis if analysis_result.success else None,
+            "analysis": full_analysis_text if analysis_success else None,
             "summaryFindings": (
-                [{"type": f.type, "text": f.text} for f in analysis_result.summary_findings]
-                if analysis_result.success
+                [{"type": f.type, "text": f.text} for f in summary_findings]
+                if analysis_success
                 else None
             ),
-            "privacyScore": analysis_result.privacy_score if analysis_result.success else None,
-            "privacySummary": analysis_result.privacy_summary if analysis_result.success else None,
-            "scoreBreakdown": score_breakdown_dict if analysis_result.success else None,
+            "privacyScore": privacy_score if analysis_success else None,
+            "privacySummary": privacy_summary if analysis_success else None,
+            "scoreBreakdown": score_breakdown_dict if analysis_success else None,
             "analysisSummary": (
                 {
-                    "analyzedUrl": analysis_result.summary.analyzed_url,
-                    "totalCookies": analysis_result.summary.total_cookies,
-                    "totalScripts": analysis_result.summary.total_scripts,
-                    "totalNetworkRequests": analysis_result.summary.total_network_requests,
-                    "localStorageItems": analysis_result.summary.local_storage_items,
-                    "sessionStorageItems": analysis_result.summary.session_storage_items,
-                    "thirdPartyDomains": analysis_result.summary.third_party_domains,
-                    "domainBreakdown": [analyze_helpers.to_camel_case_dict(d) for d in analysis_result.summary.domain_breakdown],
-                    "localStorage": analysis_result.summary.local_storage,
-                    "sessionStorage": analysis_result.summary.session_storage,
+                    "analyzedUrl": tracking_summary.analyzed_url,
+                    "totalCookies": tracking_summary.total_cookies,
+                    "totalScripts": tracking_summary.total_scripts,
+                    "totalNetworkRequests": tracking_summary.total_network_requests,
+                    "localStorageItems": tracking_summary.local_storage_items,
+                    "sessionStorageItems": tracking_summary.session_storage_items,
+                    "thirdPartyDomains": tracking_summary.third_party_domains,
+                    "domainBreakdown": [analyze_helpers.to_camel_case_dict(d) for d in tracking_summary.domain_breakdown],
+                    "localStorage": tracking_summary.local_storage,
+                    "sessionStorage": tracking_summary.session_storage,
                 }
-                if analysis_result.summary
+                if tracking_summary
                 else None
             ),
-            "analysisError": analysis_result.error if not analysis_result.success else None,
+            "analysisError": None if analysis_success else "Analysis produced no output",
             "consentDetails": consent_details_dict,
             "scripts": [analyze_helpers.to_camel_case_dict(s) for s in script_analysis_result.scripts],
             "scriptGroups": [analyze_helpers.to_camel_case_dict(g) for g in script_analysis_result.groups],
@@ -416,3 +432,4 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         except Exception as err:
             log.warn("Error during browser cleanup", {"error": errors.get_error_message(err)})
         log.debug("Browser cleanup complete")
+        logger.end_log_file()

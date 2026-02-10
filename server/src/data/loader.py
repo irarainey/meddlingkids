@@ -88,11 +88,6 @@ def get_benign_scripts() -> list[partners.ScriptPattern]:
     return _benign_scripts
 
 
-def match_script_pattern(pattern: partners.ScriptPattern, url: str) -> bool:
-    """Test if a URL matches a pre-compiled script pattern."""
-    return bool(pattern.compiled.search(url))
-
-
 # ============================================================================
 # Partner Data Loading
 # ============================================================================
@@ -115,13 +110,6 @@ def get_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
     if filename not in _partner_database_cache:
         _partner_database_cache[filename] = _load_partner_database(filename)
     return _partner_database_cache[filename]
-
-
-def get_all_partner_databases(
-    categories: list[partners.PartnerCategoryConfig],
-) -> dict[str, dict[str, partners.PartnerEntry]]:
-    """Get all partner databases keyed by config file name."""
-    return {config.file: get_partner_database(config.file) for config in categories}
 
 
 # ============================================================================

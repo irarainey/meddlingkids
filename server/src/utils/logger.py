@@ -37,12 +37,7 @@ def start_log_file(domain: str) -> None:
     if not _write_to_file:
         return
 
-    if _log_file_stream is not None:
-        try:
-            _log_file_stream.close()  # type: ignore[union-attr]
-        except Exception:
-            pass
-        _log_file_stream = None
+    end_log_file()
 
     logs_dir = Path.cwd() / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +61,20 @@ def start_log_file(domain: str) -> None:
     print(f"\033[36mℹ [Logger] Writing logs to: {_log_file_path}\033[0m")
 
 
+def end_log_file() -> None:
+    """Flush and close the current log file."""
+    global _log_file_stream, _log_file_path
+
+    if _log_file_stream is not None:
+        try:
+            _log_file_stream.flush()
+            _log_file_stream.close()
+        except Exception:
+            pass
+        _log_file_stream = None
+        _log_file_path = None
+
+
 def _write_to_log_file(line: str) -> None:
     """Write a line to the log file (without ANSI colours)."""
     if _log_file_stream is None:
@@ -73,6 +82,7 @@ def _write_to_log_file(line: str) -> None:
 
     clean = re.sub(r"\033\[[0-9;]*m", "", line)
     _log_file_stream.write(clean + "\n")
+    _log_file_stream.flush()
 
 
 # ============================================================================
@@ -158,10 +168,6 @@ class Logger:
     def __init__(self, context: str = "Server") -> None:
         """Create a logger that prefixes messages with *context*."""
         self._context = context
-
-    def child(self, context: str) -> Logger:
-        """Return a new Logger with a different context label."""
-        return Logger(context)
 
     def _log(self, level: str, message: str, data: dict[str, object] | None = None) -> None:
         """Format and emit a log line at the given level."""

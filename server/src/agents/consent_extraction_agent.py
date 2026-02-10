@@ -1,0 +1,376 @@
+"""Consent extraction agent using LLM vision.
+
+Extracts detailed consent dialog information — cookie
+categories, third-party partners, data-collection purposes
+— from screenshots and page text using a structured output
+schema.
+"""
+
+from __future__ import annotations
+
+import pydantic
+from playwright import async_api
+
+from src.agents.base import BaseAgent
+from src.agents.config import AGENT_CONSENT_EXTRACTION
+from src.types import consent
+from src.utils import errors, logger
+
+log = logger.create_logger("ConsentExtractionAgent")
+
+
+# ── Structured output models ───────────────────────────────────
+
+class _CategoryResponse(pydantic.BaseModel):
+    """Cookie category from the consent dialog."""
+
+    name: str
+    description: str
+    required: bool = False
+
+
+class _PartnerResponse(pydantic.BaseModel):
+    """Third-party partner/vendor from the consent dialog."""
+
+    name: str
+    purpose: str = ""
+    dataCollected: list[str] = pydantic.Field(
+        default_factory=list
+    )
+
+
+class _ConsentExtractionResponse(pydantic.BaseModel):
+    """Schema pushed to the LLM via ``response_format``."""
+
+    hasManageOptions: bool = False
+    manageOptionsSelector: str | None = None
+    categories: list[_CategoryResponse] = pydantic.Field(
+        default_factory=list
+    )
+    partners: list[_PartnerResponse] = pydantic.Field(
+        default_factory=list
+    )
+    purposes: list[str] = pydantic.Field(
+        default_factory=list
+    )
+
+
+# ── System prompt ───────────────────────────────────────────────
+
+_INSTRUCTIONS = """\
+You are an expert at analyzing cookie consent dialogs and \
+extracting detailed information about tracking and data \
+collection.
+
+Your task is to extract ALL information about:
+1. Cookie categories (necessary, functional, analytics, \
+advertising, etc.)
+2. Third-party partners/vendors and what they do — EXTRACT \
+ALL PARTNERS, even if there are hundreds
+3. What data is being collected
+4. Purposes of data collection
+5. Any retention periods mentioned
+
+IMPORTANT INSTRUCTIONS FOR PARTNERS:
+- Look for "View Partners", "Show Vendors", "IAB Vendors", \
+or similar expandable sections
+- Many consent dialogs hide the full partner list behind a \
+button — look for this in the HTML
+- TCF dialogs often have 100+ partners — include them ALL
+- If you see text like "We and our 842 partners" or similar, \
+there is a partner list somewhere
+- Partner lists may be in tables, lists, or accordion sections
+- Include EVERY partner name you can find
+
+Also identify if there is a "Manage Preferences", \
+"Cookie Settings", "More Options", or similar button that \
+reveals more details.
+
+Return ONLY a JSON object matching the required schema."""
+
+
+# ── Agent class ─────────────────────────────────────────────────
+
+class ConsentExtractionAgent(BaseAgent):
+    """Vision agent that extracts consent dialog details.
+
+    Sends a screenshot + extracted page text to the LLM and
+    returns typed ``ConsentDetails``.
+    """
+
+    agent_name = AGENT_CONSENT_EXTRACTION
+    instructions = _INSTRUCTIONS
+    max_tokens = 4000
+    max_retries = 3
+    response_model = _ConsentExtractionResponse
+
+    async def extract(
+        self,
+        page: async_api.Page,
+        screenshot: bytes,
+    ) -> consent.ConsentDetails:
+        """Extract consent details from a page screenshot.
+
+        Args:
+            page: Playwright page for DOM text extraction.
+            screenshot: Raw PNG screenshot bytes.
+
+        Returns:
+            Structured ``ConsentDetails``.
+        """
+        log.info("Extracting consent details from page...")
+
+        log.start_timer("text-extraction")
+        consent_text = await _extract_consent_text(page)
+        log.end_timer(
+            "text-extraction", "Text extraction complete"
+        )
+        log.debug(
+            "Extracted consent text",
+            {"length": len(consent_text)},
+        )
+
+        log.start_timer("vision-extraction")
+        log.info("Analysing consent dialog with vision...")
+
+        try:
+            response = await self._complete_vision(
+                user_text=(
+                    "Analyze this cookie consent dialog"
+                    " screenshot and extracted text to"
+                    " find ALL information about tracking,"
+                    " partners, and data collection.\n\n"
+                    "Extracted text from consent"
+                    f" elements:\n{consent_text}\n\n"
+                    "Return a detailed JSON object with"
+                    " categories, partners, purposes, and"
+                    " any manage options button."
+                ),
+                screenshot=screenshot,
+            )
+            log.end_timer(
+                "vision-extraction",
+                "Vision extraction complete",
+            )
+
+            parsed = self._parse_response(
+                response, _ConsentExtractionResponse
+            )
+            if parsed:
+                return _to_domain(parsed, consent_text)
+
+            # Fallback: manual parse from text
+            return _parse_text_fallback(
+                response.text, consent_text
+            )
+        except Exception as error:
+            log.error(
+                "Consent extraction failed",
+                {"error": errors.get_error_message(error)},
+            )
+            return consent.ConsentDetails.empty(
+                consent_text[:5000]
+            )
+
+
+# ── Helpers ─────────────────────────────────────────────────────
+
+def _to_domain(
+    r: _ConsentExtractionResponse,
+    raw_text: str,
+) -> consent.ConsentDetails:
+    """Convert structured response to domain model.
+
+    Args:
+        r: Parsed LLM response.
+        raw_text: Raw consent text from the page.
+
+    Returns:
+        Domain ``ConsentDetails`` instance.
+    """
+    return consent.ConsentDetails(
+        has_manage_options=r.hasManageOptions,
+        manage_options_selector=r.manageOptionsSelector,
+        categories=[
+            consent.ConsentCategory(
+                name=c.name,
+                description=c.description,
+                required=c.required,
+            )
+            for c in r.categories
+        ],
+        partners=[
+            consent.ConsentPartner(
+                name=p.name,
+                purpose=p.purpose,
+                data_collected=p.dataCollected,
+            )
+            for p in r.partners
+        ],
+        purposes=r.purposes,
+        raw_text=raw_text[:5000],
+    )
+
+
+def _parse_text_fallback(
+    text: str | None,
+    raw_text: str,
+) -> consent.ConsentDetails:
+    """Parse raw LLM text when structured output fails.
+
+    Args:
+        text: Raw LLM response text.
+        raw_text: Raw consent text from the page.
+
+    Returns:
+        Parsed ``ConsentDetails``.
+    """
+    raw = BaseAgent._load_json_from_text(text)
+    if isinstance(raw, dict):
+        return consent.ConsentDetails(
+            has_manage_options=raw.get(
+                "hasManageOptions", False
+            ),
+            manage_options_selector=raw.get(
+                "manageOptionsSelector"
+            ),
+            categories=[
+                consent.ConsentCategory(
+                    name=c.get("name", ""),
+                    description=c.get("description", ""),
+                    required=c.get("required", False),
+                )
+                for c in raw.get("categories", [])
+            ],
+            partners=[
+                consent.ConsentPartner(
+                    name=p.get("name", ""),
+                    purpose=p.get("purpose", ""),
+                    data_collected=p.get(
+                        "dataCollected", []
+                    ),
+                )
+                for p in raw.get("partners", [])
+            ],
+            purposes=raw.get("purposes", []),
+            raw_text=raw_text[:5000],
+        )
+    return consent.ConsentDetails.empty(raw_text[:5000])
+
+
+async def _extract_consent_text(
+    page: async_api.Page,
+) -> str:
+    """Extract text from consent-related DOM elements.
+
+    Combines text from main-page selectors and consent
+    iframes into a single string.
+
+    Args:
+        page: Playwright page to extract from.
+
+    Returns:
+        Combined consent text, truncated to 50 000 chars.
+    """
+    main_page_text: str = await page.evaluate(
+        """() => {
+            const selectors = [
+                '[class*="cookie"]',
+                '[class*="consent"]',
+                '[class*="privacy"]',
+                '[class*="gdpr"]',
+                '[id*="cookie"]',
+                '[id*="consent"]',
+                '[role="dialog"]',
+                '[class*="modal"]',
+                '[class*="banner"]',
+                '[class*="overlay"]',
+                '[class*="cmp"]',
+                '[class*="tcf"]',
+                '[class*="vendor"]',
+                '[class*="partner"]',
+            ];
+            const elements = [];
+            for (const sel of selectors) {
+                document.querySelectorAll(sel).forEach(
+                    el => {
+                        const text = el.innerText?.trim();
+                        if (text && text.length > 10
+                            && text.length < 15000) {
+                            elements.push(text);
+                        }
+                    }
+                );
+            }
+            document.querySelectorAll('table').forEach(
+                table => {
+                    const text = table.innerText?.trim();
+                    if (text && (
+                        text.toLowerCase().includes(
+                            'partner') ||
+                        text.toLowerCase().includes(
+                            'vendor') ||
+                        text.toLowerCase().includes(
+                            'cookie') ||
+                        text.toLowerCase().includes(
+                            'purpose'))) {
+                        elements.push(text);
+                    }
+                }
+            );
+            document.querySelectorAll('ul, ol').forEach(
+                list => {
+                    const text = list.innerText?.trim();
+                    const pt = list.parentElement
+                        ?.innerText?.toLowerCase() || '';
+                    if (text && text.length > 50 && (
+                        pt.includes('partner') ||
+                        pt.includes('vendor') ||
+                        pt.includes('third part'))) {
+                        elements.push(
+                            'PARTNER LIST:\\n' + text);
+                    }
+                }
+            );
+            return [...new Set(elements)]
+                .join('\\n\\n---\\n\\n');
+        }"""
+    )
+
+    iframe_texts: list[str] = []
+    consent_keywords = (
+        "consent",
+        "onetrust",
+        "cookiebot",
+        "sourcepoint",
+        "trustarc",
+        "didomi",
+        "quantcast",
+        "cmp",
+        "gdpr",
+        "privacy",
+    )
+    for frame in page.frames:
+        if frame == page.main_frame:
+            continue
+        frame_url = frame.url.lower()
+        if any(kw in frame_url for kw in consent_keywords):
+            try:
+                iframe_text: str = await frame.evaluate(
+                    """() => {
+                        const t = document.body
+                            ?.innerText?.trim();
+                        return t && t.length > 50 ? t : '';
+                    }"""
+                )
+                if iframe_text:
+                    iframe_texts.append(
+                        f"[CONSENT IFRAME]:\n{iframe_text}"
+                    )
+            except Exception:
+                pass
+
+    all_texts = [
+        t for t in [*iframe_texts, main_page_text] if t
+    ]
+    return "\n\n---\n\n".join(all_texts)[:50000]

@@ -11,7 +11,7 @@ import pathlib
 import dotenv
 import fastapi
 import uvicorn
-from fastapi import responses, staticfiles
+from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
 
