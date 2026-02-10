@@ -67,10 +67,14 @@ def get_deployment_name() -> str:
     Get the model/deployment name to use for API calls.
     For Azure, returns the deployment name.
     For standard OpenAI, returns the model name.
+
+    Ensures the client is initialised first so that
+    _is_azure is set correctly before reading it.
     """
+    get_openai_client()
     if _is_azure:
         return os.environ.get("AZURE_OPENAI_DEPLOYMENT", "")
-    return os.environ.get("OPENAI_MODEL", "gpt-5.1-chat")
+    return os.environ.get("OPENAI_MODEL", "")
 
 
 def validate_openai_config() -> str | None:
