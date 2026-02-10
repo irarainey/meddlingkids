@@ -22,7 +22,7 @@ from src.routes.analyze_helpers import (
 from src.services.analysis import run_tracking_analysis
 from src.services.browser_session import BrowserSession
 from src.services.device_configs import DEVICE_CONFIGS
-from src.services.openai_client import validate_openai_config
+from src.services.openai_client import get_deployment_name, validate_openai_config
 from src.services.script_analysis import analyze_scripts
 from src.utils.errors import get_error_message
 from src.utils.logger import create_logger, start_log_file
@@ -64,7 +64,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
     start_log_file(domain)
 
     log.section(f"Analyzing: {url}")
-    log.info("Request received", {"url": url, "device": device_type})
+    log.info("Request received", {"url": url, "device": device_type, "model": get_deployment_name()})
     log.start_timer("total-analysis")
 
     try:
