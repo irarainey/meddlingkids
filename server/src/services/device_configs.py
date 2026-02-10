@@ -5,7 +5,7 @@ Defines user agents, viewports, and capabilities for different device types.
 
 from __future__ import annotations
 
-from src.types.tracking import DeviceConfig, DeviceType
+from src.types.tracking import DeviceConfig
 
 DEVICE_CONFIGS: dict[str, DeviceConfig] = {
     "iphone": DeviceConfig(
@@ -52,14 +52,4 @@ DEVICE_CONFIGS: dict[str, DeviceConfig] = {
     ),
 }
 
-VALID_DEVICE_TYPES: list[str] = list(DEVICE_CONFIGS.keys())
 
-
-def get_device_config(device_type: DeviceType) -> DeviceConfig:
-    """Get device configuration by type."""
-    return DEVICE_CONFIGS[device_type]
-
-
-def is_valid_device_type(device_type: str) -> bool:
-    """Check if a device type is valid."""
-    return device_type in DEVICE_CONFIGS

@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from urllib.parse import urlparse
-
 from src.types.tracking import ConsentDetails, ConsentPartner, TrackingSummary
 
 TRACKING_ANALYSIS_SYSTEM_PROMPT = """You are a privacy and web tracking expert analyst. Your task is to analyze tracking data collected from a website and provide comprehensive insights about:
@@ -57,21 +55,6 @@ You MUST respond with ONLY valid JSON array, no other text. Example:
   {"type": "high", "text": "Google Analytics collects detailed browsing behavior."},
   {"type": "positive", "text": "Site uses secure HTTPS-only cookies."}
 ]"""
-
-
-PRIVACY_SCORE_SYSTEM_PROMPT = """You are a privacy expert. Based on a tracking analysis, provide a privacy risk score from 0-100 and a one-sentence summary.
-
-Scoring guidelines:
-- 80-100: Critical risk - extensive cross-site tracking, fingerprinting, data selling to many partners, deceptive practices
-- 60-79: High risk - significant third-party tracking, multiple advertising networks, questionable data sharing
-- 40-59: Moderate risk - standard analytics, some third-party trackers, typical advertising
-- 20-39: Low risk - minimal tracking, basic analytics only, few third parties
-- 0-19: Very low risk - privacy-respecting, minimal or no tracking, first-party only
-
-IMPORTANT: The summary MUST start with the site name (e.g., "bbc.com has...", "amazon.co.uk uses...").
-
-You MUST respond with ONLY valid JSON in this exact format, no other text:
-{"score": <number 0-100>, "summary": "<site name in lowercase> <one sentence about key findings>"}"""
 
 
 def _build_consent_section(consent_details: ConsentDetails) -> str:
@@ -170,19 +153,3 @@ Please provide a comprehensive privacy analysis of this tracking data. If consen
 def build_summary_findings_user_prompt(analysis: str) -> str:
     """Build the user prompt for summary findings generation."""
     return f"Based on this full analysis, create a structured JSON array of key findings:\n\n{analysis}"
-
-
-def build_privacy_score_user_prompt(analysis: str, site_url: str) -> str:
-    """Build the user prompt for privacy score generation."""
-    try:
-        hostname = urlparse(site_url).hostname or site_url
-        site_name = hostname.removeprefix("www.").lower()
-    except Exception:
-        site_name = site_url.lower()
-
-    return (
-        f"Site analyzed: {site_name}\n\n"
-        "Based on this tracking analysis, provide a privacy risk score (0-100) and "
-        "one-sentence summary that starts with the site name. Respond with JSON only:\n\n"
-        f"{analysis}"
-    )
