@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -62,6 +63,14 @@ const {
   closeErrorDialog,
   analyzeUrl,
 } = useTrackingAnalysis()
+
+const tabsRef = ref<HTMLElement | null>(null)
+
+/** Close the score dialog and scroll to the report tabs. */
+function handleViewReport(): void {
+  closeScoreDialog()
+  tabsRef.value?.scrollIntoView({ behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -108,7 +117,7 @@ const {
       :is-open="showScoreDialog"
       :score="privacyScore ?? 0"
       :summary="privacySummary"
-      @close="closeScoreDialog"
+      @close="handleViewReport"
     />
 
     <!-- Page Error Dialog -->
@@ -138,7 +147,7 @@ const {
 
     <div v-if="isComplete" class="main-content">
       <!-- Tab Navigation -->
-      <div class="tabs">
+      <div ref="tabsRef" class="tabs">
           <button
             class="tab summary-tab"
             :class="{ active: activeTab === 'summary', highlight: summaryFindings.length > 0 }"
