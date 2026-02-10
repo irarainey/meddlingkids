@@ -103,7 +103,7 @@ meddlingkids/
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       ├── prompts/           # AI prompt templates
-│       ├── types/             # Dataclass type definitions
+│       ├── types/             # Pydantic model type definitions
 │       └── utils/             # Utility functions (including file logging)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build

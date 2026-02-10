@@ -6,8 +6,9 @@ Contains system prompts and user prompt builders for LLM-based analysis.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
-from src.types.tracking import ConsentDetails, ConsentPartner, TrackingSummary
+
+from src.types.analysis import TrackingSummary
+from src.types.consent import ConsentDetails, ConsentPartner
 
 TRACKING_ANALYSIS_SYSTEM_PROMPT = """You are a privacy and web tracking expert analyst. Your task is to analyze tracking data collected from a website and provide comprehensive insights about:
 
@@ -119,7 +120,8 @@ def build_tracking_analysis_user_prompt(
         consent_section = _build_consent_section(consent_details)
 
     breakdown = json.dumps(
-        [asdict(d) for d in tracking_summary.domain_breakdown], indent=2
+        [d.model_dump() for d in tracking_summary.domain_breakdown],
+        indent=2,
     )
     local_storage_json = json.dumps(tracking_summary.local_storage, indent=2)
     session_storage_json = json.dumps(tracking_summary.session_storage, indent=2)

@@ -76,7 +76,11 @@ src/
 │   ├── consent_detection.py  # Overlay detection prompt
 │   └── consent_extraction.py # Consent extraction prompt
 ├── types/
-│   └── tracking.py           # Dataclass definitions
+│   ├── tracking_data.py       # Cookies, scripts, storage, network models
+│   ├── consent.py             # Consent detection & extraction models
+│   ├── analysis.py            # Analysis results & scoring models
+│   ├── partners.py            # Partner classification models
+│   └── browser.py             # Navigation, access denial & device models
 └── utils/
     ├── errors.py             # Error utilities
     ├── logger.py             # Structured logger with color output

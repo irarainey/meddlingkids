@@ -9,14 +9,16 @@ from __future__ import annotations
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from src.types.tracking import (
+from src.types.analysis import (
     DomainBreakdown,
     DomainData,
+    TrackingSummary,
+)
+from src.types.tracking_data import (
     NetworkRequest,
     StorageItem,
     TrackedCookie,
     TrackedScript,
-    TrackingSummary,
 )
 
 

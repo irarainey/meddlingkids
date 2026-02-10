@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from playwright.async_api import Page
 
-from src.types.tracking import AccessDenialResult
+from src.types.browser import AccessDenialResult
 
 # ============================================================================
 # Detection Patterns

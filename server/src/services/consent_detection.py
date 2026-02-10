@@ -14,7 +14,7 @@ from src.prompts.consent_detection import (
     build_consent_detection_user_prompt,
 )
 from src.services.openai_client import get_deployment_name, get_openai_client
-from src.types.tracking import CookieConsentDetection
+from src.types.consent import CookieConsentDetection
 from src.utils.errors import get_error_message
 from src.utils.logger import create_logger
 from src.utils.retry import with_retry

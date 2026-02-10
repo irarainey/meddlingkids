@@ -7,8 +7,8 @@ Uses pattern matching for known entities.
 from __future__ import annotations
 
 from src.data.loader import PARTNER_CATEGORIES, get_partner_database
-from src.types.tracking import (
-    ConsentPartner,
+from src.types.consent import ConsentPartner
+from src.types.partners import (
     PartnerCategoryConfig,
     PartnerClassification,
     PartnerEntry,

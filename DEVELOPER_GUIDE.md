@@ -401,8 +401,7 @@ Client displays analysis
 
 ### TrackedCookie
 ```python
-@dataclass
-class TrackedCookie:
+class TrackedCookie(BaseModel):
     name: str
     value: str
     domain: str
@@ -416,8 +415,7 @@ class TrackedCookie:
 
 ### TrackedScript
 ```python
-@dataclass
-class TrackedScript:
+class TrackedScript(BaseModel):
     url: str
     domain: str
     timestamp: str = ""
@@ -429,8 +427,7 @@ class TrackedScript:
 
 ### ScriptGroup
 ```python
-@dataclass
-class ScriptGroup:
+class ScriptGroup(BaseModel):
     id: str                # Unique identifier (e.g., 'example.com:app-chunks')
     name: str              # Human-readable name
     description: str       # What this group represents
@@ -441,8 +438,7 @@ class ScriptGroup:
 
 ### NetworkRequest
 ```python
-@dataclass
-class NetworkRequest:
+class NetworkRequest(BaseModel):
     url: str
     domain: str
     method: str
@@ -454,8 +450,7 @@ class NetworkRequest:
 
 ### ConsentDetails
 ```python
-@dataclass
-class ConsentDetails:
+class ConsentDetails(BaseModel):
     has_manage_options: bool
     manage_options_selector: str | None
     categories: list[ConsentCategory]  # [{name, description, required}]
@@ -492,7 +487,7 @@ class ConsentDetails:
 
 ### Adding a New Tracking Data Type
 
-1. Add dataclass to `server/src/types/tracking.py`
+1. Add Pydantic model to the appropriate file in `server/src/types/`
 2. Add capture method in `server/src/services/browser_session.py`
 3. Include in screenshot event payload
 4. Add client interface in `client/src/types/tracking.ts`
@@ -510,7 +505,7 @@ class ConsentDetails:
 
 ### Adding a New Overlay Type
 
-1. Update `CookieConsentDetection` type in `server/src/types/tracking.py`
+1. Update `CookieConsentDetection` type in `server/src/types/consent.py`
 2. Update detection prompt in `server/src/prompts/consent_detection.py`
 3. Add click strategy in `server/src/services/consent_click.py`
 4. Update `get_overlay_message()` in `analyze_helpers.py`

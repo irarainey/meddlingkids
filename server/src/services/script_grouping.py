@@ -8,9 +8,10 @@ analyser can focus on genuinely interesting scripts.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
 
-from src.types.tracking import ScriptGroup, TrackedScript
+from pydantic import BaseModel, ConfigDict, Field
+
+from src.types.tracking_data import ScriptGroup, TrackedScript
 from src.utils.logger import create_logger
 
 log = create_logger("Script-Grouping")
@@ -22,8 +23,12 @@ MIN_GROUP_SIZE = 3
 # Groupable patterns
 # ---------------------------------------------------------------------------
 
-@dataclass
-class GroupPattern:
+
+class GroupPattern(BaseModel):
+    """Pattern definition for matching groups of related scripts."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     id: str
     name: str
     description: str
@@ -97,11 +102,14 @@ GROUPABLE_PATTERNS: list[GroupPattern] = [
 # Result type
 # ---------------------------------------------------------------------------
 
-@dataclass
-class GroupedScriptsResult:
-    individual_scripts: list[TrackedScript] = field(default_factory=list)
-    groups: list[ScriptGroup] = field(default_factory=list)
-    all_scripts: list[TrackedScript] = field(default_factory=list)
+class GroupedScriptsResult(BaseModel):
+    """Result of grouping similar scripts together."""
+
+    individual_scripts: list[TrackedScript] = Field(
+        default_factory=list
+    )
+    groups: list[ScriptGroup] = Field(default_factory=list)
+    all_scripts: list[TrackedScript] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

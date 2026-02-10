@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator
+
+from pydantic import BaseModel, Field
 
 from playwright.async_api import Page
 
@@ -20,12 +21,9 @@ from src.services.partner_classification import (
     classify_partner_by_pattern_sync,
     get_partner_risk_summary,
 )
-from src.types.tracking import (
-    ConsentDetails,
-    CookieConsentDetection,
-    ScoreBreakdown,
-    StorageItem,
-)
+from src.types.analysis import ScoreBreakdown
+from src.types.consent import ConsentDetails, CookieConsentDetection
+from src.types.tracking_data import StorageItem
 from src.utils.logger import create_logger
 
 log = create_logger("Overlays")
@@ -37,9 +35,9 @@ def _snake_to_camel(name: str) -> str:
     return parts[0] + "".join(w.capitalize() for w in parts[1:])
 
 
-def to_camel_case_dict(obj: object) -> dict[str, Any]:
-    """Convert a dataclass instance to a dict with camelCase keys."""
-    return {_snake_to_camel(k): v for k, v in obj.__dict__.items()}
+def to_camel_case_dict(obj: BaseModel) -> dict[str, Any]:
+    """Convert a Pydantic model instance to a dict with camelCase keys."""
+    return {_snake_to_camel(k): v for k, v in obj.model_dump().items()}
 
 
 def serialize_consent_details(details: ConsentDetails) -> dict[str, Any]:
@@ -112,16 +110,20 @@ def _get_overlay_message(overlay_type: str | None) -> str:
     return messages.get(overlay_type or "", "Overlay detected")
 
 
-@dataclass
-class OverlayHandlingResult:
+class OverlayHandlingResult(BaseModel):
     """Mutable state populated by the handle_overlays async generator."""
 
     overlay_count: int = 0
-    dismissed_overlays: list[CookieConsentDetection] = field(default_factory=list)
+    dismissed_overlays: list[CookieConsentDetection] = Field(
+        default_factory=list
+    )
     consent_details: ConsentDetails | None = None
     final_screenshot: bytes = b""
-    final_storage: dict[str, list[StorageItem]] = field(
-        default_factory=lambda: {"local_storage": [], "session_storage": []}
+    final_storage: dict[str, list[StorageItem]] = Field(
+        default_factory=lambda: {
+            "local_storage": [],
+            "session_storage": [],
+        }
     )
 
 

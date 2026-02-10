@@ -5,7 +5,7 @@ Defines user agents, viewports, and capabilities for different device types.
 
 from __future__ import annotations
 
-from src.types.tracking import DeviceConfig
+from src.types.browser import DeviceConfig
 
 DEVICE_CONFIGS: dict[str, DeviceConfig] = {
     "iphone": DeviceConfig(

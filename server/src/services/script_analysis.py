@@ -9,15 +9,16 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass, field
 from typing import Callable
+
+from pydantic import BaseModel, Field
 
 import aiohttp
 
 from src.data.loader import get_benign_scripts, get_tracking_scripts
 from src.services.openai_client import get_deployment_name, get_openai_client
 from src.services.script_grouping import group_similar_scripts
-from src.types.tracking import ScriptGroup, TrackedScript
+from src.types.tracking_data import ScriptGroup, TrackedScript
 from src.utils.errors import get_error_message
 from src.utils.logger import create_logger
 from src.utils.retry import with_retry
@@ -176,10 +177,11 @@ def _infer_from_url(url: str) -> str:
 ScriptAnalysisProgressCallback = Callable[[str, int, int, str], None]
 
 
-@dataclass
-class ScriptAnalysisResult:
-    scripts: list[TrackedScript] = field(default_factory=list)
-    groups: list[ScriptGroup] = field(default_factory=list)
+class ScriptAnalysisResult(BaseModel):
+    """Result of analyzing a set of scripts."""
+
+    scripts: list[TrackedScript] = Field(default_factory=list)
+    groups: list[ScriptGroup] = Field(default_factory=list)
 
 
 async def analyze_scripts(

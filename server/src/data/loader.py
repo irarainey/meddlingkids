@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.types.tracking import PartnerCategoryConfig, PartnerEntry, ScriptPattern
+from src.types.partners import PartnerCategoryConfig, PartnerEntry, ScriptPattern
 
 # Resolve path to the data directory (same directory as this module)
 _DATA_DIR = Path(__file__).resolve().parent

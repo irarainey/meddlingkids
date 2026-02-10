@@ -19,13 +19,11 @@ from src.prompts.tracking_analysis import (
 )
 from src.services.openai_client import get_deployment_name, get_openai_client
 from src.services.privacy_score import calculate_privacy_score
-from src.types.tracking import (
-    AnalysisResult,
-    CategoryScore,
-    ConsentDetails,
+from src.types.analysis import AnalysisResult, CategoryScore, SummaryFinding
+from src.types.consent import ConsentDetails
+from src.types.tracking_data import (
     NetworkRequest,
     StorageItem,
-    SummaryFinding,
     TrackedCookie,
     TrackedScript,
 )

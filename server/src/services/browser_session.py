@@ -25,10 +25,8 @@ from playwright.async_api import (
 
 from src.services.access_detection import check_for_access_denied
 from src.services.device_configs import DEVICE_CONFIGS
-from src.types.tracking import (
-    AccessDenialResult,
-    DeviceType,
-    NavigationResult,
+from src.types.browser import AccessDenialResult, DeviceType, NavigationResult
+from src.types.tracking_data import (
     NetworkRequest,
     StorageItem,
     TrackedCookie,

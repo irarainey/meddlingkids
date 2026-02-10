@@ -27,11 +27,10 @@ from src.services.tracker_patterns import (
     TRACKING_COOKIE_PATTERNS,
     TRACKING_STORAGE_PATTERNS,
 )
-from src.types.tracking import (
-    CategoryScore,
-    ConsentDetails,
+from src.types.analysis import CategoryScore, ScoreBreakdown
+from src.types.consent import ConsentDetails
+from src.types.tracking_data import (
     NetworkRequest,
-    ScoreBreakdown,
     StorageItem,
     TrackedCookie,
     TrackedScript,
