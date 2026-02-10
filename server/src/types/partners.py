@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 PartnerRiskLevel = Literal[
     "critical", "high", "medium", "low", "unknown"
@@ -33,10 +34,13 @@ class PartnerEntry(BaseModel):
 
 
 class ScriptPattern(BaseModel):
-    """Compiled script pattern with regex ready for matching."""
+    """Script pattern with pre-compiled regex for matching."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     pattern: str
     description: str
+    compiled: re.Pattern[str] = Field(exclude=True)
 
 
 class PartnerCategoryConfig(BaseModel):

@@ -63,6 +63,10 @@ class BrowserSession:
         self._tracked_scripts: list[TrackedScript] = []
         self._tracked_network_requests: list[NetworkRequest] = []
 
+        # O(1) lookup indexes for hot-path deduplication
+        self._seen_script_urls: set[str] = set()
+        self._pending_responses: dict[str, list[int]] = {}
+
     async def __aenter__(self) -> BrowserSession:
         """Enter the async context manager."""
         return self
@@ -105,6 +109,8 @@ class BrowserSession:
         self._tracked_cookies.clear()
         self._tracked_scripts.clear()
         self._tracked_network_requests.clear()
+        self._seen_script_urls.clear()
+        self._pending_responses.clear()
 
     def set_current_page_url(self, url: str) -> None:
         """Set the URL used to classify first- vs third-party requests."""
@@ -187,21 +193,26 @@ class BrowserSession:
         request_url = request.url
         domain = extract_domain(request_url)
 
-        # Track scripts (deduplicate by URL)
+        # Track scripts — O(1) set lookup for deduplication
         if resource_type == "script":
-            if len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS and not any(
-                s.url == request_url for s in self._tracked_scripts
+            if (
+                len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS
+                and request_url not in self._seen_script_urls
             ):
+                self._seen_script_urls.add(request_url)
                 self._tracked_scripts.append(
                     TrackedScript(
                         url=request_url,
                         domain=domain,
-                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=datetime.now(
+                            timezone.utc
+                        ).isoformat(),
                     )
                 )
 
         # Track ALL network requests (with limit)
         if len(self._tracked_network_requests) < MAX_TRACKED_REQUESTS:
+            idx = len(self._tracked_network_requests)
             self._tracked_network_requests.append(
                 NetworkRequest(
                     url=request_url,
@@ -217,17 +228,22 @@ class BrowserSession:
                     ).isoformat(),
                 )
             )
+            # Index for O(1) response matching
+            self._pending_responses.setdefault(
+                request_url, []
+            ).append(idx)
 
     def _on_response(self, response: Response) -> None:
         """Handle intercepted responses to capture status codes."""
         request_url = response.url
-        # Reverse iterate — the matching request is almost always
-        # near the end of the list because responses arrive shortly
-        # after the corresponding request is appended.
-        for req in reversed(self._tracked_network_requests):
-            if req.url == request_url and req.status_code is None:
-                req.status_code = response.status
-                break
+        indices = self._pending_responses.get(request_url)
+        if indices:
+            idx = indices.pop()
+            self._tracked_network_requests[idx].status_code = (
+                response.status
+            )
+            if not indices:
+                del self._pending_responses[request_url]
 
     # ==========================================================================
     # Navigation
@@ -382,20 +398,15 @@ class BrowserSession:
             raise RuntimeError("No browser session active")
         return await self._page.screenshot(type="png", full_page=full_page)
 
-    async def take_optimized_screenshot(self, full_page: bool = False) -> str:
-        """
-        Take a JPEG screenshot optimized for client display.
+    @staticmethod
+    def optimize_screenshot_bytes(png_bytes: bytes) -> str:
+        """Convert raw PNG screenshot bytes to an optimized JPEG data URL.
 
-        Returns a base64 data URL string ready for embedding.
-        Uses JPEG compression and downscaling for smaller payloads.
+        Downscales wide images and compresses to JPEG for smaller
+        payloads.  This is a pure CPU operation — no browser round-trip.
         """
-        if not self._page:
-            raise RuntimeError("No browser session active")
-
-        png_bytes = await self._page.screenshot(type="png", full_page=full_page)
         img = Image.open(io.BytesIO(png_bytes))
 
-        # Downscale if wider than 1280px to reduce payload
         max_width = 1280
         if img.width > max_width:
             ratio = max_width / img.width
@@ -404,7 +415,6 @@ class BrowserSession:
                 Image.Resampling.LANCZOS,
             )
 
-        # Convert to RGB (JPEG doesn't support alpha)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
 
@@ -412,6 +422,17 @@ class BrowserSession:
         img.save(buf, format="JPEG", quality=72, optimize=True)
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{b64}"
+
+    async def take_optimized_screenshot(
+        self, full_page: bool = False
+    ) -> str:
+        """Take a JPEG screenshot optimized for client display.
+
+        Returns a base64 data URL string ready for embedding.
+        Uses JPEG compression and downscaling for smaller payloads.
+        """
+        png_bytes = await self.take_screenshot(full_page=full_page)
+        return self.optimize_screenshot_bytes(png_bytes)
 
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""

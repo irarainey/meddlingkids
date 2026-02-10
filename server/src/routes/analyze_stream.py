@@ -133,7 +133,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         if access_check.denied:
             log.error("Access denied detected", {"reason": access_check.reason})
             screenshot = await session.take_screenshot(full_page=False)
-            optimized = await session.take_optimized_screenshot(full_page=False)
+            optimized = BrowserSession.optimize_screenshot_bytes(screenshot)
 
             yield format_sse_event("screenshot", {
                 "screenshot": optimized,
@@ -170,7 +170,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         yield format_progress_event("screenshot", "Taking screenshot...", 38)
         screenshot = await session.take_screenshot(full_page=False)
-        optimized_screenshot = await session.take_optimized_screenshot(full_page=False)
+        optimized_screenshot = BrowserSession.optimize_screenshot_bytes(screenshot)
 
         # Send screenshot to client immediately
         yield format_sse_event("screenshot", {
@@ -246,32 +246,34 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
         log.start_timer("ai-analysis")
 
+        # ---- Shared progress queue for both concurrent analyses ----
+        progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        _tasks_remaining = 2  # script analysis + tracking analysis
+
         # Script analysis
         log.start_timer("script-analysis")
-
-        script_progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         def script_progress(phase: str, current: int, total: int, detail: str) -> None:
             """Push progress events onto an async queue for yielding."""
             log.info(f"Script analysis progress: {phase} {current}/{total} - {detail}")
             if phase == "matching":
                 if current == 0:
-                    script_progress_queue.put_nowait(
+                    progress_queue.put_nowait(
                         format_progress_event("script-matching", detail or "Grouping and identifying scripts...", 77)
                     )
             elif phase == "fetching":
                 progress = 77 + int((current / max(total, 1)) * 2)
-                script_progress_queue.put_nowait(
+                progress_queue.put_nowait(
                     format_progress_event("script-fetching", detail or f"Fetching script {current}/{total}...", progress)
                 )
             elif phase == "analyzing":
                 if total == 0:
-                    script_progress_queue.put_nowait(
+                    progress_queue.put_nowait(
                         format_progress_event("script-analysis", detail or "All scripts identified", 82)
                     )
                 else:
                     progress = 79 + int((current / total) * 4)
-                    script_progress_queue.put_nowait(
+                    progress_queue.put_nowait(
                         format_progress_event("script-analysis", detail or f"Analyzed {current}/{total} scripts...", progress)
                     )
 
@@ -279,44 +281,31 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
             """Run script analysis and signal the queue on completion."""
             try:
                 result = await analyze_scripts(final_scripts, script_progress)
+                log.end_timer("script-analysis", f"Script analysis complete ({len(result.scripts)} scripts, {len(result.groups)} groups)")
                 return result
             finally:
-                script_progress_queue.put_nowait(None)  # always signal completion
+                progress_queue.put_nowait(None)
 
-        script_task = asyncio.create_task(run_script_analysis())
-        while True:
-            event = await script_progress_queue.get()
-            if event is None:
-                break
-            yield event
-
-        script_analysis_result = await script_task
-        log.end_timer("script-analysis", f"Script analysis complete ({len(script_analysis_result.scripts)} scripts, {len(script_analysis_result.groups)} groups)")
-
-        yield format_progress_event("script-analysis", "Script analysis complete", 83)
-
-        # Tracking analysis
+        # Tracking analysis (runs concurrently with script analysis)
         log.start_timer("tracking-analysis")
 
-        analysis_progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
-
         def analysis_progress(phase: str, detail: str) -> None:
-            """Push AI analysis progress events onto an async queue."""
+            """Push AI analysis progress events onto the shared queue."""
             log.info(f"Analysis: {phase} - {detail}")
             if phase == "preparing":
-                analysis_progress_queue.put_nowait(
+                progress_queue.put_nowait(
                     format_progress_event("ai-preparing", detail or "Preparing data for AI analysis...", 84)
                 )
             elif phase == "analyzing":
-                analysis_progress_queue.put_nowait(
+                progress_queue.put_nowait(
                     format_progress_event("ai-analyzing", detail or "Generating privacy report...", 88)
                 )
             elif phase == "scoring":
-                analysis_progress_queue.put_nowait(
+                progress_queue.put_nowait(
                     format_progress_event("ai-scoring", detail or "Calculating privacy score...", 94)
                 )
             elif phase == "summarizing":
-                analysis_progress_queue.put_nowait(
+                progress_queue.put_nowait(
                     format_progress_event("ai-summarizing", detail or "Generating summary findings...", 97)
                 )
 
@@ -335,18 +324,25 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
                 )
                 return result
             finally:
-                analysis_progress_queue.put_nowait(None)  # always signal completion
+                progress_queue.put_nowait(None)
 
+        # Launch both analyses concurrently
+        script_task = asyncio.create_task(run_script_analysis())
         analysis_task = asyncio.create_task(run_analysis())
-        while True:
-            event = await analysis_progress_queue.get()
+
+        # Drain progress events until both tasks signal completion
+        finished = 0
+        while finished < _tasks_remaining:
+            event = await progress_queue.get()
             if event is None:
-                break
+                finished += 1
+                continue
             yield event
 
+        script_analysis_result = await script_task
         analysis_result = await analysis_task
-        log.end_timer("tracking-analysis", "Tracking analysis complete")
 
+        log.end_timer("tracking-analysis", "Tracking analysis complete")
         log.end_timer("ai-analysis", "All AI analysis complete")
 
         if analysis_result.success:

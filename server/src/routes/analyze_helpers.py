@@ -259,7 +259,7 @@ async def handle_overlays(
                 await session.capture_current_cookies()
                 storage = await session.capture_storage()
                 screenshot = await session.take_screenshot(full_page=False)
-                optimized = await session.take_optimized_screenshot(full_page=False)
+                optimized = BrowserSession.optimize_screenshot_bytes(screenshot)
 
                 log.success(f"Overlay {overlay_count} ({consent_detection.overlay_type}) dismissed successfully")
 

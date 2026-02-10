@@ -52,12 +52,17 @@ def _load_json(relative_path: str) -> Any:
 
 
 def _load_script_patterns(filename: str) -> list[ScriptPattern]:
-    """Load script patterns from a JSON file."""
+    """Load script patterns from a JSON file.
+
+    Compiles each regex once at load time so that
+    matching is fast on every subsequent call.
+    """
     raw: list[dict[str, str]] = _load_json(f"trackers/{filename}")
     return [
         ScriptPattern(
             pattern=entry["pattern"],
             description=entry["description"],
+            compiled=re.compile(entry["pattern"], re.IGNORECASE),
         )
         for entry in raw
     ]
@@ -84,8 +89,8 @@ def get_benign_scripts() -> list[ScriptPattern]:
 
 
 def match_script_pattern(pattern: ScriptPattern, url: str) -> bool:
-    """Test if a URL matches a script pattern."""
-    return bool(re.search(pattern.pattern, url, re.IGNORECASE))
+    """Test if a URL matches a pre-compiled script pattern."""
+    return bool(pattern.compiled.search(url))
 
 
 # ============================================================================

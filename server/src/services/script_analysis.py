@@ -47,7 +47,7 @@ Return ONLY the JSON array, no other text."""
 def _identify_tracking_script(url: str) -> str | None:
     """Check if a script is a known tracking script."""
     for entry in get_tracking_scripts():
-        if re.search(entry.pattern, url, re.IGNORECASE):
+        if entry.compiled.search(url):
             return entry.description
     return None
 
@@ -55,7 +55,7 @@ def _identify_tracking_script(url: str) -> str | None:
 def _identify_benign_script(url: str) -> str | None:
     """Check if a script is a known benign script (skip LLM analysis)."""
     for entry in get_benign_scripts():
-        if re.search(entry.pattern, url, re.IGNORECASE):
+        if entry.compiled.search(url):
             return entry.description
     return None
 
@@ -64,20 +64,38 @@ def _identify_benign_script(url: str) -> str | None:
 # Content fetching
 # ============================================================================
 
-async def _fetch_script_content(url: str, retries: int = 2) -> str | None:
-    """Fetch a script's content for analysis with retry."""
+_FETCH_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"
+}
+_FETCH_TIMEOUT = aiohttp.ClientTimeout(total=5)
+
+
+async def _fetch_script_content(
+    url: str,
+    http_session: aiohttp.ClientSession,
+    retries: int = 2,
+) -> str | None:
+    """Fetch a script's content for analysis with retry.
+
+    Accepts a shared ``aiohttp.ClientSession`` so that TCP
+    connections are reused across many concurrent fetches.
+    """
     for attempt in range(retries + 1):
         try:
-            timeout = aiohttp.ClientTimeout(total=5)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                headers = {"User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"}
-                async with session.get(url, headers=headers) as response:
-                    if response.status >= 400:
-                        if attempt < retries and (response.status >= 500 or response.status == 429):
-                            await asyncio.sleep(0.5 * (attempt + 1))
-                            continue
-                        return None
-                    return await response.text()
+            async with http_session.get(
+                url, headers=_FETCH_HEADERS
+            ) as response:
+                if response.status >= 400:
+                    if attempt < retries and (
+                        response.status >= 500
+                        or response.status == 429
+                    ):
+                        await asyncio.sleep(
+                            0.5 * (attempt + 1)
+                        )
+                        continue
+                    return None
+                return await response.text()
         except Exception:
             if attempt < retries:
                 await asyncio.sleep(0.5 * (attempt + 1))
@@ -259,18 +277,28 @@ async def analyze_scripts(
         if on_progress:
             on_progress("fetching", 0, total_to_analyze, f"Fetching {total_to_analyze} script contents...")
 
-        # Fetch all script contents in parallel
+        # Fetch all script contents in parallel using a shared session
         fetched_count = 0
 
-        async def fetch_one(script: TrackedScript) -> dict[str, str | None]:
+        async def fetch_one(
+            script: TrackedScript,
+            http_session: aiohttp.ClientSession,
+        ) -> dict[str, str | None]:
             nonlocal fetched_count
-            content = await _fetch_script_content(script.url)
+            content = await _fetch_script_content(
+                script.url, http_session
+            )
             fetched_count += 1
             if on_progress and (fetched_count % 5 == 0 or fetched_count == total_to_analyze):
                 on_progress("fetching", fetched_count, total_to_analyze, f"Fetched {fetched_count}/{total_to_analyze} scripts...")
             return {"url": script.url, "content": content}
 
-        script_contents = await asyncio.gather(*(fetch_one(s) for s, _ in unknown_scripts))
+        async with aiohttp.ClientSession(
+            timeout=_FETCH_TIMEOUT
+        ) as http_session:
+            script_contents = await asyncio.gather(
+                *(fetch_one(s, http_session) for s, _ in unknown_scripts)
+            )
 
         # Create batches
         batches: list[list[tuple[dict[str, str | None], int]]] = []
