@@ -61,7 +61,6 @@ src/
 │   ├── consent_detection.py  # AI vision for consent dialogs
 │   ├── consent_extraction.py # AI consent detail extraction
 │   ├── consent_click.py      # Click strategies for consent buttons
-│   ├── consent_expansion.py  # Expand consent dialogs for partner/vendor lists
 │   ├── access_detection.py   # Bot blocking detection
 │   ├── device_configs.py     # Device emulation profiles
 │   ├── openai_client.py      # OpenAI/Azure OpenAI client
@@ -75,8 +74,7 @@ src/
 ├── prompts/
 │   ├── tracking_analysis.py  # Main analysis & summary prompts
 │   ├── consent_detection.py  # Overlay detection prompt
-│   ├── consent_extraction.py # Consent extraction prompt
-│   └── script_analysis.py    # Script description prompt
+│   └── consent_extraction.py # Consent extraction prompt
 ├── types/
 │   └── tracking.py           # Dataclass definitions
 └── utils/

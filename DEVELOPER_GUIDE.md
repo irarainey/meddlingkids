@@ -322,7 +322,6 @@ App.vue
 | `consent_detection.py` | AI vision to detect consent dialogs |
 | `consent_extraction.py` | AI to extract consent details |
 | `consent_click.py` | Click strategies for consent buttons |
-| `consent_expansion.py` | Expand consent dialogs to reveal partner/vendor lists |
 | `privacy_score.py` | Deterministic privacy scoring (0-100) |
 | `tracker_patterns.py` | Regex pattern data for tracker classification |
 
@@ -342,7 +341,6 @@ App.vue
 | `tracking_analysis.py` | Main analysis, summary findings |
 | `consent_detection.py` | AI vision for overlay detection |
 | `consent_extraction.py` | Extract consent categories/partners |
-| `script_analysis.py` | Describe unknown scripts |
 
 ---
 
