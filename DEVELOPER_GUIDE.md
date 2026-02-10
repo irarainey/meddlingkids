@@ -134,10 +134,10 @@ Page loaded successfully
    │
    ├── capture_current_cookies() → Intercept all cookies
    ├── capture_storage() → Read localStorage/sessionStorage
-   ├── take_screenshot() → PNG screenshot
+   ├── take_optimized_screenshot() → JPEG screenshot (compressed)
    │
    └── send_event('screenshot', {
-         screenshot,      // base64 PNG
+         screenshot,      // base64 JPEG
          cookies,         // TrackedCookie[]
          scripts,         // TrackedScript[]
          networkRequests, // NetworkRequest[]
@@ -202,6 +202,8 @@ Analysis complete
          summaryFindings, // Structured findings array
          privacyScore,    // 0-100
          privacySummary,  // One sentence
+         scoreBreakdown,  // Detailed score breakdown
+         analysisSummary, // Aggregate statistics
          consentDetails,  // Consent dialog info
          scripts,         // Scripts with descriptions
          scriptGroups     // Grouped similar scripts
@@ -455,9 +457,12 @@ class NetworkRequest:
 @dataclass
 class ConsentDetails:
     has_manage_options: bool
-    categories: list[dict]   # [{name, description, enabled}]
-    partners: list[dict]     # [{name, purposes}]
-    purposes: list[dict]     # [{name, description}]
+    manage_options_selector: str | None
+    categories: list[ConsentCategory]  # [{name, description, required}]
+    partners: list[ConsentPartner]     # [{name, purpose, data_collected, ...}]
+    purposes: list[str]
+    raw_text: str
+    expanded: bool | None = None
 ```
 
 ---
@@ -470,7 +475,7 @@ class ConsentDetails:
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
+| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---

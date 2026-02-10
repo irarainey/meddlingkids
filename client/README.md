@@ -71,7 +71,7 @@ Displays during analysis with:
 
 Privacy score results dialog showing:
 - Animated privacy score (0-100)
-- Scooby-Doo themed exclamation (Zoinks!, Jeepers!, Jinkies!, Ruh-Roh!, or Scooby Snack!)
+- Scooby-Doo themed exclamation (Zoinks!, Jeepers!, Ruh-Roh!, Jinkies!, or Scoob-tastic!)
 - One-sentence privacy summary
 - Site name
 
@@ -182,6 +182,7 @@ Located in `types/tracking.ts`:
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |
 | `PageError` | Access denied or server error information |
+| `ErrorDialogState` | Generic error dialog state (title + message) |
 
 ### Utility Functions
 
@@ -189,6 +190,9 @@ Located in `utils/formatters.ts`:
 
 | Function | Purpose |
 |----------|---------|
+| `getExclamation(score)` | Get themed exclamation based on privacy score |
+| `getRiskLevel(score)` | Get risk level label based on privacy score |
+| `getScoreClass(score)` | Get CSS class for score styling |
 | `formatExpiry(expires)` | Format cookie expiry timestamp for display |
 | `truncateValue(value, maxLength)` | Truncate long strings with ellipsis |
 | `getResourceTypeIcon(type)` | Get emoji icon for resource type |
@@ -264,7 +268,7 @@ The environment is configured via:
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `complete` | `{ analysis, summaryFindings, privacyScore, privacySummary, siteName, ... }` | Final results with AI analysis and privacy score |
+| `complete` | `{ analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, ... }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development

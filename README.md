@@ -15,7 +15,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
 - 📋 **Consent Dialog Extraction** — Reads and reports cookie consent banner details
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
-- 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scooby Snack!)
+- 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
@@ -60,7 +60,7 @@ Once we've detected and dismissed the consent dialog, we can see the final loade
 
 ---
 
-After the analysis is complete, we get a privacy score out of 100 based on the tracking detected. The score ranges from "Zoinks!" for poor privacy to "Scooby Snack!" for excellent privacy.
+After the analysis is complete, we get a privacy score out of 100 based on the tracking detected. The score ranges from "Zoinks!" for poor privacy to "Scoob-tastic!" for excellent privacy.
 
 ![Score](./images/examples/005.png)
 
