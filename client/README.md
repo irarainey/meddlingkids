@@ -268,6 +268,7 @@ The environment is configured via:
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
+| `analysis-chunk` | `{ text }` | Streamed token from tracking analysis (not currently consumed by client) |
 | `complete` | `{ analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, ... }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 

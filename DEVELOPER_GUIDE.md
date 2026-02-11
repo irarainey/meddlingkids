@@ -24,7 +24,7 @@ Meddling Kids is a full-stack application that analyzes website tracking behavio
 - **Server**: Python FastAPI application that orchestrates browser automation and AI analysis
 - **Playwright**: Browser automation (async Python API) for page loading and data capture
 - **Xvfb**: Virtual display that allows headed browser mode without a visible window
-- **OpenAI**: AI models for consent detection and privacy analysis
+- **Microsoft Agent Framework**: AI agent infrastructure with Azure OpenAI / OpenAI backends for consent detection, script analysis, and privacy analysis
 
 > **Why Headed Mode?** Ad networks often detect and block headless browsers, refusing to serve ads. By running in headed mode on a virtual display (Xvfb), the browser appears identical to a real user's browser, allowing ads to load correctly while remaining invisible.
 
@@ -157,7 +157,7 @@ handle_overlays() loop (up to 5 iterations)
    │       Returns: { has_consent, overlay_type, button_location }
    │
    ├── If cookie consent found (first time):
-   │   └── extract_consent_details(screenshot, html)
+   │   └── extract_consent_details(page, screenshot)
    │       └── AI extracts partners, categories, purposes
    │       └── send_event('consentDetails', {...})
    │
@@ -180,18 +180,23 @@ All data captured
    │   │   ├── Group similar scripts (chunks, vendor bundles)   │
    │   │   ├── Match against tracking patterns (JSON)           │
    │   │   ├── Match against benign patterns (JSON)             │
-   │   │   └── Batch LLM analysis for unknown scripts           │
-   │   │       (shared HTTP session, 10 per batch)              │
+   │   │   └── LLM analysis for unknown scripts                 │
+   │   │       (concurrent with semaphore, max 5 at a time)     │
    │   │                                                       │
-   │   │  run_tracking_analysis(cookies, storage, network, ...) │
+   │   │  stream_tracking_analysis(summary, consent_details)    │
    │   │   ├── build_tracking_summary() → Data for LLM          │
-   │   │   ├── Main analysis prompt → Full markdown report      │
-   │   │   ├── calculate_privacy_score() → Deterministic 0-100  │
-   │   │   └── Summary findings prompt → Structured JSON        │
+   │   │   └── Main analysis prompt → Full markdown report      │
+   │   │                                                       │
+   │   │                                                       │
+   │   │  calculate_privacy_score() → Deterministic 0-100       │
+   │   │                                                       │
+   │   │  summarise(analysis_text) → Structured JSON findings   │
    │   │                                                       │
    │   └───────────────────────────────────────────────────────┘
    │
-   └── Both tasks share a progress queue for merged SSE updates
+   └── Script analysis and tracking analysis run concurrently
+       Scoring and summary findings run after analysis completes
+       Both tasks share a progress queue for merged SSE updates
 ```
 
 ### Phase 6: Complete
@@ -313,7 +318,15 @@ App.vue
 
 ### Agent Layer
 
-AI interactions use the **Microsoft Agent Framework** (`agent-framework`). Each agent subclasses `BaseAgent` and defines its own instructions, response model, and token limits. Prompts are embedded in the agent files — there is no separate `prompts/` directory.
+AI interactions use the **Microsoft Agent Framework** (`agent-framework-core` package). Each agent subclasses `BaseAgent` and defines its own instructions, response model, and token limits. Prompts are embedded in the agent files — there is no separate `prompts/` directory.
+
+Key framework types used:
+- `agent_framework.ChatAgent` — orchestrates a chat conversation with middleware
+- `agent_framework.ChatClientProtocol` — abstraction over LLM backends (Azure OpenAI, OpenAI)
+- `agent_framework.ChatMiddleware` — pluggable request/response pipeline
+- `agent_framework.ChatMessage` / `agent_framework.Content` — message types (text + multimodal)
+- `agent_framework.ChatOptions` — token limits and structured output (`response_format`)
+- `agent_framework.AgentResponse` — typed response with `try_parse_value()` for Pydantic parsing
 
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
@@ -397,17 +410,18 @@ Tracking data collected
 build_tracking_summary() → Formatted text for LLM
     │
     ▼
-Agent.run() → BaseAgent creates ChatAgent with middleware
+BaseAgent._build_agent() → Creates ChatAgent (agent_framework.ChatAgent)
+    │                         with ChatClientProtocol + middleware
     │
     ├── TimingChatMiddleware → Logs duration
     ├── RetryChatMiddleware → Handles 429/5xx with backoff
-    └── ChatAgent.run() → LLM chat completion
+    └── ChatAgent.run() or run_stream() → LLM chat completion
     │
     ▼
-Parse response (structured JSON via response_format or markdown)
+Parse response (structured JSON via response_format or streamed markdown)
     │
-    ▼
-send_event('complete', results)
+    ├── Streamed: send_event('analysis-chunk', {text}) per token
+    └── Final:    send_event('complete', results)
     │
     ▼
 Client displays analysis
@@ -488,6 +502,7 @@ class ConsentDetails(BaseModel):
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
+| `analysis-chunk` | Server → Client | `{ text }` | Streamed token from tracking analysis (real-time LLM output) |
 | `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
@@ -628,8 +643,8 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 - Script analysis uses pattern matching first, LLM only for unknowns
 - Script patterns are pre-compiled to regex at load time (no re-compilation per match)
 - Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
-- Unknown scripts are analyzed in batches (up to 10 per LLM call) for efficiency
-- Script content fetches share a single HTTP session for connection reuse
+- Unknown scripts are analyzed individually with bounded concurrency (semaphore, max 5 at a time)
+- Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching

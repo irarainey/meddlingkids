@@ -20,7 +20,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
-- 🤖 **AI-Powered Analysis** — Uses Azure OpenAI to analyze privacy implications (batched for efficiency)
+- 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
 
 ## How It Works
 

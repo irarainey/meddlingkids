@@ -1,6 +1,6 @@
 # Meddling Kids - Server
 
-Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection.
+Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection. AI agents are built on the **Microsoft Agent Framework** (`agent-framework-core` package).
 
 ## Requirements
 
@@ -92,3 +92,33 @@ src/
     ├── tracking_summary.py   # Summary builder for LLM
     └── url.py                # URL utilities
 ```
+
+## Microsoft Agent Framework
+
+The server uses the [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) (`agent-framework-core` package) for all AI-powered analysis.  All agents subclass `BaseAgent`, which provides shared infrastructure for creating `ChatAgent` instances with middleware, structured output, and LLM client management.
+
+### How It Works
+
+1. `BaseAgent.initialise()` creates a `ChatClientProtocol` via the `llm_client` factory (supports Azure OpenAI and standard OpenAI)
+2. `BaseAgent._build_agent()` constructs a `ChatAgent` with the agent's system prompt, `ChatOptions` (including `response_format` for structured JSON output), and middleware (`RetryChatMiddleware`, `TimingChatMiddleware`)
+3. Agents call `_complete()` for text-only prompts or `_complete_vision()` for multimodal prompts (screenshot + text)
+4. Responses are parsed into Pydantic models via `AgentResponse.try_parse_value()`
+
+### Agents
+
+| Agent | Input | Output | Description |
+|-------|-------|--------|-------------|
+| `ConsentDetectionAgent` | Screenshot + HTML | `CookieConsentDetection` | Vision-based detection of consent dialogs and overlay dismiss buttons |
+| `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
+| `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
+| `SummaryFindingsAgent` | Analysis markdown | `list[SummaryFinding]` | Distils full analysis into 5-7 prioritized findings |
+| `TrackingAnalysisAgent` | Tracking summary | Markdown report | Comprehensive privacy analysis (supports streaming via `run_stream()`) |
+
+### Infrastructure
+
+| Module | Purpose |
+|--------|---------|
+| `base.py` | `BaseAgent` — shared agent factory with structured output and Azure schema fixes |
+| `config.py` | LLM configuration from environment variables (Azure OpenAI / standard OpenAI) |
+| `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
+| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx) |
