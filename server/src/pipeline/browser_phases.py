@@ -78,7 +78,14 @@ async def wait_for_page_load(
     session: browser_session.BrowserSession,
     hostname: str,
 ) -> list[str]:
-    """Wait for network idle and dynamic content.
+    """Wait for page to be visually ready after DOM content loaded.
+
+    Uses a short network-idle race (3 s) rather than a long timeout.
+    Ad-heavy sites have continuous background traffic that never
+    settles, so blocking on full network idle wastes tens of seconds
+    without benefit.  The DOM and critical resources are already
+    available after ``domcontentloaded``; a brief grace period is
+    enough for consent banners, overlays, and initial ads to render.
 
     Returns:
         List of SSE progress event strings.
@@ -88,37 +95,39 @@ async def wait_for_page_load(
     log.start_timer("network-idle")
     events.append(
         format_progress_event(
-            "wait-network", f"Loading {hostname}...", 18
+            "wait-network", f"Waiting for {hostname} to settle...", 18
         )
     )
 
-    network_idle = await session.wait_for_network_idle(20000)
+    # Short race: give the page 3 s to reach network idle.
+    # If it doesn't (ad-heavy sites), that's fine — proceed anyway.
+    network_idle = await session.wait_for_network_idle(3000)
     log.end_timer("network-idle", "Network idle wait complete")
 
-    if not network_idle:
-        log.warn(
+    if network_idle:
+        log.success("Network became idle")
+        events.append(
+            format_progress_event(
+                "wait-done", "Page fully loaded", 25
+            )
+        )
+    else:
+        log.info(
             "Network still active (normal for ad-heavy sites),"
-            " continuing..."
+            " proceeding with loaded DOM"
         )
         events.append(
             format_progress_event(
                 "wait-continue",
-                "Page loaded, waiting for ads to render...",
+                "Page loaded, continuing...",
                 25,
             )
         )
-        await session.wait_for_timeout(3000)
-    else:
-        log.success("Network became idle")
-        events.append(
-            format_progress_event(
-                "wait-done", "Page fully loaded", 28
-            )
-        )
 
+    # Brief grace period for consent banners and overlays to render.
     events.append(
         format_progress_event(
-            "wait-ads", "Waiting for dynamic content...", 28
+            "wait-overlays", "Checking for page overlays...", 28
         )
     )
     await session.wait_for_timeout(2000)
@@ -198,24 +207,11 @@ async def capture_initial_data(
 
     events.append(
         format_progress_event(
-            "cookies", "Capturing cookies...", 32
+            "capture", "Collecting cookies and storage...", 32
         )
     )
     await session.capture_current_cookies()
-
-    events.append(
-        format_progress_event(
-            "storage", "Capturing storage data...", 35
-        )
-    )
     storage = await session.capture_storage()
-
-    events.append(
-        format_progress_event(
-            "overlay-wait", "Waiting for page overlays...", 37
-        )
-    )
-    await session.wait_for_timeout(2000)
 
     events.append(
         format_progress_event(
@@ -247,9 +243,7 @@ async def capture_initial_data(
     events.append(
         format_progress_event(
             "captured",
-            f"Found {cookie_count} cookies,"
-            f" {script_count} scripts,"
-            f" {request_count} requests",
+            "Initial data captured",
             42,
         )
     )

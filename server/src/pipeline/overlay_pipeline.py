@@ -224,7 +224,7 @@ async def _extract_and_classify_consent(
     log.start_timer("consent-extraction")
     yield format_progress_event(
         "consent-extract",
-        "Extracting consent details...",
+        "Analyzing consent dialog...",
         progress_base + 4,
     )
     result.consent_details = (

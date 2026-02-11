@@ -55,10 +55,8 @@ async def run_ai_analysis(
     )
     yield format_progress_event(
         "analysis-start",
-        f"Found {len(final_cookies)} cookies,"
-        f" {len(final_scripts)} scripts,"
-        f" {len(final_requests)} requests",
-        76,
+        "Starting AI analysis...",
+        75,
     )
 
     log.start_timer("ai-analysis")

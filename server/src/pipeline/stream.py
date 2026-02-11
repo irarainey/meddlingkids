@@ -81,7 +81,7 @@ async def analyze_url_stream(
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
             # ── Phase 1: Browser Setup & Navigation ─────────────
             log.subsection("Phase 1: Browser Setup")
-            yield format_progress_event("init", "Warming up...", 5)
+            yield format_progress_event("init", "Checking configuration...", 5)
 
             nav_events, nav_result = (
                 await browser_phases.setup_and_navigate(
@@ -124,11 +124,6 @@ async def analyze_url_stream(
             # ── Phase 4: Overlay Detection & Handling ───────────
             log.subsection("Phase 4: Overlay Detection & Handling")
             log.start_timer("overlay-handling")
-            yield format_progress_event(
-                "overlay-detect",
-                "Checking for page overlays...",
-                45,
-            )
 
             page = session.get_page()
             consent_details = None
@@ -192,11 +187,6 @@ async def analyze_url_stream(
 
             # ── Phase 5: AI Analysis ────────────────────────────
             log.subsection("Phase 5: AI Analysis")
-            yield format_progress_event(
-                "analysis-prep",
-                "Preparing tracking data for analysis...",
-                75,
-            )
 
             async for event in analysis_pipeline.run_ai_analysis(
                 session,
