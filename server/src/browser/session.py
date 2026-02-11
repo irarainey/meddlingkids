@@ -39,7 +39,7 @@ class BrowserSession:
 
     def __init__(self) -> None:
         """Initialise a new browser session with empty state."""
-        self._playwright = None
+        self._playwright: async_api.Playwright | None = None
         self._browser: async_api.Browser | None = None
         self._context: async_api.BrowserContext | None = None
         self._page: async_api.Page | None = None
@@ -125,9 +125,10 @@ class BrowserSession:
             self._playwright = None
         self._page = None
 
-        self._playwright = await async_api.async_playwright().start()
+        pw = await async_api.async_playwright().start()
+        self._playwright = pw
 
-        self._browser = await self._playwright.chromium.launch(
+        br = await pw.chromium.launch(
             headless=False,
             args=[
                 "--no-first-run",
@@ -137,8 +138,9 @@ class BrowserSession:
                 "--disable-extensions",
             ],
         )
+        self._browser = br
 
-        self._context = await self._browser.new_context(
+        self._context = await br.new_context(
             user_agent=device_config.user_agent,
             viewport={"width": device_config.viewport.width, "height": device_config.viewport.height},
             device_scale_factor=device_config.device_scale_factor,
@@ -378,7 +380,7 @@ class BrowserSession:
         Downscales wide images and compresses to JPEG for smaller
         payloads.  This is a pure CPU operation — no browser round-trip.
         """
-        img = Image.open(io.BytesIO(png_bytes))
+        img: Image.Image = Image.open(io.BytesIO(png_bytes))
 
         max_width = 1280
         if img.width > max_width:

@@ -404,42 +404,50 @@ def _detect_from_html_only(
     """
     log.info("Attempting HTML-only overlay detection...")
 
-    consent_patterns = [
+    consent_patterns: list[tuple[str, str | None, str]] = [
         (
             r'id=["\']?onetrust-accept-btn-handler["\']?',
             "#onetrust-accept-btn-handler",
+            "Accept",
         ),
         (
             r'id=["\']?accept-cookies["\']?',
             "#accept-cookies",
+            "Accept",
         ),
         (
             r'id=["\']?CybotCookiebotDialogBody'
             r'LevelButtonLevelOptinAllowAll["\']?',
             "#CybotCookiebotDialogBody"
             "LevelButtonLevelOptinAllowAll",
+            "Accept",
         ),
         (
             r'id=["\']?didomi-notice-agree-button["\']?',
             "#didomi-notice-agree-button",
+            "Accept",
         ),
         (
             r'class=["\'][^"\']*sp_choice_type_11'
             r'[^"\']*["\']?',
             "button.sp_choice_type_11",
+            "Accept",
         ),
         (
             r'data-action=["\']?accept["\']?',
             '[data-action="accept"]',
+            "Accept",
         ),
         (
             r'data-testid=["\']?accept-button["\']?',
             '[data-testid="accept-button"]',
+            "Accept",
         ),
         (
             r'aria-label=["\'][^"\']*[Aa]ccept'
             r'[^"\']*["\']',
             '[aria-label*="ccept"]',
+            "Accept",
         ),
         (r">Accept All<", None, "Accept All"),
         (r">Accept Cookies<", None, "Accept Cookies"),
@@ -447,9 +455,8 @@ def _detect_from_html_only(
         (r">Agree<", None, "Agree"),
     ]
 
-    for pattern, selector, *rest in consent_patterns:
+    for pattern, selector, btn_text in consent_patterns:
         if re.search(pattern, html, re.IGNORECASE):
-            btn_text = rest[0] if rest else "Accept"
             log.success(
                 "Found overlay via HTML pattern matching",
                 {"selector": selector, "buttonText": btn_text},

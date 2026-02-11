@@ -64,7 +64,7 @@ def _create_azure_client(
     """
     log.info("Using Azure OpenAI", {"agent": agent_name or "default"})
 
-    return azure.AzureOpenAIChatClient(
+    return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
         api_key=cfg.api_key,
         api_version=cfg.api_version,
         endpoint=cfg.endpoint,
@@ -87,7 +87,7 @@ def _create_openai_client(
     """
     log.info("Using standard OpenAI", {"agent": agent_name or "default"})
 
-    return openai.OpenAIChatClient(
+    return openai.OpenAIChatClient(  # type: ignore[return-value]
         api_key=cfg.api_key,
         model_id=cfg.model or None,
         base_url=cfg.base_url,

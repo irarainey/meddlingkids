@@ -30,6 +30,10 @@ MAX_OVERLAYS = 5
 # ====================================================================
 
 
+def _empty_storage() -> dict[str, list[tracking_data.StorageItem]]:
+    return {"local_storage": [], "session_storage": []}
+
+
 class OverlayHandlingResult(pydantic.BaseModel):
     """Mutable state populated by the overlay handling pipeline."""
 
@@ -43,12 +47,7 @@ class OverlayHandlingResult(pydantic.BaseModel):
     final_screenshot: bytes = b""
     final_storage: dict[
         str, list[tracking_data.StorageItem]
-    ] = pydantic.Field(
-        default_factory=lambda: {
-            "local_storage": [],
-            "session_storage": [],
-        }
-    )
+    ] = pydantic.Field(default_factory=_empty_storage)
 
 
 # ====================================================================

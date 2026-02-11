@@ -13,21 +13,13 @@ from __future__ import annotations
 
 import functools
 
-from src.agents.config import validate_llm_config
-from src.agents.consent_detection_agent import (
-    ConsentDetectionAgent,
-)
-from src.agents.consent_extraction_agent import (
-    ConsentExtractionAgent,
-)
-from src.agents.script_analysis_agent import (
-    ScriptAnalysisAgent,
-)
-from src.agents.summary_findings_agent import (
-    SummaryFindingsAgent,
-)
-from src.agents.tracking_analysis_agent import (
-    TrackingAnalysisAgent,
+from src.agents import (
+    base,
+    consent_detection_agent,
+    consent_extraction_agent,
+    script_analysis_agent,
+    summary_findings_agent,
+    tracking_analysis_agent,
 )
 from src.utils import logger
 
@@ -37,7 +29,7 @@ log = logger.create_logger("Agents")
 # ── Singletons ─────────────────────────────────────────────────
 
 
-def _init_agent[T](agent_cls: type[T]) -> T:
+def _init_agent[T: base.BaseAgent](agent_cls: type[T]) -> T:
     """Instantiate and initialise an agent, logging on failure.
 
     Args:
@@ -57,47 +49,41 @@ def _init_agent[T](agent_cls: type[T]) -> T:
 
 
 @functools.lru_cache(maxsize=1)
-def get_consent_detection_agent() -> ConsentDetectionAgent:
+def get_consent_detection_agent() -> consent_detection_agent.ConsentDetectionAgent:
     """Get the singleton ``ConsentDetectionAgent``."""
-    return _init_agent(ConsentDetectionAgent)
+    return _init_agent(consent_detection_agent.ConsentDetectionAgent)
 
 
 @functools.lru_cache(maxsize=1)
 def get_consent_extraction_agent() -> (
-    ConsentExtractionAgent
+    consent_extraction_agent.ConsentExtractionAgent
 ):
     """Get the singleton ``ConsentExtractionAgent``."""
-    return _init_agent(ConsentExtractionAgent)
+    return _init_agent(consent_extraction_agent.ConsentExtractionAgent)
 
 
 @functools.lru_cache(maxsize=1)
-def get_tracking_analysis_agent() -> TrackingAnalysisAgent:
+def get_tracking_analysis_agent() -> tracking_analysis_agent.TrackingAnalysisAgent:
     """Get the singleton ``TrackingAnalysisAgent``."""
-    return _init_agent(TrackingAnalysisAgent)
+    return _init_agent(tracking_analysis_agent.TrackingAnalysisAgent)
 
 
 @functools.lru_cache(maxsize=1)
-def get_summary_findings_agent() -> SummaryFindingsAgent:
+def get_summary_findings_agent() -> summary_findings_agent.SummaryFindingsAgent:
     """Get the singleton ``SummaryFindingsAgent``."""
-    return _init_agent(SummaryFindingsAgent)
+    return _init_agent(summary_findings_agent.SummaryFindingsAgent)
 
 
 @functools.lru_cache(maxsize=1)
-def get_script_analysis_agent() -> ScriptAnalysisAgent:
+def get_script_analysis_agent() -> script_analysis_agent.ScriptAnalysisAgent:
     """Get the singleton ``ScriptAnalysisAgent``."""
-    return _init_agent(ScriptAnalysisAgent)
+    return _init_agent(script_analysis_agent.ScriptAnalysisAgent)
 
 
 __all__ = [
-    "ConsentDetectionAgent",
-    "ConsentExtractionAgent",
-    "ScriptAnalysisAgent",
-    "SummaryFindingsAgent",
-    "TrackingAnalysisAgent",
     "get_consent_detection_agent",
     "get_consent_extraction_agent",
     "get_script_analysis_agent",
     "get_summary_findings_agent",
     "get_tracking_analysis_agent",
-    "validate_llm_config",
 ]
