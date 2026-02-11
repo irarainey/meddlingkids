@@ -116,7 +116,7 @@ async def try_click_consent_button(
     original_url = page.url
 
     # Phase 1: Try main page (where overlays almost always live)
-    if await _try_click_in_frame(page.main_frame, selector, button_text, 1500):
+    if await _try_click_in_frame(page.main_frame, selector, button_text, 500):
         if await _did_navigate_away(page, original_url):
             return False
         log.success("Click succeeded on main page")
@@ -136,7 +136,7 @@ async def try_click_consent_button(
         for frame in consent_frames:
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
-            if await _try_click_in_frame(frame, selector, button_text, 1500):
+            if await _try_click_in_frame(frame, selector, button_text, 500):
                 if await _did_navigate_away(page, original_url):
                     return False
                 log.success("Click succeeded in consent iframe", {"url": frame_url[:50]})
@@ -268,7 +268,7 @@ async def _try_close_buttons(page: async_api.Page) -> bool:
     for label, locator in role_patterns:
         try:
             log.debug("Trying close button", {"selector": label})
-            await locator.first.click(timeout=1000)
+            await locator.first.click(timeout=400)
             log.success("Close button clicked", {"selector": label})
             return True
         except Exception:
@@ -290,7 +290,7 @@ async def _try_close_buttons(page: async_api.Page) -> bool:
     for sel in css_selectors:
         try:
             log.debug("Trying close button", {"selector": sel})
-            await page.locator(sel).first.click(timeout=1000)
+            await page.locator(sel).first.click(timeout=400)
             log.success("Close button clicked", {"selector": sel})
             return True
         except Exception:
