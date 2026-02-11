@@ -15,8 +15,9 @@ import re
 import time
 
 from src.data import loader
-from src.services import partner_classification, tracker_patterns
-from src.types import analysis, consent, tracking_data
+from src.consent import partner_classification
+from src.analysis import tracker_patterns
+from src.models import analysis, consent, tracking_data
 from src.utils import logger
 from src.utils import url as url_mod
 

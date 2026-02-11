@@ -96,18 +96,16 @@ meddlingkids/
 │   ├── pyproject.toml         # Python dependencies (managed with uv)
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
-│       ├── routes/            # API endpoints (SSE streaming)
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
-│       │   ├── base.py        # BaseAgent with structured output support
-│       │   ├── config.py      # LLM configuration (Azure / OpenAI)
-│       │   ├── llm_client.py  # Chat client factory
-│       │   └── middleware.py  # Timing & retry middleware
-│       ├── services/          # Business logic (browser, analysis, consent)
-│       ├── data/              # Tracking databases (JSON) & data loader
+│       ├── browser/           # Browser automation (Playwright session, device configs)
+│       ├── consent/           # Consent handling (detect, click, extract, classify)
+│       ├── analysis/          # Tracking analysis, script ID, privacy scoring
+│       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
+│       ├── models/            # Pydantic data models
+│       ├── data/              # Static pattern databases (JSON)
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
-│       ├── types/             # Pydantic model type definitions
-│       └── utils/             # Utility functions (including file logging)
+│       └── utils/             # Cross-cutting utilities (logging, errors, URL)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
@@ -238,7 +236,7 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 
 - [Developer Guide](DEVELOPER_GUIDE.md) — Application workflow, data flow, and architecture
 - [Client README](client/README.md) — Frontend architecture, components, and styling
-- [Server README](server/README.md) — Backend architecture, services, and API
+- [Server README](server/README.md) — Backend architecture, domain packages, and API
 
 ## License
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 from playwright import async_api
 
 from src import agents
-from src.types import consent
+from src.models import consent
 from src.utils import logger
 
 log = logger.create_logger("Consent-Extract")

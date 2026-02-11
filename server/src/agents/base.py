@@ -12,6 +12,7 @@ import base64
 import copy
 import json
 import re
+import warnings
 from typing import Any, TypeVar
 
 import agent_framework
@@ -284,22 +285,16 @@ class BaseAgent:
     def _load_json_from_text(text: str | None) -> Any:
         """Strip LLM markdown fences and parse JSON.
 
-        Handles ``````json ... `````` wrappers that models
-        sometimes emit even when structured output is
-        requested.
-
-        Args:
-            text: Raw LLM response text, possibly
-                wrapped in code fences.
-
-        Returns:
-            Parsed JSON value, or ``None`` on failure.
+        .. deprecated::
+            Use ``src.utils.json_parsing.load_json_from_text``
+            directly instead.
         """
-        content = (text or "").strip()
-        if content.startswith("```"):
-            content = re.sub(r"```json?\n?", "", content)
-            content = re.sub(r"```\s*$", "", content).strip()
-        try:
-            return json.loads(content)
-        except (json.JSONDecodeError, ValueError):
-            return None
+        warnings.warn(
+            "BaseAgent._load_json_from_text is deprecated;"
+            " use src.utils.json_parsing.load_json_from_text",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from src.utils.json_parsing import load_json_from_text
+
+        return load_json_from_text(text)

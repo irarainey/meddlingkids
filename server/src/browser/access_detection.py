@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from playwright import async_api
 
-from src.types import browser
+from src.models import browser
 
 # ============================================================================
 # Detection Patterns

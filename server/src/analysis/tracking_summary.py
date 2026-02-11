@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import collections
 
-from src.types import analysis, tracking_data
+from src.models import analysis, tracking_data
 from src.utils import url
 
 

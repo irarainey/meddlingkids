@@ -12,7 +12,7 @@ import json
 import agent_framework
 
 from src.agents import base, config
-from src.types import analysis, consent
+from src.models import analysis, consent
 from src.utils import logger
 
 log = logger.create_logger("TrackingAnalysisAgent")

@@ -49,48 +49,55 @@ uv run uvicorn src.main:app --host 0.0.0.0 --port 3001 --reload --env-file ../.e
 
 ```
 src/
-├── main.py                   # FastAPI application entry point
-├── routes/
-│   ├── analyze_stream.py     # SSE streaming endpoint
-│   └── analyze_helpers.py    # Route helper utilities
-├── agents/                   # AI agents (Microsoft Agent Framework)
-│   ├── base.py               # BaseAgent with structured output support
-│   ├── config.py             # LLM configuration (Azure / OpenAI)
-│   ├── llm_client.py         # Chat client factory
-│   ├── middleware.py          # Timing & retry middleware
+├── main.py                          # FastAPI application entry point
+├── agents/                          # AI agents (Microsoft Agent Framework)
+│   ├── base.py                      # BaseAgent with structured output support
+│   ├── config.py                    # LLM configuration (Azure / OpenAI)
+│   ├── llm_client.py                # Chat client factory
+│   ├── middleware.py                # Timing & retry middleware
 │   ├── consent_detection_agent.py   # Vision agent for consent dialogs
 │   ├── consent_extraction_agent.py  # Extract consent details agent
 │   ├── script_analysis_agent.py     # Script identification agent
 │   ├── summary_findings_agent.py    # Summary findings agent
-│   └── tracking_analysis_agent.py   # Main tracking analysis agent
-├── services/
-│   ├── browser_session.py    # Playwright async browser session
-│   ├── analysis.py           # Main tracking analysis orchestration
-│   ├── script_analysis.py    # Script identification (patterns + LLM)
-│   ├── script_grouping.py    # Group similar scripts to reduce noise
-│   ├── consent_detection.py  # Consent dialog detection orchestration
-│   ├── consent_extraction.py # Consent detail extraction orchestration
-│   ├── consent_click.py      # Click strategies for consent buttons
-│   ├── access_detection.py   # Bot blocking detection
-│   ├── device_configs.py     # Device emulation profiles
-│   ├── partner_classification.py  # Consent partner risk classification
-│   ├── privacy_score.py      # Deterministic privacy scoring
-│   └── tracker_patterns.py   # Regex patterns for tracker classification
-├── data/
-│   ├── loader.py             # JSON data loader with caching
-│   ├── partners/             # Partner risk databases (8 JSON files)
-│   └── trackers/             # Script pattern databases (2 JSON files)
-├── types/
-│   ├── tracking_data.py       # Cookies, scripts, storage, network models
-│   ├── consent.py             # Consent detection & extraction models
-│   ├── analysis.py            # Analysis results & scoring models
-│   ├── partners.py            # Partner classification models
-│   └── browser.py             # Navigation, access denial & device models
-└── utils/
-    ├── errors.py             # Error utilities
-    ├── logger.py             # Structured logger with color output
-    ├── tracking_summary.py   # Summary builder for LLM
-    └── url.py                # URL utilities
+│   ├── tracking_analysis_agent.py   # Main tracking analysis agent
+│   └── scripts/                     # JavaScript snippets evaluated in-browser
+├── browser/                         # Browser automation
+│   ├── session.py                   # Playwright async browser session
+│   ├── access_detection.py          # Bot blocking / CAPTCHA detection
+│   └── device_configs.py            # Device emulation profiles
+├── consent/                         # Consent handling
+│   ├── click.py                     # Multi-strategy consent button clicker
+│   ├── detection.py                 # Consent dialog detection orchestration
+│   ├── extraction.py                # Consent detail extraction orchestration
+│   └── partner_classification.py    # Consent partner risk classification
+├── analysis/                        # Tracking analysis & scoring
+│   ├── tracking.py                  # Streaming LLM tracking analysis
+│   ├── scripts.py                   # Script identification (patterns + LLM)
+│   ├── script_grouping.py           # Group similar scripts to reduce noise
+│   ├── tracker_patterns.py          # Regex patterns for tracker classification
+│   ├── privacy_score.py             # Deterministic privacy scoring (0-100)
+│   └── tracking_summary.py          # Summary builder for LLM input
+├── pipeline/                        # SSE streaming orchestration
+│   ├── stream.py                    # Top-level SSE endpoint orchestrator
+│   ├── browser_phases.py            # Phases 1-3: setup, navigate, initial capture
+│   ├── overlay_pipeline.py          # Phase 4: overlay detect → click → extract
+│   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
+│   └── sse_helpers.py               # SSE formatting & serialization helpers
+├── models/                          # Pydantic data models
+│   ├── tracking_data.py             # Cookies, scripts, storage, network models
+│   ├── consent.py                   # Consent detection & extraction models
+│   ├── analysis.py                  # Analysis results & scoring models
+│   ├── partners.py                  # Partner classification models
+│   └── browser.py                   # Navigation, access denial & device models
+├── data/                            # Static pattern databases
+│   ├── loader.py                    # JSON data loader with caching
+│   ├── partners/                    # Partner risk databases (8 JSON files)
+│   └── trackers/                    # Script pattern databases (2 JSON files)
+└── utils/                           # Cross-cutting utilities
+    ├── errors.py                    # Error message extraction
+    ├── json_parsing.py              # LLM response JSON parsing
+    ├── logger.py                    # Structured logger with colour output
+    └── url.py                       # URL / domain utilities
 ```
 
 ## Microsoft Agent Framework

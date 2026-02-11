@@ -11,8 +11,9 @@ from typing import Literal
 import pydantic
 
 from src.agents import base, config
-from src.types import analysis
+from src.models import analysis
 from src.utils import logger
+from src.utils.json_parsing import load_json_from_text
 
 log = logger.create_logger("SummaryFindingsAgent")
 
@@ -146,7 +147,7 @@ def _parse_text_fallback(
     Returns:
         List of ``SummaryFinding`` objects.
     """
-    raw = base.BaseAgent._load_json_from_text(text)
+    raw = load_json_from_text(text)
     if raw is not None:
         # Support both {"findings": [...]} and [...]
         items = (

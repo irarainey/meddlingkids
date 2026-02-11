@@ -11,7 +11,7 @@ import re
 
 import pydantic
 
-from src.types import tracking_data
+from src.models import tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Script-Grouping")

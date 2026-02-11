@@ -60,7 +60,7 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                                  SERVER                                    │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  analyze_stream.py (Route Handler)                                   │  │
+│  │  pipeline/stream.py (SSE Orchestrator)                               │  │
 │  │  - Orchestrates the 6-phase analysis workflow                        │  │
 │  │  - Sends SSE events back to client                                   │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
@@ -68,8 +68,8 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │          ┌─────────────────────────┼─────────────────────────┐             │
 │          ▼                         ▼                         ▼             │
 │  ┌────────────────────┐  ┌─────────────────────┐     ┌─────────────────┐   │
-│  │ browser_session.py │  │ consent_*.py        │     │ analysis.py     │   │
-│  │ - Playwright async │  │ - Detection (AI)    │     │ - OpenAI        │   │
+│  │ browser/           │  │ consent/            │     │ analysis/       │   │
+│  │ - Playwright async │  │ - Detection (AI)    │     │ - Tracking      │   │
 │  │ - Navigation       │  │ - Extraction (AI)   │     │ - Risk analysis │   │
 │  │ - Capture          │  │ - Click strategies  │     │ - Privacy score │   │
 │  │ - Per-request      │  └─────────────────────┘     └─────────────────┘   │
@@ -91,7 +91,7 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 
 ## Application Workflow
 
-The analysis follows a 6-phase workflow, orchestrated by `analyze_stream.py`:
+The analysis follows a 6-phase workflow, orchestrated by `pipeline/stream.py`:
 
 ### Phase 1: Browser Setup and Navigation
 ```
@@ -101,7 +101,7 @@ Client: User clicks "Unmask" button
 analyzeUrl() in useTrackingAnalysis.ts
    │ Creates EventSource connection
    ▼
-analyze_url_stream_handler() in analyze_stream.py
+analyze_url_stream() in pipeline/stream.py
    │
    ├── validate_openai_config() → Check env vars
    ├── BrowserSession() → Create isolated session
@@ -343,24 +343,47 @@ Key framework types used:
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
 
-### Service Layer
+### Domain Packages
 
-Services orchestrate browser automation and data processing. They call agents for AI tasks.
+Domain packages orchestrate browser automation and data processing. They call agents for AI tasks.
 
-| Service | Responsibility |
-|---------|---------------|
-| `browser_session.py` | Playwright async browser session (per-request isolation for concurrency) |
+**`browser/`** — Browser automation
+
+| Module | Responsibility |
+|--------|---------------|
+| `session.py` | Playwright async browser session (per-request isolation for concurrency) |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
-| `analysis.py` | Main tracking analysis orchestration |
-| `script_analysis.py` | Script identification (patterns + LLM via agent) |
-| `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
+
+**`consent/`** — Consent handling
+
+| Module | Responsibility |
+|--------|---------------|
+| `detection.py` | Consent dialog detection orchestration |
+| `extraction.py` | Consent detail extraction orchestration |
+| `click.py` | Click strategies for consent buttons |
 | `partner_classification.py` | Classify consent partners by risk level |
-| `consent_detection.py` | Consent dialog detection orchestration |
-| `consent_extraction.py` | Consent detail extraction orchestration |
-| `consent_click.py` | Click strategies for consent buttons |
-| `privacy_score.py` | Deterministic privacy scoring (0-100) |
+
+**`analysis/`** — Tracking analysis and scoring
+
+| Module | Responsibility |
+|--------|---------------|
+| `tracking.py` | Main tracking analysis orchestration (streaming LLM) |
+| `scripts.py` | Script identification (patterns + LLM via agent) |
+| `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification |
+| `privacy_score.py` | Deterministic privacy scoring (0-100) |
+| `tracking_summary.py` | Summary builder for LLM input |
+
+**`pipeline/`** — SSE streaming orchestration
+
+| Module | Responsibility |
+|--------|---------------|
+| `stream.py` | Top-level SSE endpoint orchestrator (6-phase workflow) |
+| `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
+| `overlay_pipeline.py` | Phase 4: overlay detect → click → extract |
+| `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
+| `sse_helpers.py` | SSE formatting and serialization helpers |
 
 ### Data Layer
 
@@ -389,7 +412,7 @@ Playwright Browser
 BrowserSession tracking arrays
     │
     ▼
-send_event('screenshot', data) in analyze_stream.py
+send_event('screenshot', data) in pipeline/stream.py
     │
     ▼
 EventSource message received in client
@@ -520,8 +543,8 @@ class ConsentDetails(BaseModel):
 
 ### Adding a New Tracking Data Type
 
-1. Add Pydantic model to the appropriate file in `server/src/types/`
-2. Add capture method in `server/src/services/browser_session.py`
+1. Add Pydantic model to the appropriate file in `server/src/models/`
+2. Add capture method in `server/src/browser/session.py`
 3. Include in screenshot event payload
 4. Add client interface in `client/src/types/tracking.ts`
 5. Add reactive state in `useTrackingAnalysis.ts`
@@ -531,17 +554,17 @@ class ConsentDetails(BaseModel):
 
 1. Create an agent class in `server/src/agents/` subclassing `BaseAgent`
 2. Define `agent_name`, `instructions`, `max_tokens`, and optionally `response_model`
-3. Add an orchestration function in `server/src/services/` that calls the agent
-4. Call from `analyze_stream.py` (consider `asyncio.gather()` for parallel execution)
+3. Add an orchestration function in the relevant domain package (`server/src/analysis/`, `server/src/consent/`, etc.) that calls the agent
+4. Call from `stream.py` in `server/src/pipeline/` (consider `asyncio.gather()` for parallel execution)
 5. Include in `complete` event payload
 6. Display in client
 
 ### Adding a New Overlay Type
 
-1. Update `CookieConsentDetection` type in `server/src/types/consent.py`
+1. Update `CookieConsentDetection` type in `server/src/models/consent.py`
 2. Update detection instructions in `server/src/agents/consent_detection_agent.py`
-3. Add click strategy in `server/src/services/consent_click.py`
-4. Update `get_overlay_message()` in `analyze_helpers.py`
+3. Add click strategy in `server/src/consent/click.py`
+4. Update `_get_overlay_message()` in `server/src/pipeline/overlay_pipeline.py`
 
 ---
 
@@ -557,11 +580,11 @@ The browser runs in headed mode on a virtual display (Xvfb) to avoid bot detecti
   - Installs npm dependencies if needed
   - Installs Playwright browsers and system dependencies
   - Installs Xvfb if not present
-  - Starts Xvfb on display `:99` if not already running
+  - Cleans up stale lock files and starts Xvfb on display `:99` if not already running
 - `.vscode/launch.json` also sets `DISPLAY=:99` for the debug server
 
 **Docker:**
-- `docker-entrypoint.sh` starts Xvfb before the server
+- `docker-entrypoint.sh` cleans up stale lock files and starts Xvfb before the server
 - `Dockerfile` installs Xvfb and sets `ENV DISPLAY=:99`
 
 **Manual Setup (if not using devcontainer):**
@@ -609,15 +632,15 @@ The server includes verbose logging with timestamps and timing information. Logs
 
 **Using the Logger:**
 ```python
-from src.utils import create_logger
+from src.utils import logger
 
-log = create_logger('MyModule')
+log = logger.create_logger('MyModule')
 
-log.info('Starting operation', param=value)
+log.info('Starting operation', {'param': value})
 log.start_timer('my-operation')
 # ... do work ...
 log.end_timer('my-operation', 'Operation complete')
-log.success('Done!', result=data)
+log.success('Done!', {'result': data})
 ```
 
 **File Logging:**

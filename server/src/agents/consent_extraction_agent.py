@@ -8,16 +8,26 @@ schema.
 
 from __future__ import annotations
 
+import pathlib
+
 import pydantic
 from playwright import async_api
 
 from src.agents import base, config
-from src.types import consent
+from src.models import consent
 from src.utils import errors, logger
+from src.utils.json_parsing import load_json_from_text
 
 log = logger.create_logger("ConsentExtractionAgent")
 
-
+# Pre-load JavaScript snippets evaluated in the browser.
+_SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
+_EXTRACT_CONSENT_JS = (
+    (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
+)
+_EXTRACT_IFRAME_JS = (
+    (_SCRIPTS_DIR / "extract_iframe_text.js").read_text()
+)
 # ── Structured output models ───────────────────────────────────
 
 class _CategoryResponse(pydantic.BaseModel):
@@ -224,7 +234,7 @@ def _parse_text_fallback(
     Returns:
         Parsed ``ConsentDetails``.
     """
-    raw = base.BaseAgent._load_json_from_text(text)
+    raw = load_json_from_text(text)
     if isinstance(raw, dict):
         return consent.ConsentDetails(
             has_manage_options=raw.get(
@@ -272,68 +282,7 @@ async def _extract_consent_text(
         Combined consent text, truncated to 50 000 chars.
     """
     main_page_text: str = await page.evaluate(
-        """() => {
-            const selectors = [
-                '[class*="cookie"]',
-                '[class*="consent"]',
-                '[class*="privacy"]',
-                '[class*="gdpr"]',
-                '[id*="cookie"]',
-                '[id*="consent"]',
-                '[role="dialog"]',
-                '[class*="modal"]',
-                '[class*="banner"]',
-                '[class*="overlay"]',
-                '[class*="cmp"]',
-                '[class*="tcf"]',
-                '[class*="vendor"]',
-                '[class*="partner"]',
-            ];
-            const elements = [];
-            for (const sel of selectors) {
-                document.querySelectorAll(sel).forEach(
-                    el => {
-                        const text = el.innerText?.trim();
-                        if (text && text.length > 10
-                            && text.length < 15000) {
-                            elements.push(text);
-                        }
-                    }
-                );
-            }
-            document.querySelectorAll('table').forEach(
-                table => {
-                    const text = table.innerText?.trim();
-                    if (text && (
-                        text.toLowerCase().includes(
-                            'partner') ||
-                        text.toLowerCase().includes(
-                            'vendor') ||
-                        text.toLowerCase().includes(
-                            'cookie') ||
-                        text.toLowerCase().includes(
-                            'purpose'))) {
-                        elements.push(text);
-                    }
-                }
-            );
-            document.querySelectorAll('ul, ol').forEach(
-                list => {
-                    const text = list.innerText?.trim();
-                    const pt = list.parentElement
-                        ?.innerText?.toLowerCase() || '';
-                    if (text && text.length > 50 && (
-                        pt.includes('partner') ||
-                        pt.includes('vendor') ||
-                        pt.includes('third part'))) {
-                        elements.push(
-                            'PARTNER LIST:\\n' + text);
-                    }
-                }
-            );
-            return [...new Set(elements)]
-                .join('\\n\\n---\\n\\n');
-        }"""
+        _EXTRACT_CONSENT_JS
     )
 
     iframe_texts: list[str] = []
@@ -356,11 +305,7 @@ async def _extract_consent_text(
         if any(kw in frame_url for kw in consent_keywords):
             try:
                 iframe_text: str = await frame.evaluate(
-                    """() => {
-                        const t = document.body
-                            ?.innerText?.trim();
-                        return t && t.length > 50 ? t : '';
-                    }"""
+                    _EXTRACT_IFRAME_JS
                 )
                 if iframe_text:
                     iframe_texts.append(

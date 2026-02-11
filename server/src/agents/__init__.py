@@ -5,10 +5,13 @@ parsing logic.  Shared infrastructure (chat client, retry,
 timing) lives in ``base.py`` and ``middleware.py``.
 
 Singleton access is provided via ``get_<agent>()`` helpers
-so each agent is created once and reused.
+using ``functools.lru_cache`` so each agent is created once,
+thread-safely, and reused.
 """
 
 from __future__ import annotations
+
+import functools
 
 from src.agents.config import validate_llm_config
 from src.agents.consent_detection_agent import (
@@ -33,14 +36,8 @@ log = logger.create_logger("Agents")
 
 # ── Singletons ─────────────────────────────────────────────────
 
-_consent_detection: ConsentDetectionAgent | None = None
-_consent_extraction: ConsentExtractionAgent | None = None
-_tracking_analysis: TrackingAnalysisAgent | None = None
-_summary_findings: SummaryFindingsAgent | None = None
-_script_analysis: ScriptAnalysisAgent | None = None
 
-
-def _init_agent(agent_cls: type) -> object:
+def _init_agent[T](agent_cls: type[T]) -> T:
     """Instantiate and initialise an agent, logging on failure.
 
     Args:
@@ -59,56 +56,36 @@ def _init_agent(agent_cls: type) -> object:
     return agent
 
 
+@functools.lru_cache(maxsize=1)
 def get_consent_detection_agent() -> ConsentDetectionAgent:
     """Get the singleton ``ConsentDetectionAgent``."""
-    global _consent_detection
-    if _consent_detection is None:
-        _consent_detection = _init_agent(
-            ConsentDetectionAgent
-        )
-    return _consent_detection
+    return _init_agent(ConsentDetectionAgent)
 
 
+@functools.lru_cache(maxsize=1)
 def get_consent_extraction_agent() -> (
     ConsentExtractionAgent
 ):
     """Get the singleton ``ConsentExtractionAgent``."""
-    global _consent_extraction
-    if _consent_extraction is None:
-        _consent_extraction = _init_agent(
-            ConsentExtractionAgent
-        )
-    return _consent_extraction
+    return _init_agent(ConsentExtractionAgent)
 
 
+@functools.lru_cache(maxsize=1)
 def get_tracking_analysis_agent() -> TrackingAnalysisAgent:
     """Get the singleton ``TrackingAnalysisAgent``."""
-    global _tracking_analysis
-    if _tracking_analysis is None:
-        _tracking_analysis = _init_agent(
-            TrackingAnalysisAgent
-        )
-    return _tracking_analysis
+    return _init_agent(TrackingAnalysisAgent)
 
 
+@functools.lru_cache(maxsize=1)
 def get_summary_findings_agent() -> SummaryFindingsAgent:
     """Get the singleton ``SummaryFindingsAgent``."""
-    global _summary_findings
-    if _summary_findings is None:
-        _summary_findings = _init_agent(
-            SummaryFindingsAgent
-        )
-    return _summary_findings
+    return _init_agent(SummaryFindingsAgent)
 
 
+@functools.lru_cache(maxsize=1)
 def get_script_analysis_agent() -> ScriptAnalysisAgent:
     """Get the singleton ``ScriptAnalysisAgent``."""
-    global _script_analysis
-    if _script_analysis is None:
-        _script_analysis = _init_agent(
-            ScriptAnalysisAgent
-        )
-    return _script_analysis
+    return _init_agent(ScriptAnalysisAgent)
 
 
 __all__ = [

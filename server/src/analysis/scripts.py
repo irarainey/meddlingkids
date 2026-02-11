@@ -18,8 +18,8 @@ import pydantic
 
 from src import agents
 from src.data import loader
-from src.services import script_grouping
-from src.types import tracking_data
+from src.analysis import script_grouping
+from src.models import tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Script-Analysis")

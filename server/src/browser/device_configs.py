@@ -5,7 +5,7 @@ Defines user agents, viewports, and capabilities for different device types.
 
 from __future__ import annotations
 
-from src.types import browser
+from src.models import browser
 
 DEVICE_CONFIGS: dict[str, browser.DeviceConfig] = {
     "iphone": browser.DeviceConfig(

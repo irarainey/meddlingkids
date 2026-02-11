@@ -13,8 +13,9 @@ from typing import Literal
 import pydantic
 
 from src.agents import base, config
-from src.types import consent
+from src.models import consent
 from src.utils import errors, logger
+from src.utils.json_parsing import load_json_from_text
 
 log = logger.create_logger("ConsentDetectionAgent")
 
@@ -308,7 +309,7 @@ def _parse_text_fallback(
     Returns:
         Parsed ``CookieConsentDetection``.
     """
-    raw = base.BaseAgent._load_json_from_text(text)
+    raw = load_json_from_text(text)
     if isinstance(raw, dict):
         return consent.CookieConsentDetection(
             found=raw.get("found", False),

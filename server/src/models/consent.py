@@ -6,6 +6,12 @@ from typing import Literal
 
 import pydantic
 
+
+def _to_camel(name: str) -> str:
+    """Convert snake_case to camelCase for JSON serialization."""
+    parts = name.split("_")
+    return parts[0] + "".join(w.capitalize() for w in parts[1:])
+
 OverlayType = Literal[
     "cookie-consent",
     "sign-in",
@@ -52,6 +58,10 @@ class ConsentCategory(pydantic.BaseModel):
 class ConsentPartner(pydantic.BaseModel):
     """A third-party partner/vendor listed in a consent dialog."""
 
+    model_config = pydantic.ConfigDict(
+        alias_generator=_to_camel, populate_by_name=True
+    )
+
     name: str
     purpose: str
     data_collected: list[str]
@@ -63,6 +73,10 @@ class ConsentPartner(pydantic.BaseModel):
 
 class ConsentDetails(pydantic.BaseModel):
     """Detailed information extracted from a cookie consent dialog."""
+
+    model_config = pydantic.ConfigDict(
+        alias_generator=_to_camel, populate_by_name=True
+    )
 
     has_manage_options: bool
     manage_options_selector: str | None

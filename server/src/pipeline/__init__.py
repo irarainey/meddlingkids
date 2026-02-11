@@ -1,0 +1,1 @@
+# SSE streaming pipeline package

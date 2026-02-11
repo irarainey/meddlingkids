@@ -13,7 +13,7 @@ import pathlib
 import re
 from typing import Any
 
-from src.types import partners
+from src.models import partners
 
 # Resolve path to the data directory (same directory as this module)
 _DATA_DIR = pathlib.Path(__file__).resolve().parent

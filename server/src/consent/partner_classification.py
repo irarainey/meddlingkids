@@ -7,8 +7,8 @@ Uses pattern matching for known entities.
 from __future__ import annotations
 
 from src.data import loader
-from src.types import consent
-from src.types import partners as partners_mod
+from src.models import consent
+from src.models import partners as partners_mod
 
 
 def _matches_partner(name_lower: str, key: str, aliases: list[str]) -> bool:

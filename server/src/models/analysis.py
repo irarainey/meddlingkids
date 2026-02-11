@@ -6,7 +6,13 @@ from typing import Literal
 
 import pydantic
 
-from src.types import tracking_data
+from src.models import tracking_data
+
+
+def _to_camel(name: str) -> str:
+    """Convert snake_case to camelCase for JSON serialization."""
+    parts = name.split("_")
+    return parts[0] + "".join(w.capitalize() for w in parts[1:])
 
 
 class DomainData(pydantic.BaseModel):
@@ -60,6 +66,10 @@ class SummaryFinding(pydantic.BaseModel):
 class CategoryScore(pydantic.BaseModel):
     """Score for an individual category."""
 
+    model_config = pydantic.ConfigDict(
+        alias_generator=_to_camel, populate_by_name=True
+    )
+
     points: int = 0
     max_points: int = 0
     issues: list[str] = pydantic.Field(default_factory=list)
@@ -67,6 +77,10 @@ class CategoryScore(pydantic.BaseModel):
 
 class ScoreBreakdown(pydantic.BaseModel):
     """Detailed breakdown of how the score was calculated."""
+
+    model_config = pydantic.ConfigDict(
+        alias_generator=_to_camel, populate_by_name=True
+    )
 
     total_score: int = 0
     categories: dict[str, CategoryScore] = pydantic.Field(

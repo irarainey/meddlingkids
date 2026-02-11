@@ -16,7 +16,7 @@ from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
 
-from src.routes import analyze_stream
+from src.pipeline import stream as analyze_stream
 from src.utils import logger
 
 dotenv.load_dotenv()

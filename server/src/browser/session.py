@@ -16,8 +16,8 @@ from typing import Literal
 from PIL import Image
 from playwright import async_api
 
-from src.services import access_detection, device_configs
-from src.types import browser, tracking_data
+from src.browser import access_detection, device_configs
+from src.models import browser, tracking_data
 from src.utils import url as url_mod
 
 # ============================================================================

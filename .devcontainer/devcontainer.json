@@ -19,7 +19,15 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "vue.volar"
+        "vue.volar",
+        "irarainey.important-python",
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.mypy-type-checker",
+        "github.copilot",
+        "github.copilot-chat",
+        "tamasfe.even-better-toml"
       ]
     }
   },

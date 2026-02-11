@@ -7,7 +7,7 @@ analysis of screenshots to find overlay dismiss buttons.
 from __future__ import annotations
 
 from src import agents
-from src.types import consent
+from src.models import consent
 from src.utils import logger
 
 log = logger.create_logger("Consent-Detect")

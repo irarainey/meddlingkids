@@ -11,10 +11,16 @@ set -e
 
 # Start Xvfb on display :99 in the background
 echo "Starting Xvfb virtual display on :99..."
+rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
 Xvfb :99 -screen 0 1920x1080x24 -ac &
 
 # Wait for Xvfb to be ready
 sleep 1
+
+if ! pgrep -x Xvfb > /dev/null; then
+    echo "ERROR: Xvfb failed to start"
+    exit 1
+fi
 
 # Export DISPLAY so the browser uses the virtual display
 export DISPLAY=:99
