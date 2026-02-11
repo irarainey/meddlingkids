@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import base64
 import copy
-import json
-import re
 import warnings
 from typing import Any, TypeVar
 
@@ -20,7 +18,7 @@ import pydantic
 
 from src.agents import llm_client
 from src.agents import middleware as middleware_mod
-from src.utils import logger
+from src.utils import json_parsing, logger
 
 log = logger.create_logger("BaseAgent")
 
@@ -295,6 +293,5 @@ class BaseAgent:
             DeprecationWarning,
             stacklevel=2,
         )
-        from src.utils.json_parsing import load_json_from_text
 
-        return load_json_from_text(text)
+        return json_parsing.load_json_from_text(text)

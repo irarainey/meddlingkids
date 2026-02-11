@@ -7,13 +7,9 @@ from __future__ import annotations
 
 from urllib import parse
 
-from src.pipeline.sse_helpers import (
-    format_progress_event,
-    format_sse_event,
-    take_screenshot_event,
-)
 from src.browser import session as browser_session
 from src.models import browser
+from src.pipeline import sse_helpers
 from src.utils import logger
 
 log = logger.create_logger("Browser")
@@ -42,7 +38,7 @@ async def setup_and_navigate(
 
     log.start_timer("browser-launch")
     events.append(
-        format_progress_event("browser", "Launching browser...", 8)
+        sse_helpers.format_progress_event("browser", "Launching browser...", 8)
     )
     await session.launch_browser(device_type)
     log.end_timer("browser-launch", "Browser launched")
@@ -50,7 +46,7 @@ async def setup_and_navigate(
     log.start_timer("navigation")
     log.info("Navigating to page", {"hostname": hostname})
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "navigate", f"Connecting to {hostname}...", 12
         )
     )
@@ -94,7 +90,7 @@ async def wait_for_page_load(
 
     log.start_timer("network-idle")
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "wait-network", f"Waiting for {hostname} to settle...", 18
         )
     )
@@ -107,7 +103,7 @@ async def wait_for_page_load(
     if network_idle:
         log.success("Network became idle")
         events.append(
-            format_progress_event(
+            sse_helpers.format_progress_event(
                 "wait-done", "Page fully loaded", 25
             )
         )
@@ -117,7 +113,7 @@ async def wait_for_page_load(
             " proceeding with loaded DOM"
         )
         events.append(
-            format_progress_event(
+            sse_helpers.format_progress_event(
                 "wait-continue",
                 "Page loaded, continuing...",
                 25,
@@ -126,7 +122,7 @@ async def wait_for_page_load(
 
     # Brief grace period for consent banners and overlays to render.
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "wait-overlays", "Checking for page overlays...", 28
         )
     )
@@ -157,7 +153,7 @@ async def check_access(
         "Access denied detected", {"reason": access_check.reason}
     )
 
-    event_str, _, _ = await take_screenshot_event(
+    event_str, _, _ = await sse_helpers.take_screenshot_event(
         session,
         storage={
             "local_storage": [],
@@ -167,7 +163,7 @@ async def check_access(
     events.append(event_str)
 
     events.append(
-        format_sse_event(
+        sse_helpers.format_sse_event(
             "pageError",
             {
                 "type": "access-denied",
@@ -182,7 +178,7 @@ async def check_access(
         )
     )
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "blocked", "Site blocked access", 100
         )
     )
@@ -206,7 +202,7 @@ async def capture_initial_data(
     log.start_timer("initial-capture")
 
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "capture", "Collecting cookies and storage...", 32
         )
     )
@@ -214,13 +210,13 @@ async def capture_initial_data(
     storage = await session.capture_storage()
 
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "screenshot", "Taking screenshot...", 38
         )
     )
 
     event_str, screenshot_bytes, storage = (
-        await take_screenshot_event(session, storage)
+        await sse_helpers.take_screenshot_event(session, storage)
     )
     events.append(event_str)
 
@@ -241,7 +237,7 @@ async def capture_initial_data(
     )
 
     events.append(
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "captured",
             "Initial data captured",
             42,

@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections.abc import AsyncIterable
 
 from src import agents
+from src.analysis import tracking_summary as tracking_summary_mod
 from src.models import consent, tracking_data
 from src.utils import logger
-from src.analysis import tracking_summary as tracking_summary_mod
 
 log = logger.create_logger("AI-Analysis")
 

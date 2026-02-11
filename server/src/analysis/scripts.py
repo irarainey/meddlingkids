@@ -17,8 +17,8 @@ import aiohttp
 import pydantic
 
 from src import agents
-from src.data import loader
 from src.analysis import script_grouping
+from src.data import loader
 from src.models import tracking_data
 from src.utils import logger
 

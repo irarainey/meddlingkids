@@ -19,14 +19,14 @@ from typing import AsyncGenerator, cast
 from urllib import parse
 
 from src.agents import config
-from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline
-from src.pipeline.sse_helpers import (
-    format_progress_event,
-    format_sse_event,
-    take_screenshot_event,
-)
-from src.browser import session as browser_session, device_configs
+from src.browser import device_configs, session as browser_session
 from src.models import browser
+from src.pipeline import (
+    analysis_pipeline,
+    browser_phases,
+    overlay_pipeline,
+    sse_helpers,
+)
 from src.utils import errors, logger
 from src.utils import url as url_mod
 
@@ -54,7 +54,7 @@ async def analyze_url_stream(
     # ── Pre-flight validation ───────────────────────────────
     config_error = config.validate_llm_config()
     if config_error:
-        yield format_sse_event("error", {"error": config_error})
+        yield sse_helpers.format_sse_event("error", {"error": config_error})
         return
 
     valid_devices = list(device_configs.DEVICE_CONFIGS.keys())
@@ -64,7 +64,7 @@ async def analyze_url_stream(
     )
 
     if not url:
-        yield format_sse_event(
+        yield sse_helpers.format_sse_event(
             "error", {"error": "URL is required"}
         )
         return
@@ -81,7 +81,7 @@ async def analyze_url_stream(
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
             # ── Phase 1: Browser Setup & Navigation ─────────────
             log.subsection("Phase 1: Browser Setup")
-            yield format_progress_event("init", "Checking configuration...", 5)
+            yield sse_helpers.format_progress_event("init", "Checking configuration...", 5)
 
             nav_events, nav_result = (
                 await browser_phases.setup_and_navigate(
@@ -156,13 +156,13 @@ async def analyze_url_stream(
             )
 
             # Post-overlay capture
-            yield format_progress_event(
+            yield sse_helpers.format_progress_event(
                 "post-overlay-screenshot",
                 "Capturing final page state...",
                 72,
             )
             await session.capture_current_cookies()
-            event_str, _, storage = await take_screenshot_event(session)
+            event_str, _, storage = await sse_helpers.take_screenshot_event(session)
             yield event_str
 
             if page and overlay_result.failed:
@@ -170,7 +170,7 @@ async def analyze_url_stream(
                     "Overlay dismissal failed, aborting analysis",
                     {"reason": overlay_result.failure_message},
                 )
-                yield format_sse_event(
+                yield sse_helpers.format_sse_event(
                     "pageError",
                     {
                         "type": "overlay-blocked",
@@ -178,7 +178,7 @@ async def analyze_url_stream(
                         "isOverlayBlocked": True,
                     },
                 )
-                yield format_progress_event(
+                yield sse_helpers.format_progress_event(
                     "overlay-blocked",
                     "Could not dismiss page overlay",
                     100,
@@ -214,7 +214,7 @@ async def analyze_url_stream(
             "Analysis timed out",
             {"timeout_seconds": STREAM_TIMEOUT_SECONDS},
         )
-        yield format_sse_event(
+        yield sse_helpers.format_sse_event(
             "error",
             {
                 "error": (
@@ -228,7 +228,7 @@ async def analyze_url_stream(
             "Analysis failed with exception",
             {"error": errors.get_error_message(error)},
         )
-        yield format_sse_event(
+        yield sse_helpers.format_sse_event(
             "error",
             {"error": errors.get_error_message(error)},
         )
@@ -262,7 +262,7 @@ def _emit_nav_failure(
         },
     )
     return [
-        format_sse_event(
+        sse_helpers.format_sse_event(
             "pageError",
             {
                 "type": error_type,
@@ -271,7 +271,7 @@ def _emit_nav_failure(
                 "isAccessDenied": nav_result.is_access_denied,
             },
         ),
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "error",
             nav_result.error_message or "Failed to load page",
             100,

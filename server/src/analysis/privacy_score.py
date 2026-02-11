@@ -14,9 +14,9 @@ from __future__ import annotations
 import re
 import time
 
-from src.data import loader
-from src.consent import partner_classification
 from src.analysis import tracker_patterns
+from src.consent import partner_classification
+from src.data import loader
 from src.models import analysis, consent, tracking_data
 from src.utils import logger
 from src.utils import url as url_mod

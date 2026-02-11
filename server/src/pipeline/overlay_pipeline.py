@@ -13,20 +13,11 @@ from typing import AsyncGenerator
 import pydantic
 from playwright import async_api
 
-from src.pipeline.sse_helpers import (
-    format_progress_event,
-    format_sse_event,
-    serialize_consent_details,
-    take_screenshot_event,
-)
 from src.browser import session as browser_session
-from src.consent import (
-    click as consent_click,
-    extraction as consent_extraction,
-    partner_classification,
-)
+from src.consent import click, extraction, partner_classification
 from src.consent import detection as consent_detection_mod
 from src.models import consent, tracking_data
+from src.pipeline import sse_helpers
 from src.utils import logger
 
 log = logger.create_logger("Overlays")
@@ -104,7 +95,7 @@ async def _validate_overlay_in_dom(
     Guards against false positives where the LLM hallucinates
     overlays from ads or page furniture.
     """
-    exists = await consent_click.validate_element_exists(
+    exists = await click.validate_element_exists(
         page, detection.selector, detection.button_text
     )
     if not exists:
@@ -133,13 +124,13 @@ async def _click_and_capture(
     click fails, allowing the caller to detect failure.
     """
     log.start_timer(f"overlay-click-{overlay_number}")
-    yield format_progress_event(
+    yield sse_helpers.format_progress_event(
         f"overlay-{overlay_number}-click",
         "Dismissing overlay...",
         progress_base + 1,
     )
 
-    clicked = await consent_click.try_click_consent_button(
+    clicked = await click.try_click_consent_button(
         page, detection.selector, detection.button_text
     )
     log.end_timer(
@@ -150,7 +141,7 @@ async def _click_and_capture(
     if not clicked:
         return
 
-    yield format_progress_event(
+    yield sse_helpers.format_progress_event(
         f"overlay-{overlay_number}-wait",
         "Waiting for page to update...",
         progress_base + 2,
@@ -173,14 +164,14 @@ async def _click_and_capture(
         except (asyncio.CancelledError, Exception):
             pass
 
-    yield format_progress_event(
+    yield sse_helpers.format_progress_event(
         f"overlay-{overlay_number}-capture",
         "Capturing page state...",
         progress_base + 3,
     )
     await session.capture_current_cookies()
 
-    event_str, _, _ = await take_screenshot_event(
+    event_str, _, _ = await sse_helpers.take_screenshot_event(
         session,
         extra={"overlayDismissed": detection.overlay_type},
     )
@@ -191,7 +182,7 @@ async def _click_and_capture(
         " dismissed successfully"
     )
 
-    yield format_sse_event(
+    yield sse_helpers.format_sse_event(
         "consent",
         {
             "detected": True,
@@ -222,13 +213,13 @@ async def _extract_and_classify_consent(
     consent dialog is still visible for the extraction agent.
     """
     log.start_timer("consent-extraction")
-    yield format_progress_event(
+    yield sse_helpers.format_progress_event(
         "consent-extract",
         "Analyzing consent dialog...",
         progress_base + 4,
     )
     result.consent_details = (
-        await consent_extraction.extract_consent_details(
+        await extraction.extract_consent_details(
             page, pre_click_screenshot
         )
     )
@@ -245,7 +236,7 @@ async def _extract_and_classify_consent(
     # Enrich partners with risk classification
     if result.consent_details.partners:
         log.start_timer("partner-classification")
-        yield format_progress_event(
+        yield sse_helpers.format_progress_event(
             "partner-classify",
             "Analyzing partner risk levels...",
             progress_base + 5,
@@ -283,9 +274,9 @@ async def _extract_and_classify_consent(
             "Partner classification complete",
         )
 
-    yield format_sse_event(
+    yield sse_helpers.format_sse_event(
         "consentDetails",
-        serialize_consent_details(result.consent_details),
+        sse_helpers.serialize_consent_details(result.consent_details),
     )
 
 
@@ -296,10 +287,10 @@ def _build_no_overlay_events(
     """Build SSE events for the 'no overlay found' case."""
     if overlay_count == 0:
         return [
-            format_progress_event(
+            sse_helpers.format_progress_event(
                 "consent-none", "No overlay detected", 70
             ),
-            format_sse_event(
+            sse_helpers.format_sse_event(
                 "consent",
                 {
                     "detected": False,
@@ -313,7 +304,7 @@ def _build_no_overlay_events(
         f"Dismissed {overlay_count} overlay(s), no more found"
     )
     return [
-        format_progress_event(
+        sse_helpers.format_progress_event(
             "overlays-done",
             f"Dismissed {overlay_count} overlay(s)",
             70,
@@ -341,7 +332,7 @@ def _build_click_failure(
             f" '{detection.button_text or detection.selector}')"
         )
 
-    event = format_sse_event(
+    event = sse_helpers.format_sse_event(
         "consent",
         {
             "detected": True,
@@ -448,7 +439,7 @@ class OverlayPipeline:
                     "confidence": detection.confidence,
                 },
             )
-            yield format_progress_event(
+            yield sse_helpers.format_progress_event(
                 f"overlay-{overlay_count}-found",
                 _get_overlay_message(detection.overlay_type),
                 progress_base,
@@ -554,7 +545,7 @@ class OverlayPipeline:
                 "Reached maximum overlay limit,"
                 " stopping detection"
             )
-            yield format_progress_event(
+            yield sse_helpers.format_progress_event(
                 "overlays-limit",
                 "Maximum overlay limit reached",
                 70,
