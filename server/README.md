@@ -53,17 +53,26 @@ src/
 ├── routes/
 │   ├── analyze_stream.py     # SSE streaming endpoint
 │   └── analyze_helpers.py    # Route helper utilities
+├── agents/                   # AI agents (Microsoft Agent Framework)
+│   ├── base.py               # BaseAgent with structured output support
+│   ├── config.py             # LLM configuration (Azure / OpenAI)
+│   ├── llm_client.py         # Chat client factory
+│   ├── middleware.py          # Timing & retry middleware
+│   ├── consent_detection_agent.py   # Vision agent for consent dialogs
+│   ├── consent_extraction_agent.py  # Extract consent details agent
+│   ├── script_analysis_agent.py     # Script identification agent
+│   ├── summary_findings_agent.py    # Summary findings agent
+│   └── tracking_analysis_agent.py   # Main tracking analysis agent
 ├── services/
 │   ├── browser_session.py    # Playwright async browser session
-│   ├── analysis.py           # Main tracking analysis with LLM
+│   ├── analysis.py           # Main tracking analysis orchestration
 │   ├── script_analysis.py    # Script identification (patterns + LLM)
 │   ├── script_grouping.py    # Group similar scripts to reduce noise
-│   ├── consent_detection.py  # AI vision for consent dialogs
-│   ├── consent_extraction.py # AI consent detail extraction
+│   ├── consent_detection.py  # Consent dialog detection orchestration
+│   ├── consent_extraction.py # Consent detail extraction orchestration
 │   ├── consent_click.py      # Click strategies for consent buttons
 │   ├── access_detection.py   # Bot blocking detection
 │   ├── device_configs.py     # Device emulation profiles
-│   ├── openai_client.py      # OpenAI/Azure OpenAI client
 │   ├── partner_classification.py  # Consent partner risk classification
 │   ├── privacy_score.py      # Deterministic privacy scoring
 │   └── tracker_patterns.py   # Regex patterns for tracker classification
@@ -71,10 +80,6 @@ src/
 │   ├── loader.py             # JSON data loader with caching
 │   ├── partners/             # Partner risk databases (8 JSON files)
 │   └── trackers/             # Script pattern databases (2 JSON files)
-├── prompts/
-│   ├── tracking_analysis.py  # Main analysis & summary prompts
-│   ├── consent_detection.py  # Overlay detection prompt
-│   └── consent_extraction.py # Consent extraction prompt
 ├── types/
 │   ├── tracking_data.py       # Cookies, scripts, storage, network models
 │   ├── consent.py             # Consent detection & extraction models
@@ -84,7 +89,6 @@ src/
 └── utils/
     ├── errors.py             # Error utilities
     ├── logger.py             # Structured logger with color output
-    ├── retry.py              # Retry with exponential backoff
     ├── tracking_summary.py   # Summary builder for LLM
     └── url.py                # URL utilities
 ```

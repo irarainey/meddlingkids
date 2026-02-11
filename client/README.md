@@ -92,7 +92,7 @@ Generic error dialog for displaying error messages:
 ### ScreenshotGallery
 
 Shows captured screenshots with:
-- Thumbnail row (Initial, After Consent, Final)
+- Thumbnail row with incremental numbering (1, 2, 3, ...)
 - Click-to-expand modal
 - Teleported overlay for fullscreen view
 

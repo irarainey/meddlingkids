@@ -79,7 +79,7 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 | Frontend | Vue 3, TypeScript, Vite |
 | Backend | Python, FastAPI, uvicorn |
 | Browser Automation | Playwright for Python (headed mode on Xvfb virtual display) |
-| AI | Azure OpenAI / OpenAI |
+| AI | Azure OpenAI via Microsoft Agent Framework |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture
@@ -98,11 +98,15 @@ meddlingkids/
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
 │       ├── routes/            # API endpoints (SSE streaming)
+│       ├── agents/            # AI agents (Microsoft Agent Framework)
+│       │   ├── base.py        # BaseAgent with structured output support
+│       │   ├── config.py      # LLM configuration (Azure / OpenAI)
+│       │   ├── llm_client.py  # Chat client factory
+│       │   └── middleware.py  # Timing & retry middleware
 │       ├── services/          # Business logic (browser, analysis, consent)
 │       ├── data/              # Tracking databases (JSON) & data loader
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
-│       ├── prompts/           # AI prompt templates
 │       ├── types/             # Pydantic model type definitions
 │       └── utils/             # Utility functions (including file logging)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)

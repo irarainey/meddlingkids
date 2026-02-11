@@ -311,20 +311,40 @@ App.vue
 
 ## Server Architecture
 
+### Agent Layer
+
+AI interactions use the **Microsoft Agent Framework** (`agent-framework`). Each agent subclasses `BaseAgent` and defines its own instructions, response model, and token limits. Prompts are embedded in the agent files — there is no separate `prompts/` directory.
+
+| Agent | Module | Responsibility |
+|-------|--------|---------------|
+| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-first detection of blocking overlays and locate dismiss buttons |
+| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
+| `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
+| `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings |
+| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (markdown) |
+
+| Infrastructure | Module | Responsibility |
+|----------------|--------|---------------|
+| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes |
+| `Config` | `config.py` | LLM configuration from environment variables (Azure / OpenAI) |
+| `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
+
 ### Service Layer
+
+Services orchestrate browser automation and data processing. They call agents for AI tasks.
 
 | Service | Responsibility |
 |---------|---------------|
 | `browser_session.py` | Playwright async browser session (per-request isolation for concurrency) |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
-| `openai_client.py` | OpenAI/Azure OpenAI client management |
-| `analysis.py` | Main tracking analysis with LLM |
-| `script_analysis.py` | Script identification (patterns + LLM) |
+| `analysis.py` | Main tracking analysis orchestration |
+| `script_analysis.py` | Script identification (patterns + LLM via agent) |
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `partner_classification.py` | Classify consent partners by risk level |
-| `consent_detection.py` | AI vision to detect consent dialogs |
-| `consent_extraction.py` | AI to extract consent details |
+| `consent_detection.py` | Consent dialog detection orchestration |
+| `consent_extraction.py` | Consent detail extraction orchestration |
 | `consent_click.py` | Click strategies for consent buttons |
 | `privacy_score.py` | Deterministic privacy scoring (0-100) |
 | `tracker_patterns.py` | Regex pattern data for tracker classification |
@@ -337,14 +357,6 @@ App.vue
 | `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 504 partner entries across 8 risk categories |
-
-### Prompt Templates
-
-| Prompt | Purpose |
-|--------|--------|
-| `tracking_analysis.py` | Main analysis, summary findings |
-| `consent_detection.py` | AI vision for overlay detection |
-| `consent_extraction.py` | Extract consent categories/partners |
 
 ---
 
@@ -385,10 +397,14 @@ Tracking data collected
 build_tracking_summary() → Formatted text for LLM
     │
     ▼
-OpenAI chat completion
+Agent.run() → BaseAgent creates ChatAgent with middleware
+    │
+    ├── TimingChatMiddleware → Logs duration
+    ├── RetryChatMiddleware → Handles 429/5xx with backoff
+    └── ChatAgent.run() → LLM chat completion
     │
     ▼
-Parse response (markdown or JSON)
+Parse response (structured JSON via response_format or markdown)
     │
     ▼
 send_event('complete', results)
@@ -498,9 +514,9 @@ class ConsentDetails(BaseModel):
 
 ### Adding a New AI Analysis
 
-1. Create prompt template in `server/src/prompts/`
-2. Add analysis function in `server/src/services/`
-3. Wrap OpenAI calls with `with_retry()` for rate limit handling
+1. Create an agent class in `server/src/agents/` subclassing `BaseAgent`
+2. Define `agent_name`, `instructions`, `max_tokens`, and optionally `response_model`
+3. Add an orchestration function in `server/src/services/` that calls the agent
 4. Call from `analyze_stream.py` (consider `asyncio.gather()` for parallel execution)
 5. Include in `complete` event payload
 6. Display in client
@@ -508,7 +524,7 @@ class ConsentDetails(BaseModel):
 ### Adding a New Overlay Type
 
 1. Update `CookieConsentDetection` type in `server/src/types/consent.py`
-2. Update detection prompt in `server/src/prompts/consent_detection.py`
+2. Update detection instructions in `server/src/agents/consent_detection_agent.py`
 3. Add click strategy in `server/src/services/consent_click.py`
 4. Update `get_overlay_message()` in `analyze_helpers.py`
 
@@ -622,26 +638,16 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 
 ### Rate Limit Handling
 
-All OpenAI API calls use automatic retry with exponential backoff:
+All LLM calls are wrapped by `RetryChatMiddleware` (in `server/src/agents/middleware.py`), which provides automatic retry with exponential backoff:
 
 - **Retryable errors:** 429 (rate limit), 5xx (server errors), network failures
 - **Backoff strategy:** Starts at 1s, doubles each retry, max 30s
 - **Jitter:** ±20% randomization to prevent thundering herd
-- **Header support:** Respects `Retry-After` headers from the API
+- **Max retries:** 5 (configurable per agent via `max_retries`)
 
-```python
-from src.utils import with_retry
-
-result = await with_retry(
-    lambda: client.chat.completions.create(...),
-    context='Main analysis',   # For logging
-    max_retries=3,             # Default: 3
-    initial_delay_ms=1000,     # Default: 1000
-    max_delay_ms=30000,        # Default: 30000
-)
-```
+The middleware is automatically applied to every agent via `BaseAgent`. No manual wrapping is required — simply subclass `BaseAgent` and call `run()`.
 
 When rate limits are hit, you'll see logs like:
 ```
-[12:34:56.789] ⚠ [Retry] Retrying after transient error context="Main analysis" attempt=1 max_retries=3 delay_ms=1200 is_rate_limit=True
+[12:34:56.789] ⚠ [Agent-Middleware] Retrying after transient error agent="TrackingAnalysisAgent" attempt=1/5 delay_ms=1200 is_rate_limit=True
 ```
