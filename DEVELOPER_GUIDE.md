@@ -176,21 +176,21 @@ All data captured
    │
    ├── ┌─────────────────── Run concurrently ──────────────────┐
    │   │                                                       │
-   │   │  analyze_scripts(scripts)                              │
-   │   │   ├── Group similar scripts (chunks, vendor bundles)   │
-   │   │   ├── Match against tracking patterns (JSON)           │
-   │   │   ├── Match against benign patterns (JSON)             │
-   │   │   └── LLM analysis for unknown scripts                 │
-   │   │       (concurrent with semaphore, max 5 at a time)     │
+   │   │  analyze_scripts(scripts)                             │
+   │   │   ├── Group similar scripts (chunks, vendor bundles)  │
+   │   │   ├── Match against tracking patterns (JSON)          │
+   │   │   ├── Match against benign patterns (JSON)            │
+   │   │   └── LLM analysis for unknown scripts                │
+   │   │       (concurrent with semaphore, max 5 at a time)    │
    │   │                                                       │
-   │   │  stream_tracking_analysis(summary, consent_details)    │
-   │   │   ├── build_tracking_summary() → Data for LLM          │
-   │   │   └── Main analysis prompt → Full markdown report      │
+   │   │  stream_tracking_analysis(summary, consent_details)   │
+   │   │   ├── build_tracking_summary() → Data for LLM         │
+   │   │   └── Main analysis prompt → Full markdown report     │
    │   │                                                       │
    │   │                                                       │
-   │   │  calculate_privacy_score() → Deterministic 0-100       │
+   │   │  calculate_privacy_score() → Deterministic 0-100      │
    │   │                                                       │
-   │   │  summarise(analysis_text) → Structured JSON findings   │
+   │   │  summarise(analysis_text) → Structured JSON findings  │
    │   │                                                       │
    │   └───────────────────────────────────────────────────────┘
    │
