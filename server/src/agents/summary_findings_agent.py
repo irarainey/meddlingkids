@@ -10,9 +10,8 @@ from typing import Literal
 
 import pydantic
 
-from src.agents.base import BaseAgent
-from src.agents.config import AGENT_SUMMARY_FINDINGS
-from src.types import analysis as analysis_mod
+from src.agents import base, config
+from src.types import analysis
 from src.utils import logger
 
 log = logger.create_logger("SummaryFindingsAgent")
@@ -67,14 +66,14 @@ Return ONLY a JSON object matching the required schema."""
 
 # ── Agent class ─────────────────────────────────────────────────
 
-class SummaryFindingsAgent(BaseAgent):
+class SummaryFindingsAgent(base.BaseAgent):
     """Text agent that produces structured summary findings.
 
     Takes a full privacy analysis and distils it into a
     prioritised list of typed findings.
     """
 
-    agent_name = AGENT_SUMMARY_FINDINGS
+    agent_name = config.AGENT_SUMMARY_FINDINGS
     instructions = _INSTRUCTIONS
     max_tokens = 500
     max_retries = 5
@@ -83,7 +82,7 @@ class SummaryFindingsAgent(BaseAgent):
     async def summarise(
         self,
         analysis_text: str,
-    ) -> list[analysis_mod.SummaryFinding]:
+    ) -> list[analysis.SummaryFinding]:
         """Generate summary findings from analysis text.
 
         Args:
@@ -110,7 +109,7 @@ class SummaryFindingsAgent(BaseAgent):
             )
             if parsed:
                 findings = [
-                    analysis_mod.SummaryFinding(
+                    analysis.SummaryFinding(
                         type=f.type, text=f.text
                     )
                     for f in parsed.findings
@@ -135,7 +134,7 @@ class SummaryFindingsAgent(BaseAgent):
 
 def _parse_text_fallback(
     text: str | None,
-) -> list[analysis_mod.SummaryFinding]:
+) -> list[analysis.SummaryFinding]:
     """Parse raw LLM text when structured output fails.
 
     Handles both wrapped ``{"findings": [...]}`` and bare
@@ -147,7 +146,7 @@ def _parse_text_fallback(
     Returns:
         List of ``SummaryFinding`` objects.
     """
-    raw = BaseAgent._load_json_from_text(text)
+    raw = base.BaseAgent._load_json_from_text(text)
     if raw is not None:
         # Support both {"findings": [...]} and [...]
         items = (
@@ -156,7 +155,7 @@ def _parse_text_fallback(
             else raw
         )
         findings = [
-            analysis_mod.SummaryFinding(
+            analysis.SummaryFinding(
                 type=f.get("type", "info"),
                 text=f.get("text", ""),
             )

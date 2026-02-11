@@ -12,8 +12,7 @@ from typing import Literal
 
 import pydantic
 
-from src.agents.base import BaseAgent
-from src.agents.config import AGENT_CONSENT_DETECTION
+from src.agents import base, config
 from src.types import consent
 from src.utils import errors, logger
 
@@ -179,14 +178,14 @@ Return ONLY a JSON object matching the required schema."""
 
 # ── Agent class ─────────────────────────────────────────────────
 
-class ConsentDetectionAgent(BaseAgent):
+class ConsentDetectionAgent(base.BaseAgent):
     """Vision agent that detects blocking overlays.
 
     Sends a screenshot + relevant HTML to the LLM and
     returns a typed ``CookieConsentDetection`` result.
     """
 
-    agent_name = AGENT_CONSENT_DETECTION
+    agent_name = config.AGENT_CONSENT_DETECTION
     instructions = _INSTRUCTIONS
     max_tokens = 1000
     max_retries = 5
@@ -309,7 +308,7 @@ def _parse_text_fallback(
     Returns:
         Parsed ``CookieConsentDetection``.
     """
-    raw = BaseAgent._load_json_from_text(text)
+    raw = base.BaseAgent._load_json_from_text(text)
     if isinstance(raw, dict):
         return consent.CookieConsentDetection(
             found=raw.get("found", False),

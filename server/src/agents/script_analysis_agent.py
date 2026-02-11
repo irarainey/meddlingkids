@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import pydantic
 
-from src.agents.base import BaseAgent
-from src.agents.config import AGENT_SCRIPT_ANALYSIS
+from src.agents import base, config
 from src.utils import errors, logger
 
 log = logger.create_logger("ScriptAnalysisAgent")
@@ -40,14 +39,14 @@ MAX_SCRIPT_CONTENT_LENGTH = 2000
 
 # ── Agent class ─────────────────────────────────────────────────
 
-class ScriptAnalysisAgent(BaseAgent):
+class ScriptAnalysisAgent(base.BaseAgent):
     """Text agent that analyses a single script.
 
     Receives a script URL with optional content snippet and
     returns a short description of its purpose.
     """
 
-    agent_name = AGENT_SCRIPT_ANALYSIS
+    agent_name = config.AGENT_SCRIPT_ANALYSIS
     instructions = _INSTRUCTIONS
     max_tokens = 200
     max_retries = 5
@@ -82,7 +81,7 @@ class ScriptAnalysisAgent(BaseAgent):
                 return parsed.description
 
             # Fallback: try to extract from raw text
-            raw = BaseAgent._load_json_from_text(
+            raw = base.BaseAgent._load_json_from_text(
                 response.text
             )
             if isinstance(raw, dict):

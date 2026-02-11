@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from playwright import async_api
 
-from src.agents import get_consent_extraction_agent
+from src import agents
 from src.types import consent
 from src.utils import logger
 
@@ -28,7 +28,7 @@ async def extract_consent_details(
     Returns:
         Structured ``ConsentDetails``.
     """
-    agent = get_consent_extraction_agent()
+    agent = agents.get_consent_extraction_agent()
     if not agent.is_configured:
         log.warn(
             "LLM not configured, skipping consent"

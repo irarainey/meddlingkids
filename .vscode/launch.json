@@ -6,7 +6,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["src.app:app", "--reload", "--env-file", "../.env"],
+      "args": ["src.main:app", "--reload", "--env-file", "../.env"],
       "python": "${workspaceFolder}/server/.venv/bin/python",
       "cwd": "${workspaceFolder}/server",
       "console": "integratedTerminal",

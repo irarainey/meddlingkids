@@ -9,7 +9,7 @@ from __future__ import annotations
 import collections
 
 from src.types import analysis, tracking_data
-from src.utils import url as url_mod
+from src.utils import url
 
 
 def _group_by_domain(
@@ -36,11 +36,11 @@ def _get_third_party_domains(
     domain_data: dict[str, analysis.DomainData], analyzed_url: str
 ) -> list[str]:
     """Identify third-party domains relative to the analyzed URL."""
-    page_base = url_mod.get_base_domain(url_mod.extract_domain(analyzed_url))
+    page_base = url.get_base_domain(url.extract_domain(analyzed_url))
 
     results = []
     for domain in domain_data:
-        if url_mod.get_base_domain(domain) != page_base:
+        if url.get_base_domain(domain) != page_base:
             results.append(domain)
     return results
 

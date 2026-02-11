@@ -11,8 +11,7 @@ from __future__ import annotations
 import pydantic
 from playwright import async_api
 
-from src.agents.base import BaseAgent
-from src.agents.config import AGENT_CONSENT_EXTRACTION
+from src.agents import base, config
 from src.types import consent
 from src.utils import errors, logger
 
@@ -91,14 +90,14 @@ Return ONLY a JSON object matching the required schema."""
 
 # ── Agent class ─────────────────────────────────────────────────
 
-class ConsentExtractionAgent(BaseAgent):
+class ConsentExtractionAgent(base.BaseAgent):
     """Vision agent that extracts consent dialog details.
 
     Sends a screenshot + extracted page text to the LLM and
     returns typed ``ConsentDetails``.
     """
 
-    agent_name = AGENT_CONSENT_EXTRACTION
+    agent_name = config.AGENT_CONSENT_EXTRACTION
     instructions = _INSTRUCTIONS
     max_tokens = 4096
     max_retries = 5
@@ -225,7 +224,7 @@ def _parse_text_fallback(
     Returns:
         Parsed ``ConsentDetails``.
     """
-    raw = BaseAgent._load_json_from_text(text)
+    raw = base.BaseAgent._load_json_from_text(text)
     if isinstance(raw, dict):
         return consent.ConsentDetails(
             has_manage_options=raw.get(

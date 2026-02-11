@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterable
 
-from src.agents import get_tracking_analysis_agent
+from src import agents
 from src.types import consent, tracking_data
 from src.utils import logger
 from src.utils import tracking_summary as tracking_summary_mod
@@ -45,7 +45,7 @@ async def stream_tracking_analysis(
     Yields:
         Incremental text chunks of the analysis.
     """
-    tracking_agent = get_tracking_analysis_agent()
+    tracking_agent = agents.get_tracking_analysis_agent()
 
     tracking_summary = (
         tracking_summary_mod.build_tracking_summary(

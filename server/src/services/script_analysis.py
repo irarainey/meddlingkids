@@ -16,7 +16,7 @@ from typing import Callable
 import aiohttp
 import pydantic
 
-from src.agents import get_script_analysis_agent
+from src import agents
 from src.data import loader
 from src.services import script_grouping
 from src.types import tracking_data
@@ -109,7 +109,7 @@ async def _analyze_one_with_llm(
     Returns:
         A ``(url, description)`` tuple.
     """
-    agent = get_script_analysis_agent()
+    agent = agents.get_script_analysis_agent()
     if not agent.is_configured:
         return url, _infer_from_url(url)
 

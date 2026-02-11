@@ -42,14 +42,14 @@ npm run dev:server
 
 # Or directly
 cd server
-uv run uvicorn src.app:app --host 0.0.0.0 --port 3001 --reload --env-file ../.env
+uv run uvicorn src.main:app --host 0.0.0.0 --port 3001 --reload --env-file ../.env
 ```
 
 ## Architecture
 
 ```
 src/
-├── app.py                    # FastAPI application entry point
+├── main.py                   # FastAPI application entry point
 ├── routes/
 │   ├── analyze_stream.py     # SSE streaming endpoint
 │   └── analyze_helpers.py    # Route helper utilities

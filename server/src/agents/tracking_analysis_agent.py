@@ -11,13 +11,8 @@ import json
 
 import agent_framework
 
-from src.agents.base import BaseAgent
-from src.agents.config import AGENT_TRACKING_ANALYSIS
-from src.types.analysis import TrackingSummary
-from src.types.consent import (
-    ConsentDetails,
-    ConsentPartner,
-)
+from src.agents import base, config
+from src.types import analysis, consent
 from src.utils import logger
 
 log = logger.create_logger("TrackingAnalysisAgent")
@@ -77,7 +72,7 @@ aspects."""
 
 # ── Agent class ─────────────────────────────────────────────────
 
-class TrackingAnalysisAgent(BaseAgent):
+class TrackingAnalysisAgent(base.BaseAgent):
     """Text agent that generates privacy analysis reports.
 
     Does NOT use structured output — the response is
@@ -85,7 +80,7 @@ class TrackingAnalysisAgent(BaseAgent):
     ``analyze_stream()``.
     """
 
-    agent_name = AGENT_TRACKING_ANALYSIS
+    agent_name = config.AGENT_TRACKING_ANALYSIS
     instructions = _INSTRUCTIONS
     max_tokens = 4096
     max_retries = 5
@@ -93,8 +88,8 @@ class TrackingAnalysisAgent(BaseAgent):
 
     async def analyze(
         self,
-        tracking_summary: TrackingSummary,
-        consent_details: ConsentDetails | None = None,
+        tracking_summary: analysis.TrackingSummary,
+        consent_details: consent.ConsentDetails | None = None,
     ) -> str:
         """Run the full tracking analysis (non-streaming).
 
@@ -113,8 +108,8 @@ class TrackingAnalysisAgent(BaseAgent):
 
     async def analyze_stream(
         self,
-        tracking_summary: TrackingSummary,
-        consent_details: ConsentDetails | None = None,
+        tracking_summary: analysis.TrackingSummary,
+        consent_details: consent.ConsentDetails | None = None,
     ):
         """Stream the tracking analysis token-by-token.
 
@@ -143,8 +138,8 @@ class TrackingAnalysisAgent(BaseAgent):
 # ── Prompt builders ─────────────────────────────────────────────
 
 def _build_user_prompt(
-    tracking_summary: TrackingSummary,
-    consent_details: ConsentDetails | None = None,
+    tracking_summary: analysis.TrackingSummary,
+    consent_details: consent.ConsentDetails | None = None,
 ) -> str:
     """Build the user prompt from tracking data.
 
@@ -209,7 +204,7 @@ def _build_user_prompt(
 
 
 def _build_consent_section(
-    cd: ConsentDetails,
+    cd: consent.ConsentDetails,
 ) -> str:
     """Build the consent information section.
 
@@ -256,7 +251,7 @@ def _build_consent_section(
     )
 
 
-def _format_partner(p: ConsentPartner) -> str:
+def _format_partner(p: consent.ConsentPartner) -> str:
     """Format a single partner for the prompt.
 
     Args:

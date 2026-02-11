@@ -6,7 +6,7 @@ Prioritizes LLM-suggested selectors, checking main page and consent iframes.
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse
+from urllib import parse
 
 from playwright import async_api
 
@@ -36,7 +36,7 @@ def _is_consent_frame(frame: async_api.Frame, main_frame: async_api.Frame) -> bo
     if frame == main_frame:
         return False
     try:
-        hostname = urlparse(frame.url).hostname or ""
+        hostname = parse.urlparse(frame.url).hostname or ""
     except Exception:
         return False
     hostname_lower = hostname.lower()

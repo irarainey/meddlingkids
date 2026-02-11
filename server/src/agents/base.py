@@ -9,6 +9,7 @@ and defines its own instructions and response format.
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import re
 from typing import Any, TypeVar
@@ -16,11 +17,8 @@ from typing import Any, TypeVar
 import agent_framework
 import pydantic
 
-from src.agents import config, llm_client
-from src.agents.middleware import (
-    RetryChatMiddleware,
-    TimingChatMiddleware,
-)
+from src.agents import llm_client
+from src.agents import middleware as middleware_mod
 from src.utils import logger
 
 log = logger.create_logger("BaseAgent")
@@ -59,8 +57,8 @@ class BaseAgent:
         self._chat_client: (
             agent_framework.ChatClientProtocol | None
         ) = None
-        self._timing = TimingChatMiddleware(self.agent_name)
-        self._retry = RetryChatMiddleware(
+        self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
+        self._retry = middleware_mod.RetryChatMiddleware(
             self.agent_name, max_retries=self.max_retries
         )
 
@@ -101,7 +99,6 @@ class BaseAgent:
         Returns:
             A new schema dict ready for ``response_format``.
         """
-        import copy
 
         schema = copy.deepcopy(schema)
 

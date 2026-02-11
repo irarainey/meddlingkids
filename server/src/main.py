@@ -5,12 +5,13 @@ Sets up the FastAPI server with CORS, static file serving, and all API routes.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import pathlib
+from collections.abc import AsyncGenerator
 
 import dotenv
 import fastapi
-import uvicorn
 from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
@@ -21,11 +22,19 @@ from src.utils import logger
 dotenv.load_dotenv()
 
 log = logger.create_logger("Server")
-app = fastapi.FastAPI(title="Meddling Kids Python Server")
 
-HOST = os.environ.get("UVICORN_HOST", "0.0.0.0")
-PORT = int(os.environ.get("UVICORN_PORT", "3001"))
 IS_PRODUCTION = os.environ.get("ENVIRONMENT", "development") == "production"
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
+    """Log server start on startup."""
+    log.section("Meddling Kids Server Started")
+    log.info("Environment", {"env": "production" if IS_PRODUCTION else "development"})
+    yield
+
+
+app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)
 
 # ============================================================================
 # Middleware
@@ -84,26 +93,3 @@ if IS_PRODUCTION and dist_path.exists():
         if file_path.exists() and file_path.is_file():
             return responses.FileResponse(str(file_path))
         return responses.FileResponse(str(dist_path / "index.html"))
-
-
-# ============================================================================
-# Start Server
-# ============================================================================
-
-def main() -> None:
-    """Entry point for running the server."""
-    log.section("Meddling Kids Server Started")
-    log.success(f"Server listening on {HOST}:{PORT}")
-    log.info("Environment", {"env": "production" if IS_PRODUCTION else "development"})
-    log.info("Open your browser", {"url": f"http://localhost:{PORT}"})
-
-    uvicorn.run(
-        "src.app:app",
-        host=HOST,
-        port=PORT,
-        reload=not IS_PRODUCTION,
-    )
-
-
-if __name__ == "__main__":
-    main()

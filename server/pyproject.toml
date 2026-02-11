@@ -15,9 +15,6 @@ dependencies = [
     "Pillow>=12.1.0",
 ]
 
-[project.scripts]
-meddlingkids = "src.app:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

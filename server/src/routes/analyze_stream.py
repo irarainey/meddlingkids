@@ -10,17 +10,15 @@ import asyncio
 from typing import Any, AsyncGenerator, cast
 from urllib import parse
 
+from src import agents
+from src.agents import config
 from src.routes import analyze_helpers
-from src.agents import config as agent_config
-from src.services import (
-    analysis,
-    browser_session,
-    device_configs,
-    script_analysis,
-)
+from src.services import analysis, browser_session, device_configs, script_analysis
+from src.services import privacy_score as privacy_score_mod
 from src.types import browser
 from src.utils import errors, logger
 from src.utils import url as url_mod
+from src.utils import tracking_summary as tracking_summary_mod
 
 log = logger.create_logger("Analyze")
 
@@ -37,7 +35,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
     analyses without interference.
     """
     # Validate LLM configuration
-    config_error = agent_config.validate_llm_config()
+    config_error = config.validate_llm_config()
     if config_error:
         yield analyze_helpers.format_sse_event("error", {"error": config_error})
         return
@@ -353,8 +351,6 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         log.info("Analysis streamed", {"length": len(full_analysis_text)})
 
         yield analyze_helpers.format_progress_event("ai-scoring", "Calculating privacy score...", 94)
-        from src.services import privacy_score as privacy_score_mod
-        from src.utils import tracking_summary as tracking_summary_mod
 
         tracking_summary = tracking_summary_mod.build_tracking_summary(
             final_cookies, final_scripts, final_requests,
@@ -368,8 +364,7 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
         )
 
         yield analyze_helpers.format_progress_event("ai-summarizing", "Generating summary findings...", 97)
-        from src.agents import get_summary_findings_agent
-        summary_agent = get_summary_findings_agent()
+        summary_agent = agents.get_summary_findings_agent()
         summary_findings = await summary_agent.summarise(full_analysis_text)
 
         log.end_timer("ai-analysis", "All AI analysis complete")

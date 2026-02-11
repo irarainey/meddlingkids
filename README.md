@@ -96,7 +96,7 @@ meddlingkids/
 ├── server/                    # Python FastAPI backend
 │   ├── pyproject.toml         # Python dependencies (managed with uv)
 │   └── src/
-│       ├── app.py             # FastAPI application entry point
+│       ├── main.py            # FastAPI application entry point
 │       ├── routes/            # API endpoints (SSE streaming)
 │       ├── services/          # Business logic (browser, analysis, consent)
 │       ├── data/              # Tracking databases (JSON) & data loader
