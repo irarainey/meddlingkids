@@ -77,9 +77,8 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 | Layer | Technology |
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite |
-| Backend | Python, FastAPI, uvicorn |
+| Backend | Python, FastAPI, Microsoft Agent Framework |
 | Browser Automation | Playwright for Python (headed mode on Xvfb virtual display) |
-| AI | Azure OpenAI via Microsoft Agent Framework |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture
