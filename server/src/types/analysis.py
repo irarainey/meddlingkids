@@ -74,16 +74,3 @@ class ScoreBreakdown(pydantic.BaseModel):
     )
     factors: list[str] = pydantic.Field(default_factory=list)
     summary: str = ""
-
-
-class AnalysisResult(pydantic.BaseModel):
-    """Result of the AI-powered tracking analysis."""
-
-    success: bool
-    analysis: str | None = None
-    summary_findings: list[SummaryFinding] | None = None
-    privacy_score: int | None = None
-    privacy_summary: str | None = None
-    score_breakdown: ScoreBreakdown | None = None
-    summary: TrackingSummary | None = None
-    error: str | None = None

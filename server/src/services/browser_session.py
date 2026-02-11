@@ -53,19 +53,6 @@ class BrowserSession:
         self._seen_script_urls: set[str] = set()
         self._pending_responses: dict[str, list[int]] = {}
 
-    async def __aenter__(self) -> BrowserSession:
-        """Enter the async context manager."""
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
-    ) -> None:
-        """Exit the async context manager, closing all resources."""
-        await self.close()
-
     # ==========================================================================
     # State Getters
     # ==========================================================================
@@ -409,17 +396,6 @@ class BrowserSession:
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{b64}"
 
-    async def take_optimized_screenshot(
-        self, full_page: bool = False
-    ) -> str:
-        """Take a JPEG screenshot optimized for client display.
-
-        Returns a base64 data URL string ready for embedding.
-        Uses JPEG compression and downscaling for smaller payloads.
-        """
-        png_bytes = await self.take_screenshot(full_page=full_page)
-        return self.optimize_screenshot_bytes(png_bytes)
-
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""
         if not self._page:
@@ -483,7 +459,3 @@ class BrowserSession:
             self._playwright = None
 
         self.clear_tracking_data()
-
-    def is_active(self) -> bool:
-        """Check if a browser session is currently active."""
-        return self._browser is not None and self._page is not None
