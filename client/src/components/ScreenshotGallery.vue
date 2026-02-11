@@ -22,10 +22,7 @@ const emit = defineEmits<{
  * Get label for screenshot by index.
  */
 function getLabel(index: number): string {
-  const total = props.screenshots.length
-  if (index === 0) return 'Initial'
-  if (index === total - 1) return 'Before Analysis'
-  return `After Overlay ${index}`
+  return `${index + 1}`
 }
 </script>
 

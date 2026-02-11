@@ -154,7 +154,9 @@ async def handle_overlays(
         consent_detection = await consent_detection_mod.detect_cookie_consent(screenshot, html)
         log.end_timer(f"overlay-detect-{overlay_count + 1}", "Overlay detection complete")
 
-        if not consent_detection.found or not consent_detection.selector:
+        if not consent_detection.found or (
+            not consent_detection.selector and not consent_detection.button_text
+        ):
             if overlay_count == 0:
                 log.info("No overlay detected")
                 yield format_progress_event("consent-none", "No overlay detected", 70)
@@ -169,10 +171,41 @@ async def handle_overlays(
                 yield format_progress_event("overlays-done", f"Dismissed {overlay_count} overlay(s)", 70)
             break
 
+        # ---------------------------------------------------------------
+        # Validate: does the detected element actually exist in the DOM?
+        # The LLM sometimes hallucinates overlays from ads or page
+        # furniture — checking the DOM catches these false positives
+        # before we waste time clicking and potentially aborting.
+        # ---------------------------------------------------------------
+        element_exists = await consent_click.validate_element_exists(
+            page, consent_detection.selector, consent_detection.button_text
+        )
+        if not element_exists:
+            log.warn(
+                "Overlay detected by LLM but element not found in DOM"
+                " — treating as false positive",
+                {
+                    "selector": consent_detection.selector,
+                    "buttonText": consent_detection.button_text,
+                },
+            )
+            if overlay_count == 0:
+                yield format_progress_event("consent-none", "No overlay detected", 70)
+                yield format_sse_event("consent", {
+                    "detected": False,
+                    "clicked": False,
+                    "details": None,
+                    "reason": "Detection false positive — element not found in DOM",
+                })
+            else:
+                log.success(f"Dismissed {overlay_count} overlay(s), no more found")
+                yield format_progress_event("overlays-done", f"Dismissed {overlay_count} overlay(s)", 70)
+            break
+
         overlay_count += 1
         progress_base = 45 + (overlay_count * 5)
 
-        log.info(f"Overlay {overlay_count} found", {
+        log.info(f"Overlay {overlay_count} found (validated in DOM)", {
             "type": consent_detection.overlay_type,
             "selector": consent_detection.selector,
             "buttonText": consent_detection.button_text,
@@ -302,11 +335,45 @@ async def handle_overlays(
                     yield format_sse_event("consentDetails",
                         serialize_consent_details(result.consent_details))
             else:
+                # Click failed.  For the FIRST overlay this means the
+                # page is still blocked — abort.  For subsequent overlays
+                # the page is already at least partially usable, so log
+                # a warning and continue with analysis.
                 msg = (
                     f"Failed to dismiss {consent_detection.overlay_type or 'overlay'} "
                     f"(button: '{consent_detection.button_text or consent_detection.selector}')"
                 )
-                log.error(f"Failed to click overlay {overlay_count}, aborting analysis")
+                if overlay_count == 1:
+                    log.error(f"Failed to click first overlay, aborting analysis")
+                    result.failed = True
+                    result.failure_message = msg
+                    yield format_sse_event("consent", {
+                        "detected": True,
+                        "clicked": False,
+                        "details": {
+                            "found": consent_detection.found,
+                            "overlayType": consent_detection.overlay_type,
+                            "selector": consent_detection.selector,
+                            "buttonText": consent_detection.button_text,
+                            "confidence": consent_detection.confidence,
+                            "reason": consent_detection.reason,
+                        },
+                        "error": msg,
+                        "overlayNumber": overlay_count,
+                    })
+                else:
+                    log.warn(
+                        f"Failed to click overlay {overlay_count}, continuing analysis",
+                        {"type": consent_detection.overlay_type},
+                    )
+                break
+        except Exception as click_error:
+            msg = (
+                f"Failed to dismiss {consent_detection.overlay_type or 'overlay'}: "
+                f"{click_error}"
+            )
+            if overlay_count == 1:
+                log.error(f"Failed to click first overlay", {"error": str(click_error)})
                 result.failed = True
                 result.failure_message = msg
                 yield format_sse_event("consent", {
@@ -323,29 +390,11 @@ async def handle_overlays(
                     "error": msg,
                     "overlayNumber": overlay_count,
                 })
-                break
-        except Exception as click_error:
-            msg = (
-                f"Failed to dismiss {consent_detection.overlay_type or 'overlay'}: "
-                f"{click_error}"
-            )
-            log.error(f"Failed to click overlay {overlay_count}", {"error": str(click_error)})
-            result.failed = True
-            result.failure_message = msg
-            yield format_sse_event("consent", {
-                "detected": True,
-                "clicked": False,
-                "details": {
-                    "found": consent_detection.found,
-                    "overlayType": consent_detection.overlay_type,
-                    "selector": consent_detection.selector,
-                    "buttonText": consent_detection.button_text,
-                    "confidence": consent_detection.confidence,
-                    "reason": consent_detection.reason,
-                },
-                "error": msg,
-                "overlayNumber": overlay_count,
-            })
+            else:
+                log.warn(
+                    f"Failed to click overlay {overlay_count}, continuing analysis",
+                    {"error": str(click_error)},
+                )
             break
 
     if overlay_count >= MAX_OVERLAYS:

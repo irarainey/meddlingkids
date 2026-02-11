@@ -46,81 +46,133 @@ class _ConsentDetectionResponse(pydantic.BaseModel):
 # ── System prompt ───────────────────────────────────────────────
 
 _INSTRUCTIONS = """\
-You are an expert at detecting overlays, banners, and dialogs \
-on websites that block access to content until the user takes \
-an action.
+You are an expert web analyst. Your job is to look at a \
+screenshot of a webpage and determine whether there is \
+any dialog, banner, overlay, or prompt that needs to be \
+dismissed or accepted before the page can be fully used.
 
 You will receive:
 1. A **screenshot** of the page as it currently appears
 2. **HTML snippets** extracted from the page
 
-Your task is to determine whether a blocking overlay is \
-present and, if so, identify the EXACT button to click to \
-dismiss or accept it.
+# Step 1 — Carefully examine the screenshot
 
-# What to look for
+Look at the ENTIRE screenshot — top, bottom, every \
+corner, and the center. Look for:
 
-Scan the ENTIRE screenshot — top, bottom, corners, and \
-center — for any of these overlay types:
+- Any modal dialog or overlay covering part of the page
+- Any banner or bar (top, bottom, or floating) with \
+  buttons or links
+- Any prompt asking the user to take an action
+- Any semi-transparent backdrop or dimmed background \
+  suggesting a modal is open
 
-1. **Cookie / Consent Banners** — ask the user to accept \
-or reject tracking. Look for buttons labelled "Accept", \
-"Accept All", "Allow", "OK", "Agree", "I Accept", \
-"Accept additional cookies", etc.
+Pay special attention to how the page content appears. \
+If the main article or content is partially obscured, \
+dimmed, or has a backdrop overlay, there is likely a \
+blocking dialog present.
 
-2. **Sign-in / Account Prompts** — block content until \
-the user logs in. Find the DISMISS option ("Maybe Later", \
-"Not Now", "Skip", "No Thanks", "Close", "X"). \
-NEVER select the sign-in or register button.
+# Step 2 — Classify what you found
 
-3. **Newsletter / Email Signup Popups** — dismiss with \
-"No Thanks", "Close", "X", "Maybe Later", "Skip".
+If you see an overlay, classify it as one of:
 
-4. **Paywalls / Subscription Walls** — look for \
-"Continue reading", "Read for free", "Close", "X".
+1. **cookie-consent** — Cookie banners, privacy notices, \
+   tracking consent. These can appear ANYWHERE: full-page \
+   modals, bottom bars, top banners, floating panels, \
+   side drawers. They do NOT need to block content to \
+   count — even a small bar counts.
 
-5. **Age Verification Gates** — "I am over 18", "Yes", \
-"Enter", "Confirm".
+2. **sign-in** — The page is asking the user to sign in, \
+   register, or create an account. You must find the \
+   DISMISS or SKIP option, NOT the sign-in button.
+
+3. **newsletter** — Email signup or notification popups.
+
+4. **paywall** — Content is gated behind a subscription \
+   or payment wall.
+
+5. **age-verification** — Age confirmation gates.
+
+6. **other** — Anything else that needs dismissing.
+
+**Priority:** If you see BOTH a blocking dialog (e.g. \
+sign-in prompt covering the page) AND a non-blocking \
+banner (e.g. cookie bar at the bottom), report the \
+BLOCKING one first — it must be dealt with before the \
+non-blocking one can be addressed.
+
+# Step 3 — Read the EXACT button or link text
+
+This is the most critical step. Look at the screenshot \
+very carefully and read the EXACT text on the button or \
+link that should be clicked to dismiss or accept.
+
+**Do NOT guess or use generic text.** Read the actual \
+words visible in the screenshot. The text could be \
+anything — it is not limited to common phrases. Examples \
+of real button/link text seen on websites:
+
+- "Accept additional cookies"
+- "Maybe later"
+- "Yes, I agree"
+- "Got it"
+- "I Accept"
+- "No thanks, take me to the site"
+- "Continue without accepting"
+- "Accept & close"
+- "That's OK"
+- "ACCEPT ALL"
+- "I'm OK with that"
+- "Agree and close"
+- "Not now"
+- "Allow all"
+- "Fine by me"
+- "OK, I understand"
+- "Skip for now"
+- "Close and accept"
+- "Sounds good"
+- "Continue to site"
+- "I consent"
+
+Put this EXACT text (as shown in the screenshot, \
+preserving case) in the `buttonText` field. This is \
+the primary way the button will be found and clicked.
+
+# Step 4 — Find a CSS selector (if possible)
+
+Look in the HTML snippets for the element matching the \
+button you identified visually. The selector MUST be a \
+**standard CSS selector** valid for `document.\
+querySelector()`. DO NOT use `:has-text()` or \
+`:contains()` — these are not valid CSS.
+
+IMPORTANT: Consent dismiss buttons and accept links are \
+almost always **non-navigating** elements. They use \
+`href="javascript:void(0)"`, `href="#"`, or have no \
+href at all — they close the dialog via JavaScript. \
+If you see a link with a real URL (like `/sign-in` or \
+`/register`), it is NOT the dismiss button — look for \
+the skip/close/later option instead.
+
+Selector priority:
+1. **ID** — `#accept-cookies`
+2. **data attribute** — `[data-action="accept"]`
+3. **ARIA label** — `[aria-label="Accept cookies"]`
+4. **Unique class** — `button.accept-btn`
+5. **Combination** — `div.consent-banner button.primary`
+
+If you cannot find a reliable CSS selector in the HTML, \
+set `selector` to null. The `buttonText` will be used \
+instead.
 
 # What to IGNORE (return found=false)
 
 - Confirmation messages ("Your preferences have been saved")
 - "Thank you" banners that need no action
 - Small notification toasts that auto-dismiss
-- Informational banners that do not block content
-
-The key question: does this overlay BLOCK access to the \
-page until the user makes a choice?
-
-# How to choose the selector
-
-The selector MUST be a **standard CSS selector** that can \
-be passed directly to `document.querySelector()`. \
-DO NOT use pseudo-selectors like `:has-text()` or \
-`:contains()` — these are not valid CSS.
-
-Selector priority (use the first one that uniquely \
-identifies the button):
-
-1. **ID** — `#accept-cookies`, `#onetrust-accept-btn-handler`
-2. **data attribute** — `[data-action="accept"]`, \
-`[data-testid="accept-button"]`
-3. **ARIA label** — `[aria-label="Accept cookies"]`, \
-`button[aria-label="Accept additional cookies"]`
-4. **Unique class** — `button.accept-btn`, `.sp_choice_type_11`
-5. **Combination** — `div.consent-banner button.primary`
-
-If none of the above can uniquely identify the button, \
-set `selector` to null and put the EXACT visible button \
-text in `buttonText` — the click handler will fall back \
-to text matching.
-
-# buttonText field
-
-ALWAYS set `buttonText` to the EXACT text shown on the \
-button in the screenshot (e.g. "Accept additional cookies", \
-"I Accept", "Accept All"). This is used as a fallback if \
-the CSS selector fails.
+- Purely informational banners with no actionable buttons
+- Banners that have already been dismissed
+- Navigation menus, footers, or page chrome
 
 Return ONLY a JSON object matching the required schema."""
 
@@ -136,7 +188,7 @@ class ConsentDetectionAgent(BaseAgent):
 
     agent_name = AGENT_CONSENT_DETECTION
     instructions = _INSTRUCTIONS
-    max_tokens = 500
+    max_tokens = 1000
     max_retries = 5
     response_model = _ConsentDetectionResponse
 
@@ -169,13 +221,16 @@ class ConsentDetectionAgent(BaseAgent):
         try:
             response = await self._complete_vision(
                 user_text=(
-                    "Analyze this webpage screenshot and the"
-                    " following HTML snippets to find any"
-                    " blocking overlay (cookie consent,"
-                    " sign-in prompt, newsletter popup,"
-                    " etc.) and locate the button to dismiss"
-                    " it or accept/continue.\n\n"
-                    "Relevant HTML elements:\n"
+                    "Look at this screenshot carefully."
+                    " Is there any dialog, banner, overlay,"
+                    " or prompt visible that needs to be"
+                    " dismissed or accepted?\n\n"
+                    "If yes, read the EXACT text on the"
+                    " button or link to click — do not"
+                    " guess, read it from the image.\n\n"
+                    "Then look in these HTML snippets for"
+                    " a CSS selector matching that element"
+                    " (set selector to null if unsure):\n\n"
                     f"{relevant_html}"
                 ),
                 screenshot=screenshot,
@@ -272,15 +327,27 @@ def _parse_text_fallback(
 def _extract_relevant_html(full_html: str) -> str:
     """Extract HTML snippets likely related to overlays.
 
+    Uses a two-tier approach:
+    1. High-priority patterns (consent/modal-specific) are
+       extracted first and allocated most of the budget.
+    2. Low-priority patterns (generic buttons, links,
+       sections) fill the remaining budget.
+
     Args:
         full_html: Complete page HTML.
 
     Returns:
         Truncated relevant HTML for the LLM prompt.
     """
-    patterns = [
+    max_length = 150000
+
+    # Tier 1 — consent-specific and overlay-specific HTML.
+    # These are the elements most likely to contain the
+    # information the LLM needs.
+    high_priority_patterns = [
         r"<div[^>]*(?:cookie|consent|gdpr|privacy|banner"
-        r"|modal|popup|overlay)[^>]*>[\s\S]*?</div>",
+        r"|modal|popup|overlay|notice|cmp)[^>]*>"
+        r"[\s\S]*?</div>",
         r"<div[^>]*(?:sign-?in|login|auth|account"
         r"|register|subscribe|newsletter|prompt"
         r"|upsell|gate)[^>]*>[\s\S]*?</div>",
@@ -290,21 +357,39 @@ def _extract_relevant_html(full_html: str) -> str:
         r"|aria-modal)[^>]*>[\s\S]*?</div>",
         r"<div[^>]*(?:position:\s*fixed"
         r"|position:\s*sticky)[^>]*>[\s\S]*?</div>",
-        r"<button[^>]*>[\s\S]*?</button>",
-        r"<a[^>]*>[\s\S]*?</a>",
         r'<[^>]*(?:class|id)=["\'][^"\']*(?:close'
         r"|dismiss|skip|later)[^\"']*[\"'][^>]*>"
         r"[\\s\\S]*?</[^>]+>",
+    ]
+
+    # Tier 2 — generic elements.  These provide supporting
+    # context (e.g. all visible buttons) but are much noisier.
+    low_priority_patterns = [
+        r"<button[^>]*>[\s\S]*?</button>",
+        r"<a[^>]*>[\s\S]*?</a>",
         r"<section[^>]*>[\s\S]*?</section>",
     ]
 
-    matches: list[str] = []
-    for pat in patterns:
+    high: list[str] = []
+    for pat in high_priority_patterns:
         found = re.findall(pat, full_html, re.IGNORECASE)
-        matches.extend(found[:15])
+        high.extend(found[:20])
 
-    relevant = "\n".join(matches)[:20000]
-    return relevant or full_html[:15000]
+    high_text = "\n".join(high)
+    if len(high_text) >= max_length:
+        return high_text[:max_length]
+
+    # Fill remaining budget with lower-priority matches.
+    low: list[str] = []
+    for pat in low_priority_patterns:
+        found = re.findall(pat, full_html, re.IGNORECASE)
+        low.extend(found[:10])
+
+    combined = high_text + "\n" + "\n".join(low)
+    if combined.strip():
+        return combined[:max_length]
+
+    return full_html[:100000]
 
 
 def _detect_from_html_only(
@@ -357,26 +442,24 @@ def _detect_from_html_only(
             r'[^"\']*["\']',
             '[aria-label*="ccept"]',
         ),
-        (r">Accept All<", 'button:has-text("Accept All")'),
-        (
-            r">Accept Cookies<",
-            'button:has-text("Accept Cookies")',
-        ),
-        (r">I Agree<", 'button:has-text("I Agree")'),
-        (r">Agree<", 'button:has-text("Agree")'),
+        (r">Accept All<", None, "Accept All"),
+        (r">Accept Cookies<", None, "Accept Cookies"),
+        (r">I Agree<", None, "I Agree"),
+        (r">Agree<", None, "Agree"),
     ]
 
-    for pattern, selector in consent_patterns:
+    for pattern, selector, *rest in consent_patterns:
         if re.search(pattern, html, re.IGNORECASE):
+            btn_text = rest[0] if rest else "Accept"
             log.success(
                 "Found overlay via HTML pattern matching",
-                {"selector": selector},
+                {"selector": selector, "buttonText": btn_text},
             )
             return consent.CookieConsentDetection(
                 found=True,
                 overlay_type="cookie-consent",
                 selector=selector,
-                button_text="Accept",
+                button_text=btn_text,
                 confidence="medium",
                 reason=(
                     "Detected via HTML pattern matching"

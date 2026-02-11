@@ -638,6 +638,7 @@ def _calculate_consent_score(
 
 def _generate_summary(site_name: str, score: int, factors: list[str]) -> str:
     """Generate a human-readable summary sentence."""
+    site_name = re.sub(r"^www\.", "", site_name)
     if score >= 80:
         severity = "extensive"
         description = "with aggressive cross-site tracking and data sharing"

@@ -200,15 +200,7 @@ export function useTrackingAnalysis() {
    * @param index - Index of the screenshot in the gallery
    */
   function openScreenshotModal(src: string, index: number) {
-    const total = screenshots.value.length
-    let label: string
-    if (index === 0) {
-      label = 'Initial'
-    } else if (index === total - 1) {
-      label = 'Before Analysis'
-    } else {
-      label = `After Overlay ${index}`
-    }
+    const label = `${index + 1}`
     selectedScreenshot.value = { src, label }
   }
 

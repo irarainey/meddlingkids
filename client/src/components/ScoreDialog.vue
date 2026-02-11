@@ -16,6 +16,8 @@ defineProps<{
 const emit = defineEmits<{
   /** Emitted when the dialog should close */
   close: []
+  /** Emitted when the user clicks "View Full Report" */
+  viewReport: []
 }>()
 </script>
 
@@ -40,7 +42,7 @@ const emit = defineEmits<{
         
         <p class="summary">{{ summary }}</p>
         
-        <button class="view-details-btn" @click="emit('close')">
+        <button class="view-details-btn" @click="emit('viewReport')">
           View Full Report
         </button>
       </div>

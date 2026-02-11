@@ -117,7 +117,8 @@ function handleViewReport(): void {
       :is-open="showScoreDialog"
       :score="privacyScore ?? 0"
       :summary="privacySummary"
-      @close="handleViewReport"
+      @close="closeScoreDialog"
+      @view-report="handleViewReport"
     />
 
     <!-- Page Error Dialog -->
