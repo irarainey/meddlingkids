@@ -12,7 +12,8 @@ def load_json_from_text(text: str | None) -> Any:
 
     Handles ``````json ... `````` wrappers that models
     sometimes emit even when structured output is
-    requested.
+    requested.  Also strips other language tags such
+    as ``javascript``, ``python``, etc.
 
     Args:
         text: Raw LLM response text, possibly
@@ -23,7 +24,7 @@ def load_json_from_text(text: str | None) -> Any:
     """
     content = (text or "").strip()
     if content.startswith("```"):
-        content = re.sub(r"```json?\n?", "", content)
+        content = re.sub(r"```\w*\n?", "", content)
         content = re.sub(r"```\s*$", "", content).strip()
     try:
         return json.loads(content)
