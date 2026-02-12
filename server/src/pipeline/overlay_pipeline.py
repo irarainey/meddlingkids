@@ -72,12 +72,16 @@ async def _detect_overlay(
     screenshot: bytes,
     iteration: int,
 ) -> consent.CookieConsentDetection:
-    """Run AI overlay detection on the current page state."""
+    """Run AI overlay detection on the current page state.
+
+    Uses vision-only detection — the LLM analyses the screenshot
+    to identify cookie consent dialogs and their dismiss buttons.
+    """
     log.start_timer(f"overlay-detect-{iteration + 1}")
-    html = await session.get_page_content()
-    detection = await consent_detection_mod.detect_cookie_consent(
-        screenshot, html
-    )
+
+    log.debug("Running overlay detection", {"iteration": iteration + 1})
+
+    detection = await consent_detection_mod.detect_cookie_consent(screenshot)
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
         "Overlay detection complete",
@@ -119,15 +123,11 @@ async def _click_and_capture(
     """Click the overlay dismiss button and capture resulting state.
 
     Yields SSE events for progress, the post-click screenshot,
-    and the consent detection event.  Yields nothing if the
-    click fails, allowing the caller to detect failure.
+    and the consent detection event.  The first value yielded
+    is always a ``bool`` indicating whether the click succeeded,
+    followed by SSE event strings on success.
     """
     log.start_timer(f"overlay-click-{overlay_number}")
-    yield sse_helpers.format_progress_event(
-        f"overlay-{overlay_number}-click",
-        "Dismissing overlay...",
-        progress_base + 1,
-    )
 
     clicked = await click.try_click_consent_button(
         page, detection.selector, detection.button_text
@@ -214,7 +214,7 @@ async def _extract_and_classify_consent(
     log.start_timer("consent-extraction")
     yield sse_helpers.format_progress_event(
         "consent-extract",
-        "Analyzing consent dialog...",
+        "Analyzing page content...",
         progress_base + 4,
     )
     result.consent_details = (
@@ -285,9 +285,10 @@ def _build_no_overlay_events(
 ) -> list[str]:
     """Build SSE events for the 'no overlay found' case."""
     if overlay_count == 0:
+        log.info("No overlay detected", {"reason": reason})
         return [
             sse_helpers.format_progress_event(
-                "consent-none", "No overlay detected", 70
+                "consent-none", "No overlay detected...", 70
             ),
             sse_helpers.format_sse_event(
                 "consent",
@@ -305,7 +306,7 @@ def _build_no_overlay_events(
     return [
         sse_helpers.format_progress_event(
             "overlays-done",
-            f"Dismissed {overlay_count} overlay(s)",
+            f"Dismissed {overlay_count} overlay(s)...",
             70,
         )
     ]
@@ -383,6 +384,10 @@ class OverlayPipeline:
 
         Populates ``self.result`` as side-state so the caller
         can read the final overlay outcome after iteration.
+
+        Tracks selectors/button-text combinations that already
+        failed to click so we don't re-detect and waste time
+        on the same unclickable element.
         """
         result = self.result
         session = self._session
@@ -390,6 +395,10 @@ class OverlayPipeline:
         screenshot = self._initial_screenshot
         storage = await session.capture_storage()
         result.final_storage = storage
+
+        # Track selectors that already failed clicking so we
+        # don't loop on the same unclickable element.
+        failed_signatures: set[str] = set()
 
         log.info(
             "Starting overlay detection loop",
@@ -409,6 +418,25 @@ class OverlayPipeline:
             ):
                 for event in _build_no_overlay_events(
                     overlay_count, detection.reason
+                ):
+                    yield event
+                break
+
+            # ── Check for repeated detection ────────────────
+            sig = _detection_signature(detection)
+            if sig in failed_signatures:
+                log.warn(
+                    "Skipping re-detected overlay that"
+                    " already failed to click",
+                    {
+                        "selector": detection.selector,
+                        "buttonText": detection.button_text,
+                    },
+                )
+                for event in _build_no_overlay_events(
+                    overlay_count,
+                    "Overlay re-detected but click already"
+                    " failed — stopping",
                 ):
                     yield event
                 break
@@ -456,6 +484,12 @@ class OverlayPipeline:
             )
 
             # ── Click ───────────────────────────────────────
+            yield sse_helpers.format_progress_event(
+                f"overlay-{overlay_count}-click",
+                "Dismissing overlay...",
+                progress_base + 1,
+            )
+
             try:
                 clicked = False
                 async for event in _click_and_capture(
@@ -469,6 +503,10 @@ class OverlayPipeline:
                     yield event
 
                 if not clicked:
+                    # Record this detection so we don't
+                    # waste time re-detecting it.
+                    failed_signatures.add(sig)
+
                     event, msg = _build_click_failure(
                         detection, overlay_count
                     )
@@ -502,6 +540,7 @@ class OverlayPipeline:
                 storage = await session.capture_storage()
 
             except Exception as click_error:
+                failed_signatures.add(sig)
                 event, msg = _build_click_failure(
                     detection,
                     overlay_count,
@@ -546,10 +585,20 @@ class OverlayPipeline:
             )
             yield sse_helpers.format_progress_event(
                 "overlays-limit",
-                "Maximum overlay limit reached",
+                "Maximum overlay limit reached...",
                 70,
             )
 
         result.overlay_count = overlay_count
         result.final_screenshot = screenshot
         result.final_storage = storage
+
+
+def _detection_signature(
+    detection: consent.CookieConsentDetection,
+) -> str:
+    """Build a hashable key for a detection to track repeats."""
+    return (
+        f"{detection.selector or ''}|"
+        f"{detection.button_text or ''}"
+    )

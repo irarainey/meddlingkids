@@ -8,6 +8,9 @@ from __future__ import annotations
 from playwright import async_api
 
 from src.models import browser
+from src.utils import logger
+
+log = logger.create_logger("AccessDetection")
 
 # ============================================================================
 # Detection Patterns
@@ -60,6 +63,7 @@ async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialR
 
         for pattern in BLOCKED_TITLE_PATTERNS:
             if pattern in title_lower:
+                log.warn("Access denied detected via title", {"title": title, "pattern": pattern})
                 return browser.AccessDenialResult(
                     denied=True,
                     reason=f'Page title indicates blocking: "{title}"',
@@ -74,11 +78,14 @@ async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialR
 
         for pattern in BLOCKED_BODY_PATTERNS:
             if pattern in body_text:
+                log.warn("Access denied detected via body content", {"pattern": pattern})
                 return browser.AccessDenialResult(
                     denied=True,
                     reason=f'Page content indicates blocking: "{pattern}"',
                 )
 
+        log.debug("No access denial detected")
         return browser.AccessDenialResult(denied=False, reason=None)
-    except Exception:
+    except Exception as exc:
+        log.debug(f"Access check error (assuming no denial): {exc}")
         return browser.AccessDenialResult(denied=False, reason=None)

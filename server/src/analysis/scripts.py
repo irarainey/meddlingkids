@@ -82,12 +82,14 @@ async def _fetch_script_content(
                             0.5 * (attempt + 1)
                         )
                         continue
+                    log.debug(f"Script fetch failed: {url} (HTTP {response.status})")
                     return None
                 return await response.text()
-        except Exception:
+        except Exception as exc:
             if attempt < retries:
                 await asyncio.sleep(0.5 * (attempt + 1))
                 continue
+            log.debug(f"Script fetch error: {url} — {exc}")
             return None
     return None
 
@@ -298,7 +300,7 @@ async def analyze_scripts(
             )
 
         if on_progress:
-            on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete")
+            on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete...")
 
         log.success("Script analysis complete", {
             "analyzed": total_to_analyze,

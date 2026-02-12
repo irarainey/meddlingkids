@@ -9,7 +9,9 @@ from __future__ import annotations
 import collections
 
 from src.models import analysis, tracking_data
-from src.utils import url
+from src.utils import logger, url
+
+log = logger.create_logger("TrackingSummary")
 
 
 def _group_by_domain(
@@ -75,6 +77,15 @@ def build_tracking_summary(
 ) -> analysis.TrackingSummary:
     """Build a complete tracking summary for LLM privacy analysis."""
     domain_data = _group_by_domain(cookies, scripts, network_requests)
+    third_party = _get_third_party_domains(domain_data, analyzed_url)
+
+    log.info("Tracking summary built", {
+        "totalDomains": len(domain_data),
+        "thirdPartyDomains": len(third_party),
+        "cookies": len(cookies),
+        "scripts": len(scripts),
+        "requests": len(network_requests),
+    })
 
     return analysis.TrackingSummary(
         analyzed_url=analyzed_url,
@@ -83,7 +94,7 @@ def build_tracking_summary(
         total_network_requests=len(network_requests),
         local_storage_items=len(local_storage),
         session_storage_items=len(session_storage),
-        third_party_domains=_get_third_party_domains(domain_data, analyzed_url),
+        third_party_domains=third_party,
         domain_breakdown=_build_domain_breakdown(domain_data),
         local_storage=_build_storage_preview(local_storage),
         session_storage=_build_storage_preview(session_storage),

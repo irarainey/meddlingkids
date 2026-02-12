@@ -268,6 +268,17 @@ export function useTrackingAnalysis() {
         }
       })
 
+      eventSource.addEventListener('screenshotUpdate', (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.screenshot && screenshots.value.length > 0) {
+            screenshots.value[screenshots.value.length - 1] = data.screenshot
+          }
+        } catch {
+          console.error('[SSE] Failed to parse screenshotUpdate event')
+        }
+      })
+
       eventSource.addEventListener('pageError', (event) => {
         try {
           const data = JSON.parse(event.data)
@@ -382,7 +393,11 @@ export function useTrackingAnalysis() {
       })
 
       eventSource.onerror = () => {
-        if (eventSource.readyState === EventSource.CLOSED) {
+        // After a successful 'complete' event the handler calls
+        // eventSource.close(), which sets readyState to CLOSED.
+        // In that case the error is just the browser noticing the
+        // connection went away — nothing to report.
+        if (isComplete.value) {
           return
         }
         errorDialog.value = {

@@ -66,6 +66,7 @@ async def validate_element_exists(
             if css_selector:
                 try:
                     if await frame.locator(css_selector).count() > 0:
+                        log.debug("Element found via CSS selector", {"selector": css_selector, "frame": frame.url})
                         return True
                 except Exception:
                     pass
@@ -74,6 +75,7 @@ async def validate_element_exists(
                     if await frame.get_by_text(
                         text_from_selector, exact=False
                     ).count() > 0:
+                        log.debug("Element found via selector text", {"text": text_from_selector, "frame": frame.url})
                         return True
                 except Exception:
                     pass
@@ -83,6 +85,7 @@ async def validate_element_exists(
                 if await frame.get_by_role(
                     "button", name=button_text
                 ).count() > 0:
+                    log.debug("Element found via button role", {"buttonText": button_text, "frame": frame.url})
                     return True
             except Exception:
                 pass
@@ -90,10 +93,12 @@ async def validate_element_exists(
                 if await frame.get_by_text(
                     button_text, exact=False
                 ).count() > 0:
+                    log.debug("Element found via text search", {"buttonText": button_text, "frame": frame.url})
                     return True
             except Exception:
                 pass
 
+    log.debug("Element not found in any frame", {"selector": selector, "buttonText": button_text})
     return False
 
 
@@ -102,45 +107,50 @@ async def try_click_consent_button(
     selector: str | None,
     button_text: str | None,
 ) -> bool:
-    """
-    Click a consent/dismiss button using LLM-provided selector and text.
-    Tries the main page first — consent dialogs, paywalls, and sign-in
-    prompts are almost always rendered in the top-level document.
-    Iframes are only checked as a last resort.
+    """Click the consent/overlay dismiss button identified by the LLM.
 
-    After every click, checks whether the page navigated to a different
-    URL.  Consent dismiss buttons almost never navigate — if the URL
-    changed, the click hit a real link and we go back.
+    Strategy order
+    ~~~~~~~~~~~~~~
+    1. LLM-provided selector/text on the **main frame**.
+    2. LLM-provided selector/text on **consent-manager iframes**.
+    3. Generic close-button heuristics on the **main frame only**.
+
+    Consent iframes are checked *before* generic heuristics so we
+    don't waste time scanning hundreds of unrelated links in
+    content iframes.
+
+    After every successful click the URL is checked; if it changed
+    the browser navigates back and the click is treated as failed.
     """
     log.info("Attempting click", {"selector": selector, "buttonText": button_text})
     original_url = page.url
 
-    # Phase 1: Try main page (where overlays almost always live)
-    if await _try_click_in_frame(page.main_frame, selector, button_text, 500):
+    # Phase 1: LLM suggestion on main page
+    if await _try_click_in_frame(page.main_frame, selector, button_text, 3000):
         if await _did_navigate_away(page, original_url):
             return False
         log.success("Click succeeded on main page")
         return True
 
-    # Phase 2: Generic close buttons on main page
-    log.debug("Trying generic close buttons...")
-    if await _try_close_buttons(page):
-        if await _did_navigate_away(page, original_url):
-            return False
-        return True
-
-    # Phase 3: Last resort — try consent-manager iframes
+    # Phase 2: LLM suggestion on consent-manager iframes
     consent_frames = [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
     if consent_frames:
-        log.debug("Trying consent iframes as last resort", {"count": len(consent_frames)})
+        log.debug("Trying consent iframes", {"count": len(consent_frames)})
         for frame in consent_frames:
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
-            if await _try_click_in_frame(frame, selector, button_text, 500):
+            if await _try_click_in_frame(frame, selector, button_text, 3000):
                 if await _did_navigate_away(page, original_url):
                     return False
                 log.success("Click succeeded in consent iframe", {"url": frame_url[:50]})
                 return True
+
+    # Phase 3: Generic close-button heuristics (main frame only)
+    log.debug("Trying generic close buttons on main frame...")
+    if await _try_close_buttons(page.main_frame):
+        if await _did_navigate_away(page, original_url):
+            return False
+        return True
 
     log.warn("All click strategies failed")
     return False
@@ -166,6 +176,140 @@ async def _did_navigate_away(page: async_api.Page, original_url: str) -> bool:
     except Exception as e:
         log.warn("Navigation check failed", {"error": str(e)})
     return False
+
+
+# ── Href patterns that are safe (do NOT navigate away) ──────────────
+_SAFE_HREF_RE = re.compile(
+    r"^(?:"
+    r"javascript:\s*(?:void\s*\(?\s*0?\s*\)?)?"
+    r"|#.*"
+    r")$",
+    re.IGNORECASE,
+)
+
+
+async def _is_safe_to_click(
+    locator: async_api.Locator, timeout: int = 2000
+) -> bool | None:
+    """Return whether clicking this element will navigate away.
+
+    Returns:
+        ``True`` — element is safe to click (button, JS-driven, etc.).
+        ``False`` — element has a real ``href`` and would navigate.
+        ``None`` — could not determine (timeout, cross-origin, detached).
+
+    An element is considered safe when:
+    * it is a ``<button>`` (buttons don't navigate by default),
+    * its ``href`` is ``#``, ``javascript:void(0)``, or similar,
+    * it has an inline ``onclick`` handler (JS-driven action), or
+    * it has no ``href`` at all (e.g. a ``<div>`` wired up via JS).
+
+    An ``<a>`` with a real URL in ``href`` is **not** safe because
+    clicking it would leave the current page.
+
+    The *timeout* (ms) caps how long we wait for the element to
+    become available for evaluation.  Cross-origin or deeply
+    nested iframes can stall for the full Playwright default
+    (30 s), so a short timeout avoids blocking the pipeline.
+    """
+    try:
+        return await locator.evaluate(
+            """
+            el => {
+                const tag = el.tagName.toLowerCase();
+
+                // <button> elements don't navigate.
+                if (tag === 'button' || el.type === 'submit' || el.type === 'button') {
+                    return true;
+                }
+
+                // Inline onclick handler → JS-driven action.
+                if (el.hasAttribute('onclick')) {
+                    return true;
+                }
+
+                // role="button" without an href is JS-driven.
+                if (el.getAttribute('role') === 'button' && !el.hasAttribute('href')) {
+                    return true;
+                }
+
+                // Elements without an href (span, div, etc.) are fine.
+                const href = el.getAttribute('href');
+                if (href === null || href === undefined) {
+                    return true;
+                }
+
+                // Safe href values: "#", "#foo", "javascript:void(0)", etc.
+                const trimmed = href.trim();
+                if (
+                    trimmed === '' ||
+                    trimmed.startsWith('#') ||
+                    /^javascript:\s*(void\s*\(?\s*0?\s*\)?)?\s*;?\s*$/i.test(trimmed)
+                ) {
+                    return true;
+                }
+
+                // Any other href would navigate — not safe.
+                return false;
+            }
+            """,
+            timeout=timeout,
+        )
+    except Exception:
+        # Timeout, element detached, cross-origin iframe, etc.
+        # Return None so the caller can decide policy.
+        log.debug("Could not evaluate element safety (timeout/error)")
+        return None
+
+
+async def _safe_click(
+    locator: async_api.Locator,
+    timeout: int,
+    *,
+    force_on_timeout: bool = False,
+) -> bool:
+    """Click a locator, checking navigation safety first.
+
+    Args:
+        locator: Playwright locator for the target element.
+        timeout: Click timeout in ms.
+        force_on_timeout: When ``True``, proceed with the
+            click even when safety evaluation times out
+            (``_is_safe_to_click`` returns ``None``).
+            Use for LLM-identified elements where we have
+            high confidence the element is a consent button.
+    """
+    try:
+        first = locator.first
+        safety = await _is_safe_to_click(first)
+
+        if safety is False:
+            # Definitively would navigate — skip
+            log.debug(
+                "Skipping click — element would navigate away",
+                {"locator": str(locator)},
+            )
+            return False
+
+        if safety is None and not force_on_timeout:
+            # Timeout/error and caller doesn't want to force
+            log.debug(
+                "Skipping click — safety unknown (timeout)",
+                {"locator": str(locator)},
+            )
+            return False
+
+        if safety is None:
+            log.debug(
+                "Safety evaluation timed out — clicking"
+                " anyway (LLM-identified element)",
+                {"locator": str(locator)},
+            )
+
+        await first.click(timeout=timeout)
+        return True
+    except Exception:
+        return False
 
 
 # Regex patterns for non-standard pseudo-selectors the LLM
@@ -200,50 +344,65 @@ async def _try_click_in_frame(
     button_text: str | None,
     timeout: int,
 ) -> bool:
-    """Try clicking in a specific frame using LLM-provided selector and text."""
+    """Try clicking in a specific frame using LLM-provided selector and text.
+
+    Every candidate element is checked with ``_safe_click`` before it
+    is clicked.  Uses ``force_on_timeout=True`` because these are
+    LLM-identified consent elements — if the safety check times out
+    on a busy page, we still try clicking since the LLM identified
+    the element as a consent button.
+    """
     # Strategy 1: CSS selector (strip non-standard pseudo-selectors)
     if selector:
         css_selector, text_from_selector = _parse_selector(selector)
 
         if css_selector:
-            try:
-                await frame.locator(css_selector).first.click(timeout=timeout)
+            if await _safe_click(
+                frame.locator(css_selector), timeout,
+                force_on_timeout=True,
+            ):
                 return True
-            except Exception:
-                pass
 
         # If the LLM gave :has-text() / :contains(), use the inner
         # text with Playwright's role and text locators.
         if text_from_selector:
-            for strategy in [
-                lambda: frame.get_by_role("button", name=text_from_selector).first.click(timeout=timeout),
-                lambda: frame.get_by_text(text_from_selector, exact=False).first.click(timeout=timeout),
+            for locator in [
+                frame.get_by_role("button", name=text_from_selector),
+                frame.get_by_text(text_from_selector, exact=False),
             ]:
-                try:
-                    await strategy()
+                if await _safe_click(
+                    locator, timeout, force_on_timeout=True,
+                ):
                     return True
-                except Exception:
-                    pass
 
     # Strategy 2: Button/link/text with buttonText
     if button_text:
-        for strategy in [
-            lambda: frame.get_by_role("button", name=button_text).first.click(timeout=timeout),
-            lambda: frame.get_by_role("link", name=button_text).first.click(timeout=timeout),
-            lambda: frame.get_by_text(button_text, exact=True).first.click(timeout=timeout),
-            lambda: frame.get_by_text(button_text, exact=False).first.click(timeout=timeout),
+        for locator in [
+            frame.get_by_role("button", name=button_text),
+            frame.get_by_role("link", name=button_text),
+            frame.get_by_text(button_text, exact=True),
+            frame.get_by_text(button_text, exact=False),
         ]:
-            try:
-                await strategy()
+            if await _safe_click(
+                locator, timeout, force_on_timeout=True,
+            ):
                 return True
-            except Exception:
-                pass
 
     return False
 
 
-async def _try_close_buttons(page: async_api.Page) -> bool:
+async def _try_close_buttons(frame: async_api.Frame) -> bool:
     """Try common close button patterns as a last resort.
+
+    Searches **only** within the given frame (typically the main
+    frame).  Using ``page``-level locators would search every
+    iframe on the page, matching unrelated links in content
+    iframes and stalling on cross-origin evaluate calls.
+
+    Uses ``force_on_timeout=False`` because generic heuristics
+    can match non-consent elements (page links with "accept" in
+    their aria-label, etc.).  If safety can't be evaluated, it's
+    better to skip than risk navigating away.
 
     Prefers role-based locators (``get_by_role``) for accessibility,
     then falls back to CSS attribute/class selectors.
@@ -252,27 +411,24 @@ async def _try_close_buttons(page: async_api.Page) -> bool:
     role_patterns: list[tuple[str, async_api.Locator]] = [
         (
             "button[name~=accept]",
-            page.get_by_role("button", name=re.compile(
+            frame.get_by_role("button", name=re.compile(
                 r"accept|agree|allow|got it|i understand|okay|ok\b|continue|confirm",
                 re.IGNORECASE,
             )),
         ),
         (
             "button[name~=dismiss]",
-            page.get_by_role("button", name=re.compile(
+            frame.get_by_role("button", name=re.compile(
                 r"close|dismiss|skip|no thanks|not now|maybe later|later|reject|decline|deny",
                 re.IGNORECASE,
             )),
         ),
     ]
     for label, locator in role_patterns:
-        try:
-            log.debug("Trying close button", {"selector": label})
-            await locator.first.click(timeout=400)
+        log.debug("Trying close button", {"selector": label})
+        if await _safe_click(locator, 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": label})
             return True
-        except Exception:
-            pass
 
     # CSS fallback selectors
     css_selectors = [
@@ -288,12 +444,9 @@ async def _try_close_buttons(page: async_api.Page) -> bool:
         '[class*="banner-close"]',
     ]
     for sel in css_selectors:
-        try:
-            log.debug("Trying close button", {"selector": sel})
-            await page.locator(sel).first.click(timeout=400)
+        log.debug("Trying close button", {"selector": sel})
+        if await _safe_click(frame.locator(sel), 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": sel})
             return True
-        except Exception:
-            pass
     return False
 

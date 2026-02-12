@@ -62,7 +62,12 @@ def _create_azure_client(
     Returns:
         An ``AzureOpenAIChatClient`` instance.
     """
-    log.info("Using Azure OpenAI", {"agent": agent_name or "default"})
+    log.info("Using Azure OpenAI", {
+        "agent": agent_name or "default",
+        "deployment": cfg.deployment,
+        "endpoint": cfg.endpoint,
+        "apiVersion": cfg.api_version,
+    })
 
     return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
         api_key=cfg.api_key,
@@ -85,7 +90,10 @@ def _create_openai_client(
     Returns:
         An ``OpenAIChatClient`` instance.
     """
-    log.info("Using standard OpenAI", {"agent": agent_name or "default"})
+    log.info("Using standard OpenAI", {
+        "agent": agent_name or "default",
+        "model": cfg.model or "(default)",
+    })
 
     return openai.OpenAIChatClient(  # type: ignore[return-value]
         api_key=cfg.api_key,

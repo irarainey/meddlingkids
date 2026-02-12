@@ -49,7 +49,7 @@ async def run_ai_analysis(
     )
     yield sse_helpers.format_progress_event(
         "analysis-start",
-        "Starting AI analysis...",
+        "Starting analysis...",
         75,
     )
 
@@ -155,7 +155,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail or "All scripts identified",
+                        detail or "All scripts identified...",
                         82,
                     )
                 )
@@ -178,7 +178,7 @@ def _launch_concurrent_tasks(
             )
             log.end_timer(
                 "script-analysis",
-                f"Script analysis complete"
+                f"Script analysis complete..."
                 f" ({len(result.scripts)} scripts,"
                 f" {len(result.groups)} groups)",
             )
@@ -257,6 +257,7 @@ async def _score_and_summarise(
     )
     summary_agent = agents.get_summary_findings_agent()
     summary_findings = await summary_agent.summarise(full_text)
+    log.info("Summary findings generated", {"count": len(summary_findings)})
 
     log.end_timer("ai-analysis", "All AI analysis complete")
 

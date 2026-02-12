@@ -127,6 +127,23 @@ def build_screenshot_event(
     return format_sse_event("screenshot", payload)
 
 
+def format_screenshot_update_event(
+    optimized_screenshot: str,
+) -> str:
+    """Format a screenshotUpdate SSE event.
+
+    This lightweight event carries only the image data and
+    tells the client to *replace* the most recent screenshot
+    rather than appending a new one.  Used by the background
+    screenshot refresher to keep the gallery up-to-date as
+    ads and deferred content load in.
+    """
+    return format_sse_event(
+        "screenshotUpdate",
+        {"screenshot": optimized_screenshot},
+    )
+
+
 async def take_screenshot_event(
     session: browser_session.BrowserSession,
     storage: dict[str, list[tracking_data.StorageItem]] | None = None,

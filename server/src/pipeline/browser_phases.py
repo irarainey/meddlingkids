@@ -37,6 +37,7 @@ async def setup_and_navigate(
     session.set_current_page_url(url)
 
     log.start_timer("browser-launch")
+    log.info("Launching browser", {"deviceType": device_type})
     events.append(
         sse_helpers.format_progress_event("browser", "Launching browser...", 8)
     )
@@ -47,7 +48,7 @@ async def setup_and_navigate(
     log.info("Navigating to page", {"hostname": hostname})
     events.append(
         sse_helpers.format_progress_event(
-            "navigate", f"Connecting to {hostname}...", 12
+            "navigate", f"Loading {hostname}...", 12
         )
     )
 
@@ -104,7 +105,7 @@ async def wait_for_page_load(
         log.success("Network became idle")
         events.append(
             sse_helpers.format_progress_event(
-                "wait-done", "Page fully loaded", 25
+                "wait-done", "Page fully loaded...", 25
             )
         )
     else:
@@ -179,7 +180,7 @@ async def check_access(
     )
     events.append(
         sse_helpers.format_progress_event(
-            "blocked", "Site blocked access", 100
+            "blocked", "Site blocked access!", 100
         )
     )
     return events, True
@@ -239,7 +240,7 @@ async def capture_initial_data(
     events.append(
         sse_helpers.format_progress_event(
             "captured",
-            "Initial data captured",
+            "Page data captured...",
             42,
         )
     )

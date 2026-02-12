@@ -61,6 +61,8 @@ async def analyze_endpoint(
     """
     Analyze tracking on a URL with streaming progress via SSE.
     """
+    log.info("Incoming analysis request", {"url": url, "device": device})
+
     async def event_generator():
         async for event_str in stream.analyze_url_stream(url, device):
             yield event_str

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -65,6 +65,22 @@ const {
 } = useTrackingAnalysis()
 
 const tabsRef = ref<HTMLElement | null>(null)
+const galleryRef = ref<HTMLElement | null>(null)
+
+/** Scroll to the screenshot gallery when the first screenshot arrives. */
+watch(
+  () => screenshots.value.length,
+  (len, oldLen) => {
+    if (len === 1 && (oldLen === 0 || oldLen === undefined)) {
+      nextTick(() => {
+        galleryRef.value?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+      })
+    }
+  },
+)
 
 /** Close the score dialog and scroll to the report tabs. */
 function handleViewReport(): void {
@@ -139,12 +155,14 @@ function handleViewReport(): void {
     />
 
     <!-- Screenshot Gallery -->
+    <div ref="galleryRef">
     <ScreenshotGallery
       :screenshots="screenshots"
       :selected-screenshot="selectedScreenshot"
       @open-modal="openScreenshotModal"
       @close-modal="closeScreenshotModal"
     />
+    </div>
 
     <div v-if="isComplete" class="main-content">
       <!-- Tab Navigation -->

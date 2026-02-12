@@ -103,7 +103,14 @@ class TrackingAnalysisAgent(base.BaseAgent):
         prompt = _build_user_prompt(
             tracking_summary, consent_details
         )
+        log.info("Starting tracking analysis", {
+            "promptChars": len(prompt),
+            "hasConsent": consent_details is not None,
+        })
         response = await self._complete(prompt)
+        log.info("Tracking analysis complete", {
+            "responseChars": len(response.text) if response.text else 0,
+        })
         return response.text or "No analysis generated"
 
     async def analyze_stream(
@@ -126,13 +133,22 @@ class TrackingAnalysisAgent(base.BaseAgent):
         prompt = _build_user_prompt(
             tracking_summary, consent_details
         )
+        log.info("Starting streaming tracking analysis", {
+            "promptChars": len(prompt),
+            "hasConsent": consent_details is not None,
+        })
         message = agent_framework.ChatMessage(
             role=agent_framework.Role.USER,
             text=prompt,
         )
+        chunk_count = 0
         async with self._build_agent() as agent:
             async for update in agent.run_stream(message):
+                chunk_count += 1
                 yield update
+        log.info("Streaming tracking analysis complete", {
+            "chunks": chunk_count,
+        })
 
 
 # ── Prompt builders ─────────────────────────────────────────────

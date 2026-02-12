@@ -28,6 +28,9 @@ async def extract_consent_details(
     Returns:
         Structured ``ConsentDetails``.
     """
+    log.info("Starting consent extraction", {
+        "screenshotBytes": len(screenshot),
+    })
     agent = agents.get_consent_extraction_agent()
     if not agent.is_configured:
         log.warn(

@@ -207,6 +207,10 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
+        log.debug(
+            f"{self.agent_name}: text completion",
+            {"promptChars": len(user_prompt), "maxTokens": max_tokens or self.max_tokens},
+        )
         message = agent_framework.ChatMessage(
             role=agent_framework.Role.USER,
             text=user_prompt,
@@ -214,7 +218,12 @@ class BaseAgent:
         async with self._build_agent(
             instructions, max_tokens
         ) as agent:
-            return await agent.run(message)
+            response = await agent.run(message)
+        log.debug(
+            f"{self.agent_name}: response received",
+            {"responseChars": len(response.text) if response.text else 0},
+        )
+        return response
 
     async def _complete_vision(
         self,
@@ -239,6 +248,15 @@ class BaseAgent:
         """
         b64 = base64.b64encode(screenshot).decode("utf-8")
         image_uri = f"data:image/png;base64,{b64}"
+        log.debug(
+            f"{self.agent_name}: vision completion",
+            {
+                "textChars": len(user_text),
+                "screenshotBytes": len(screenshot),
+                "base64Chars": len(b64),
+                "maxTokens": max_tokens or self.max_tokens,
+            },
+        )
 
         message = agent_framework.ChatMessage(
             role=agent_framework.Role.USER,
@@ -252,7 +270,12 @@ class BaseAgent:
         async with self._build_agent(
             instructions, max_tokens
         ) as agent:
-            return await agent.run(message)
+            response = await agent.run(message)
+        log.debug(
+            f"{self.agent_name}: vision response received",
+            {"responseChars": len(response.text) if response.text else 0},
+        )
+        return response
 
     def _parse_response(
         self,
@@ -275,7 +298,8 @@ class BaseAgent:
         except Exception as exc:
             log.warn(
                 f"{self.agent_name}: failed to parse"
-                f" structured output: {exc}"
+                f" structured output: {exc}",
+                {"responsePreview": (response.text or "")[:200]},
             )
             return None
 

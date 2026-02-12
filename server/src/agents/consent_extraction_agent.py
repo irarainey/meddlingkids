@@ -165,9 +165,20 @@ class ConsentExtractionAgent(base.BaseAgent):
                 response, _ConsentExtractionResponse
             )
             if parsed:
-                return _to_domain(parsed, consent_text)
+                result = _to_domain(parsed, consent_text)
+                log.info(
+                    "Extraction result",
+                    {
+                        "categories": len(result.categories),
+                        "partners": len(result.partners),
+                        "purposes": len(result.purposes),
+                        "hasManageOptions": result.has_manage_options,
+                    },
+                )
+                return result
 
             # Fallback: manual parse from text
+            log.debug("Structured parse failed, trying text fallback")
             return _parse_text_fallback(
                 response.text, consent_text
             )
@@ -310,10 +321,15 @@ async def _extract_consent_text(
                     iframe_texts.append(
                         f"[CONSENT IFRAME]:\n{iframe_text}"
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(f"Failed to extract iframe text from {frame.url}: {exc}")
 
     all_texts = [
         t for t in [*iframe_texts, main_page_text] if t
     ]
+    log.debug("Consent text extraction", {
+        "mainTextChars": len(main_page_text),
+        "iframeCount": len(iframe_texts),
+        "totalChars": sum(len(t) for t in all_texts),
+    })
     return "\n\n---\n\n".join(all_texts)[:50000]

@@ -18,7 +18,9 @@ from playwright import async_api
 
 from src.browser import access_detection, device_configs
 from src.models import browser, tracking_data
-from src.utils import url as url_mod
+from src.utils import logger, url as url_mod
+
+log = logger.create_logger("BrowserSession")
 
 # ============================================================================
 # Constants
@@ -97,6 +99,7 @@ class BrowserSession:
         self, device_type: browser.DeviceType = "ipad"
     ) -> None:
         """Launch a new Chromium browser instance with device emulation."""
+        log.info("Launching browser", {"deviceType": device_type})
         if device_type not in device_configs.DEVICE_CONFIGS:
             raise ValueError(
                 f"Unknown device type {device_type!r}. "
@@ -152,6 +155,11 @@ class BrowserSession:
         )
 
         self._page = await self._context.new_page()
+        log.debug("Browser launched", {
+            "viewport": f"{device_config.viewport.width}x{device_config.viewport.height}",
+            "deviceType": device_type,
+            "isMobile": device_config.is_mobile,
+        })
 
         # Remove webdriver flag
         await self._context.add_init_script(
@@ -184,8 +192,12 @@ class BrowserSession:
                         ).isoformat(),
                     )
                 )
+            elif len(self._tracked_scripts) == MAX_TRACKED_SCRIPTS:
+                log.debug(f"Script tracking limit reached ({MAX_TRACKED_SCRIPTS})")
 
         # Track ALL network requests (with limit)
+        if len(self._tracked_network_requests) == MAX_TRACKED_REQUESTS:
+            log.debug(f"Network request tracking limit reached ({MAX_TRACKED_REQUESTS})")
         if len(self._tracked_network_requests) < MAX_TRACKED_REQUESTS:
             idx = len(self._tracked_network_requests)
             self._tracked_network_requests.append(
@@ -236,6 +248,7 @@ class BrowserSession:
         if not self._page:
             raise RuntimeError("No browser session active")
 
+        log.debug("Navigating", {"url": url, "waitUntil": wait_until, "timeout": timeout})
         try:
             response = await self._page.goto(url, wait_until=wait_until, timeout=timeout)
 
@@ -256,6 +269,9 @@ class BrowserSession:
                     ),
                 )
 
+            final_url = self._page.url
+            if final_url != url:
+                log.info("Redirected", {"from": url, "to": final_url})
             return browser.NavigationResult(
                 success=True,
                 status_code=status_code,
@@ -264,6 +280,7 @@ class BrowserSession:
                 error_message=None,
             )
         except Exception as error:
+            log.warn("Navigation error", {"url": url, "error": str(error)})
             return browser.NavigationResult(
                 success=False,
                 status_code=None,
@@ -280,6 +297,7 @@ class BrowserSession:
             await self._page.wait_for_load_state("networkidle", timeout=timeout)
             return True
         except Exception:
+            log.debug(f"Network idle timeout after {timeout}ms")
             return False
 
     async def check_for_access_denied(self) -> browser.AccessDenialResult:
@@ -298,6 +316,7 @@ class BrowserSession:
             return
 
         cookies = await self._context.cookies()
+        log.debug(f"Captured {len(cookies)} raw cookies from browser")
         now = datetime.now(timezone.utc).isoformat()
 
         for cookie in cookies:
@@ -364,7 +383,8 @@ class BrowserSession:
                     for item in storage_data["sessionStorage"]
                 ],
             }
-        except Exception:
+        except Exception as exc:
+            log.warn("Failed to capture storage", {"error": str(exc)})
             return {"local_storage": [], "session_storage": []}
 
     async def take_screenshot(self, full_page: bool = False) -> bytes:
@@ -381,6 +401,7 @@ class BrowserSession:
         payloads.  This is a pure CPU operation — no browser round-trip.
         """
         img: Image.Image = Image.open(io.BytesIO(png_bytes))
+        original_size = len(png_bytes)
 
         max_width = 1280
         if img.width > max_width:
@@ -395,7 +416,13 @@ class BrowserSession:
 
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=72, optimize=True)
+        jpeg_size = buf.tell()
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        log.debug("Screenshot optimised", {
+            "pngBytes": original_size,
+            "jpegBytes": jpeg_size,
+            "dimensions": f"{img.width}x{img.height}",
+        })
         return f"data:image/jpeg;base64,{b64}"
 
     async def get_page_content(self) -> str:
@@ -434,6 +461,7 @@ class BrowserSession:
 
     async def close(self) -> None:
         """Close the browser and clean up all resources."""
+        log.debug("Closing browser session")
         if self._page:
             self._page.remove_listener("request", self._on_request)
             self._page.remove_listener("response", self._on_response)
@@ -442,22 +470,23 @@ class BrowserSession:
         if self._context:
             try:
                 await self._context.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(f"Context close error (non-fatal): {exc}")
             self._context = None
 
         if self._browser:
             try:
                 await self._browser.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(f"Browser close error (non-fatal): {exc}")
             self._browser = None
 
         if self._playwright:
             try:
                 await self._playwright.stop()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug(f"Playwright stop error (non-fatal): {exc}")
             self._playwright = None
 
         self.clear_tracking_data()
+        log.debug("Browser session closed")

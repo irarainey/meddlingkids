@@ -14,17 +14,19 @@ log = logger.create_logger("Consent-Detect")
 
 
 async def detect_cookie_consent(
-    screenshot: bytes, html: str
+    screenshot: bytes,
 ) -> consent.CookieConsentDetection:
     """Detect blocking overlays using LLM vision.
 
     Args:
         screenshot: Raw PNG screenshot bytes.
-        html: Full page HTML.
 
     Returns:
-        Detection result with selector information.
+        Detection result with button text.
     """
+    log.info("Starting consent detection", {
+        "screenshotBytes": len(screenshot),
+    })
     agent = agents.get_consent_detection_agent()
     if not agent.is_configured:
         log.warn(
@@ -35,4 +37,4 @@ async def detect_cookie_consent(
             "LLM not configured"
         )
 
-    return await agent.detect(screenshot, html)
+    return await agent.detect(screenshot)

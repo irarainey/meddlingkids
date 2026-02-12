@@ -1,13 +1,15 @@
 """Consent detection agent using LLM vision.
 
-Analyses screenshots and HTML to detect blocking overlays
-(cookie consent, sign-in walls, etc.) and locate dismiss
-buttons.  Returns structured ``CookieConsentDetection``.
+Vision-only overlay detection: send a screenshot to the LLM
+and get back presence, type, certainty percentage, and the
+exact button text to click.  No HTML is sent to the LLM —
+the click module handles finding the element by button text.
+
+Returns structured ``CookieConsentDetection``.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Literal
 
 import pydantic
@@ -18,11 +20,15 @@ from src.utils import errors, json_parsing, logger
 
 log = logger.create_logger("ConsentDetectionAgent")
 
+# Minimum certainty (0-100) required before we treat the
+# detection as a real overlay worth clicking.
+_CERTAINTY_THRESHOLD = 40
 
-# ── Structured output model ────────────────────────────────────
 
-class _ConsentDetectionResponse(pydantic.BaseModel):
-    """Schema pushed to the LLM via ``response_format``."""
+# -- Structured output model ------------------------------------------
+
+class _VisionDetectionResponse(pydantic.BaseModel):
+    """LLM response schema -- vision-only overlay detection."""
 
     found: bool
     overlayType: (
@@ -36,27 +42,24 @@ class _ConsentDetectionResponse(pydantic.BaseModel):
         ]
         | None
     ) = None
-    selector: str | None = None
     buttonText: str | None = None
-    confidence: Literal["high", "medium", "low"] = "low"
+    certainty: int = 0  # 0-100
     reason: str = ""
 
 
-# ── System prompt ───────────────────────────────────────────────
+# -- System prompt -----------------------------------------------------
 
 _INSTRUCTIONS = """\
-You are an expert web analyst. Your job is to look at a \
-screenshot of a webpage and determine whether there is \
-any dialog, banner, overlay, or prompt that needs to be \
-dismissed or accepted before the page can be fully used.
+You are an expert web analyst. Your ONLY job is to look \
+at a screenshot of a webpage and determine whether there \
+is any dialog, banner, overlay, or prompt that needs to \
+be dismissed or accepted before the page can be fully used.
 
-You will receive:
-1. A **screenshot** of the page as it currently appears
-2. **HTML snippets** extracted from the page
+You will receive ONLY a screenshot -- no HTML.
 
-# Step 1 — Carefully examine the screenshot
+# Step 1 -- Carefully examine the screenshot
 
-Look at the ENTIRE screenshot — top, bottom, every \
+Look at the ENTIRE screenshot -- top, bottom, every \
 corner, and the center. Look for:
 
 - Any modal dialog or overlay covering part of the page
@@ -71,36 +74,49 @@ If the main article or content is partially obscured, \
 dimmed, or has a backdrop overlay, there is likely a \
 blocking dialog present.
 
-# Step 2 — Classify what you found
+# Step 2 -- Classify what you found
 
 If you see an overlay, classify it as one of:
 
-1. **cookie-consent** — Cookie banners, privacy notices, \
+1. **cookie-consent** -- Cookie banners, privacy notices, \
    tracking consent. These can appear ANYWHERE: full-page \
    modals, bottom bars, top banners, floating panels, \
    side drawers. They do NOT need to block content to \
-   count — even a small bar counts.
+   count -- even a small bar counts.
 
-2. **sign-in** — The page is asking the user to sign in, \
+2. **sign-in** -- The page is asking the user to sign in, \
    register, or create an account. You must find the \
    DISMISS or SKIP option, NOT the sign-in button.
 
-3. **newsletter** — Email signup or notification popups.
+3. **newsletter** -- Email signup or notification popups.
 
-4. **paywall** — Content is gated behind a subscription \
+4. **paywall** -- Content is gated behind a subscription \
    or payment wall.
 
-5. **age-verification** — Age confirmation gates.
+5. **age-verification** -- Age confirmation gates.
 
-6. **other** — Anything else that needs dismissing.
+6. **other** -- Anything else that needs dismissing.
 
 **Priority:** If you see BOTH a blocking dialog (e.g. \
 sign-in prompt covering the page) AND a non-blocking \
 banner (e.g. cookie bar at the bottom), report the \
-BLOCKING one first — it must be dealt with before the \
+BLOCKING one first -- it must be dealt with before the \
 non-blocking one can be addressed.
 
-# Step 3 — Read the EXACT button or link text
+# Step 3 -- Rate your certainty (0-100)
+
+How certain are you that there is a dismissable overlay?
+
+- **90-100** -- Unambiguous modal / banner with clear \
+  dismiss buttons
+- **70-89** -- Very likely an overlay but visually subtle
+- **50-69** -- Probably an overlay but could be normal \
+  page content
+- **30-49** -- Uncertain -- might be a page element, not \
+  an overlay
+- **0-29** -- Very unlikely to be an overlay
+
+# Step 4 -- Read the EXACT button or link text
 
 This is the most critical step. Look at the screenshot \
 very carefully and read the EXACT text on the button or \
@@ -108,7 +124,7 @@ link that should be clicked to dismiss or accept.
 
 **Do NOT guess or use generic text.** Read the actual \
 words visible in the screenshot. The text could be \
-anything — it is not limited to common phrases. Examples \
+anything -- it is not limited to common phrases. Examples \
 of real button/link text seen on websites:
 
 - "Accept additional cookies"
@@ -137,34 +153,7 @@ Put this EXACT text (as shown in the screenshot, \
 preserving case) in the `buttonText` field. This is \
 the primary way the button will be found and clicked.
 
-# Step 4 — Find a CSS selector (if possible)
-
-Look in the HTML snippets for the element matching the \
-button you identified visually. The selector MUST be a \
-**standard CSS selector** valid for `document.\
-querySelector()`. DO NOT use `:has-text()` or \
-`:contains()` — these are not valid CSS.
-
-IMPORTANT: Consent dismiss buttons and accept links are \
-almost always **non-navigating** elements. They use \
-`href="javascript:void(0)"`, `href="#"`, or have no \
-href at all — they close the dialog via JavaScript. \
-If you see a link with a real URL (like `/sign-in` or \
-`/register`), it is NOT the dismiss button — look for \
-the skip/close/later option instead.
-
-Selector priority:
-1. **ID** — `#accept-cookies`
-2. **data attribute** — `[data-action="accept"]`
-3. **ARIA label** — `[aria-label="Accept cookies"]`
-4. **Unique class** — `button.accept-btn`
-5. **Combination** — `div.consent-banner button.primary`
-
-If you cannot find a reliable CSS selector in the HTML, \
-set `selector` to null. The `buttonText` will be used \
-instead.
-
-# What to IGNORE (return found=false)
+# What to IGNORE (return found=false, certainty=0)
 
 - Confirmation messages ("Your preferences have been saved")
 - "Thank you" banners that need no action
@@ -176,44 +165,34 @@ instead.
 Return ONLY a JSON object matching the required schema."""
 
 
-# ── Agent class ─────────────────────────────────────────────────
+# -- Agent class -------------------------------------------------------
 
 class ConsentDetectionAgent(base.BaseAgent):
-    """Vision agent that detects blocking overlays.
+    """Vision-only agent that detects blocking overlays.
 
-    Sends a screenshot + relevant HTML to the LLM and
-    returns a typed ``CookieConsentDetection`` result.
+    Sends a screenshot to the LLM and returns overlay type,
+    certainty percentage, and button text.  The click module
+    handles finding and clicking the element by button text.
     """
 
     agent_name = config.AGENT_CONSENT_DETECTION
     instructions = _INSTRUCTIONS
-    max_tokens = 1000
+    max_tokens = 500
     max_retries = 5
-    response_model = _ConsentDetectionResponse
+    response_model = _VisionDetectionResponse
 
     async def detect(
         self,
         screenshot: bytes,
-        html: str,
     ) -> consent.CookieConsentDetection:
-        """Detect overlays in the given screenshot and HTML.
+        """Detect overlays from a screenshot.
 
         Args:
             screenshot: Raw PNG screenshot bytes.
-            html: Full page HTML.
 
         Returns:
-            A ``CookieConsentDetection`` with selector info.
+            A ``CookieConsentDetection`` with button text.
         """
-        relevant_html = _extract_relevant_html(html)
-        log.debug(
-            "Extracted relevant HTML",
-            {
-                "originalLength": len(html),
-                "extractedLength": len(relevant_html),
-            },
-        )
-
         log.start_timer("vision-detection")
         log.info("Analysing screenshot for overlays...")
 
@@ -225,12 +204,9 @@ class ConsentDetectionAgent(base.BaseAgent):
                     " or prompt visible that needs to be"
                     " dismissed or accepted?\n\n"
                     "If yes, read the EXACT text on the"
-                    " button or link to click — do not"
+                    " button or link to click -- do not"
                     " guess, read it from the image.\n\n"
-                    "Then look in these HTML snippets for"
-                    " a CSS selector matching that element"
-                    " (set selector to null if unsure):\n\n"
-                    f"{relevant_html}"
+                    "Rate your certainty from 0 to 100."
                 ),
                 screenshot=screenshot,
             )
@@ -240,13 +216,17 @@ class ConsentDetectionAgent(base.BaseAgent):
             )
 
             parsed = self._parse_response(
-                response, _ConsentDetectionResponse
+                response, _VisionDetectionResponse
             )
-            if parsed:
-                return _to_domain(parsed)
+            if not parsed:
+                log.debug(
+                    "Structured parse failed, trying text"
+                    " fallback"
+                )
+                parsed = _parse_vision_fallback(response.text)
 
-            # Fallback: manual parse from text
-            return _parse_text_fallback(response.text)
+            return _to_result(parsed)
+
         except Exception as error:
             msg = errors.get_error_message(error)
             if any(
@@ -258,224 +238,94 @@ class ConsentDetectionAgent(base.BaseAgent):
                 )
             ):
                 log.warn(
-                    "Content filtered by Azure — trying"
-                    " HTML-only detection"
+                    "Content filtered by Azure -- vision"
+                    " unavailable"
                 )
-                return _detect_from_html_only(
-                    relevant_html
+                return consent.CookieConsentDetection.not_found(
+                    "Vision unavailable (content filter)"
                 )
 
             log.error(
-                "Overlay detection failed",
+                "Vision detection failed",
                 {"error": msg},
             )
             return consent.CookieConsentDetection.not_found(
-                f"Detection failed: {msg}"
+                f"Vision failed: {msg}"
             )
 
 
-# ── Helper functions ────────────────────────────────────────────
+# -- Helper functions --------------------------------------------------
 
-def _to_domain(
-    r: _ConsentDetectionResponse,
+def _to_result(
+    v: _VisionDetectionResponse,
 ) -> consent.CookieConsentDetection:
-    """Convert structured response to domain model.
+    """Convert a vision response to the domain model."""
+    if not v.found:
+        log.info(
+            "No overlay detected",
+            {"reason": v.reason},
+        )
+        return consent.CookieConsentDetection.not_found(
+            v.reason or "No overlay visible"
+        )
 
-    Args:
-        r: Parsed LLM response.
+    if v.certainty < _CERTAINTY_THRESHOLD:
+        log.info(
+            "Overlay below certainty threshold",
+            {
+                "certainty": v.certainty,
+                "threshold": _CERTAINTY_THRESHOLD,
+                "reason": v.reason,
+            },
+        )
+        return consent.CookieConsentDetection.not_found(
+            f"Low certainty ({v.certainty}%):"
+            f" {v.reason}"
+        )
 
-    Returns:
-        Domain ``CookieConsentDetection`` instance.
-    """
-    return consent.CookieConsentDetection(
-        found=r.found,
-        overlay_type=r.overlayType,
-        selector=r.selector,
-        button_text=r.buttonText,
-        confidence=r.confidence,
-        reason=r.reason,
+    # Map certainty % to confidence level
+    if v.certainty >= 80:
+        confidence: consent.ConfidenceLevel = "high"
+    elif v.certainty >= 55:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    result = consent.CookieConsentDetection(
+        found=True,
+        overlay_type=v.overlayType,
+        selector=None,
+        button_text=v.buttonText,
+        confidence=confidence,
+        reason=v.reason,
     )
+    log.info(
+        "Detection result",
+        {
+            "found": True,
+            "overlayType": result.overlay_type,
+            "buttonText": result.button_text,
+            "confidence": result.confidence,
+            "certainty": v.certainty,
+        },
+    )
+    return result
 
 
-def _parse_text_fallback(
+def _parse_vision_fallback(
     text: str | None,
-) -> consent.CookieConsentDetection:
-    """Parse raw text when structured output fails.
-
-    Args:
-        text: Raw LLM response text.
-
-    Returns:
-        Parsed ``CookieConsentDetection``.
-    """
+) -> _VisionDetectionResponse:
+    """Parse raw text when structured output fails."""
     raw = json_parsing.load_json_from_text(text)
     if isinstance(raw, dict):
-        return consent.CookieConsentDetection(
+        return _VisionDetectionResponse(
             found=raw.get("found", False),
-            overlay_type=raw.get("overlayType"),
-            selector=raw.get("selector"),
-            button_text=raw.get("buttonText"),
-            confidence=raw.get("confidence", "low"),
+            overlayType=raw.get("overlayType"),
+            buttonText=raw.get("buttonText"),
+            certainty=int(raw.get("certainty", 0)),
             reason=raw.get("reason", ""),
         )
-    return consent.CookieConsentDetection.not_found(
-        "Failed to parse detection response"
-    )
-
-
-def _extract_relevant_html(full_html: str) -> str:
-    """Extract HTML snippets likely related to overlays.
-
-    Uses a two-tier approach:
-    1. High-priority patterns (consent/modal-specific) are
-       extracted first and allocated most of the budget.
-    2. Low-priority patterns (generic buttons, links,
-       sections) fill the remaining budget.
-
-    Args:
-        full_html: Complete page HTML.
-
-    Returns:
-        Truncated relevant HTML for the LLM prompt.
-    """
-    max_length = 150000
-
-    # Tier 1 — consent-specific and overlay-specific HTML.
-    # These are the elements most likely to contain the
-    # information the LLM needs.
-    high_priority_patterns = [
-        r"<div[^>]*(?:cookie|consent|gdpr|privacy|banner"
-        r"|modal|popup|overlay|notice|cmp)[^>]*>"
-        r"[\s\S]*?</div>",
-        r"<div[^>]*(?:sign-?in|login|auth|account"
-        r"|register|subscribe|newsletter|prompt"
-        r"|upsell|gate)[^>]*>[\s\S]*?</div>",
-        r"<(?:dialog|aside)[^>]*>[\s\S]*?</(?:dialog"
-        r"|aside)>",
-        r'<div[^>]*(?:role=["\']dialog["\']'
-        r"|aria-modal)[^>]*>[\s\S]*?</div>",
-        r"<div[^>]*(?:position:\s*fixed"
-        r"|position:\s*sticky)[^>]*>[\s\S]*?</div>",
-        r'<[^>]*(?:class|id)=["\'][^"\']*(?:close'
-        r"|dismiss|skip|later)[^\"']*[\"'][^>]*>"
-        r"[\\s\\S]*?</[^>]+>",
-    ]
-
-    # Tier 2 — generic elements.  These provide supporting
-    # context (e.g. all visible buttons) but are much noisier.
-    low_priority_patterns = [
-        r"<button[^>]*>[\s\S]*?</button>",
-        r"<a[^>]*>[\s\S]*?</a>",
-        r"<section[^>]*>[\s\S]*?</section>",
-    ]
-
-    high: list[str] = []
-    for pat in high_priority_patterns:
-        found = re.findall(pat, full_html, re.IGNORECASE)
-        high.extend(found[:20])
-
-    high_text = "\n".join(high)
-    if len(high_text) >= max_length:
-        return high_text[:max_length]
-
-    # Fill remaining budget with lower-priority matches.
-    low: list[str] = []
-    for pat in low_priority_patterns:
-        found = re.findall(pat, full_html, re.IGNORECASE)
-        low.extend(found[:10])
-
-    combined = high_text + "\n" + "\n".join(low)
-    if combined.strip():
-        return combined[:max_length]
-
-    return full_html[:100000]
-
-
-def _detect_from_html_only(
-    html: str,
-) -> consent.CookieConsentDetection:
-    """Fallback detection using HTML patterns only.
-
-    Args:
-        html: Relevant HTML snippets.
-
-    Returns:
-        Detection result based on regex patterns.
-    """
-    log.info("Attempting HTML-only overlay detection...")
-
-    consent_patterns: list[tuple[str, str | None, str]] = [
-        (
-            r'id=["\']?onetrust-accept-btn-handler["\']?',
-            "#onetrust-accept-btn-handler",
-            "Accept",
-        ),
-        (
-            r'id=["\']?accept-cookies["\']?',
-            "#accept-cookies",
-            "Accept",
-        ),
-        (
-            r'id=["\']?CybotCookiebotDialogBody'
-            r'LevelButtonLevelOptinAllowAll["\']?',
-            "#CybotCookiebotDialogBody"
-            "LevelButtonLevelOptinAllowAll",
-            "Accept",
-        ),
-        (
-            r'id=["\']?didomi-notice-agree-button["\']?',
-            "#didomi-notice-agree-button",
-            "Accept",
-        ),
-        (
-            r'class=["\'][^"\']*sp_choice_type_11'
-            r'[^"\']*["\']?',
-            "button.sp_choice_type_11",
-            "Accept",
-        ),
-        (
-            r'data-action=["\']?accept["\']?',
-            '[data-action="accept"]',
-            "Accept",
-        ),
-        (
-            r'data-testid=["\']?accept-button["\']?',
-            '[data-testid="accept-button"]',
-            "Accept",
-        ),
-        (
-            r'aria-label=["\'][^"\']*[Aa]ccept'
-            r'[^"\']*["\']',
-            '[aria-label*="ccept"]',
-            "Accept",
-        ),
-        (r">Accept All<", None, "Accept All"),
-        (r">Accept Cookies<", None, "Accept Cookies"),
-        (r">I Agree<", None, "I Agree"),
-        (r">Agree<", None, "Agree"),
-    ]
-
-    for pattern, selector, btn_text in consent_patterns:
-        if re.search(pattern, html, re.IGNORECASE):
-            log.success(
-                "Found overlay via HTML pattern matching",
-                {"selector": selector, "buttonText": btn_text},
-            )
-            return consent.CookieConsentDetection(
-                found=True,
-                overlay_type="cookie-consent",
-                selector=selector,
-                button_text=btn_text,
-                confidence="medium",
-                reason=(
-                    "Detected via HTML pattern matching"
-                    " (vision unavailable due to content"
-                    " filter)"
-                ),
-            )
-
-    log.info("No overlay detected via HTML patterns")
-    return consent.CookieConsentDetection.not_found(
-        "No overlay detected (HTML-only detection,"
-        " vision unavailable due to content filter)"
+    return _VisionDetectionResponse(
+        found=False,
+        reason="Failed to parse vision response",
     )

@@ -174,6 +174,11 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                     attempt >= self.max_retries
                     or not _is_retryable(exc)
                 ):
+                    if attempt >= self.max_retries:
+                        log.error(
+                            f"Agent '{self.agent_name}' exhausted all"
+                            f" {self.max_retries + 1} attempts: {exc}"
+                        )
                     raise
 
                 # Respect Retry-After header when available.
