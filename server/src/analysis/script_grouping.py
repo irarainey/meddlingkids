@@ -16,7 +16,12 @@ from src.utils import logger
 
 log = logger.create_logger("Script-Grouping")
 
-MIN_GROUP_SIZE = 3
+# Minimum number of scripts matching a pattern before they
+# are collapsed into a named group.  Kept at 2 to avoid the
+# "threshold edge effect" where the same site oscillates
+# between 2 (individual → unknown) and 3+ (grouped → known)
+# across runs due to timing-dependent lazy loads.
+MIN_GROUP_SIZE = 2
 
 
 # ---------------------------------------------------------------------------

@@ -320,6 +320,28 @@ async def analyze_url_stream(
                 )
                 return
 
+            # ── Post-consent stabilisation ──────────────────
+            # After dismissing a consent banner, sites
+            # typically fire a burst of deferred tracking
+            # scripts (ad loaders, analytics, pixels) that
+            # were held back pending user consent.  A brief
+            # network-idle race gives them time to arrive
+            # so the analysis sees a consistent set of
+            # scripts regardless of network jitter.
+            if overlay_count > 0:
+                log.start_timer("post-consent-settle")
+                yield sse_helpers.format_progress_event(
+                    "post-consent-settle",
+                    "Waiting for post-consent scripts to load...",
+                    73,
+                )
+                settled = await session.wait_for_network_idle(5000)
+                log.end_timer(
+                    "post-consent-settle",
+                    "Post-consent settle"
+                    f" ({'idle' if settled else 'timeout'})",
+                )
+
             # Restart the background screenshot refresher so the
             # client sees visual changes during AI analysis
             # (e.g. ads loading, deferred content).  Re-use the

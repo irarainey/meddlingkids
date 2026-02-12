@@ -36,12 +36,16 @@ async def run_ai_analysis(
     become available, then yields scoring, summary, and the
     final ``complete`` event.
     """
-    final_cookies = session.get_tracked_cookies()
-    final_scripts = session.get_tracked_scripts()
-    final_requests = session.get_tracked_network_requests()
+    # Snapshot the live tracking lists so that scripts
+    # arriving during analysis (ad networks, deferred
+    # pixels) don't create inconsistent counts between
+    # the analysis input and the reported totals.
+    final_cookies = list(session.get_tracked_cookies())
+    final_scripts = list(session.get_tracked_scripts())
+    final_requests = list(session.get_tracked_network_requests())
 
     log.info(
-        "Final data stats",
+        "Final data snapshot",
         {
             "cookies": len(final_cookies),
             "scripts": len(final_scripts),
