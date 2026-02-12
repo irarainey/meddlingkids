@@ -69,18 +69,29 @@ src/
 │   ├── click.py                     # Multi-strategy consent button clicker
 │   ├── detection.py                 # Consent dialog detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
+│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (JSON)
 │   └── partner_classification.py    # Consent partner risk classification
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns + LLM)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification
-│   ├── privacy_score.py             # Deterministic privacy scoring (0-100)
-│   └── tracking_summary.py          # Summary builder for LLM input
+│   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
+│   └── scoring/                     # Decomposed privacy scoring package (0-100)
+│       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
+│       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
+│       ├── consent.py               # Pre-consent tracking, partner risk, disclosure
+│       ├── cookies.py               # Cookie volume, 3P cookies, known trackers
+│       ├── data_collection.py       # localStorage, beacons/pixels, analytics
+│       ├── fingerprinting.py        # Session-replay, cross-device, behavioural
+│       ├── sensitive_data.py        # Sensitive PII (location, health, financial)
+│       ├── social_media.py          # Social media pixels, SDKs, plugins
+│       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
 │   ├── stream.py                    # Top-level SSE endpoint orchestrator
 │   ├── browser_phases.py            # Phases 1-3: setup, navigate, initial capture
 │   ├── overlay_pipeline.py          # Phase 4: overlay detect → click → extract
+│   ├── overlay_steps.py             # Sub-step functions for overlay pipeline
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
 │   └── sse_helpers.py               # SSE formatting & serialization helpers
 ├── models/                          # Pydantic data models
@@ -95,8 +106,10 @@ src/
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
     ├── errors.py                    # Error message extraction
+    ├── image.py                     # Screenshot optimisation & JPEG conversion
     ├── json_parsing.py              # LLM response JSON parsing
     ├── logger.py                    # Structured logger with colour output
+    ├── serialization.py             # Pydantic model serialization helpers
     └── url.py                       # URL / domain utilities
 ```
 

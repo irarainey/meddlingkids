@@ -98,14 +98,16 @@ meddlingkids/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       ├── browser/           # Browser automation (Playwright session, device configs)
-│       ├── consent/           # Consent handling (detect, click, extract, classify)
+│       ├── consent/           # Consent handling (detect, click, extract, classify, cache)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring
+│       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
+│       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static pattern databases (JSON)
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
-│       └── utils/             # Cross-cutting utilities (logging, errors, URL)
+│       └── utils/             # Cross-cutting utilities (logging, errors, URL, images)
 ├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
