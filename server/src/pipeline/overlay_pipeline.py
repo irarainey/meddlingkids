@@ -69,19 +69,31 @@ def _get_overlay_message(overlay_type: str | None) -> str:
 
 async def _detect_overlay(
     session: browser_session.BrowserSession,
-    screenshot: bytes,
+    screenshot: bytes | None,
     iteration: int,
 ) -> consent.CookieConsentDetection:
     """Run AI overlay detection on the current page state.
 
     Uses vision-only detection — the LLM analyses the screenshot
     to identify cookie consent dialogs and their dismiss buttons.
+
+    Takes a viewport-only screenshot for detection (overlays are
+    always visible in the viewport) to reduce image size and
+    speed up LLM inference.
     """
     log.start_timer(f"overlay-detect-{iteration + 1}")
 
-    log.debug("Running overlay detection", {"iteration": iteration + 1})
+    # Use a viewport-only screenshot for faster detection.
+    # Overlays always cover the viewport, so full-page is unnecessary.
+    viewport_screenshot = await session.take_screenshot(full_page=False)
+    log.debug("Running overlay detection", {
+        "iteration": iteration + 1,
+        "screenshotBytes": len(viewport_screenshot),
+    })
 
-    detection = await consent_detection_mod.detect_cookie_consent(screenshot)
+    detection = await consent_detection_mod.detect_cookie_consent(
+        viewport_screenshot
+    )
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
         "Overlay detection complete",
@@ -92,16 +104,19 @@ async def _detect_overlay(
 async def _validate_overlay_in_dom(
     page: async_api.Page,
     detection: consent.CookieConsentDetection,
-) -> bool:
+) -> async_api.Frame | None:
     """Check that the LLM-detected element actually exists in the DOM.
 
     Guards against false positives where the LLM hallucinates
     overlays from ads or page furniture.
+
+    Returns the frame where the element was found, or ``None``
+    if it wasn't found anywhere.
     """
-    exists = await click.validate_element_exists(
+    found_frame = await click.validate_element_exists(
         page, detection.selector, detection.button_text
     )
-    if not exists:
+    if not found_frame:
         log.warn(
             "Overlay detected by LLM but element not found in"
             " DOM — treating as false positive",
@@ -110,7 +125,7 @@ async def _validate_overlay_in_dom(
                 "buttonText": detection.button_text,
             },
         )
-    return exists
+    return found_frame
 
 
 async def _click_and_capture(
@@ -119,6 +134,8 @@ async def _click_and_capture(
     detection: consent.CookieConsentDetection,
     overlay_number: int,
     progress_base: int,
+    *,
+    found_in_frame: async_api.Frame | None = None,
 ) -> AsyncGenerator[str, None]:
     """Click the overlay dismiss button and capture resulting state.
 
@@ -130,7 +147,8 @@ async def _click_and_capture(
     log.start_timer(f"overlay-click-{overlay_number}")
 
     clicked = await click.try_click_consent_button(
-        page, detection.selector, detection.button_text
+        page, detection.selector, detection.button_text,
+        found_in_frame=found_in_frame,
     )
     log.end_timer(
         f"overlay-click-{overlay_number}",
@@ -442,9 +460,10 @@ class OverlayPipeline:
                 break
 
             # ── Validate in DOM ─────────────────────────────
-            if not await _validate_overlay_in_dom(
+            found_in_frame = await _validate_overlay_in_dom(
                 page, detection
-            ):
+            )
+            if not found_in_frame:
                 for event in _build_no_overlay_events(
                     overlay_count,
                     "Detection false positive — element not"
@@ -498,6 +517,7 @@ class OverlayPipeline:
                     detection,
                     overlay_count,
                     progress_base,
+                    found_in_frame=found_in_frame,
                 ):
                     clicked = True
                     yield event

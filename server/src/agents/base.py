@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import io
 import warnings
 from typing import Any, TypeVar
 
@@ -246,13 +247,25 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
-        b64 = base64.b64encode(screenshot).decode("utf-8")
-        image_uri = f"data:image/png;base64,{b64}"
+        # Convert PNG to JPEG for a much smaller payload
+        # (typically 5-10x reduction).
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(screenshot))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        jpeg_buf = io.BytesIO()
+        img.save(jpeg_buf, format="JPEG", quality=72, optimize=True)
+        jpeg_bytes = jpeg_buf.getvalue()
+
+        b64 = base64.b64encode(jpeg_bytes).decode("utf-8")
+        image_uri = f"data:image/jpeg;base64,{b64}"
         log.debug(
             f"{self.agent_name}: vision completion",
             {
                 "textChars": len(user_text),
-                "screenshotBytes": len(screenshot),
+                "pngBytes": len(screenshot),
+                "jpegBytes": len(jpeg_bytes),
                 "base64Chars": len(b64),
                 "maxTokens": max_tokens or self.max_tokens,
             },
@@ -262,7 +275,7 @@ class BaseAgent:
             role=agent_framework.Role.USER,
             contents=[
                 agent_framework.Content.from_uri(
-                    image_uri, media_type="image/png"
+                    image_uri, media_type="image/jpeg"
                 ),
                 agent_framework.Content.from_text(user_text),
             ],

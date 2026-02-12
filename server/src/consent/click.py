@@ -49,11 +49,12 @@ async def validate_element_exists(
     page: async_api.Page,
     selector: str | None,
     button_text: str | None,
-) -> bool:
+) -> async_api.Frame | None:
     """Check whether the LLM-detected element actually exists in the DOM.
 
     Searches the main frame first, then falls back to consent-manager
-    iframes.  Returns ``True`` if found anywhere.
+    iframes.  Returns the frame where the element was found, or
+    ``None`` if not found anywhere.
     """
     frames = [page.main_frame] + [
         f for f in page.frames
@@ -67,7 +68,7 @@ async def validate_element_exists(
                 try:
                     if await frame.locator(css_selector).count() > 0:
                         log.debug("Element found via CSS selector", {"selector": css_selector, "frame": frame.url})
-                        return True
+                        return frame
                 except Exception:
                     pass
             if text_from_selector:
@@ -76,7 +77,7 @@ async def validate_element_exists(
                         text_from_selector, exact=False
                     ).count() > 0:
                         log.debug("Element found via selector text", {"text": text_from_selector, "frame": frame.url})
-                        return True
+                        return frame
                 except Exception:
                     pass
 
@@ -86,7 +87,7 @@ async def validate_element_exists(
                     "button", name=button_text
                 ).count() > 0:
                     log.debug("Element found via button role", {"buttonText": button_text, "frame": frame.url})
-                    return True
+                    return frame
             except Exception:
                 pass
             try:
@@ -94,26 +95,31 @@ async def validate_element_exists(
                     button_text, exact=False
                 ).count() > 0:
                     log.debug("Element found via text search", {"buttonText": button_text, "frame": frame.url})
-                    return True
+                    return frame
             except Exception:
                 pass
 
     log.debug("Element not found in any frame", {"selector": selector, "buttonText": button_text})
-    return False
+    return None
 
 
 async def try_click_consent_button(
     page: async_api.Page,
     selector: str | None,
     button_text: str | None,
+    *,
+    found_in_frame: async_api.Frame | None = None,
 ) -> bool:
     """Click the consent/overlay dismiss button identified by the LLM.
 
     Strategy order
     ~~~~~~~~~~~~~~
-    1. LLM-provided selector/text on the **main frame**.
-    2. LLM-provided selector/text on **consent-manager iframes**.
-    3. Generic close-button heuristics on the **main frame only**.
+    1. If ``found_in_frame`` is provided (from validation), try that
+       frame first — this avoids wasting time on frames where the
+       element doesn't exist.
+    2. LLM-provided selector/text on the **main frame**.
+    3. LLM-provided selector/text on **consent-manager iframes**.
+    4. Generic close-button heuristics on the **main frame only**.
 
     Consent iframes are checked *before* generic heuristics so we
     don't waste time scanning hundreds of unrelated links in
@@ -124,6 +130,15 @@ async def try_click_consent_button(
     """
     log.info("Attempting click", {"selector": selector, "buttonText": button_text})
     original_url = page.url
+
+    # Phase 0: Try the frame where validation already found the element
+    if found_in_frame and found_in_frame != page.main_frame:
+        log.debug("Trying validated frame first", {"url": found_in_frame.url[:80]})
+        if await _try_click_in_frame(found_in_frame, selector, button_text, 3000):
+            if await _did_navigate_away(page, original_url):
+                return False
+            log.success("Click succeeded in validated frame", {"url": found_in_frame.url[:50]})
+            return True
 
     # Phase 1: LLM suggestion on main page
     if await _try_click_in_frame(page.main_frame, selector, button_text, 3000):
