@@ -69,7 +69,6 @@ def _get_overlay_message(overlay_type: str | None) -> str:
 
 async def _detect_overlay(
     session: browser_session.BrowserSession,
-    screenshot: bytes | None,
     iteration: int,
 ) -> consent.CookieConsentDetection:
     """Run AI overlay detection on the current page state.
@@ -453,7 +452,7 @@ class OverlayPipeline:
                 detection, extract_events = (
                     await asyncio.gather(
                         _detect_overlay(
-                            session, screenshot, overlay_count
+                            session, overlay_count
                         ),
                         pending_extract,
                     )
@@ -463,7 +462,7 @@ class OverlayPipeline:
                     yield event
             else:
                 detection = await _detect_overlay(
-                    session, screenshot, overlay_count
+                    session, overlay_count
                 )
 
             if not detection.found or (

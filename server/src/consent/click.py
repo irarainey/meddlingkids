@@ -5,6 +5,7 @@ Prioritizes LLM-suggested selectors, checking main page and consent iframes.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from urllib import parse
 
@@ -179,7 +180,7 @@ async def _did_navigate_away(page: async_api.Page, original_url: str) -> bool:
     If the URL changed, we almost certainly clicked a real link.
     """
     try:
-        await page.wait_for_timeout(300)
+        await asyncio.sleep(0.3)
         current_url = page.url
         if current_url != original_url:
             log.warn(
@@ -191,16 +192,6 @@ async def _did_navigate_away(page: async_api.Page, original_url: str) -> bool:
     except Exception as e:
         log.warn("Navigation check failed", {"error": str(e)})
     return False
-
-
-# ── Href patterns that are safe (do NOT navigate away) ──────────────
-_SAFE_HREF_RE = re.compile(
-    r"^(?:"
-    r"javascript:\s*(?:void\s*\(?\s*0?\s*\)?)?"
-    r"|#.*"
-    r")$",
-    re.IGNORECASE,
-)
 
 
 async def _is_safe_to_click(
@@ -229,7 +220,7 @@ async def _is_safe_to_click(
     """
     try:
         return await locator.evaluate(
-            """
+            r"""
             el => {
                 const tag = el.tagName.toLowerCase();
 

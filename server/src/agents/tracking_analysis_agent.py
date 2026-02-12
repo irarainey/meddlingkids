@@ -86,33 +86,6 @@ class TrackingAnalysisAgent(base.BaseAgent):
     max_retries = 5
     response_model = None  # Free-form markdown output
 
-    async def analyze(
-        self,
-        tracking_summary: analysis.TrackingSummary,
-        consent_details: consent.ConsentDetails | None = None,
-    ) -> str:
-        """Run the full tracking analysis (non-streaming).
-
-        Args:
-            tracking_summary: Collected tracking data summary.
-            consent_details: Optional consent dialog info.
-
-        Returns:
-            Markdown analysis text.
-        """
-        prompt = _build_user_prompt(
-            tracking_summary, consent_details
-        )
-        log.info("Starting tracking analysis", {
-            "promptChars": len(prompt),
-            "hasConsent": consent_details is not None,
-        })
-        response = await self._complete(prompt)
-        log.info("Tracking analysis complete", {
-            "responseChars": len(response.text) if response.text else 0,
-        })
-        return response.text or "No analysis generated"
-
     async def analyze_stream(
         self,
         tracking_summary: analysis.TrackingSummary,

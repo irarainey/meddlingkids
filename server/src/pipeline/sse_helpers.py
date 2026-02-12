@@ -21,15 +21,10 @@ from src.models import analysis, consent, tracking_data
 # ====================================================================
 
 
-def _snake_to_camel(name: str) -> str:
-    """Convert snake_case to camelCase."""
-    parts = name.split("_")
-    return parts[0] + "".join(w.capitalize() for w in parts[1:])
-
-
 def to_camel_case_dict(obj: pydantic.BaseModel) -> dict[str, Any]:
     """Convert a Pydantic model instance to a dict with camelCase keys."""
-    return {_snake_to_camel(k): v for k, v in obj.model_dump().items()}
+    from src.utils.serialization import snake_to_camel
+    return {snake_to_camel(k): v for k, v in obj.model_dump().items()}
 
 
 def serialize_consent_details(

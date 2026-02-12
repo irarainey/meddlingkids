@@ -8,19 +8,16 @@ and defines its own instructions and response format.
 
 from __future__ import annotations
 
-import base64
 import copy
-import io
-import warnings
 from typing import Any, TypeVar
 
 import agent_framework
 import pydantic
-from PIL import Image
 
 from src.agents import llm_client
 from src.agents import middleware as middleware_mod
-from src.utils import json_parsing, logger
+from src.utils import image as image_mod
+from src.utils import logger
 
 log = logger.create_logger("BaseAgent")
 
@@ -248,37 +245,16 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
-        # Convert PNG to JPEG for a much smaller payload
-        # (typically 5-10x reduction).  Down-scale wide images
-        # first — iPad screenshots are 2048 px wide due to
-        # device_scale_factor=2 but the extra resolution only
-        # wastes LLM image-token budget.
-
-        img: Image.Image = Image.open(io.BytesIO(screenshot))
-
-        max_width = 1280
-        if img.width > max_width:
-            ratio = max_width / img.width
-            img = img.resize(  # type: ignore[assignment]
-                (max_width, int(img.height * ratio)),
-                Image.Resampling.LANCZOS,
-            )
-
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")  # type: ignore[assignment]
-        jpeg_buf = io.BytesIO()
-        img.save(jpeg_buf, format="JPEG", quality=72, optimize=True)
-        jpeg_bytes = jpeg_buf.getvalue()
-
-        b64 = base64.b64encode(jpeg_bytes).decode("utf-8")
-        image_uri = f"data:image/jpeg;base64,{b64}"
+        jpeg_bytes, _, _ = image_mod.optimize_png_to_jpeg(
+            screenshot
+        )
+        image_uri = image_mod.png_to_data_url(screenshot)
         log.debug(
             f"{self.agent_name}: vision completion",
             {
                 "textChars": len(user_text),
                 "pngBytes": len(screenshot),
                 "jpegBytes": len(jpeg_bytes),
-                "base64Chars": len(b64),
                 "maxTokens": max_tokens or self.max_tokens,
             },
         )
@@ -328,19 +304,4 @@ class BaseAgent:
             )
             return None
 
-    @staticmethod
-    def _load_json_from_text(text: str | None) -> Any:
-        """Strip LLM markdown fences and parse JSON.
 
-        .. deprecated::
-            Use ``src.utils.json_parsing.load_json_from_text``
-            directly instead.
-        """
-        warnings.warn(
-            "BaseAgent._load_json_from_text is deprecated;"
-            " use src.utils.json_parsing.load_json_from_text",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return json_parsing.load_json_from_text(text)

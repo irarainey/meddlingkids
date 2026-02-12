@@ -8,7 +8,7 @@ parallel, then scores results and generates summary findings.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 from src import agents
 from src.analysis import scripts, tracking
@@ -104,14 +104,14 @@ async def run_ai_analysis(
 
 def _launch_concurrent_tasks(
     progress_queue: asyncio.Queue[str | None],
-    final_cookies: list,
-    final_scripts: list,
-    final_requests: list,
+    final_cookies: list[tracking_data.TrackedCookie],
+    final_scripts: list[tracking_data.TrackedScript],
+    final_requests: list[tracking_data.NetworkRequest],
     storage: dict[str, list[tracking_data.StorageItem]],
     url: str,
     consent_details: consent.ConsentDetails | None,
     analysis_chunks: list[str],
-) -> tuple[asyncio.Task, asyncio.Task]:
+) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[None]]:
     """Create and launch the concurrent script + tracking tasks.
 
     Both tasks push SSE event strings (or ``None`` sentinels) onto
@@ -171,7 +171,7 @@ def _launch_concurrent_tasks(
                     )
                 )
 
-    async def _run_scripts() -> Any:
+    async def _run_scripts() -> scripts.ScriptAnalysisResult:
         try:
             result = await scripts.analyze_scripts(
                 final_scripts, _script_progress
@@ -215,15 +215,15 @@ def _launch_concurrent_tasks(
 
 
 async def _score_and_summarise(
-    final_cookies: list,
-    final_scripts: list,
-    final_requests: list,
+    final_cookies: list[tracking_data.TrackedCookie],
+    final_scripts: list[tracking_data.TrackedScript],
+    final_requests: list[tracking_data.NetworkRequest],
     storage: dict[str, list[tracking_data.StorageItem]],
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int,
     analysis_chunks: list[str],
-    script_result: Any,
+    script_result: scripts.ScriptAnalysisResult,
 ) -> AsyncGenerator[str, None]:
     """Score, summarise, and yield the complete event."""
     full_text = "".join(analysis_chunks)

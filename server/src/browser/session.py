@@ -7,17 +7,15 @@ allowing multiple concurrent URL analyses without interference.
 from __future__ import annotations
 
 import asyncio
-import base64
-import io
 import os
 from datetime import datetime, timezone
 from typing import Literal
 
-from PIL import Image
 from playwright import async_api
 
 from src.browser import access_detection, device_configs
 from src.models import browser, tracking_data
+from src.utils import image as image_mod
 from src.utils import logger, url as url_mod
 
 log = logger.create_logger("BrowserSession")
@@ -403,30 +401,7 @@ class BrowserSession:
         Downscales wide images and compresses to JPEG for smaller
         payloads.  This is a pure CPU operation — no browser round-trip.
         """
-        img: Image.Image = Image.open(io.BytesIO(png_bytes))
-        original_size = len(png_bytes)
-
-        max_width = 1280
-        if img.width > max_width:
-            ratio = max_width / img.width
-            img = img.resize(
-                (max_width, int(img.height * ratio)),
-                Image.Resampling.LANCZOS,
-            )
-
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=72, optimize=True)
-        jpeg_size = buf.tell()
-        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-        log.debug("Screenshot optimised", {
-            "pngBytes": original_size,
-            "jpegBytes": jpeg_size,
-            "dimensions": f"{img.width}x{img.height}",
-        })
-        return f"data:image/jpeg;base64,{b64}"
+        return image_mod.png_to_data_url(png_bytes)
 
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""
