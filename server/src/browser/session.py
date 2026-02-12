@@ -176,8 +176,11 @@ class BrowserSession:
         request_url = request.url
         domain = url_mod.extract_domain(request_url)
 
-        # Track scripts — O(1) set lookup for deduplication
-        if resource_type == "script":
+        # Track scripts — O(1) set lookup for deduplication.
+        # Skip blob: URLs which are browser-internal inline
+        # scripts that cannot be fetched or meaningfully
+        # analysed.
+        if resource_type == "script" and not request_url.startswith("blob:"):
             if (
                 len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS
                 and request_url not in self._seen_script_urls

@@ -249,11 +249,23 @@ class BaseAgent:
             The ``AgentResponse`` from the agent.
         """
         # Convert PNG to JPEG for a much smaller payload
-        # (typically 5-10x reduction).
+        # (typically 5-10x reduction).  Down-scale wide images
+        # first — iPad screenshots are 2048 px wide due to
+        # device_scale_factor=2 but the extra resolution only
+        # wastes LLM image-token budget.
 
-        img = Image.open(io.BytesIO(screenshot))
+        img: Image.Image = Image.open(io.BytesIO(screenshot))
+
+        max_width = 1280
+        if img.width > max_width:
+            ratio = max_width / img.width
+            img = img.resize(  # type: ignore[assignment]
+                (max_width, int(img.height * ratio)),
+                Image.Resampling.LANCZOS,
+            )
+
         if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
+            img = img.convert("RGB")  # type: ignore[assignment]
         jpeg_buf = io.BytesIO()
         img.save(jpeg_buf, format="JPEG", quality=72, optimize=True)
         jpeg_bytes = jpeg_buf.getvalue()

@@ -25,7 +25,9 @@ from src.utils import logger
 log = logger.create_logger("Script-Analysis")
 
 # Maximum number of concurrent LLM calls for script analysis.
-MAX_CONCURRENCY = 5
+# Each call is tiny (~2 K prompt, 200 max tokens) so the
+# endpoint comfortably handles higher parallelism.
+MAX_CONCURRENCY = 10
 
 
 # ============================================================================
