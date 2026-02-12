@@ -13,11 +13,12 @@ set -e
 echo "Starting Xvfb virtual display on :99..."
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
 Xvfb :99 -screen 0 1920x1080x24 -ac &
+echo $! > /tmp/xvfb.pid
 
 # Wait for Xvfb to be ready
 sleep 1
 
-if ! pgrep -x Xvfb > /dev/null; then
+if ! kill -0 "$(cat /tmp/xvfb.pid 2>/dev/null)" 2>/dev/null; then
     echo "ERROR: Xvfb failed to start"
     exit 1
 fi
