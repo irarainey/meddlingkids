@@ -165,8 +165,12 @@ class BrowserSession:
             )
         self._browser = br
 
+        # Do NOT override user_agent here.  When using real
+        # Chrome (channel="chrome"), the browser generates its
+        # own UA string that matches its TLS fingerprint.  A
+        # mismatched UA (e.g. Safari on iPad) vs Chrome TLS
+        # handshake is a top bot-detection signal.
         self._context = await br.new_context(
-            user_agent=device_config.user_agent,
             viewport={"width": device_config.viewport.width, "height": device_config.viewport.height},
             device_scale_factor=device_config.device_scale_factor,
             is_mobile=device_config.is_mobile,
@@ -227,6 +231,40 @@ class BrowserSession:
                 if (param === 37446) return 'ANGLE (Intel, Mesa Intel(R) UHD Graphics, OpenGL 4.6)';
                 return getParameter.call(this, param);
             };
+
+            // 7. Spoof AudioContext to produce stable,
+            //    realistic fingerprints (bot detectors hash
+            //    the output of an OfflineAudioContext render
+            //    to identify headless/virtual environments).
+            const origGetFloatFreqData =
+                AnalyserNode.prototype.getFloatFrequencyData;
+            AnalyserNode.prototype.getFloatFrequencyData = function (arr) {
+                origGetFloatFreqData.call(this, arr);
+                // Inject tiny noise so the hash looks organic
+                for (let i = 0; i < arr.length; i++) {
+                    arr[i] += 0.01 * (Math.random() - 0.5);
+                }
+            };
+
+            // 8. MediaDevices — report a realistic set of
+            //    media devices (camera + mic + speakers).
+            //    Headless environments often report zero
+            //    devices, which is a bot signal.
+            if (navigator.mediaDevices?.enumerateDevices) {
+                const origEnum = navigator.mediaDevices.enumerateDevices.bind(
+                    navigator.mediaDevices,
+                );
+                navigator.mediaDevices.enumerateDevices = async () => {
+                    const real = await origEnum();
+                    if (real.length > 0) return real;
+                    // Return plausible defaults when none exist
+                    return [
+                        { deviceId: 'default', kind: 'audioinput',  label: '', groupId: 'g1' },
+                        { deviceId: 'default', kind: 'audiooutput', label: '', groupId: 'g1' },
+                        { deviceId: 'default', kind: 'videoinput',  label: '', groupId: 'g2' },
+                    ];
+                };
+            }
         """)
 
         # Set up request tracking
