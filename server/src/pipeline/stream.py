@@ -300,7 +300,7 @@ async def analyze_url_stream(
 
             if page:
                 pipeline = overlay_pipeline.OverlayPipeline(
-                    session, page, screenshot
+                    session, page, screenshot, domain=domain
                 )
                 async for event in pipeline.run():
                     yield event

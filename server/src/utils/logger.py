@@ -39,7 +39,7 @@ def start_log_file(domain: str) -> None:
 
     end_log_file()
 
-    logs_dir = Path.cwd() / "logs"
+    logs_dir = Path.cwd() / ".logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.lstrip("www.")

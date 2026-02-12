@@ -245,16 +245,15 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
-        jpeg_bytes, _, _ = image_mod.optimize_png_to_jpeg(
+        image_uri, jpeg_size = image_mod.optimize_for_llm(
             screenshot
         )
-        image_uri = image_mod.png_to_data_url(screenshot)
         log.debug(
             f"{self.agent_name}: vision completion",
             {
                 "textChars": len(user_text),
                 "pngBytes": len(screenshot),
-                "jpegBytes": len(jpeg_bytes),
+                "jpegBytes": jpeg_size,
                 "maxTokens": max_tokens or self.max_tokens,
             },
         )

@@ -14,7 +14,12 @@ import pydantic
 from playwright import async_api
 
 from src.browser import session as browser_session
-from src.consent import click, extraction, partner_classification
+from src.consent import (
+    click,
+    extraction,
+    overlay_cache,
+    partner_classification,
+)
 from src.consent import detection as consent_detection_mod
 from src.models import consent, tracking_data
 from src.pipeline import sse_helpers
@@ -409,11 +414,18 @@ class OverlayPipeline:
         session: browser_session.BrowserSession,
         page: async_api.Page,
         initial_screenshot: bytes,
+        domain: str = "",
     ) -> None:
         self._session = session
         self._page = page
         self._initial_screenshot = initial_screenshot
+        self._domain = domain
         self.result = OverlayHandlingResult()
+        self._cache_dismissed = 0
+        self._failed_cache_types: set[str] = set()
+        self._deferred_extraction: (
+            tuple[bytes, int] | None
+        ) = None
 
     async def run(self) -> AsyncGenerator[str, None]:
         """Handle overlays, yielding SSE events.
@@ -445,7 +457,64 @@ class OverlayPipeline:
             {"maxOverlays": MAX_OVERLAYS},
         )
 
-        overlay_count = 0
+        # ── Try cached overlay strategy first ───────────
+        cached_entry = (
+            overlay_cache.load(self._domain)
+            if self._domain
+            else None
+        )
+        if cached_entry:
+            async for event in self._try_cached_overlays(
+                cached_entry, result, session, page,
+            ):
+                yield event
+            if self._cache_dismissed > 0:
+                screenshot = (
+                    await session.take_screenshot(
+                        full_page=False
+                    )
+                )
+                storage = await session.capture_storage()
+
+                # Start deferred consent extraction as a
+                # background task so it runs concurrently
+                # with the verification vision detect.
+                if self._deferred_extraction:
+                    ext_screenshot, ext_progress = (
+                        self._deferred_extraction
+                    )
+                    self._deferred_extraction = None
+                    pending_extract = asyncio.create_task(
+                        _collect_extraction_events(
+                            page,
+                            ext_screenshot,
+                            result,
+                            ext_progress,
+                        )
+                    )
+
+        # Always run vision detection to catch overlays
+        # that the cache didn't cover (different pages
+        # on the same domain may show different subsets).
+        overlay_count = result.overlay_count
+
+        # Let the user know what's happening next.
+        if overlay_count > 0:
+            if pending_extract is not None:
+                # Consent extraction is the dominant task
+                # (runs concurrently with overlay verify).
+                yield sse_helpers.format_progress_event(
+                    "consent-analyze",
+                    "Analyzing consent details...",
+                    68,
+                )
+            else:
+                yield sse_helpers.format_progress_event(
+                    "overlays-verify",
+                    "Checking for additional overlays...",
+                    68,
+                )
+
         while overlay_count < MAX_OVERLAYS:
             # ── Detect (concurrent with pending extraction) ─
             if pending_extract is not None:
@@ -656,6 +725,300 @@ class OverlayPipeline:
         result.overlay_count = overlay_count
         result.final_screenshot = screenshot
         result.final_storage = storage
+
+        # ── Persist / merge cache ───────────────────────
+        if (
+            result.overlay_count > 0
+            and not result.failed
+            and self._domain
+        ):
+            self._save_cache(result, cached_entry)
+
+    # ── Cached overlay helpers ──────────────────────────────
+
+    async def _try_cached_overlays(
+        self,
+        entry: overlay_cache.OverlayCacheEntry,
+        result: OverlayHandlingResult,
+        session: browser_session.BrowserSession,
+        page: async_api.Page,
+    ) -> AsyncGenerator[str, None]:
+        """Attempt to dismiss overlays using cached info.
+
+        Each cached overlay is tried independently:
+
+        - **Not in DOM** → skipped (kept in cache for other
+          pages on the same domain).
+        - **In DOM, click succeeds** → counted as dismissed.
+        - **In DOM, click fails** → recorded in
+          ``_failed_cache_types`` so the save step can drop
+          the stale entry.
+
+        Yields SSE events in real-time.  Sets
+        ``self._cache_dismissed`` so the caller can read the
+        count after iteration.
+        """
+        self._failed_cache_types: set[str] = set()
+        self._deferred_extraction: (
+            tuple[bytes, int] | None
+        ) = None
+        dismissed = 0
+        # Track the latest screenshot so consent extraction
+        # gets the correct pre-click image (showing the
+        # cookie dialog, not an earlier overlay).
+        latest_screenshot = self._initial_screenshot
+
+        log.info(
+            "Attempting cached overlay dismissal",
+            {
+                "domain": entry.domain,
+                "cachedOverlays": len(entry.overlays),
+            },
+        )
+
+        for cached in entry.overlays:
+            # Build a synthetic detection from cache
+            detection = consent.CookieConsentDetection(
+                found=True,
+                overlay_type=(
+                    cached.overlay_type  # type: ignore[arg-type]
+                ),
+                selector=cached.selector,
+                button_text=cached.button_text,
+                confidence="high",
+                reason="from overlay cache",
+            )
+
+            # Validate element exists in DOM
+            found_in_frame = await _validate_overlay_in_dom(
+                page, detection
+            )
+            if not found_in_frame:
+                # Not shown on this page — skip but keep
+                # in cache for other pages on the domain.
+                log.info(
+                    "Cached overlay not present on this"
+                    " page — skipping",
+                    {
+                        "type": cached.overlay_type,
+                        "buttonText": cached.button_text,
+                    },
+                )
+                continue
+
+            overlay_number = (
+                result.overlay_count + dismissed + 1
+            )
+            progress_base = 45 + (overlay_number * 5)
+
+            log.info(
+                f"Cached overlay {overlay_number}"
+                " validated in DOM",
+                {
+                    "type": cached.overlay_type,
+                    "buttonText": cached.button_text,
+                    "accessorType": cached.accessor_type,
+                },
+            )
+
+            yield sse_helpers.format_progress_event(
+                f"overlay-{overlay_number}-found",
+                _get_overlay_message(
+                    cached.overlay_type
+                ),
+                progress_base,
+            )
+            result.dismissed_overlays.append(detection)
+
+            is_first_cookie = (
+                cached.overlay_type == "cookie-consent"
+                and not result.consent_details
+            )
+            # Use the latest screenshot (updated after each
+            # successful click) so the consent extraction
+            # agent sees the cookie dialog, not an earlier
+            # overlay like sign-in.
+            pre_click_screenshot = (
+                latest_screenshot
+                if is_first_cookie
+                else None
+            )
+
+            yield sse_helpers.format_progress_event(
+                f"overlay-{overlay_number}-click",
+                "Dismissing overlay (cached)...",
+                progress_base + 1,
+            )
+
+            # Attempt click — stream events in real-time
+            click_ok = False
+            try:
+                async for event in _click_and_capture(
+                    session,
+                    page,
+                    detection,
+                    overlay_number,
+                    progress_base,
+                    found_in_frame=found_in_frame,
+                ):
+                    click_ok = True
+                    yield event
+            except Exception as exc:
+                log.warn(
+                    "Cached overlay click error",
+                    {
+                        "overlay": overlay_number,
+                        "error": str(exc),
+                    },
+                )
+
+            if click_ok:
+                dismissed += 1
+                # Update latest screenshot so subsequent
+                # overlays (and consent extraction) get the
+                # correct page state.
+                latest_screenshot = (
+                    await session.take_screenshot(
+                        full_page=False
+                    )
+                )
+
+                # Defer consent extraction — it will run
+                # concurrently with the verification vision
+                # detect call for ~7-8s time saving.
+                if is_first_cookie and pre_click_screenshot:
+                    self._deferred_extraction = (
+                        pre_click_screenshot,
+                        progress_base,
+                    )
+            else:
+                log.info(
+                    "Cached overlay click failed"
+                    " — entry will be dropped from cache",
+                    {
+                        "overlay": overlay_number,
+                        "type": cached.overlay_type,
+                    },
+                )
+                self._failed_cache_types.add(
+                    cached.overlay_type
+                )
+                # Remove from dismissed_overlays list
+                result.dismissed_overlays.pop()
+
+        result.overlay_count += dismissed
+        self._cache_dismissed = dismissed
+
+        if dismissed > 0:
+            log.success(
+                "Cached overlays dismissed",
+                {
+                    "domain": entry.domain,
+                    "dismissed": dismissed,
+                    "skipped": (
+                        len(entry.overlays) - dismissed
+                        - len(self._failed_cache_types)
+                    ),
+                },
+            )
+        else:
+            log.info(
+                "No cached overlays matched this page",
+                {"domain": entry.domain},
+            )
+
+    def _save_cache(
+        self,
+        result: OverlayHandlingResult,
+        previous_entry: (
+            overlay_cache.OverlayCacheEntry | None
+        ) = None,
+    ) -> None:
+        """Merge and persist a cache entry.
+
+        Combines three sources:
+
+        1. Previous cache entries whose overlays were *not
+           present on this page* (skipped) and did not fail.
+        2. Overlays dismissed via vision detection on this
+           run (new discoveries).
+        3. Cached overlays that were present and clicked
+           successfully are already captured in (1) or (2)
+           via ``result.dismissed_overlays``.
+
+        Entries whose clicks failed (tracked in
+        ``_failed_cache_types``) are dropped.
+        """
+        failed_attr = getattr(
+            self, "_failed_cache_types", None
+        )
+        failed = failed_attr if failed_attr else set[str]()
+        seen_keys: set[str] = set()
+        overlays: list[overlay_cache.CachedOverlay] = []
+
+        def _key(
+            button: str | None, selector: str | None
+        ) -> str:
+            return f"{selector or ''}|{button or ''}"
+
+        # Carry forward previous cache entries that were
+        # skipped (not on this page) and didn't fail.
+        if previous_entry:
+            for cached in previous_entry.overlays:
+                if cached.overlay_type in failed:
+                    continue
+                key = _key(
+                    cached.button_text, cached.selector
+                )
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    overlays.append(cached)
+
+        # Add overlays from this run's detections.
+        for detection in result.dismissed_overlays:
+            accessor = _infer_accessor_type(detection)
+            key = _key(
+                detection.button_text, detection.selector
+            )
+            if key not in seen_keys:
+                seen_keys.add(key)
+                overlays.append(
+                    overlay_cache.CachedOverlay(
+                        overlay_type=(
+                            detection.overlay_type
+                            or "other"
+                        ),
+                        button_text=detection.button_text,
+                        selector=detection.selector,
+                        accessor_type=accessor,
+                    )
+                )
+
+        if not overlays:
+            overlay_cache.remove(self._domain)
+            return
+
+        entry = overlay_cache.OverlayCacheEntry(
+            domain=self._domain,
+            overlays=overlays,
+        )
+        overlay_cache.save(entry)
+
+
+def _infer_accessor_type(
+    detection: consent.CookieConsentDetection,
+) -> overlay_cache.AccessorType:
+    """Infer how the overlay element was located.
+
+    Uses the detection fields to determine whether the
+    element was found via CSS selector, button role, or
+    text search.
+    """
+    if detection.selector:
+        return "css-selector"
+    if detection.button_text:
+        return "button-role"
+    return "text-search"
 
 
 def _detection_signature(
