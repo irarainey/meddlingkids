@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.128.0",
     "uvicorn>=0.40.0",
     "agent-framework-core==1.0.0b260130",
+    "azure-monitor-opentelemetry-exporter>=1.0.0b35",
     "playwright>=1.58.0",
     "python-dotenv>=1.2.0",
     "aiohttp>=3.13.0",

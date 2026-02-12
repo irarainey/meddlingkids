@@ -354,6 +354,7 @@ Key framework types used:
 | `Config` | `config.py` | LLM configuration from environment variables (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
+| `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 
 ### Domain Packages
 
@@ -718,3 +719,23 @@ When rate limits are hit, you'll see logs like:
 ```
 [12:34:56.789] ⚠ [Agent-Middleware] Retrying after transient error agent="TrackingAnalysisAgent" attempt=1/5 delay_ms=1200 is_rate_limit=True
 ```
+
+### Observability
+
+The Agent Framework supports OpenTelemetry-based observability. When configured, traces, logs, and metrics from all agent calls are exported to Azure Application Insights.
+
+**Setup:** Observability is configured automatically at startup in `server/src/agents/observability_setup.py`. The module reads the `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable and creates Azure Monitor exporters (traces, logs, metrics) that are passed to the Agent Framework's `configure_otel_providers()` function.
+
+If the connection string is not set, telemetry is silently disabled and the application runs without any observability overhead.
+
+**Environment variable:**
+```env
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=...;IngestionEndpoint=...
+```
+
+**What is captured:**
+- **Traces** — Spans for each agent invocation including model, token usage, and duration
+- **Logs** — Agent Framework internal logging (chat completions, middleware events)
+- **Metrics** — GenAI semantic convention metrics (`gen_ai.*` and `agent_framework.*` prefixes)
+
+All telemetry flows through the standard OpenTelemetry SDK pipeline, so custom exporters or additional providers can be added alongside Azure Monitor if needed.

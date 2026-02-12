@@ -16,6 +16,7 @@ from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
 
+from src.agents import observability_setup
 from src.pipeline import stream
 from src.utils import logger
 
@@ -24,6 +25,9 @@ dotenv.load_dotenv()
 log = logger.create_logger("Server")
 
 IS_PRODUCTION = os.environ.get("ENVIRONMENT", "development") == "production"
+
+# Configure observability before any agents are created.
+observability_setup.setup()
 
 
 @contextlib.asynccontextmanager

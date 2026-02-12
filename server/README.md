@@ -34,6 +34,9 @@ uv run playwright install chromium
 - `UVICORN_PORT` - Server port (default: `3001`)
 - `WRITE_LOG_TO_FILE` - Set to `true` to enable file logging
 
+### Observability (Optional)
+- `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
+
 ## Running
 
 ```bash
