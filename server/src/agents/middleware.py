@@ -81,6 +81,14 @@ _DEFAULT_MAX_DELAY_MS = 30_000
 _BACKOFF_MULTIPLIER = 2.0
 
 
+class EmptyResponseError(Exception):
+    """Raised when the LLM returns an empty (zero-character) response.
+
+    Treated as a transient failure so the retry middleware
+    can re-attempt the request.
+    """
+
+
 def _is_retryable(error: BaseException) -> bool:
     """Check if an error is transient and worth retrying.
 
@@ -103,7 +111,12 @@ def _is_retryable(error: BaseException) -> bool:
                 return True
     return isinstance(
         error,
-        (ConnectionError, TimeoutError, ConnectionResetError),
+        (
+            ConnectionError,
+            TimeoutError,
+            ConnectionResetError,
+            EmptyResponseError,
+        ),
     )
 
 
@@ -165,6 +178,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         for attempt in range(self.max_retries + 1):
             try:
                 await next(context)
+                self._check_empty_response(context)
                 return
             except Exception as exc:
                 last_error = exc
@@ -200,6 +214,35 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
 
         if last_error:  # pragma: no cover — defensive
             raise last_error
+
+    def _check_empty_response(
+        self, context: agent_framework.ChatContext
+    ) -> None:
+        """Raise ``EmptyResponseError`` when the LLM returns no text.
+
+        An empty response is almost certainly a transient
+        failure (model overload, content-filter false
+        positive, etc.) and should be retried.
+
+        Args:
+            context: Chat context after LLM invocation.
+        """
+        result = context.result
+        if result is None:
+            return
+        try:
+            text = result.text  # type: ignore[union-attr]
+        except Exception:
+            return
+        if not text:
+            log.warn(
+                f"Agent '{self.agent_name}' received an"
+                " empty response from the LLM, retrying"
+            )
+            raise EmptyResponseError(
+                f"Agent '{self.agent_name}' received an"
+                " empty (0-character) response"
+            )
 
     @staticmethod
     def _get_retry_after(

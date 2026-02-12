@@ -304,6 +304,12 @@ class BrowserSession:
             log.debug(f"Network request tracking limit reached ({MAX_TRACKED_REQUESTS})")
         if len(self._tracked_network_requests) < MAX_TRACKED_REQUESTS:
             idx = len(self._tracked_network_requests)
+            post_data: str | None = None
+            if request.method.upper() == "POST":
+                try:
+                    post_data = request.post_data
+                except Exception:
+                    post_data = None
             self._tracked_network_requests.append(
                 tracking_data.NetworkRequest(
                     url=request_url,
@@ -317,6 +323,7 @@ class BrowserSession:
                     timestamp=datetime.now(
                         timezone.utc
                     ).isoformat(),
+                    post_data=post_data,
                 )
             )
             # Index for O(1) response matching

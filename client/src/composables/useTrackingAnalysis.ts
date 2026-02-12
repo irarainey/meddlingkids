@@ -53,8 +53,6 @@ export function useTrackingAnalysis() {
 
   /** Currently active tab */
   const activeTab = ref<TabId>('summary')
-  /** Whether to filter to third-party requests only */
-  const showOnlyThirdParty = ref(true)
 
   /** Full AI analysis result (markdown) */
   const analysisResult = ref('')
@@ -132,12 +130,54 @@ export function useTrackingAnalysis() {
     return grouped
   })
 
-  /** Network requests filtered by third-party setting */
+  /** Network requests filtered by resource type and deduplicated */
   const filteredNetworkRequests = computed(() => {
-    if (showOnlyThirdParty.value) {
-      return networkRequests.value.filter((r) => r.isThirdParty)
+    /** File extensions that indicate image or font resources */
+    const imageExtensions = /\.(png|jpe?g|gif|svg|ico|webp|avif|bmp|tiff?)(\?|$)/i
+    const fontExtensions = /\.(woff2?|ttf|otf|eot)(\?|$)/i
+
+    const filtered = networkRequests.value.filter((r) => {
+      // Exclude all image requests
+      if (r.resourceType?.toLowerCase() === 'image') return false
+
+      // Exclude GET requests with image file extensions regardless of resourceType
+      if (r.method?.toUpperCase() === 'GET' && imageExtensions.test(r.url)) return false
+
+      // Exclude GET requests with font file extensions regardless of resourceType
+      if (r.method?.toUpperCase() === 'GET' && fontExtensions.test(r.url)) return false
+
+      // Exclude GET requests for scripts, stylesheets, documents, and fonts
+      const type = r.resourceType?.toLowerCase()
+      if (
+        r.method?.toUpperCase() === 'GET' &&
+        (type === 'script' || type === 'stylesheet' || type === 'document' || type === 'font')
+      ) {
+        return false
+      }
+
+      return true
+    })
+
+    // Collapse duplicate GET requests to the same URL into one record
+    const seen = new Map<string, NetworkRequest>()
+    const result: NetworkRequest[] = []
+    for (const request of filtered) {
+      if (request.method?.toUpperCase() === 'GET') {
+        const existing = seen.get(request.url)
+        if (existing) {
+          existing.duplicateCount = (existing.duplicateCount ?? 1) + 1
+          // Preserve pre-consent flag if any duplicate was pre-consent
+          if (request.preConsent) existing.preConsent = true
+        } else {
+          const entry = { ...request, duplicateCount: 1 }
+          seen.set(request.url, entry)
+          result.push(entry)
+        }
+      } else {
+        result.push(request)
+      }
     }
-    return networkRequests.value
+    return result
   })
 
   /** Filtered network requests grouped by domain, sorted by request count */
@@ -152,12 +192,6 @@ export function useTrackingAnalysis() {
     }
     // Sort by number of requests (most active domains first)
     return Object.fromEntries(Object.entries(grouped).sort((a, b) => b[1].length - a[1].length))
-  })
-
-  /** Count of unique third-party domains */
-  const thirdPartyDomainCount = computed(() => {
-    const domains = new Set(networkRequests.value.filter((r) => r.isThirdParty).map((r) => r.domain))
-    return domains.size
   })
 
   // ============================================================================
@@ -436,7 +470,6 @@ export function useTrackingAnalysis() {
     localStorage,
     sessionStorage,
     activeTab,
-    showOnlyThirdParty,
     analysisResult,
     analysisError,
     summaryFindings,
@@ -458,7 +491,6 @@ export function useTrackingAnalysis() {
     cookiesByDomain,
     filteredNetworkRequests,
     networkByDomain,
-    thirdPartyDomainCount,
 
     // Methods
     openScreenshotModal,

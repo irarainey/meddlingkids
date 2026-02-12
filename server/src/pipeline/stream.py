@@ -215,6 +215,13 @@ async def analyze_url_stream(
                 )
             )
 
+            # Tag every request captured so far as pre-consent.
+            # Requests arriving after this point (during or
+            # after overlay/consent handling) will keep the
+            # default pre_consent=False.
+            for req in session.get_tracked_network_requests():
+                req.pre_consent = True
+
             # Start background screenshot refresher so the
             # client sees ads and deferred content as they load.
             refresh_queue: asyncio.Queue[str] = asyncio.Queue()

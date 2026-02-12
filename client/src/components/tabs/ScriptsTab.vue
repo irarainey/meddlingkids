@@ -93,7 +93,7 @@ defineProps<{
 
 .group-count {
   color: #9ca3af;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   background: #374151;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
@@ -101,18 +101,18 @@ defineProps<{
 
 .group-description {
   color: #9ca3af;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   margin-bottom: 0.25rem;
 }
 
 .group-domain {
   color: #6b7280;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .group-examples {
   margin-top: 0.5rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .group-examples summary {
@@ -143,7 +143,7 @@ defineProps<{
 .script-item {
   padding: 0.5rem;
   border-bottom: 1px solid #3d4663;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .script-item:last-child {
@@ -168,7 +168,7 @@ defineProps<{
 
 .script-description {
   color: #9ca3af;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-style: italic;
 }
 </style>

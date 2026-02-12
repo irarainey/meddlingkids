@@ -176,23 +176,13 @@ class OverlayPipeline:
                 )
 
         while overlay_count < MAX_OVERLAYS:
-            # ── Detect (concurrent with pending extraction) ─
-            if pending_extract is not None:
-                detection, extract_events = (
-                    await asyncio.gather(
-                        steps.detect_overlay(
-                            session, overlay_count
-                        ),
-                        pending_extract,
-                    )
-                )
-                pending_extract = None
-                for event in extract_events:
-                    yield event
-            else:
-                detection = await steps.detect_overlay(
-                    session, overlay_count
-                )
+            # ── Detect ──────────────────────────────────────
+            # Run detection independently — don't block on
+            # pending extraction so the loop can break early
+            # when no more overlays are found.
+            detection = await steps.detect_overlay(
+                session, overlay_count
+            )
 
             if not detection.found or (
                 not detection.selector

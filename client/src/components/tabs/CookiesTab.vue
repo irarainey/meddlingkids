@@ -26,7 +26,7 @@ defineProps<{
         >
           <div class="cookie-name">{{ cookie.name }}</div>
           <div class="cookie-details">
-            <span class="cookie-value" :title="cookie.value">{{ truncateValue(cookie.value) }}</span>
+            <span class="cookie-value" :title="cookie.value">{{ truncateValue(cookie.value, 512) }}</span>
             <div class="cookie-meta">
               <span v-if="cookie.httpOnly" class="badge">HttpOnly</span>
               <span v-if="cookie.secure" class="badge">Secure</span>
@@ -44,7 +44,7 @@ defineProps<{
 .cookie-item {
   padding: 0.5rem;
   border-bottom: 1px solid #3d4663;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .cookie-item:last-child {
@@ -70,7 +70,7 @@ defineProps<{
 }
 
 .expiry {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: #9ca3af;
 }
 </style>

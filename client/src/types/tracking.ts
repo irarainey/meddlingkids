@@ -78,6 +78,11 @@ export interface NetworkRequest {
   isThirdParty: boolean
   timestamp: string
   statusCode?: number
+  postData?: string
+  /** Whether this request was made before consent was granted */
+  preConsent?: boolean
+  /** Number of duplicate GET requests collapsed into this entry */
+  duplicateCount?: number
 }
 
 // ============================================================================

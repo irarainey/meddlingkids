@@ -23,14 +23,14 @@ defineProps<{
         <h3 class="domain-header">📦 Local Storage ({{ localStorage.length }})</h3>
         <div v-for="item in localStorage" :key="item.key" class="storage-item">
           <div class="storage-key">{{ item.key }}</div>
-          <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 100) }}</div>
+          <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 512) }}</div>
         </div>
       </div>
       <div v-if="sessionStorage.length > 0" class="domain-group">
         <h3 class="domain-header">⏱️ Session Storage ({{ sessionStorage.length }})</h3>
         <div v-for="item in sessionStorage" :key="item.key" class="storage-item">
           <div class="storage-key">{{ item.key }}</div>
-          <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 100) }}</div>
+          <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 512) }}</div>
         </div>
       </div>
     </div>
@@ -41,7 +41,7 @@ defineProps<{
 .storage-item {
   padding: 0.5rem;
   border-bottom: 1px solid #3d4663;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .storage-item:last-child {
@@ -57,7 +57,7 @@ defineProps<{
   color: #9ca3af;
   word-break: break-all;
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   background: #2a2f45;
   padding: 0.25rem;
   border-radius: 4px;

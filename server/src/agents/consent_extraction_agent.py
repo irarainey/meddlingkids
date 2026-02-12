@@ -8,6 +8,7 @@ schema.
 
 from __future__ import annotations
 
+import asyncio
 import pathlib
 
 import pydantic
@@ -142,19 +143,22 @@ class ConsentExtractionAgent(base.BaseAgent):
         log.info("Analysing consent dialog with vision...")
 
         try:
-            response = await self._complete_vision(
-                user_text=(
-                    "Analyze this cookie consent dialog"
-                    " screenshot and extracted text to"
-                    " find ALL information about tracking,"
-                    " partners, and data collection.\n\n"
-                    "Extracted text from consent"
-                    f" elements:\n{consent_text}\n\n"
-                    "Return a detailed JSON object with"
-                    " categories, partners, purposes, and"
-                    " any manage options button."
+            response = await asyncio.wait_for(
+                self._complete_vision(
+                    user_text=(
+                        "Analyze this cookie consent dialog"
+                        " screenshot and extracted text to"
+                        " find ALL information about tracking,"
+                        " partners, and data collection.\n\n"
+                        "Extracted text from consent"
+                        f" elements:\n{consent_text}\n\n"
+                        "Return a detailed JSON object with"
+                        " categories, partners, purposes, and"
+                        " any manage options button."
+                    ),
+                    screenshot=screenshot,
                 ),
-                screenshot=screenshot,
+                timeout=30,
             )
             log.end_timer(
                 "vision-extraction",
@@ -183,10 +187,20 @@ class ConsentExtractionAgent(base.BaseAgent):
                 response.text, consent_text
             )
         except Exception as error:
-            log.error(
-                "Consent extraction failed",
-                {"error": errors.get_error_message(error)},
+            log.end_timer(
+                "vision-extraction",
+                "Vision extraction failed",
             )
+            error_msg = errors.get_error_message(error)
+            if isinstance(error, asyncio.TimeoutError):
+                log.warn(
+                    "Consent extraction timed out after 30s",
+                )
+            else:
+                log.error(
+                    "Consent extraction failed",
+                    {"error": error_msg},
+                )
             return consent.ConsentDetails.empty(
                 consent_text[:5000]
             )

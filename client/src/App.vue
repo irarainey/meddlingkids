@@ -31,7 +31,6 @@ const {
   localStorage,
   sessionStorage,
   activeTab,
-  showOnlyThirdParty,
   analysisResult,
   analysisError,
   summaryFindings,
@@ -53,7 +52,6 @@ const {
   cookiesByDomain,
   filteredNetworkRequests,
   networkByDomain,
-  thirdPartyDomainCount,
 
   // Methods
   openScreenshotModal,
@@ -188,7 +186,7 @@ function handleViewReport(): void {
             💾 Storage ({{ localStorage.length + sessionStorage.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
-            🌐 Network ({{ thirdPartyDomainCount }} 3rd party)
+            🌐 Network ({{ filteredNetworkRequests.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})
@@ -229,10 +227,8 @@ function handleViewReport(): void {
 
         <NetworkTab
           v-if="activeTab === 'network'"
-          v-model:show-only-third-party="showOnlyThirdParty"
           :network-by-domain="networkByDomain"
           :filtered-network-requests="filteredNetworkRequests"
-          :third-party-domain-count="thirdPartyDomainCount"
         />
 
         <ScriptsTab

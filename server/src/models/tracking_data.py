@@ -60,3 +60,5 @@ class NetworkRequest(pydantic.BaseModel):
     is_third_party: bool
     timestamp: str
     status_code: int | None = None
+    post_data: str | None = None
+    pre_consent: bool = False
