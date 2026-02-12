@@ -101,11 +101,9 @@ def _is_retryable(error: BaseException) -> bool:
         if isinstance(code, int):
             if code == 429 or 500 <= code < 600:
                 return True
-    err_class = type(error).__name__
-    return err_class in (
-        "ConnectionError",
-        "TimeoutError",
-        "ConnectionResetError",
+    return isinstance(
+        error,
+        (ConnectionError, TimeoutError, ConnectionResetError),
     )
 
 

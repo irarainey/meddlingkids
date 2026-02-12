@@ -167,3 +167,62 @@ def _remove(path: pathlib.Path) -> None:
                 "path": str(path.name),
                 "error": str(exc),
             })
+
+
+def merge_and_save(
+    domain: str,
+    previous_entry: OverlayCacheEntry | None,
+    new_overlays: list[CachedOverlay],
+    failed_types: set[str],
+) -> None:
+    """Merge previous cache with new detections and persist.
+
+    Combines three sources:
+
+    1. Previous cache entries whose overlays did not fail.
+    2. Newly dismissed overlays from this run.
+
+    Entries whose overlay type is in *failed_types* are
+    dropped.  Duplicates are removed by selector/button key.
+
+    Args:
+        domain: The domain to save the cache for.
+        previous_entry: Existing cache entry (may be ``None``).
+        new_overlays: Overlays dismissed in this run.
+        failed_types: Overlay types whose clicks failed.
+    """
+    seen_keys: set[str] = set()
+    overlays: list[CachedOverlay] = []
+
+    # Carry forward previous entries that didn't fail.
+    if previous_entry:
+        for cached in previous_entry.overlays:
+            if cached.overlay_type in failed_types:
+                continue
+            key = (
+                f"{cached.selector or ''}"
+                f"|{cached.button_text or ''}"
+            )
+            if key not in seen_keys:
+                seen_keys.add(key)
+                overlays.append(cached)
+
+    # Add new overlays.
+    for overlay in new_overlays:
+        key = (
+            f"{overlay.selector or ''}"
+            f"|{overlay.button_text or ''}"
+        )
+        if key not in seen_keys:
+            seen_keys.add(key)
+            overlays.append(overlay)
+
+    if not overlays:
+        remove(domain)
+        return
+
+    entry = OverlayCacheEntry(
+        domain=domain,
+        overlays=overlays,
+    )
+    save(entry)

@@ -51,6 +51,7 @@ class BrowserSession:
 
         # O(1) lookup indexes for hot-path deduplication
         self._seen_script_urls: set[str] = set()
+        self._cookie_index: dict[tuple[str, str], int] = {}
         self._pending_responses: dict[str, list[int]] = {}
 
     # ==========================================================================
@@ -83,6 +84,7 @@ class BrowserSession:
         self._tracked_scripts.clear()
         self._tracked_network_requests.clear()
         self._seen_script_urls.clear()
+        self._cookie_index.clear()
         self._pending_responses.clear()
 
     def set_current_page_url(self, url: str) -> None:
@@ -324,15 +326,6 @@ class BrowserSession:
             name = cookie.get("name", "")
             domain = cookie.get("domain", "")
 
-            existing_idx = next(
-                (
-                    i
-                    for i, c in enumerate(self._tracked_cookies)
-                    if c.name == name and c.domain == domain
-                ),
-                None,
-            )
-
             tracked = tracking_data.TrackedCookie(
                 name=name,
                 value=cookie.get("value", ""),
@@ -345,9 +338,14 @@ class BrowserSession:
                 timestamp=now,
             )
 
+            cookie_key = (name, domain)
+            existing_idx = self._cookie_index.get(cookie_key)
             if existing_idx is not None:
                 self._tracked_cookies[existing_idx] = tracked
             else:
+                self._cookie_index[cookie_key] = len(
+                    self._tracked_cookies
+                )
                 self._tracked_cookies.append(tracked)
 
     async def capture_storage(self) -> dict[str, list[tracking_data.StorageItem]]:

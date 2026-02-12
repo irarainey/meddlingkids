@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import collections
 
+from src.analysis import tracker_patterns
+from src.data import loader
 from src.models import analysis, tracking_data
 from src.utils import logger, url
 
@@ -98,4 +100,67 @@ def build_tracking_summary(
         domain_breakdown=_build_domain_breakdown(domain_data),
         local_storage=_build_storage_preview(local_storage),
         session_storage=_build_storage_preview(session_storage),
+    )
+
+
+def build_pre_consent_stats(
+    cookies: list[tracking_data.TrackedCookie],
+    scripts: list[tracking_data.TrackedScript],
+    requests: list[tracking_data.NetworkRequest],
+    storage: dict[str, list[tracking_data.StorageItem]],
+) -> analysis.PreConsentStats:
+    """Snapshot tracking data before consent is given.
+
+    Classifies cookies, scripts, and requests as tracking
+    vs. legitimate infrastructure using compiled pattern
+    databases.
+
+    Args:
+        cookies: Currently tracked cookies.
+        scripts: Currently tracked scripts.
+        requests: Currently tracked network requests.
+        storage: Dict with ``local_storage`` and
+            ``session_storage`` lists.
+
+    Returns:
+        Pre-consent statistics for scoring calibration.
+    """
+    tracking_patterns_db = loader.get_tracking_scripts()
+    url_patterns = (
+        tracker_patterns.HIGH_RISK_TRACKERS
+        + tracker_patterns.ADVERTISING_TRACKERS
+        + tracker_patterns.SOCIAL_MEDIA_TRACKERS
+        + tracker_patterns.ANALYTICS_TRACKERS
+    )
+
+    tracking_cookies = sum(
+        1
+        for c in cookies
+        if any(
+            p.search(c.name)
+            for p in tracker_patterns.TRACKING_COOKIE_PATTERNS
+        )
+    )
+    tracking_scripts = sum(
+        1
+        for s in scripts
+        if any(t.compiled.search(s.url) for t in tracking_patterns_db)
+        or any(p.search(s.url) for p in url_patterns)
+    )
+    tracker_requests = sum(
+        1
+        for r in requests
+        if r.is_third_party
+        and any(p.search(r.url) for p in url_patterns)
+    )
+
+    return analysis.PreConsentStats(
+        total_cookies=len(cookies),
+        total_scripts=len(scripts),
+        total_requests=len(requests),
+        total_local_storage=len(storage["local_storage"]),
+        total_session_storage=len(storage["session_storage"]),
+        tracking_cookies=tracking_cookies,
+        tracking_scripts=tracking_scripts,
+        tracker_requests=tracker_requests,
     )

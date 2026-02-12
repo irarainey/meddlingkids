@@ -12,7 +12,7 @@ from typing import AsyncGenerator
 
 from src import agents
 from src.analysis import scripts, tracking
-from src.analysis import privacy_score as privacy_score_mod
+from src.analysis import scoring as privacy_score_mod
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
