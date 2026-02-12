@@ -16,6 +16,7 @@ from typing import Any, TypeVar
 
 import agent_framework
 import pydantic
+from PIL import Image
 
 from src.agents import llm_client
 from src.agents import middleware as middleware_mod
@@ -249,7 +250,6 @@ class BaseAgent:
         """
         # Convert PNG to JPEG for a much smaller payload
         # (typically 5-10x reduction).
-        from PIL import Image
 
         img = Image.open(io.BytesIO(screenshot))
         if img.mode in ("RGBA", "P"):

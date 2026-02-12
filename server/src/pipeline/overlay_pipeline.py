@@ -370,6 +370,25 @@ def _build_click_failure(
     return event, msg
 
 
+async def _collect_extraction_events(
+    page: async_api.Page,
+    pre_click_screenshot: bytes,
+    result: OverlayHandlingResult,
+    progress_base: int,
+) -> list[str]:
+    """Run consent extraction, returning events for deferred yielding.
+
+    Used when extraction runs concurrently with the next
+    detection call to avoid blocking the overlay loop.
+    """
+    events: list[str] = []
+    async for event in _extract_and_classify_consent(
+        page, pre_click_screenshot, result, progress_base
+    ):
+        events.append(event)
+    return events
+
+
 # ====================================================================
 # Main Overlay Loop
 # ====================================================================
@@ -418,6 +437,10 @@ class OverlayPipeline:
         # don't loop on the same unclickable element.
         failed_signatures: set[str] = set()
 
+        # Pending extraction task — runs concurrently with
+        # the next detection call to save ~8s per overlay.
+        pending_extract: asyncio.Task[list[str]] | None = None
+
         log.info(
             "Starting overlay detection loop",
             {"maxOverlays": MAX_OVERLAYS},
@@ -425,10 +448,23 @@ class OverlayPipeline:
 
         overlay_count = 0
         while overlay_count < MAX_OVERLAYS:
-            # ── Detect ──────────────────────────────────────
-            detection = await _detect_overlay(
-                session, screenshot, overlay_count
-            )
+            # ── Detect (concurrent with pending extraction) ─
+            if pending_extract is not None:
+                detection, extract_events = (
+                    await asyncio.gather(
+                        _detect_overlay(
+                            session, screenshot, overlay_count
+                        ),
+                        pending_extract,
+                    )
+                )
+                pending_extract = None
+                for event in extract_events:
+                    yield event
+            else:
+                detection = await _detect_overlay(
+                    session, screenshot, overlay_count
+                )
 
             if not detection.found or (
                 not detection.selector
@@ -584,19 +620,28 @@ class OverlayPipeline:
                 break
 
             # ── Consent extraction (first cookie only) ──────
+            # Start extraction as a background task so it runs
+            # concurrently with the next detection call.
             if (
                 is_first_cookie_consent
                 and pre_click_screenshot
             ):
-                async for event in (
-                    _extract_and_classify_consent(
+                pending_extract = asyncio.create_task(
+                    _collect_extraction_events(
                         page,
                         pre_click_screenshot,
                         result,
                         progress_base,
                     )
-                ):
-                    yield event
+                )
+
+        # Collect any pending extraction that was started
+        # during the final loop iteration.
+        if pending_extract is not None:
+            extract_events = await pending_extract
+            pending_extract = None
+            for event in extract_events:
+                yield event
 
         if overlay_count >= MAX_OVERLAYS:
             log.warn(
