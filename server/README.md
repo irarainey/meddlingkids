@@ -21,12 +21,12 @@ uv run playwright install chromium
 ### Azure OpenAI (checked first)
 - `AZURE_OPENAI_ENDPOINT` - Azure OpenAI resource endpoint URL
 - `AZURE_OPENAI_API_KEY` - API key for authentication
-- `AZURE_OPENAI_DEPLOYMENT` - Name of the deployed model
+- `AZURE_OPENAI_DEPLOYMENT` - Name of the deployed model (must support vision, e.g., `gpt-5.2-chat`)
 - `OPENAI_API_VERSION` - API version (default: `2024-12-01-preview`)
 
 ### Standard OpenAI (fallback)
 - `OPENAI_API_KEY` - API key for authentication
-- `OPENAI_MODEL` - Model name (default: `gpt-5.1-chat`)
+- `OPENAI_MODEL` - Model name (must support vision, default: `gpt-5.2-chat`)
 - `OPENAI_BASE_URL` - Optional custom base URL
 
 ### Server

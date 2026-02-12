@@ -17,7 +17,7 @@
 #   docker run -p 3001:3001 \
 #     -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
 #     -e AZURE_OPENAI_API_KEY=your-api-key \
-#     -e AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat \
+#     -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
 #     meddlingkids
 # =============================================================================
 

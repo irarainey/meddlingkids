@@ -119,7 +119,7 @@ meddlingkids/
 
 - **Python 3.11+** with [uv](https://docs.astral.sh/uv/) package manager (for the server)
 - **Node.js 22+** (for building the Vue client)
-- **Azure OpenAI** or **OpenAI** account with API access
+- **Azure OpenAI** or **OpenAI** account with API access to a model with **vision capabilities** (e.g., `gpt-5.2-chat`). Vision is required for consent dialog detection via screenshot analysis.
 
 ### 1. Clone and Install
 
@@ -137,19 +137,19 @@ cd ..
 cp .env.example .env
 ```
 
-Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and standard OpenAI:
+Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and standard OpenAI. The configured model **must support vision** (image input) — consent dialog detection relies on screenshot analysis.
 
 **Option A: Azure OpenAI**
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat
+AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat
 ```
 
 **Option B: Standard OpenAI**
 ```env
 OPENAI_API_KEY=your-api-key
-OPENAI_MODEL=gpt-5.1-chat
+OPENAI_MODEL=gpt-5.2-chat
 ```
 
 **Optional: File Logging**
@@ -181,7 +181,7 @@ Pull and run the latest image:
 docker run -p 3001:3001 \
   -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
   -e AZURE_OPENAI_API_KEY=your-api-key \
-  -e AZURE_OPENAI_DEPLOYMENT=gpt-5.1-chat \
+  -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
   ghcr.io/irarainey/meddlingkids:latest
 ```
 
@@ -189,7 +189,7 @@ docker run -p 3001:3001 \
 ```bash
 docker run -p 3001:3001 \
   -e OPENAI_API_KEY=your-api-key \
-  -e OPENAI_MODEL=gpt-5.1-chat \
+  -e OPENAI_MODEL=gpt-5.2-chat \
   ghcr.io/irarainey/meddlingkids:latest
 ```
 
