@@ -126,6 +126,7 @@ ENV ENVIRONMENT=production
 ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=3001
 ENV DISPLAY=:99
+ENV WRITE_LOG_TO_FILE=false
 
 # Azure OpenAI configuration (pass via --env-file or -e flags)
 # ENV AZURE_OPENAI_ENDPOINT=
