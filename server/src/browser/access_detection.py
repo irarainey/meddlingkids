@@ -50,6 +50,10 @@ BLOCKED_BODY_PATTERNS = [
     "we have detected unusual activity",
     "your ip has been blocked",
     "rate limit exceeded",
+    # Tollbit CDN-level bot paywall (used by telegraph.co.uk etc.)
+    "tollbit token",
+    "valid tollbit",
+    "cannot be accessed without",
 ]
 
 

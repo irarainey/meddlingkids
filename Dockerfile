@@ -97,8 +97,12 @@ RUN groupadd --gid 1001 appgroup && \
 # Set Playwright browsers path to a shared location
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
-# Install Playwright browsers (Chromium only for smaller image)
-RUN cd server && .venv/bin/playwright install chromium && \
+# Install real Chrome (preferred — genuine TLS fingerprints
+# bypass CDN-level bot detectors like Tollbit) and bundled
+# Chromium as fallback.
+RUN cd server && \
+    .venv/bin/playwright install chrome && \
+    .venv/bin/playwright install chromium && \
     chmod -R 755 /opt/playwright-browsers
 
 # Copy built client from builder stage

@@ -13,6 +13,7 @@ Python FastAPI backend that orchestrates browser automation and AI-powered track
 ```bash
 cd server
 uv sync
+uv run playwright install chrome
 uv run playwright install chromium
 ```
 

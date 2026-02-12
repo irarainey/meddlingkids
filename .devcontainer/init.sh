@@ -24,7 +24,9 @@ fi
 if [ ! -d "/home/node/.cache/ms-playwright" ]; then
     echo "🎭 Installing Playwright browsers and system dependencies..."
     npx playwright install --with-deps chromium
-    echo "🎭 Installing Playwright browsers for Python..."
+    echo "🎭 Installing real Chrome for Python (preferred for TLS fingerprint)..."
+    (cd server && .venv/bin/python -m playwright install chrome)
+    echo "🎭 Installing Chromium fallback for Python..."
     (cd server && .venv/bin/python -m playwright install chromium)
 fi
 

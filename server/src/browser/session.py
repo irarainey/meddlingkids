@@ -31,7 +31,6 @@ MAX_TRACKED_SCRIPTS = 1000
 if not os.environ.get("DISPLAY") or os.environ.get("DISPLAY") in (":0", ":1"):
     os.environ["DISPLAY"] = os.environ.get("XVFB_DISPLAY", ":99")
 
-
 class BrowserSession:
     """
     Manages an isolated browser session for a single URL analysis.
@@ -131,16 +130,39 @@ class BrowserSession:
         pw = await async_api.async_playwright().start()
         self._playwright = pw
 
-        br = await pw.chromium.launch(
-            headless=False,
-            args=[
+        # Prefer real Chrome over Playwright's bundled Chromium.
+        # Real Chrome has genuine TLS fingerprints (JA3/JA4)
+        # that CDN-level bot detectors like Tollbit trust,
+        # whereas bundled Chromium has a distinct fingerprint
+        # that is trivially identified as automated.
+        #
+        # Install real Chrome via: playwright install chrome
+        # Falls back to bundled Chromium if Chrome is not
+        # available.
+        launch_kwargs: dict[str, object] = {
+            "headless": False,
+            "args": [
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-blink-features=AutomationControlled",
                 "--disable-infobars",
                 "--disable-extensions",
             ],
-        )
+        }
+
+        try:
+            br = await pw.chromium.launch(
+                channel="chrome", **launch_kwargs  # type: ignore[arg-type]
+            )
+            log.info("Launched real Chrome browser")
+        except Exception:
+            log.info(
+                "Real Chrome not available, falling"
+                " back to bundled Chromium"
+            )
+            br = await pw.chromium.launch(
+                **launch_kwargs  # type: ignore[arg-type]
+            )
         self._browser = br
 
         self._context = await br.new_context(
@@ -161,10 +183,51 @@ class BrowserSession:
             "isMobile": device_config.is_mobile,
         })
 
-        # Remove webdriver flag
-        await self._context.add_init_script(
-            """Object.defineProperty(navigator, 'webdriver', { get: () => undefined })"""
-        )
+        # ── Anti-bot-detection hardening ─────────────────
+        # Mask automation signals that paywall and bot-detection
+        # services (e.g. Piano / Arkose on telegraph.co.uk)
+        # use to fingerprint Playwright/headless browsers.
+        await self._context.add_init_script("""
+            // 1. Remove webdriver flag
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+            // 2. Fake plugins array (headless has zero)
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [
+                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
+                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+                    { name: 'Native Client', filename: 'internal-nacl-plugin' },
+                ],
+            });
+
+            // 3. Fake languages
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-GB', 'en-US', 'en'],
+            });
+
+            // 4. Permissions API — deny 'notifications' query
+            //    (bot detectors probe this; real browsers return 'prompt')
+            const originalQuery = window.navigator.permissions?.query;
+            if (originalQuery) {
+                window.navigator.permissions.query = (params) =>
+                    params.name === 'notifications'
+                        ? Promise.resolve({ state: Notification.permission })
+                        : originalQuery.call(window.navigator.permissions, params);
+            }
+
+            // 5. Ensure window.chrome exists (Chromium-specific)
+            if (!window.chrome) {
+                window.chrome = { runtime: {} };
+            }
+
+            // 6. Spoof WebGL renderer to mask headless GPU
+            const getParameter = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function (param) {
+                if (param === 37445) return 'Google Inc. (Intel)';
+                if (param === 37446) return 'ANGLE (Intel, Mesa Intel(R) UHD Graphics, OpenGL 4.6)';
+                return getParameter.call(this, param);
+            };
+        """)
 
         # Set up request tracking
         self._page.on("request", self._on_request)
@@ -253,24 +316,41 @@ class BrowserSession:
 
         log.debug("Navigating", {"url": url, "waitUntil": wait_until, "timeout": timeout})
         try:
-            response = await self._page.goto(url, wait_until=wait_until, timeout=timeout)
+            response = await self._page.goto(
+                url,
+                wait_until=wait_until,
+                timeout=timeout,
+            )
 
             status_code = response.status if response else None
             status_text = response.status_text if response else None
 
             if status_code and status_code >= 400:
-                is_access_denied = status_code in (401, 403)
-                return browser.NavigationResult(
-                    success=False,
-                    status_code=status_code,
-                    status_text=status_text,
-                    is_access_denied=is_access_denied,
-                    error_message=(
-                        f"Access denied ({status_code})"
-                        if is_access_denied
-                        else f"Server error ({status_code}: {status_text})"
-                    ),
-                )
+                # 402 (Payment Required) is used by paywall
+                # sites like the Daily Telegraph.  The page
+                # still renders fully — the paywall is enforced
+                # client-side via an overlay — so we treat it
+                # as a soft success and let the overlay pipeline
+                # handle dismissal.
+                if status_code == 402:
+                    log.info(
+                        "Paywall detected (HTTP 402)"
+                        " — proceeding with analysis",
+                        {"statusCode": status_code},
+                    )
+                else:
+                    is_access_denied = status_code in (401, 403)
+                    return browser.NavigationResult(
+                        success=False,
+                        status_code=status_code,
+                        status_text=status_text,
+                        is_access_denied=is_access_denied,
+                        error_message=(
+                            f"Access denied ({status_code})"
+                            if is_access_denied
+                            else f"Server error ({status_code}: {status_text})"
+                        ),
+                    )
 
             final_url = self._page.url
             if final_url != url:
