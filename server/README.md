@@ -115,7 +115,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
-| `ConsentDetectionAgent` | Screenshot + HTML | `CookieConsentDetection` | Vision-based detection of consent dialogs and overlay dismiss buttons |
+| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of consent dialogs and overlay dismiss buttons |
 | `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `SummaryFindingsAgent` | Analysis markdown | `list[SummaryFinding]` | Distils full analysis into 5-7 prioritized findings |

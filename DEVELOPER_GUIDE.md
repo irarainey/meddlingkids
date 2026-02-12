@@ -149,23 +149,30 @@ Page loaded successfully
 
 ### Phase 4: Overlay Detection and Handling
 ```
-handle_overlays() loop (up to 5 iterations)
+OverlayPipeline.run() loop (up to 5 iterations)
    │
-   ├── get_page_content() → Get current HTML
-   ├── detect_cookie_consent(screenshot, html)
-   │   └── AI vision analyzes screenshot + HTML
-   │       Returns: { has_consent, overlay_type, button_location }
+   ├── _detect_overlay(screenshot)
+   │   └── AI vision-only analysis (viewport screenshot, JPEG, max 1280px)
+   │       Returns: { found, overlay_type, button_text, certainty }
+   │   └── Runs concurrently with pending extraction via asyncio.gather
    │
-   ├── If cookie consent found (first time):
-   │   └── extract_consent_details(page, screenshot)
+   ├── _validate_overlay_in_dom(page, detection)
+   │   └── Confirms button exists, returns Frame where found
+   │   └── Tracks failed signatures to avoid re-detecting unclickable elements
+   │
+   ├── _click_and_capture(session, page, detection, found_in_frame)
+   │   └── Phase 0: Try validated frame first (skip main-frame scan)
+   │   └── Phase 1: Main frame button role match
+   │   └── Phase 2: Consent iframes
+   │   └── Phase 3: Generic heuristics
+   │   └── Tri-state safety check (_is_safe_to_click)
+   │
+   ├── If first cookie-consent overlay:
+   │   └── Start extraction as asyncio.create_task (concurrent)
    │       └── AI extracts partners, categories, purposes
-   │       └── send_event('consentDetails', {...})
+   │       └── Events yielded when both extraction and next detection complete
    │
-   ├── try_click_consent_button(detection)
-   │   └── Multiple click strategies (coordinates, selectors)
-   │
-   ├── Wait for page changes
-   │   └── capture_current_cookies() → New cookies after consent
+   ├── capture_current_cookies() → New cookies after consent
    │
    └── send_event('screenshot', {...}) → Post-consent screenshot
 ```
@@ -181,7 +188,7 @@ All data captured
    │   │   ├── Match against tracking patterns (JSON)          │
    │   │   ├── Match against benign patterns (JSON)            │
    │   │   └── LLM analysis for unknown scripts                │
-   │   │       (concurrent with semaphore, max 5 at a time)    │
+   │   │       (concurrent with semaphore, max 10 at a time)   │
    │   │                                                       │
    │   │  stream_tracking_analysis(summary, consent_details)   │
    │   │   ├── build_tracking_summary() → Data for LLM         │
@@ -330,7 +337,7 @@ Key framework types used:
 
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
-| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-first detection of blocking overlays and locate dismiss buttons |
+| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons |
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings |
@@ -666,10 +673,14 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 - Script analysis uses pattern matching first, LLM only for unknowns
 - Script patterns are pre-compiled to regex at load time (no re-compilation per match)
 - Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
-- Unknown scripts are analyzed individually with bounded concurrency (semaphore, max 5 at a time)
+- Unknown scripts are analyzed individually with bounded concurrency (semaphore, max 10 at a time)
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
+- Vision API calls (detection, extraction) convert PNG to JPEG and downscale to max 1280px wide
+- Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads
+- Consent extraction runs concurrently with the next detection call via `asyncio.create_task`
+- `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance)
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
