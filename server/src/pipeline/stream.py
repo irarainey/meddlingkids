@@ -50,10 +50,14 @@ STREAM_TIMEOUT_SECONDS = 600  # 10 minutes
 _REFRESH_INTERVAL_SECONDS = 3.0
 
 
+_MAX_SCREENSHOT_REFRESHES = 5
+
+
 async def _screenshot_refresher(
     session: browser_session.BrowserSession,
     queue: asyncio.Queue[str],
     last_hash: str,
+    remaining: int = _MAX_SCREENSHOT_REFRESHES,
 ) -> None:
     """Periodically re-screenshot the page and queue update events.
 
@@ -62,17 +66,20 @@ async def _screenshot_refresher(
     visually changed — pushes a lightweight ``screenshotUpdate``
     SSE event into *queue* so the main generator can yield it.
 
-    The task runs until cancelled by the caller (e.g. just before
-    a "real" screenshot is about to be emitted).
+    The task stops automatically after *remaining* updates have
+    been emitted, or when cancelled by the caller.
 
     Args:
         session: Active browser session.
         queue: Asyncio queue for outbound SSE event strings.
         last_hash: MD5 hex digest of the most recent screenshot
             bytes so we can skip identical frames.
+        remaining: Maximum number of screenshot updates to emit
+            before the task exits on its own.
     """
     current_hash = last_hash
-    while True:
+    updates_sent = 0
+    while updates_sent < remaining:
         await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
         try:
             png_bytes = await session.take_screenshot(full_page=False)
@@ -87,12 +94,20 @@ async def _screenshot_refresher(
                     optimized,
                 )
                 await queue.put(event)
-                log.debug("Screenshot refreshed (page changed)")
+                updates_sent += 1
+                log.debug(
+                    "Screenshot refreshed (page changed)",
+                    {"update": updates_sent, "limit": remaining},
+                )
         except asyncio.CancelledError:
             raise
         except Exception:
             # Screenshot failed (page navigating, etc.) — skip
             pass
+    log.debug(
+        "Screenshot refresher stopped (limit reached)",
+        {"updates": updates_sent},
+    )
 
 
 def _drain_queue(queue: asyncio.Queue[str]) -> list[str]:
@@ -354,12 +369,36 @@ async def analyze_url_stream(
 
             # Restart the background screenshot refresher so the
             # client sees visual changes during AI analysis
-            # (e.g. ads loading, deferred content).
-            refresh_queue = asyncio.Queue()
-            refresher_task = asyncio.create_task(
-                _screenshot_refresher(session, refresh_queue, "")
+            # (e.g. ads loading, deferred content).  Re-use the
+            # global cap so total refreshes across both runs
+            # stays within ``_MAX_SCREENSHOT_REFRESHES``.
+            pre_overlay_updates = _drain_queue(refresh_queue)
+            pre_overlay_count = len(pre_overlay_updates)
+            for evt in pre_overlay_updates:
+                yield evt
+            remaining_refreshes = max(
+                0, _MAX_SCREENSHOT_REFRESHES - pre_overlay_count
             )
-            log.debug("Background screenshot refresher resumed")
+            refresh_queue = asyncio.Queue()
+            if remaining_refreshes > 0:
+                refresher_task = asyncio.create_task(
+                    _screenshot_refresher(
+                        session,
+                        refresh_queue,
+                        "",
+                        remaining=remaining_refreshes,
+                    )
+                )
+                log.debug(
+                    "Background screenshot refresher resumed",
+                    {"remaining": remaining_refreshes},
+                )
+            else:
+                refresher_task = None
+                log.debug(
+                    "Screenshot refresh limit already reached"
+                    " — not restarting"
+                )
 
             # ── Phase 5: AI Analysis ────────────────────────────
             log.subsection("Phase 5: AI Analysis")
@@ -377,6 +416,14 @@ async def analyze_url_stream(
                 for refresh_event in _drain_queue(refresh_queue):
                     yield refresh_event
 
+            # Stop the refresher now that analysis is done —
+            # no value in updating screenshots after this point.
+            if refresher_task and not refresher_task.done():
+                refresher_task.cancel()
+                try:
+                    await refresher_task
+                except asyncio.CancelledError:
+                    pass
             # Drain any remaining refresh events after analysis
             for refresh_event in _drain_queue(refresh_queue):
                 yield refresh_event
@@ -426,6 +473,7 @@ async def analyze_url_stream(
             except asyncio.CancelledError:
                 pass
         log.debug("Cleaning up browser resources...")
+        logger.end_log_file()
         try:
             await session.close()
         except Exception as err:
@@ -434,7 +482,6 @@ async def analyze_url_stream(
                 {"error": errors.get_error_message(err)},
             )
         log.debug("Browser cleanup complete")
-        logger.end_log_file()
 
 
 def _emit_nav_failure(
