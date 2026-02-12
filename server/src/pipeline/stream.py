@@ -16,12 +16,16 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 from typing import AsyncGenerator, cast
 from urllib import parse
 
 from src.agents import config
+from src.analysis import tracker_patterns
 from src.browser import device_configs, session as browser_session
+from src.data import loader
 from src.models import browser
+from src.models.analysis import PreConsentStats
 from src.pipeline import (
     analysis_pipeline,
     browser_phases,
@@ -188,6 +192,61 @@ async def analyze_url_stream(
             for event in capture_events:
                 yield event
 
+            # Snapshot pre-consent data and classify what is
+            # actually tracking vs legitimate infrastructure.
+            pre_cookies = session.get_tracked_cookies()
+            pre_scripts = session.get_tracked_scripts()
+            pre_requests = session.get_tracked_network_requests()
+
+            tracking_patterns_db = loader.get_tracking_scripts()
+            all_tracker_url_patterns = (
+                tracker_patterns.HIGH_RISK_TRACKERS
+                + tracker_patterns.ADVERTISING_TRACKERS
+                + tracker_patterns.SOCIAL_MEDIA_TRACKERS
+                + tracker_patterns.ANALYTICS_TRACKERS
+            )
+
+            tracking_cookies = sum(
+                1
+                for c in pre_cookies
+                if any(
+                    p.search(c.name)
+                    for p in tracker_patterns.TRACKING_COOKIE_PATTERNS
+                )
+            )
+            tracking_scripts = sum(
+                1
+                for s in pre_scripts
+                if any(
+                    t.compiled.search(s.url)
+                    for t in tracking_patterns_db
+                )
+                or any(p.search(s.url) for p in all_tracker_url_patterns)
+            )
+            tracker_requests = sum(
+                1
+                for r in pre_requests
+                if r.is_third_party
+                and any(
+                    p.search(r.url) for p in all_tracker_url_patterns
+                )
+            )
+
+            pre_consent_stats = PreConsentStats(
+                total_cookies=len(pre_cookies),
+                total_scripts=len(pre_scripts),
+                total_requests=len(pre_requests),
+                total_local_storage=len(
+                    storage["local_storage"]
+                ),
+                total_session_storage=len(
+                    storage["session_storage"]
+                ),
+                tracking_cookies=tracking_cookies,
+                tracking_scripts=tracking_scripts,
+                tracker_requests=tracker_requests,
+            )
+
             # Start background screenshot refresher so the
             # client sees ads and deferred content as they load.
             refresh_queue: asyncio.Queue[str] = asyncio.Queue()
@@ -311,6 +370,7 @@ async def analyze_url_stream(
                 url,
                 consent_details,
                 overlay_count,
+                pre_consent_stats,
             ):
                 yield event
                 # Interleave any pending screenshot updates

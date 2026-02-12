@@ -158,6 +158,89 @@ CROSS_DEVICE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"zeotap", re.I),
 ]
 
+# ── Behavioural / engagement tracking ───────────────────────
+# Services and scripts that track granular user behaviour
+# beyond simple page views: scroll depth, mouse/eye movement,
+# video engagement, attention metrics, heatmaps, rage clicks.
+
+BEHAVIOURAL_TRACKING_PATTERNS: list[re.Pattern[str]] = [
+    # Scroll & attention tracking
+    re.compile(r"scroll.?depth|scroll.?track|scroll.?map", re.I),
+    re.compile(r"attention.?track|attention.?metric|attention.?insight", re.I),
+    re.compile(r"viewability|in.?view.?track", re.I),
+    re.compile(r"time.?on.?page|dwell.?time|engaged.?time", re.I),
+    # Video engagement
+    re.compile(r"video.?track|video.?metric|video.?analytics", re.I),
+    re.compile(r"conviva", re.I),
+    re.compile(r"mux\.com|mux.?data", re.I),
+    re.compile(r"youbora|npaw\.com", re.I),
+    re.compile(r"vidoomy|teads", re.I),
+    re.compile(r"jwplayer.*analytics|brightcove.*analytics", re.I),
+    # Mouse / cursor tracking (beyond session replay)
+    re.compile(r"mouse.?track|cursor.?track|click.?map", re.I),
+    re.compile(r"heatmap|heat.?map", re.I),
+    re.compile(r"crazy.?egg", re.I),
+    re.compile(r"clicktale", re.I),
+    re.compile(r"contentsquare|content.?square", re.I),
+    re.compile(r"decibel.?insight|decibel\.com", re.I),
+    re.compile(r"glassbox", re.I),
+    re.compile(r"quantum.?metric|quantummetric", re.I),
+    re.compile(r"heap\.io|heapanalytics", re.I),
+    # Eye / gaze tracking
+    re.compile(r"eye.?track|gaze.?track|attention.?web", re.I),
+    re.compile(r"tobii|realeye|sticky\.ai", re.I),
+    re.compile(r"lumen.?research|lumen.?eye", re.I),
+    # Rage / frustration / error clicks
+    re.compile(r"rage.?click|frustrat|dead.?click|error.?click", re.I),
+]
+
+# ── Granular location / ISP tracking ────────────────────────
+# Services that resolve IP addresses to physical location,
+# postcode, broadband provider, or connection type — well
+# beyond simple country-level geo.
+
+LOCATION_ISP_PATTERNS: list[re.Pattern[str]] = [
+    # IP-to-location / geolocation APIs
+    re.compile(r"ip.?info|ipify|ipapi|ipstack|ipdata", re.I),
+    re.compile(r"ip.?geolocation|geo.?ip|geoip", re.I),
+    re.compile(r"maxmind|geolite|geoip2", re.I),
+    re.compile(r"ip2location|ip2proxy", re.I),
+    re.compile(r"abstractapi.*ip|ipregistry", re.I),
+    re.compile(r"bigdatacloud|extreme.?ip", re.I),
+    # ISP / broadband provider detection
+    re.compile(r"isp.?detect|isp.?lookup|whois.?api", re.I),
+    re.compile(r"network.?info|net.?info|connection.?type", re.I),
+    # Postcode / zip code geo-targeting
+    re.compile(r"post.?code|postcode|zip.?code", re.I),
+    re.compile(r"geo.?target|geo.?fence|geo.?zone", re.I),
+    re.compile(r"local.?iq|yext|geo.?edge|fastly.?geo", re.I),
+    # GPS / precise location
+    re.compile(r"navigator\.geolocation|getCurrentPosition", re.I),
+    re.compile(r"precise.?location|exact.?location", re.I),
+    re.compile(r"foursquare|factual.?engine|safegraph", re.I),
+]
+
+# ── Sensitive content / topic profiling ─────────────────────
+# Services and URL patterns that indicate profiling users by
+# the content topics they consume — health, politics, finance,
+# etc. — which can be weaponised for manipulation or
+# discrimination.
+
+CONTENT_PROFILING_PATTERNS: list[re.Pattern[str]] = [
+    # Topic / interest categorisation services
+    re.compile(r"grapeshot|oracle.*context|contextual.?target", re.I),
+    re.compile(r"peer39|comscore.*topic|iab.?categor", re.I),
+    re.compile(r"integral.?ad.?science|ias.?topic", re.I),
+    re.compile(r"double.?verify|dv.?topic|dvtag", re.I),
+    re.compile(r"proximic|comscore\.com", re.I),
+    # Audience segmentation / DMP
+    re.compile(r"audience.?segment|user.?segment", re.I),
+    re.compile(r"krux|salesforce.?dmp", re.I),
+    re.compile(r"permutive", re.I),
+    re.compile(r"blueconic|bluekai", re.I),
+    re.compile(r"bombora|intent.?data", re.I),
+]
+
 # ============================================================================
 # Storage Patterns
 # ============================================================================
@@ -181,13 +264,21 @@ TRACKING_STORAGE_PATTERNS: list[re.Pattern[str]] = [
 
 SENSITIVE_PURPOSES: list[re.Pattern[str]] = [
     re.compile(r"politic|political", re.I),
-    re.compile(r"health|medical", re.I),
+    re.compile(r"health|medical|pharma|wellness", re.I),
     re.compile(r"religio", re.I),
     re.compile(r"ethnic|racial", re.I),
     re.compile(r"sexual|sex", re.I),
     re.compile(r"biometric", re.I),
     re.compile(r"genetic", re.I),
-    re.compile(r"location|geo|gps", re.I),
+    re.compile(r"location|geo|gps|postcode|zip.?code", re.I),
     re.compile(r"child|minor|kid", re.I),
-    re.compile(r"financial|credit|income", re.I),
+    re.compile(r"financial|credit|income|debt|mortgage", re.I),
+    re.compile(r"addiction|gambling|alcohol|substance", re.I),
+    re.compile(r"mental.?health|depression|anxiety", re.I),
+    re.compile(r"pregnan|fertility|baby", re.I),
+    re.compile(r"criminal|arrest|conviction", re.I),
+    re.compile(r"immigration|visa|asylum", re.I),
+    re.compile(r"trade.?union|union.?member", re.I),
+    re.compile(r"disabilit|handicap", re.I),
+    re.compile(r"legal.?aid|solicitor|lawyer", re.I),
 ]

@@ -15,7 +15,7 @@ from src.analysis import scripts, tracking
 from src.analysis import privacy_score as privacy_score_mod
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.browser import session as browser_session
-from src.models import consent, tracking_data
+from src.models import analysis, consent, tracking_data
 from src.pipeline import sse_helpers
 from src.utils import logger
 
@@ -28,6 +28,7 @@ async def run_ai_analysis(
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int = 0,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> AsyncGenerator[str, None]:
     """Run script and tracking analysis concurrently.
 
@@ -98,6 +99,7 @@ async def run_ai_analysis(
         overlay_count,
         analysis_chunks,
         script_result,
+        pre_consent_stats,
     ):
         yield event
 
@@ -224,6 +226,7 @@ async def _score_and_summarise(
     overlay_count: int,
     analysis_chunks: list[str],
     script_result: scripts.ScriptAnalysisResult,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> AsyncGenerator[str, None]:
     """Score, summarise, and yield the complete event."""
     full_text = "".join(analysis_chunks)
@@ -250,6 +253,7 @@ async def _score_and_summarise(
         storage["session_storage"],
         url,
         consent_details,
+        pre_consent_stats,
     )
 
     yield sse_helpers.format_progress_event(

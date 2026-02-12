@@ -70,6 +70,30 @@ class CategoryScore(pydantic.BaseModel):
     issues: list[str] = pydantic.Field(default_factory=list)
 
 
+class PreConsentStats(pydantic.BaseModel):
+    """Categorised pre-consent data snapshot.
+
+    Captures both raw totals and *classified* counts so the
+    consent scorer can penalise actual tracking activity
+    rather than raw infrastructure volume.  Modern sites
+    legitimately load dozens of scripts and make hundreds of
+    requests just to render — only items that match known
+    tracker patterns count as violations.
+    """
+
+    # Raw totals (for logging / context only)
+    total_cookies: int = 0
+    total_scripts: int = 0
+    total_requests: int = 0
+    total_local_storage: int = 0
+    total_session_storage: int = 0
+
+    # Classified counts (used for scoring)
+    tracking_cookies: int = 0
+    tracking_scripts: int = 0
+    tracker_requests: int = 0
+
+
 class ScoreBreakdown(pydantic.BaseModel):
     """Detailed breakdown of how the score was calculated."""
 
