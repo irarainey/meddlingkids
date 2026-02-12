@@ -1,12 +1,12 @@
 # Meddling Kids - Server
 
-Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection. AI agents are built on the **Microsoft Agent Framework** (`agent-framework-core` package).
+Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection. Real Chrome is preferred over bundled Chromium for genuine TLS fingerprints that bypass CDN-level bot detectors. AI agents are built on the **Microsoft Agent Framework** (`agent-framework-core` package).
 
 ## Requirements
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- Playwright (with Chromium browser)
+- Playwright (with Chrome browser; falls back to bundled Chromium)
 
 ## Setup
 

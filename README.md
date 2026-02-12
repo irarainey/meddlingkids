@@ -25,7 +25,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 ## How It Works
 
 1. **URL Submission** — User enters a URL and selects a device type to emulate
-2. **Browser Automation** — Playwright launches Chromium with device emulation (headed mode on virtual display to avoid bot detection)
+2. **Browser Automation** — Playwright launches real Chrome (with Chromium fallback) in headed mode on a virtual display, with anti-bot hardening to avoid detection
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Consent Detection** — AI analyzes the page for cookie consent dialogs
@@ -78,7 +78,7 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite |
 | Backend | Python, FastAPI, Microsoft Agent Framework |
-| Browser Automation | Playwright for Python (headed mode on Xvfb virtual display) |
+| Browser Automation | Playwright for Python with real Chrome (headed mode on Xvfb virtual display) |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture

@@ -26,7 +26,7 @@ Meddling Kids is a full-stack application that analyzes website tracking behavio
 - **Xvfb**: Virtual display that allows headed browser mode without a visible window
 - **Microsoft Agent Framework**: AI agent infrastructure with Azure OpenAI / OpenAI backends for consent detection, script analysis, and privacy analysis
 
-> **Why Headed Mode?** Ad networks often detect and block headless browsers, refusing to serve ads. By running in headed mode on a virtual display (Xvfb), the browser appears identical to a real user's browser, allowing ads to load correctly while remaining invisible.
+> **Why Headed Mode?** Ad networks and bot-detection services (e.g. Tollbit) often detect and block headless browsers. By running real Chrome in headed mode on a virtual display (Xvfb), with anti-bot hardening (webdriver removal, fake plugins, WebGL/AudioContext/MediaDevices spoofing), the browser appears identical to a real user's browser, allowing ads to load correctly while remaining invisible.
 
 Communication happens via **Server-Sent Events (SSE)**, allowing real-time progress updates during the multi-step analysis process.
 
@@ -106,7 +106,8 @@ analyze_url_stream() in pipeline/stream.py
    ├── validate_openai_config() → Check env vars
    ├── BrowserSession() → Create isolated session
    ├── session.clear_tracking_data() → Reset tracking arrays
-   ├── await session.launch_browser(device_type) → Start Playwright browser
+   ├── await session.launch_browser(device_type) → Start real Chrome (Chromium fallback)
+   │   └── Anti-bot hardening: webdriver removal, plugins, WebGL, AudioContext, MediaDevices
    └── await session.navigate_to(url) → Load target page
 ```
 
@@ -117,12 +118,12 @@ navigate_to() returns
    ├── Check HTTP status code
    │   └── If error → send_event('pageError', {...})
    │
-   ├── wait_for_network_idle(20000)
-   │   └── Wait for ad/tracking scripts to load
-   │   └── Extra 3s wait if network still active (for ad auctions)
+   ├── wait_for_network_idle(3000)
+   │   └── Short 3s race — ad-heavy sites never fully idle
+   │   └── Proceeds with loaded DOM if timeout (normal)
    │
    ├── wait_for_timeout(2000)
-   │   └── Additional wait for lazy-loaded ads and deferred scripts
+   │   └── Grace period for consent banners and overlays to render
    │
    └── check_for_access_denied()
        └── If blocked → send_event('pageError', {...}) + screenshot
@@ -364,7 +365,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `session.py` | Playwright async browser session (per-request isolation for concurrency) |
+| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening) |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -602,7 +603,8 @@ The browser runs in headed mode on a virtual display (Xvfb) to avoid bot detecti
 - `containerEnv` in `devcontainer.json` sets `DISPLAY=:99`
 - `postStartCommand` runs `.devcontainer/init.sh` which:
   - Installs npm dependencies if needed
-  - Installs Playwright browsers and system dependencies
+  - Installs real Chrome for Python (preferred for TLS fingerprint authenticity)
+  - Installs Chromium as fallback for Python
   - Installs Xvfb if not present
   - Cleans up stale lock files and starts Xvfb on display `:99` if not already running
 - `.vscode/launch.json` also sets `DISPLAY=:99` for the debug server
