@@ -31,10 +31,9 @@ src/
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
 │       ├── AnalysisTab.vue      # AI analysis results
-│       ├── ConsentTab.vue       # Consent dialog details
 │       ├── CookiesTab.vue       # Cookies by domain
+│       ├── DebugLogTab.vue      # Server debug log (debug mode only)
 │       ├── NetworkTab.vue       # Network requests
-│       ├── SummaryTab.vue       # Summary with privacy score and key findings
 │       ├── ScriptsTab.vue       # Scripts by domain
 │       └── StorageTab.vue       # localStorage/sessionStorage
 ├── composables/
@@ -102,13 +101,12 @@ Each tab is a self-contained component with its own template and scoped styles:
 
 | Component | Purpose |
 |-----------|---------|
-| `SummaryTab` | Privacy score and key findings summary |
-| `AnalysisTab` | Full AI analysis with loading state |
+| `AnalysisTab` | Full AI analysis with structured report and summary findings |
 | `CookiesTab` | Cookies grouped by domain |
-| `StorageTab` | localStorage and sessionStorage items |
+| `DebugLogTab` | Server debug log output (visible in debug mode only) |
 | `NetworkTab` | Network requests with third-party filter |
 | `ScriptsTab` | JavaScript files grouped by domain |
-| `ConsentTab` | Consent dialog categories, purposes, partners |
+| `StorageTab` | localStorage and sessionStorage items |
 
 ### useTrackingAnalysis Composable
 
@@ -129,10 +127,12 @@ const {
   screenshots,          // Array of base64 screenshots
   cookies,              // Tracked cookies
   scripts,              // Loaded scripts
+  scriptGroups,         // Grouped similar scripts
   localStorage,         // localStorage items
   sessionStorage,       // sessionStorage items
   activeTab,            // Currently selected tab
   analysisResult,       // Full AI analysis (markdown)
+  structuredReport,     // Structured per-section report
   analysisError,        // Analysis error if AI failed
   summaryFindings,      // Structured findings array
   privacyScore,         // Privacy score (0-100)
@@ -146,13 +146,14 @@ const {
   statusMessage,        // Current progress message
   progressStep,         // Current step identifier
   progressPercent,      // Progress bar value (0-100)
+  selectedScreenshot,   // Currently selected screenshot index
+  debugLog,             // Server debug log lines
 
   // Computed
   scriptsByDomain,      // Scripts grouped by domain
   cookiesByDomain,      // Cookies grouped by domain
   filteredNetworkRequests, // Network requests (filtered)
   networkByDomain,      // Network requests grouped by domain
-  thirdPartyDomainCount, // Count of third-party domains
 
   // Methods
   analyzeUrl,           // Start analysis
@@ -172,6 +173,7 @@ Located in `types/tracking.ts`:
 |-----------|-------------|
 | `TrackedCookie` | Cookie with name, value, domain, expiry, security flags |
 | `TrackedScript` | JavaScript file loaded by the page |
+| `ScriptGroup` | Group of similar scripts (chunks, vendor bundles) |
 | `StorageItem` | localStorage/sessionStorage entry |
 | `NetworkRequest` | HTTP request with domain, type, third-party flag |
 | `ConsentCategory` | Cookie category from consent dialog |
@@ -179,6 +181,7 @@ Located in `types/tracking.ts`:
 | `ConsentDetails` | Full consent dialog information |
 | `SummaryFindingType` | Finding severity: critical, high, moderate, info, positive |
 | `SummaryFinding` | Structured finding with type and text |
+| `StructuredReport` | Per-section structured privacy report |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |
 | `PageError` | Access denied or server error information |
@@ -215,13 +218,12 @@ Located in `utils/formatters.ts`:
 
 | Tab | Content |
 |-----|---------|
-| **Summary** | Privacy score and key findings (default when findings present) |
-| **Analysis** | Full AI-generated analysis with detailed findings |
-| **Consent** | Extracted consent dialog information |
+| **Analysis** | Structured privacy report with summary findings and AI analysis |
 | **Cookies** | All cookies grouped by domain |
 | **Storage** | localStorage and sessionStorage items |
 | **Network** | HTTP requests with third-party filter |
 | **Scripts** | JavaScript files grouped by domain |
+| **Debug Log** | Server debug log output (debug mode only, enabled via `?debug=true`) |
 
 ### Visual Indicators
 

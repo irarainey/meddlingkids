@@ -262,10 +262,12 @@ sessionStorage       // StorageItem[]
 
 // Analysis results
 analysisResult       // Full markdown report
+structuredReport     // Structured per-section report
 summaryFindings      // Structured findings array
 privacyScore         // 0-100
 privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
+debugLog             // Server debug log lines
 
 // Dialog state
 showScoreDialog      // Privacy score popup
@@ -273,6 +275,7 @@ showPageErrorDialog  // Access denied popup
 showErrorDialog      // Generic error popup
 errorDialog          // { title, message }
 pageError            // { type, message, statusCode }
+selectedScreenshot   // Currently selected screenshot index
 ```
 
 ### SSE Event Handling
@@ -316,13 +319,12 @@ App.vue
 ├── ErrorDialog (generic errors)
 ├── ScreenshotGallery (thumbnail row + modal)
 └── Tab Content (v-if="isComplete")
-    ├── SummaryTab
     ├── AnalysisTab
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
     ├── ScriptsTab
-    └── ConsentTab
+    └── DebugLogTab (debug mode only)
 ```
 
 ---
@@ -347,12 +349,13 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with per-section LLM calls |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (markdown) |
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes |
-| `Config` | `config.py` | LLM configuration from environment variables (Azure / OpenAI) |
+| `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
@@ -376,6 +379,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `detection.py` | Consent dialog detection orchestration |
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons |
+| `constants.py` | Shared consent-manager host keywords and exclusion lists |
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level |
 
@@ -386,7 +390,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `tracking.py` | Main tracking analysis orchestration (streaming LLM) |
 | `scripts.py` | Script identification (patterns + LLM via agent) |
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
-| `tracker_patterns.py` | Regex pattern data for tracker classification |
+| `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
@@ -683,7 +687,8 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 ### Concurrency
 
 - Each request creates its own `BrowserSession` instance
-- Sessions are fully isolated - no shared state between requests
+- Sessions are fully isolated — no shared state between requests
+- Logger state (timers, log buffer, file handle) uses `contextvars.ContextVar` for async-safe per-session isolation
 - Multiple users can analyze different URLs simultaneously
 - Browser cleanup happens in `finally` block to prevent leaks
 
@@ -704,6 +709,7 @@ Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance) via 8 decomposed category scorers
+- Tracker classification patterns (~80+) are merged into combined alternation regexes for single-pass matching per URL/cookie
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
 ### Rate Limit Handling

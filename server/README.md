@@ -56,12 +56,13 @@ src/
 ├── main.py                          # FastAPI application entry point
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
-│   ├── config.py                    # LLM configuration (Azure / OpenAI)
+│   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings)
 │   ├── llm_client.py                # Chat client factory
 │   ├── middleware.py                # Timing & retry middleware
 │   ├── consent_detection_agent.py   # Vision agent for consent dialogs
 │   ├── consent_extraction_agent.py  # Extract consent details agent
 │   ├── script_analysis_agent.py     # Script identification agent
+│   ├── structured_report_agent.py   # Structured privacy report agent
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
 │   └── scripts/                     # JavaScript snippets evaluated in-browser
@@ -71,6 +72,7 @@ src/
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling
 │   ├── click.py                     # Multi-strategy consent button clicker
+│   ├── constants.py                 # Shared consent-manager detection constants
 │   ├── detection.py                 # Consent dialog detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (JSON)
@@ -79,7 +81,7 @@ src/
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns + LLM)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
-│   ├── tracker_patterns.py          # Regex patterns for tracker classification
+│   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
 │   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
@@ -103,6 +105,7 @@ src/
 │   ├── consent.py                   # Consent detection & extraction models
 │   ├── analysis.py                  # Analysis results & scoring models
 │   ├── partners.py                  # Partner classification models
+│   ├── report.py                    # Structured report section models
 │   └── browser.py                   # Navigation, access denial & device models
 ├── data/                            # Static pattern databases
 │   ├── loader.py                    # JSON data loader with caching
@@ -112,7 +115,8 @@ src/
     ├── errors.py                    # Error message extraction
     ├── image.py                     # Screenshot optimisation & JPEG conversion
     ├── json_parsing.py              # LLM response JSON parsing
-    ├── logger.py                    # Structured logger with colour output
+    ├── logger.py                    # Structured logger with colour output (contextvars isolation)
+    ├── risk.py                      # Shared risk-scoring helpers (risk_label)
     ├── serialization.py             # Pydantic model serialization helpers
     └── url.py                       # URL / domain utilities
 ```
@@ -135,6 +139,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of consent dialogs and overlay dismiss buttons |
 | `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
+| `StructuredReportAgent` | Tracking data + consent | `StructuredReport` | Generates structured privacy report with per-section LLM calls |
 | `SummaryFindingsAgent` | Analysis markdown | `list[SummaryFinding]` | Distils full analysis into 5-7 prioritized findings |
 | `TrackingAnalysisAgent` | Tracking summary | Markdown report | Comprehensive privacy analysis (supports streaming via `run_stream()`) |
 
@@ -143,6 +148,6 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | Module | Purpose |
 |--------|---------|
 | `base.py` | `BaseAgent` — shared agent factory with structured output and Azure schema fixes |
-| `config.py` | LLM configuration from environment variables (Azure OpenAI / standard OpenAI) |
+| `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) |
 | `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
 | `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx) |
