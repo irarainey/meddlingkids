@@ -27,18 +27,21 @@ log = logger.create_logger("Overlays")
 
 MAX_OVERLAYS = 5
 
-# Accept-style button text patterns.  When a cached overlay
-# uses one of these, we try to find a reject/decline
-# alternative first so the tool preserves user privacy.
-_ACCEPT_BUTTON_RE = re.compile(
-    r"accept|agree|allow|got it|i understand|okay"
-    r"|ok\b|continue|confirm",
+# Reject-style button text patterns.  When a cached overlay
+# uses one of these, we try to find an accept/allow
+# alternative first so the tool maximises consent for analysis.
+_REJECT_BUTTON_RE = re.compile(
+    r"reject|decline|deny|refuse|necessary only|essential only",
     re.IGNORECASE,
 )
 
-# Reject-style label regex used to locate a better button.
-_REJECT_BUTTON_RE = re.compile(
-    r"reject|decline|deny|refuse",
+# Accept-style label regex used to locate the preferred button.
+_ACCEPT_BUTTON_RE = re.compile(
+    r"accept|agree|allow|got it|i understand|okay"
+    r"|ok\b|continue|confirm|consent|enable all"
+    r"|activate all|opt in|sounds good|sure\b"
+    r"|that'?s ok|that'?s fine|no problem|proceed"
+    r"|understood|fine\b|yes\b|submit",
     re.IGNORECASE,
 )
 
@@ -65,23 +68,25 @@ class OverlayHandlingResult(pydantic.BaseModel):
 
 
 # ====================================================================
-# Reject-button helper
+# Accept-button helper
 # ====================================================================
 
 
-async def _find_reject_button(
+async def _find_accept_button(
     frame: async_api.Frame,
 ) -> str | None:
-    """Search *frame* for a reject/decline button.
+    """Search *frame* for an accept/allow button.
 
-    Returns the accessible name of the first matching button,
-    or ``None`` if none was found.
+    Returns the accessible name of the best matching button,
+    or ``None`` if none was found.  Prefers buttons whose
+    text contains "all" (e.g. "Accept all") for maximum
+    consent coverage.
     """
     try:
-        locator = frame.get_by_role("button", name=_REJECT_BUTTON_RE)
+        locator = frame.get_by_role("button", name=_ACCEPT_BUTTON_RE)
         if await locator.count() > 0:
             # Prefer the button whose text contains "all"
-            # (e.g. "Reject all") for a more complete opt-out.
+            # (e.g. "Accept all") for maximum consent.
             for i in range(await locator.count()):
                 text = await locator.nth(i).inner_text()
                 if text and "all" in text.lower():
@@ -550,40 +555,40 @@ class OverlayPipeline:
                     )
                     continue
 
-            # ── Prefer reject over cached accept ───────
-            # The cache may store an "accept" button from a
-            # previous run.  Try to find a reject/decline
-            # alternative first.
-            if cached.overlay_type == "cookie-consent" and cached.button_text and _ACCEPT_BUTTON_RE.search(cached.button_text):
-                reject_alt = await _find_reject_button(found_in_frame)
-                if reject_alt:
+            # ── Prefer accept over cached reject ───────
+            # The cache may store a "reject" button from a
+            # previous run.  Try to find an accept/allow
+            # alternative first so consent is maximised.
+            if cached.overlay_type == "cookie-consent" and cached.button_text and _REJECT_BUTTON_RE.search(cached.button_text):
+                accept_alt = await _find_accept_button(found_in_frame)
+                if accept_alt:
                     log.info(
-                        "Found reject button — overriding cached accept",
+                        "Found accept button — overriding cached reject",
                         {
                             "cachedButton": (cached.button_text),
-                            "rejectButton": reject_alt,
+                            "acceptButton": accept_alt,
                         },
                     )
                     detection = consent.CookieConsentDetection(
                         found=True,
                         overlay_type="cookie-consent",
                         selector=None,
-                        button_text=reject_alt,
+                        button_text=accept_alt,
                         confidence="high",
-                        reason=("reject preferred over cached accept"),
+                        reason=("accept preferred over cached reject"),
                     )
                     # Re-validate so found_in_frame points
-                    # at the frame containing the reject
+                    # at the frame containing the accept
                     # button (usually the same frame).
                     alt_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
                     if alt_frame:
                         found_in_frame = alt_frame
                     else:
-                        # Reject button vanished between
+                        # Accept button vanished between
                         # search and validation — fall back
-                        # to the original cached accept.
+                        # to the original cached reject.
                         log.info(
-                            "Reject button not found on re-validation — using cached accept",
+                            "Accept button not found on re-validation — using cached reject",
                         )
                         detection = consent.CookieConsentDetection(
                             found=True,

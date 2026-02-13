@@ -76,45 +76,92 @@ link that should be clicked to dismiss the overlay.
 **IMPORTANT -- Preferred button priority for cookie-consent \
 dialogs:**
 
-1. **MOST PREFERRED** -- "Reject all", "Decline all", \
-   "Refuse", "Deny", "Necessary only", \
-   "Essential cookies only", "Continue without accepting"
-2. **Acceptable** -- "Close", "Dismiss", "Not now", \
-   "No thanks", "Skip", "Maybe later", \
-   "Continue to site"
-3. **LAST RESORT (only if no reject option exists)** -- \
-   "Accept", "Accept all", "Agree", "Allow all", \
-   "I Accept", "I consent"
+1. **MOST PREFERRED** -- "Accept all", "Allow all", \
+   "Accept all cookies", "ACCEPT ALL", "Allow all cookies", \
+   "I Accept", "I consent", "Agree to all", \
+   "Yes, I agree", "Accept and continue", \
+   "Consent to all", "Enable all", "Enable all cookies", \
+   "Activate all", "Opt in to all", "Turn on all"
+2. **Acceptable** -- "Accept", "Agree", "Allow", \
+   "Consent", "Got it", "OK", "Okay", "Fine", \
+   "Sure", "Sounds good", "I understand", \
+   "Understood", "That's OK", "That's fine", \
+   "No problem", "Accept & close", "Accept cookies", \
+   "Allow cookies", "Continue", "Proceed", \
+   "Yes", "Yes please", "Confirm", "Submit"
+3. **LAST RESORT (only if no accept option exists)** -- \
+   "Close", "Dismiss", "Not now", "Skip", \
+   "Continue to site", "Go to site", "Enter site"
 
-Always choose the MOST PRIVACY-PRESERVING option visible \
-in the screenshot. Only fall back to "Accept" buttons \
-when no reject, decline, close, or dismiss option is \
-available.
+Always choose the option that ACCEPTS ALL cookies, \
+partners, and tracking consent. The goal is to load \
+the page with maximum consent so all tracking and \
+data sharing is active for analysis.
+
+Never choose reject/decline options if an accept option exists. \
+Never choose "necessary only" or "manage preferences" if an \accept all option exists. Only choose reject/decline if there is \
+no accept button at all -- in that case, choose the best option that allows \
+proceeding with the page.
+
+Never choose sign-in, subscribe, or pay buttons. These are not what we want.
+
+Never reject additional cookies if there is an option to accept all. \
+Rejecting some cookies may still allow the page to load, but it \
+will not give us the full picture of the tracking ecosystem.
+
+If you are ever given a choice to access for free \
+and accept all cookies and accept consent then take that. \
+Never accept the offer to pay, subscribe, sign up, or sign in.
+
+**Do NOT click these -- they are NOT what we want:**
+- "Reject all", "Decline", "Deny", "Refuse"
+- "Necessary only", "Essential cookies only"
+- "Continue without accepting"
+- "Manage preferences", "Cookie settings" (unless no \
+  accept button exists)
+- Sign-in / sign-up / subscribe / pay buttons
+- Reject all and subscribe
+- Reject and pay
 
 **Do NOT guess or use generic text.** Read the actual \
 words visible in the screenshot. The text could be \
 anything -- it is not limited to common phrases. Examples \
 of real button/link text seen on websites:
 
-- "Reject all"
-- "Decline"
-- "Necessary cookies only"
-- "Continue without accepting"
-- "No thanks, take me to the site"
-- "Not now"
-- "Close"
-- "Skip for now"
-- "Maybe later"
-- "Accept additional cookies"
-- "Yes, I agree"
-- "Got it"
-- "I Accept"
-- "Accept & close"
-- "That's OK"
+- "Accept all cookies"
 - "ACCEPT ALL"
 - "Allow all"
-- "OK, I understand"
+- "Allow all cookies"
+- "Accept all"
+- "Accept and continue"
+- "Yes, I agree"
+- "Agree to all"
+- "I Accept"
 - "I consent"
+- "Accept & close"
+- "Accept cookies"
+- "Agree"
+- "Consent"
+- "Enable all"
+- "That's OK"
+- "That's fine"
+- "Sounds good"
+- "Sure"
+- "Fine"
+- "Got it"
+- "OK"
+- "Okay"
+- "OK, I understand"
+- "No problem"
+- "Understood"
+- "Accept additional cookies"
+- "Continue"
+- "Proceed"
+- "Yes"
+- "Confirm"
+- "Submit"
+- "Close"
+- "Skip for now"
 
 Put this EXACT text (as shown in the screenshot, \
 preserving case) in the `buttonText` field. This is \
