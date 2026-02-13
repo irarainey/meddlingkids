@@ -125,6 +125,34 @@ class OverlayPipeline:
         self._cache_dismissed = 0
         self._failed_cache_types: set[str] = set()
         self._deferred_extraction: tuple[bytes, str | None] | None = None
+        # High-water mark for progress values.  Ensures that
+        # progress events emitted by the overlay pipeline are
+        # monotonically increasing regardless of how many
+        # overlays are detected or which code path is taken.
+        self._progress_hwm = 42  # Phase 3 ("captured") ends at 42
+
+    def _progress(self, step: str, message: str, progress: int) -> str:
+        """Format a progress event with a monotonic guarantee.
+
+        Always emits a value >= the highest previously emitted
+        value so the client's progress bar never goes backward.
+        """
+        self._progress_hwm = max(self._progress_hwm, progress)
+        return sse_helpers.format_progress_event(step, message, self._progress_hwm)
+
+    def _next_progress_base(self, overlay_count: int) -> int:
+        """Compute a monotonically-increasing progress base for an overlay.
+
+        Uses the standard formula ``45 + overlay_count * 5`` but
+        ensures the result never falls below the current high-water
+        mark, which can happen when cached overlays push the hwm
+        above the formula's output for subsequent vision-detected
+        overlays.  Also updates the hwm to account for the full
+        click-and-capture sequence (base + 3).
+        """
+        base = max(45 + overlay_count * 5, self._progress_hwm + 1)
+        self._progress_hwm = base + 3  # click_and_capture emits up to base+3
+        return base
 
     async def run(self) -> AsyncGenerator[str]:
         """Handle overlays, yielding SSE events.
@@ -196,14 +224,14 @@ class OverlayPipeline:
                 # Consent extraction is the dominant task
                 # (runs concurrently with overlay verify).
                 log.info("Processing consent dialog concurrently with overlay verification")
-                yield sse_helpers.format_progress_event(
+                yield self._progress(
                     "consent-analyze",
                     "Processing consent dialog...",
                     68,
                 )
             else:
                 log.info("Checking for additional overlays after dismissal")
-                yield sse_helpers.format_progress_event(
+                yield self._progress(
                     "overlays-verify",
                     "Checking for additional overlays...",
                     68,
@@ -265,7 +293,7 @@ class OverlayPipeline:
                     break
 
             overlay_count += 1
-            progress_base = 45 + (overlay_count * 5)
+            progress_base = self._next_progress_base(overlay_count)
 
             log.info(
                 f"Overlay {overlay_count} found (validated in DOM)",
@@ -276,7 +304,7 @@ class OverlayPipeline:
                     "confidence": detection.confidence,
                 },
             )
-            yield sse_helpers.format_progress_event(
+            yield self._progress(
                 f"overlay-{overlay_count}-found",
                 overlay_steps.get_overlay_message(detection.overlay_type),
                 progress_base,
@@ -293,7 +321,7 @@ class OverlayPipeline:
             pre_click_screenshot: bytes | None = None
             pre_click_consent_text: str | None = None
             if is_first_cookie_consent:
-                yield sse_helpers.format_progress_event(
+                yield self._progress(
                     f"overlay-{overlay_count}-expand",
                     "Expanding consent details...",
                     progress_base,
@@ -307,7 +335,7 @@ class OverlayPipeline:
                 )
 
             # ── Click ───────────────────────────────────────
-            yield sse_helpers.format_progress_event(
+            yield self._progress(
                 f"overlay-{overlay_count}-click",
                 "Dismissing overlay...",
                 progress_base + 1,
@@ -430,7 +458,7 @@ class OverlayPipeline:
 
         if overlay_count >= MAX_OVERLAYS:
             log.warn("Reached maximum overlay limit, stopping detection")
-            yield sse_helpers.format_progress_event(
+            yield self._progress(
                 "overlays-limit",
                 "Maximum overlay limit reached...",
                 70,
@@ -569,7 +597,7 @@ class OverlayPipeline:
                         )
 
             overlay_number = result.overlay_count + dismissed + 1
-            progress_base = 45 + (overlay_number * 5)
+            progress_base = self._next_progress_base(overlay_number)
 
             log.info(
                 f"Cached overlay {overlay_number} validated in DOM",
@@ -580,7 +608,7 @@ class OverlayPipeline:
                 },
             )
 
-            yield sse_helpers.format_progress_event(
+            yield self._progress(
                 f"overlay-{overlay_number}-found",
                 overlay_steps.get_overlay_message(cached.overlay_type),
                 progress_base,
@@ -592,7 +620,7 @@ class OverlayPipeline:
             pre_click_screenshot: bytes | None = None
             pre_click_consent_text: str | None = None
             if is_first_cookie:
-                yield sse_helpers.format_progress_event(
+                yield self._progress(
                     f"overlay-{overlay_number}-expand",
                     "Expanding consent details...",
                     progress_base,
@@ -605,7 +633,7 @@ class OverlayPipeline:
                     session,
                 )
 
-            yield sse_helpers.format_progress_event(
+            yield self._progress(
                 f"overlay-{overlay_number}-click",
                 "Dismissing overlay...",
                 progress_base + 1,

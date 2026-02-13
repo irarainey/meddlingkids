@@ -1,5 +1,5 @@
 [project]
-name = "meddlingkids-server"
+name = "server"
 version = "0.1.0"
 description = "Python server for Meddling Kids"
 readme = "README.md"
