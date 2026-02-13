@@ -92,6 +92,9 @@ export function useTrackingAnalysis() {
   /** Screenshot modal state */
   const selectedScreenshot = ref<ScreenshotModal | null>(null)
 
+  /** Server debug log lines collected during analysis */
+  const debugLog = ref<string[]>([])
+
   /** Active SSE connection (tracked for cleanup) */
   let activeEventSource: EventSource | null = null
 
@@ -229,6 +232,7 @@ export function useTrackingAnalysis() {
     statusMessage.value = 'Initializing...'
     progressStep.value = 'init'
     progressPercent.value = 0
+    debugLog.value = []
   }
 
   /**
@@ -374,6 +378,9 @@ export function useTrackingAnalysis() {
           if (data.scriptGroups) {
             scriptGroups.value = data.scriptGroups
           }
+          if (data.debugLog) {
+            debugLog.value = data.debugLog
+          }
 
           activeTab.value = 'analysis'
           statusMessage.value = data.message
@@ -493,6 +500,7 @@ export function useTrackingAnalysis() {
     progressStep,
     progressPercent,
     selectedScreenshot,
+    debugLog,
 
     // Computed
     scriptsByDomain,

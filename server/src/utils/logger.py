@@ -22,6 +22,22 @@ from pathlib import Path
 _timers: dict[str, tuple[float, str]] = {}  # key -> (monotonic_ms, start_timestamp)
 
 # ============================================================================
+# In-memory log buffer (sent to the client at the end of analysis)
+# ============================================================================
+
+_log_buffer: list[str] = []
+
+
+def get_log_buffer() -> list[str]:
+    """Return a copy of the accumulated log lines (ANSI-stripped)."""
+    return list(_log_buffer)
+
+
+def clear_log_buffer() -> None:
+    """Clear the in-memory log buffer for the next analysis run."""
+    _log_buffer.clear()
+
+# ============================================================================
 # File Logging
 # ============================================================================
 
@@ -231,6 +247,8 @@ class Logger:
 
         print(log_line, file=sys.stderr)
         _write_to_log_file(log_line)
+        # Keep an ANSI-stripped copy for the client debug tab.
+        _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", log_line))
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
         """Log an informational message."""
@@ -292,6 +310,7 @@ class Logger:
         for ln in lines:
             print(ln, file=sys.stderr)
             _write_to_log_file(ln)
+            _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", ln))
 
     def subsection(self, title: str) -> None:
         """Print a smaller sub-section header."""
@@ -299,6 +318,7 @@ class Logger:
         output = f"\n{c['cyan']}  ▸ {title}{c['reset']}"
         print(output, file=sys.stderr)
         _write_to_log_file(output)
+        _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", output))
 
 
 def create_logger(context: str) -> Logger:

@@ -581,5 +581,6 @@ async def _score_and_summarise(
                 sse_helpers.to_camel_case_dict(g)
                 for g in script_result.groups
             ],
+            "debugLog": logger.get_log_buffer(),
         },
     )

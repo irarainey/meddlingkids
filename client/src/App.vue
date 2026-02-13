@@ -10,6 +10,7 @@ import {
   ErrorDialog,
   AnalysisTab,
   CookiesTab,
+  DebugLogTab,
   NetworkTab,
   ScriptsTab,
   StorageTab,
@@ -45,6 +46,7 @@ const {
   progressStep,
   progressPercent,
   selectedScreenshot,
+  debugLog,
 
   // Computed
   scriptsByDomain,
@@ -63,6 +65,9 @@ const {
 
 const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
+
+/** Show the Debug Log tab only when ?debug=true is in the URL. */
+const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
 
 /** Scroll to the screenshot gallery when the first screenshot arrives. */
 watch(
@@ -183,6 +188,9 @@ function handleViewReport(): void {
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})
           </button>
+          <button v-if="debugMode" class="tab" :class="{ active: activeTab === 'debug-log' }" @click="activeTab = 'debug-log'">
+            🪵 Debug Log
+          </button>
         </div>
 
         <!-- Tab Content Panels -->
@@ -219,6 +227,11 @@ function handleViewReport(): void {
           :scripts-by-domain="scriptsByDomain"
           :script-count="scripts.length"
           :script-groups="scriptGroups"
+        />
+
+        <DebugLogTab
+          v-if="activeTab === 'debug-log'"
+          :log-lines="debugLog"
         />
     </div>
   </div>

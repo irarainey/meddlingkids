@@ -155,6 +155,7 @@ async def analyze_url_stream(
 
     session = browser_session.BrowserSession()
     domain = url_mod.extract_domain(url)
+    logger.clear_log_buffer()
     logger.start_log_file(domain)
     refresher_task: asyncio.Task[None] | None = None
 

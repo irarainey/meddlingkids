@@ -316,4 +316,4 @@ export interface ErrorDialogState {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis'
+export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'debug-log'
