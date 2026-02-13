@@ -13,29 +13,11 @@ import json
 from typing import TypeVar
 
 import pydantic
-
 from src.agents import base
-from src.models import analysis, consent
-from src.models import report as report_models  # type: ignore[attr-defined]
-from src.utils import json_parsing, logger
+from src.models import analysis, consent, report
+from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("StructuredReportAgent")
-
-
-# ── Helpers ─────────────────────────────────────────────────────
-
-
-def _risk_label(score: int) -> str:
-    """Map a 0-100 score to a human risk label."""
-    if score >= 80:
-        return "Critical Risk"
-    if score >= 60:
-        return "High Risk"
-    if score >= 40:
-        return "Moderate Risk"
-    if score >= 20:
-        return "Low Risk"
-    return "Very Low Risk"
 
 
 # ── Agent name ──────────────────────────────────────────────────
@@ -49,39 +31,39 @@ AGENT_NAME = "StructuredReportAgent"
 # each section call.
 
 class _TrackingTechResponse(pydantic.BaseModel):
-    section: report_models.TrackingTechnologiesSection
+    section: report.TrackingTechnologiesSection
 
 
 class _DataCollectionResponse(pydantic.BaseModel):
-    section: report_models.DataCollectionSection
+    section: report.DataCollectionSection
 
 
 class _ThirdPartyResponse(pydantic.BaseModel):
-    section: report_models.ThirdPartySection
+    section: report.ThirdPartySection
 
 
 class _PrivacyRiskResponse(pydantic.BaseModel):
-    section: report_models.PrivacyRiskSection
+    section: report.PrivacyRiskSection
 
 
 class _CookieAnalysisResponse(pydantic.BaseModel):
-    section: report_models.CookieAnalysisSection
+    section: report.CookieAnalysisSection
 
 
 class _StorageAnalysisResponse(pydantic.BaseModel):
-    section: report_models.StorageAnalysisSection
+    section: report.StorageAnalysisSection
 
 
 class _ConsentAnalysisResponse(pydantic.BaseModel):
-    section: report_models.ConsentAnalysisSection
+    section: report.ConsentAnalysisSection
 
 
 class _VendorResponse(pydantic.BaseModel):
-    section: report_models.VendorSection
+    section: report.VendorSection
 
 
 class _RecommendationsResponse(pydantic.BaseModel):
-    section: report_models.RecommendationsSection
+    section: report.RecommendationsSection
 
 
 # ── Section prompts ─────────────────────────────────────────────
@@ -287,7 +269,7 @@ class StructuredReportAgent(base.BaseAgent):
         consent_details: consent.ConsentDetails | None = None,
         pre_consent_stats: analysis.PreConsentStats | None = None,
         score_breakdown: analysis.ScoreBreakdown | None = None,
-    ) -> report_models.StructuredReport:
+    ) -> report.StructuredReport:
         """Build a complete structured report.
 
         Runs section LLM calls concurrently in two waves:
@@ -372,7 +354,7 @@ class StructuredReportAgent(base.BaseAgent):
             if consent_details
             and (consent_details.categories or consent_details.partners
                  or consent_details.claimed_partner_count)
-            else _noop_section(report_models.ConsentAnalysisSection())
+            else _noop_section(report.ConsentAnalysisSection())
         )
 
         vendors, consent_analysis, recommendations = (
@@ -399,7 +381,7 @@ class StructuredReportAgent(base.BaseAgent):
         # the relevant fields so the report is accurate.
         consent_sec = _extract(
             consent_analysis,
-            report_models.ConsentAnalysisSection,
+            report.ConsentAnalysisSection,
         )
         if consent_details:
             consent_sec.has_consent_dialog = True
@@ -420,39 +402,39 @@ class StructuredReportAgent(base.BaseAgent):
                     consent_details.partners
                 )
 
-        result = report_models.StructuredReport(
+        result = report.StructuredReport(
             tracking_technologies=_extract(
                 tracking_tech,
-                report_models.TrackingTechnologiesSection,
+                report.TrackingTechnologiesSection,
             ),
             data_collection=_extract(
                 data_collection,
-                report_models.DataCollectionSection,
+                report.DataCollectionSection,
             ),
             third_party_services=_extract(
                 third_party,
-                report_models.ThirdPartySection,
+                report.ThirdPartySection,
             ),
             privacy_risk=_extract(
                 privacy_risk,
-                report_models.PrivacyRiskSection,
+                report.PrivacyRiskSection,
             ),
             cookie_analysis=_extract(
                 cookie_analysis,
-                report_models.CookieAnalysisSection,
+                report.CookieAnalysisSection,
             ),
             storage_analysis=_extract(
                 storage_analysis,
-                report_models.StorageAnalysisSection,
+                report.StorageAnalysisSection,
             ),
             consent_analysis=consent_sec,
             key_vendors=_extract(
                 vendors,
-                report_models.VendorSection,
+                report.VendorSection,
             ),
             recommendations=_extract(
                 recommendations,
-                report_models.RecommendationsSection,
+                report.RecommendationsSection,
             ),
         )
 
@@ -508,11 +490,12 @@ class StructuredReportAgent(base.BaseAgent):
                             {"section": raw["section"]}
                         )
 
-            log.warn(f"Section '{section_name}' parse failed")
+            log.warn("Section parse failed", {"section": section_name})
             return None
         except Exception as err:
             log.error(
-                f"Section '{section_name}' failed: {err}"
+                "Section generation failed",
+                {"section": section_name, "error": str(err)},
             )
             return None
 
@@ -650,7 +633,7 @@ def _build_data_context(
         ])
 
     if score_breakdown:
-        risk_label = _risk_label(score_breakdown.total_score)
+        risk_label = risk.risk_label(score_breakdown.total_score)
         top = ", ".join(score_breakdown.factors[:5]) or "none"
         cat_lines = "\n".join(
             f"- {name}: {cat.points}/{cat.max_points}"

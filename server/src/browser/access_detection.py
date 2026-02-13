@@ -91,5 +91,5 @@ async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialR
         log.debug("No access denial detected")
         return browser.AccessDenialResult(denied=False, reason=None)
     except Exception as exc:
-        log.debug(f"Access check error (assuming no denial): {exc}")
+        log.debug("Access check error (assuming no denial)", {"error": str(exc)})
         return browser.AccessDenialResult(denied=False, reason=None)

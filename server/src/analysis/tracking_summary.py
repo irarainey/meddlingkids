@@ -126,32 +126,25 @@ def build_pre_consent_stats(
         Pre-consent statistics for scoring calibration.
     """
     tracking_patterns_db = loader.get_tracking_scripts()
-    url_patterns = (
-        tracker_patterns.HIGH_RISK_TRACKERS
-        + tracker_patterns.ADVERTISING_TRACKERS
-        + tracker_patterns.SOCIAL_MEDIA_TRACKERS
-        + tracker_patterns.ANALYTICS_TRACKERS
-    )
+    url_combined = tracker_patterns.ALL_URL_TRACKERS_COMBINED
+    cookie_combined = tracker_patterns.TRACKING_COOKIE_COMBINED
 
     tracking_cookies = sum(
         1
         for c in cookies
-        if any(
-            p.search(c.name)
-            for p in tracker_patterns.TRACKING_COOKIE_PATTERNS
-        )
+        if cookie_combined.search(c.name)
     )
     tracking_scripts = sum(
         1
         for s in scripts
         if any(t.compiled.search(s.url) for t in tracking_patterns_db)
-        or any(p.search(s.url) for p in url_patterns)
+        or url_combined.search(s.url)
     )
     tracker_requests = sum(
         1
         for r in requests
         if r.is_third_party
-        and any(p.search(r.url) for p in url_patterns)
+        and url_combined.search(r.url)
     )
 
     return analysis.PreConsentStats(

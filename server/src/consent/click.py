@@ -11,7 +11,7 @@ import time
 from urllib import parse
 
 from playwright import async_api
-
+from src.consent import constants
 from src.utils import logger
 
 log = logger.create_logger("Consent-Click")
@@ -20,22 +20,6 @@ log = logger.create_logger("Consent-Click")
 # Prevents runaway retry cascades on heavy pages where every safety
 # evaluation times out (~2s each × 16+ selectors = 40s+ wasted).
 _MAX_CLICK_TIME_SECONDS = 15.0
-
-# Consent-manager keywords matched against iframe **hostname** only.
-# Matching the full URL would false-positive on ad-sync iframes that
-# carry ``gdpr=1`` or ``gdpr_consent=…`` in their query strings.
-_CONSENT_HOST_KEYWORDS = (
-    "consent", "onetrust", "cookiebot", "sourcepoint",
-    "trustarc", "didomi", "quantcast", "gdpr", "privacy",
-    "cmp", "cookie",
-)
-
-# Substrings in the hostname that indicate an ad-tech sync/pixel
-# iframe rather than a real consent-manager frame.
-_CONSENT_HOST_EXCLUDE = (
-    "cookie-sync", "pixel", "-sync.", "ad-sync",
-    "user-sync", "match.", "prebid",
-)
 
 
 def _is_consent_frame(frame: async_api.Frame, main_frame: async_api.Frame) -> bool:
@@ -47,9 +31,9 @@ def _is_consent_frame(frame: async_api.Frame, main_frame: async_api.Frame) -> bo
     except Exception:
         return False
     hostname_lower = hostname.lower()
-    if any(ex in hostname_lower for ex in _CONSENT_HOST_EXCLUDE):
+    if any(ex in hostname_lower for ex in constants.CONSENT_HOST_EXCLUDE):
         return False
-    return any(kw in hostname_lower for kw in _CONSENT_HOST_KEYWORDS)
+    return any(kw in hostname_lower for kw in constants.CONSENT_HOST_KEYWORDS)
 
 
 async def validate_element_exists(

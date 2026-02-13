@@ -13,10 +13,11 @@ import contextlib
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from playwright import async_api
-
+from src.agents import consent_extraction_agent
 from src.browser import session as browser_session
 from src.consent import (
     click,
+    constants,
     extraction,
     overlay_cache,
     partner_classification,
@@ -258,10 +259,7 @@ async def expand_consent_dialog(
         frame_url = frame.url.lower()
         if any(
             kw in frame_url
-            for kw in (
-                "consent", "cmp", "cookie", "gdpr",
-                "privacy", "quantcast", "onetrust",
-            )
+            for kw in constants.CONSENT_HOST_KEYWORDS
         ):
             frames.append(frame)
 
@@ -310,10 +308,7 @@ async def expand_consent_dialog(
         log.debug("No expand button found on consent dialog")
 
     # Capture the consent text from the (possibly expanded) DOM
-    from src.agents.consent_extraction_agent import (
-        _extract_consent_text,
-    )
-    consent_text = await _extract_consent_text(page)
+    consent_text = await consent_extraction_agent._extract_consent_text(page)
     screenshot = await session.take_screenshot(full_page=False)
 
     # Navigate back to the main consent view so the original

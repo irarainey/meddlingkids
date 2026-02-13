@@ -16,11 +16,10 @@ from typing import AsyncGenerator
 
 import pydantic
 from playwright import async_api
-
 from src.browser import session as browser_session
 from src.consent import overlay_cache
 from src.models import consent, tracking_data
-from src.pipeline import overlay_steps as steps, sse_helpers
+from src.pipeline import overlay_steps, sse_helpers
 from src.utils import logger
 
 log = logger.create_logger("Overlays")
@@ -195,7 +194,7 @@ class OverlayPipeline:
                     )
                     self._deferred_extraction = None
                     pending_extract = asyncio.create_task(
-                        steps.collect_extraction_events(
+                        overlay_steps.collect_extraction_events(
                             page,
                             ext_screenshot,
                             result,
@@ -232,7 +231,7 @@ class OverlayPipeline:
             # Run detection independently — don't block on
             # pending extraction so the loop can break early
             # when no more overlays are found.
-            detection = await steps.detect_overlay(
+            detection = await overlay_steps.detect_overlay(
                 session, overlay_count
             )
 
@@ -240,14 +239,14 @@ class OverlayPipeline:
                 not detection.selector
                 and not detection.button_text
             ):
-                for event in steps.build_no_overlay_events(
+                for event in overlay_steps.build_no_overlay_events(
                     overlay_count, detection.reason
                 ):
                     yield event
                 break
 
             # ── Check for repeated detection ────────────────
-            sig = steps.detection_signature(detection)
+            sig = overlay_steps.detection_signature(detection)
             if sig in failed_signatures:
                 log.warn(
                     "Skipping re-detected overlay that"
@@ -257,7 +256,7 @@ class OverlayPipeline:
                         "buttonText": detection.button_text,
                     },
                 )
-                for event in steps.build_no_overlay_events(
+                for event in overlay_steps.build_no_overlay_events(
                     overlay_count,
                     "Overlay re-detected but click already"
                     " failed — stopping",
@@ -266,7 +265,7 @@ class OverlayPipeline:
                 break
 
             # ── Validate in DOM ─────────────────────────────
-            found_in_frame = await steps.validate_overlay_in_dom(
+            found_in_frame = await overlay_steps.validate_overlay_in_dom(
                 page, detection
             )
             if not found_in_frame:
@@ -286,7 +285,7 @@ class OverlayPipeline:
                     for _retry in range(4):
                         await asyncio.sleep(1.5)
                         found_in_frame = (
-                            await steps.validate_overlay_in_dom(
+                            await overlay_steps.validate_overlay_in_dom(
                                 page, detection
                             )
                         )
@@ -298,7 +297,7 @@ class OverlayPipeline:
                             )
                             break
                 if not found_in_frame:
-                    for event in steps.build_no_overlay_events(
+                    for event in overlay_steps.build_no_overlay_events(
                         overlay_count,
                         "Detection false positive — element not"
                         " found in DOM",
@@ -321,7 +320,7 @@ class OverlayPipeline:
             )
             yield sse_helpers.format_progress_event(
                 f"overlay-{overlay_count}-found",
-                steps.get_overlay_message(detection.overlay_type),
+                overlay_steps.get_overlay_message(detection.overlay_type),
                 progress_base,
             )
             result.dismissed_overlays.append(detection)
@@ -345,7 +344,7 @@ class OverlayPipeline:
                     progress_base,
                 )
                 pre_click_consent_text, pre_click_screenshot = (
-                    await steps.expand_consent_dialog(
+                    await overlay_steps.expand_consent_dialog(
                         page, session,
                     )
                 )
@@ -359,7 +358,7 @@ class OverlayPipeline:
 
             try:
                 clicked = False
-                async for event in steps.click_and_capture(
+                async for event in overlay_steps.click_and_capture(
                     session,
                     page,
                     detection,
@@ -395,7 +394,7 @@ class OverlayPipeline:
                             },
                         )
                         pending_extract = asyncio.create_task(
-                            steps.collect_extraction_events(
+                            overlay_steps.collect_extraction_events(
                                 page,
                                 pre_click_screenshot,
                                 result,
@@ -405,7 +404,7 @@ class OverlayPipeline:
                             )
                         )
 
-                    event, msg = steps.build_click_failure(
+                    event, msg = overlay_steps.build_click_failure(
                         detection, overlay_count
                     )
                     if overlay_count == 1:
@@ -451,7 +450,7 @@ class OverlayPipeline:
                         " — preserving for analysis",
                     )
                     pending_extract = asyncio.create_task(
-                        steps.collect_extraction_events(
+                        overlay_steps.collect_extraction_events(
                             page,
                             pre_click_screenshot,
                             result,
@@ -461,7 +460,7 @@ class OverlayPipeline:
                         )
                     )
 
-                event, msg = steps.build_click_failure(
+                event, msg = overlay_steps.build_click_failure(
                     detection,
                     overlay_count,
                     error_detail=str(click_error),
@@ -491,7 +490,7 @@ class OverlayPipeline:
                 and pre_click_screenshot
             ):
                 pending_extract = asyncio.create_task(
-                    steps.collect_extraction_events(
+                    overlay_steps.collect_extraction_events(
                         page,
                         pre_click_screenshot,
                         result,
@@ -584,7 +583,7 @@ class OverlayPipeline:
             )
 
             # Validate element exists in DOM
-            found_in_frame = await steps.validate_overlay_in_dom(
+            found_in_frame = await overlay_steps.validate_overlay_in_dom(
                 page, detection
             )
             if not found_in_frame:
@@ -603,7 +602,7 @@ class OverlayPipeline:
                     for _retry in range(4):
                         await asyncio.sleep(1.5)
                         found_in_frame = (
-                            await steps.validate_overlay_in_dom(
+                            await overlay_steps.validate_overlay_in_dom(
                                 page, detection
                             )
                         )
@@ -667,7 +666,7 @@ class OverlayPipeline:
                     # at the frame containing the reject
                     # button (usually the same frame).
                     alt_frame = (
-                        await steps.validate_overlay_in_dom(
+                        await overlay_steps.validate_overlay_in_dom(
                             page, detection
                         )
                     )
@@ -716,7 +715,7 @@ class OverlayPipeline:
 
             yield sse_helpers.format_progress_event(
                 f"overlay-{overlay_number}-found",
-                steps.get_overlay_message(
+                overlay_steps.get_overlay_message(
                     cached.overlay_type
                 ),
                 progress_base,
@@ -737,7 +736,7 @@ class OverlayPipeline:
                     progress_base,
                 )
                 pre_click_consent_text, pre_click_screenshot = (
-                    await steps.expand_consent_dialog(
+                    await overlay_steps.expand_consent_dialog(
                         page, session,
                     )
                 )
@@ -751,7 +750,7 @@ class OverlayPipeline:
             # Attempt click — stream events in real-time
             click_ok = False
             try:
-                async for event in steps.click_and_capture(
+                async for event in overlay_steps.click_and_capture(
                     session,
                     page,
                     detection,
@@ -852,7 +851,7 @@ class OverlayPipeline:
                 ),
                 button_text=d.button_text,
                 selector=d.selector,
-                accessor_type=steps.infer_accessor_type(d),
+                accessor_type=overlay_steps.infer_accessor_type(d),
             )
             for d in result.dismissed_overlays
         ]

@@ -70,7 +70,7 @@ class ScriptAnalysisAgent(base.BaseAgent):
             :MAX_SCRIPT_CONTENT_LENGTH
         ]
         user_message = f"Script: {url}\n{snippet}"
-        log.debug(f"Analysing script: {url}")
+        log.debug("Analysing script", {"url": url})
 
         try:
             response = await self._complete(user_message)

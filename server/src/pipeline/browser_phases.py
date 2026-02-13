@@ -9,8 +9,8 @@ import asyncio
 from urllib import parse
 
 from playwright import async_api
-
 from src.browser import session as browser_session
+from src.consent import constants
 from src.models import browser
 from src.pipeline import sse_helpers
 from src.utils import logger
@@ -73,19 +73,7 @@ async def setup_and_navigate(
 # Consent Dialog Readiness
 # ====================================================================
 
-# Keywords in iframe hostnames that indicate a consent-manager frame.
-_CONSENT_HOST_KEYWORDS = (
-    "consent", "onetrust", "cookiebot", "sourcepoint",
-    "trustarc", "didomi", "quantcast", "gdpr", "privacy",
-    "cmp", "cookie",
-)
-
-# Substrings that indicate an ad-tech sync/pixel iframe rather
-# than a real consent-manager frame.
-_CONSENT_HOST_EXCLUDE = (
-    "cookie-sync", "pixel", "-sync.", "ad-sync",
-    "user-sync", "match.", "prebid",
-)
+# Consent-manager host constants imported from src.consent.constants.
 
 # Well-known container selectors for consent dialogs in the
 # main frame (not inside iframes).
@@ -131,9 +119,9 @@ async def _wait_for_consent_dialog_ready(
         except Exception:
             continue
         hostname_lower = hostname.lower()
-        if any(ex in hostname_lower for ex in _CONSENT_HOST_EXCLUDE):
+        if any(ex in hostname_lower for ex in constants.CONSENT_HOST_EXCLUDE):
             continue
-        if any(kw in hostname_lower for kw in _CONSENT_HOST_KEYWORDS):
+        if any(kw in hostname_lower for kw in constants.CONSENT_HOST_KEYWORDS):
             consent_frames.append(frame)
 
     # Also check for known containers in the main frame

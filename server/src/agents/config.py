@@ -4,30 +4,18 @@ LLM configuration for agent-based analysis.
 Centralises all environment variable names, default values,
 and configuration validation for both Azure OpenAI and
 standard OpenAI backends.
+
+Uses ``pydantic_settings.BaseSettings`` for automatic environment
+variable binding, type coercion, and validation.
 """
 
 from __future__ import annotations
 
-import os
-
+import pydantic
+import pydantic_settings
 from src.utils import logger
 
 log = logger.create_logger("Agent-Config")
-
-# ── Environment variable names ──────────────────────────────────────
-# Azure OpenAI
-ENV_AZURE_ENDPOINT = "AZURE_OPENAI_ENDPOINT"
-ENV_AZURE_API_KEY = "AZURE_OPENAI_API_KEY"
-ENV_AZURE_DEPLOYMENT = "AZURE_OPENAI_DEPLOYMENT"
-ENV_AZURE_API_VERSION = "OPENAI_API_VERSION"
-
-# Standard OpenAI
-ENV_OPENAI_API_KEY = "OPENAI_API_KEY"
-ENV_OPENAI_MODEL = "OPENAI_MODEL"
-ENV_OPENAI_BASE_URL = "OPENAI_BASE_URL"
-
-# ── Defaults ────────────────────────────────────────────────────────
-DEFAULT_API_VERSION = "2024-12-01-preview"
 
 # ── Agent names ─────────────────────────────────────────────────────
 AGENT_TRACKING_ANALYSIS = "TrackingAnalysisAgent"
@@ -38,7 +26,7 @@ AGENT_SCRIPT_ANALYSIS = "ScriptAnalysisAgent"
 AGENT_STRUCTURED_REPORT = "StructuredReportAgent"
 
 
-class AzureOpenAIConfig:
+class AzureOpenAIConfig(pydantic_settings.BaseSettings):
     """Configuration for Azure OpenAI chat client.
 
     Loads configuration from environment variables and validates
@@ -51,16 +39,21 @@ class AzureOpenAIConfig:
         deployment: Model deployment name.
     """
 
-    def __init__(self) -> None:
-        """Initialise configuration from environment variables."""
-        self.endpoint = os.getenv(ENV_AZURE_ENDPOINT, "")
-        self.api_key = os.getenv(ENV_AZURE_API_KEY, "")
-        self.api_version = os.getenv(
-            ENV_AZURE_API_VERSION, DEFAULT_API_VERSION
-        )
-        self.deployment = os.getenv(ENV_AZURE_DEPLOYMENT, "")
+    endpoint: str = pydantic.Field(
+        default="", validation_alias="AZURE_OPENAI_ENDPOINT"
+    )
+    api_key: str = pydantic.Field(
+        default="", validation_alias="AZURE_OPENAI_API_KEY"
+    )
+    api_version: str = pydantic.Field(
+        default="2024-12-01-preview",
+        validation_alias="OPENAI_API_VERSION",
+    )
+    deployment: str = pydantic.Field(
+        default="", validation_alias="AZURE_OPENAI_DEPLOYMENT"
+    )
 
-    def validate(self) -> bool:
+    def validate_config(self) -> bool:
         """Check if all required configuration is present.
 
         Returns:
@@ -69,7 +62,7 @@ class AzureOpenAIConfig:
         return bool(self.endpoint and self.api_key and self.deployment)
 
 
-class OpenAIConfig:
+class OpenAIConfig(pydantic_settings.BaseSettings):
     """Configuration for standard OpenAI chat client.
 
     Loads configuration from environment variables.
@@ -80,13 +73,17 @@ class OpenAIConfig:
         base_url: Optional custom base URL.
     """
 
-    def __init__(self) -> None:
-        """Initialise configuration from environment variables."""
-        self.api_key = os.getenv(ENV_OPENAI_API_KEY, "")
-        self.model = os.getenv(ENV_OPENAI_MODEL, "")
-        self.base_url = os.getenv(ENV_OPENAI_BASE_URL)
+    api_key: str = pydantic.Field(
+        default="", validation_alias="OPENAI_API_KEY"
+    )
+    model: str = pydantic.Field(
+        default="", validation_alias="OPENAI_MODEL"
+    )
+    base_url: str | None = pydantic.Field(
+        default=None, validation_alias="OPENAI_BASE_URL"
+    )
 
-    def validate(self) -> bool:
+    def validate_config(self) -> bool:
         """Check if the API key is present.
 
         Returns:
@@ -101,9 +98,9 @@ def validate_llm_config() -> str | None:
     Returns:
         An error message string when misconfigured, or ``None`` if valid.
     """
-    if AzureOpenAIConfig().validate():
+    if AzureOpenAIConfig().validate_config():
         return None
-    if OpenAIConfig().validate():
+    if OpenAIConfig().validate_config():
         return None
 
     return (

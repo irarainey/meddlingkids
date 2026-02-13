@@ -84,14 +84,14 @@ async def _fetch_script_content(
                             0.5 * (attempt + 1)
                         )
                         continue
-                    log.debug(f"Script fetch failed: {url} (HTTP {response.status})")
+                    log.debug("Script fetch failed", {"url": url, "status": response.status})
                     return None
                 return await response.text()
         except Exception as exc:
             if attempt < retries:
                 await asyncio.sleep(0.5 * (attempt + 1))
                 continue
-            log.debug(f"Script fetch error: {url} — {exc}")
+            log.debug("Script fetch error", {"url": url, "error": str(exc)})
             return None
     return None
 

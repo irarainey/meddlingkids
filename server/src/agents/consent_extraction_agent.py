@@ -423,7 +423,7 @@ async def _extract_consent_text(
                         f"[CONSENT IFRAME]:\n{iframe_text}"
                     )
             except Exception as exc:
-                log.debug(f"Failed to extract iframe text from {frame.url}: {exc}")
+                log.debug("Failed to extract iframe text", {"url": frame.url, "error": str(exc)})
 
     all_texts = [
         t for t in [*iframe_texts, main_page_text] if t

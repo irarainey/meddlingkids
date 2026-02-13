@@ -9,23 +9,9 @@ from __future__ import annotations
 from typing import Literal
 
 import pydantic
-
 from src.agents import base, config
 from src.models import analysis
-from src.utils import json_parsing, logger
-
-
-def _risk_label(score: int) -> str:
-    """Map a 0-100 score to a human risk label."""
-    if score >= 80:
-        return "Critical Risk"
-    if score >= 60:
-        return "High Risk"
-    if score >= 40:
-        return "Moderate Risk"
-    if score >= 20:
-        return "Low Risk"
-    return "Very Low Risk"
+from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("SummaryFindingsAgent")
 
@@ -144,7 +130,7 @@ class SummaryFindingsAgent(base.BaseAgent):
 
         score_ctx = ""
         if score_breakdown:
-            label = _risk_label(score_breakdown.total_score)
+            label = risk.risk_label(score_breakdown.total_score)
             top = ", ".join(
                 score_breakdown.factors[:5]
             ) or "none"

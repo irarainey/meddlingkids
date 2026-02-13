@@ -20,7 +20,7 @@ from typing import AsyncGenerator, cast
 from urllib import parse
 
 from src.agents import config
-from src.analysis import tracking_summary as tracking_summary_mod
+from src.analysis import tracking_summary
 from src.browser import device_configs, session as browser_session
 from src.models import browser
 from src.pipeline import (
@@ -145,7 +145,7 @@ async def analyze_url_stream(
         device if device in valid_devices else "ipad",
     )
     if device not in valid_devices:
-        log.warn(f"Invalid device type '{device}', defaulting to 'ipad'")
+        log.warn("Invalid device type, defaulting to 'ipad'", {"device": device})
 
     if not url:
         yield sse_helpers.format_sse_event(
@@ -248,7 +248,7 @@ async def analyze_url_stream(
             # Snapshot pre-consent data and classify what is
             # actually tracking vs legitimate infrastructure.
             pre_consent_stats = (
-                tracking_summary_mod.build_pre_consent_stats(
+                tracking_summary.build_pre_consent_stats(
                     session.get_tracked_cookies(),
                     session.get_tracked_scripts(),
                     session.get_tracked_network_requests(),

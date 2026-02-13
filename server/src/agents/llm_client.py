@@ -35,11 +35,11 @@ def get_chat_client(
         configuration is missing.
     """
     azure_cfg = config.AzureOpenAIConfig()
-    if azure_cfg.validate():
+    if azure_cfg.validate_config():
         return _create_azure_client(azure_cfg, agent_name)
 
     openai_cfg = config.OpenAIConfig()
-    if openai_cfg.validate():
+    if openai_cfg.validate_config():
         return _create_openai_client(openai_cfg, agent_name)
 
     log.warn(

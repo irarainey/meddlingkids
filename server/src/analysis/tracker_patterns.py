@@ -282,3 +282,31 @@ SENSITIVE_PURPOSES: list[re.Pattern[str]] = [
     re.compile(r"disabilit|handicap", re.I),
     re.compile(r"legal.?aid|solicitor|lawyer", re.I),
 ]
+
+
+# ============================================================================
+# Combined Alternation Patterns (pre-compiled for hot-path matching)
+# ============================================================================
+# Instead of iterating over ~80 individual patterns per URL,
+# these combined regexes merge all per-category patterns into a
+# single alternation.  This lets the regex engine match in a
+# single pass, significantly reducing per-item overhead in
+# build_pre_consent_stats() where we test every cookie, script,
+# and request against the pattern lists.
+
+
+def _combine(patterns: list[re.Pattern[str]]) -> re.Pattern[str]:
+    """Merge a list of compiled patterns into one alternation regex."""
+    combined = "|".join(f"(?:{p.pattern})" for p in patterns)
+    # All source patterns use re.I; honour that globally.
+    return re.compile(combined, re.IGNORECASE)
+
+
+TRACKING_COOKIE_COMBINED: re.Pattern[str] = _combine(TRACKING_COOKIE_PATTERNS)
+
+ALL_URL_TRACKERS_COMBINED: re.Pattern[str] = _combine(
+    HIGH_RISK_TRACKERS
+    + ADVERTISING_TRACKERS
+    + SOCIAL_MEDIA_TRACKERS
+    + ANALYTICS_TRACKERS
+)

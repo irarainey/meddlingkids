@@ -2,60 +2,86 @@
 Logging utility with timestamps and timing support.
 Provides structured, colourful console output for tracking analysis stages.
 Optionally writes logs to a timestamped file when WRITE_LOG_TO_FILE is set.
+
+All mutable per-session state (timers, log buffer, log-file handle)
+is stored in ``contextvars.ContextVar`` so that concurrent async
+analysis tasks do not interfere with each other.
 """
 
 from __future__ import annotations
 
+import contextvars
 import io
 import os
+import pathlib
 import re
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 
 # ============================================================================
-# Timer storage
+# Per-session state (isolated via contextvars)
 # ============================================================================
 
-_timers: dict[str, tuple[float, str]] = {}  # key -> (monotonic_ms, start_timestamp)
+_timers_var: contextvars.ContextVar[dict[str, tuple[float, str]]] = (
+    contextvars.ContextVar("_timers_var")
+)
+_log_buffer_var: contextvars.ContextVar[list[str]] = (
+    contextvars.ContextVar("_log_buffer_var")
+)
+_log_file_stream_var: contextvars.ContextVar[io.TextIOWrapper | None] = (
+    contextvars.ContextVar("_log_file_stream_var", default=None)
+)
+_log_file_path_var: contextvars.ContextVar[str | None] = (
+    contextvars.ContextVar("_log_file_path_var", default=None)
+)
 
-# ============================================================================
-# In-memory log buffer (sent to the client at the end of analysis)
-# ============================================================================
 
-_log_buffer: list[str] = []
+def _get_timers() -> dict[str, tuple[float, str]]:
+    """Return the per-context timer dict, creating it on first access."""
+    try:
+        return _timers_var.get()
+    except LookupError:
+        timers: dict[str, tuple[float, str]] = {}
+        _timers_var.set(timers)
+        return timers
+
+
+def _get_log_buffer() -> list[str]:
+    """Return the per-context log buffer, creating it on first access."""
+    try:
+        return _log_buffer_var.get()
+    except LookupError:
+        buf: list[str] = []
+        _log_buffer_var.set(buf)
+        return buf
 
 
 def get_log_buffer() -> list[str]:
     """Return a copy of the accumulated log lines (ANSI-stripped)."""
-    return list(_log_buffer)
+    return list(_get_log_buffer())
 
 
 def clear_log_buffer() -> None:
     """Clear the in-memory log buffer for the next analysis run."""
-    _log_buffer.clear()
+    _get_log_buffer().clear()
 
 # ============================================================================
 # File Logging
 # ============================================================================
 
 _write_to_file = os.environ.get("WRITE_LOG_TO_FILE", "").lower() == "true"
-_log_file_stream: io.TextIOWrapper | None = None
-_log_file_path: str | None = None
 
 
 def start_log_file(domain: str) -> None:
     """Start a new log file for a specific analysis."""
-    global _log_file_stream, _log_file_path
-
     if not _write_to_file:
         return
 
     end_log_file()
 
-    logs_dir = Path.cwd() / ".logs"
+    logs_dir = pathlib.Path.cwd() / ".logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.lstrip("www.")
@@ -63,9 +89,16 @@ def start_log_file(domain: str) -> None:
 
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file_path = str(logs_dir / f"{safe_domain}_{timestamp}.log")
+    log_file_path = str(logs_dir / f"{safe_domain}_{timestamp}.log")
 
-    _log_file_stream = open(_log_file_path, "a", encoding="utf-8")  # noqa: SIM115
+    try:
+        stream = open(log_file_path, "a", encoding="utf-8")  # noqa: SIM115
+    except OSError as exc:
+        print(f"\033[31m✗ [Logger] Failed to open log file: {exc}\033[0m")
+        return
+
+    _log_file_stream_var.set(stream)
+    _log_file_path_var.set(log_file_path)
 
     header = (
         f"\n{'=' * 80}\n"
@@ -73,22 +106,21 @@ def start_log_file(domain: str) -> None:
         f"  Started: {now.isoformat()}\n"
         f"{'=' * 80}\n"
     )
-    _log_file_stream.write(header)  # type: ignore[union-attr]
-    print(f"\033[36mℹ [Logger] Writing logs to: {_log_file_path}\033[0m")
+    stream.write(header)
+    print(f"\033[36mℹ [Logger] Writing logs to: {log_file_path}\033[0m")
 
 
 def end_log_file() -> None:
     """Flush and close the current log file."""
-    global _log_file_stream, _log_file_path
-
-    if _log_file_stream is not None:
+    stream = _log_file_stream_var.get(None)
+    if stream is not None:
         try:
-            _log_file_stream.flush()
-            _log_file_stream.close()
+            stream.flush()
+            stream.close()
         except Exception:
             pass
-        _log_file_stream = None
-        _log_file_path = None
+        _log_file_stream_var.set(None)
+        _log_file_path_var.set(None)
 
 
 def save_report_file(
@@ -109,7 +141,7 @@ def save_report_file(
     if not _write_to_file:
         return None
 
-    reports_dir = Path.cwd() / ".reports"
+    reports_dir = pathlib.Path.cwd() / ".reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.lstrip("www.")
@@ -132,12 +164,13 @@ def save_report_file(
 
 def _write_to_log_file(line: str) -> None:
     """Write a line to the log file (without ANSI colours)."""
-    if _log_file_stream is None:
+    stream = _log_file_stream_var.get(None)
+    if stream is None:
         return
 
     clean = re.sub(r"\033\[[0-9;]*m", "", line)
-    _log_file_stream.write(clean + "\n")
-    _log_file_stream.flush()
+    stream.write(clean + "\n")
+    stream.flush()
 
 
 # ============================================================================
@@ -248,7 +281,7 @@ class Logger:
         print(log_line, file=sys.stderr)
         _write_to_log_file(log_line)
         # Keep an ANSI-stripped copy for the client debug tab.
-        _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", log_line))
+        _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", log_line))
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
         """Log an informational message."""
@@ -273,13 +306,13 @@ class Logger:
     def start_timer(self, label: str) -> None:
         """Start a named timer for performance measurement."""
         key = f"{self._context}:{label}"
-        _timers[key] = (time.monotonic() * 1000, _get_timestamp())
+        _get_timers()[key] = (time.monotonic() * 1000, _get_timestamp())
         self._log("timing", f"Starting: {label}")
 
     def end_timer(self, label: str, message: str | None = None) -> float:
         """Stop a named timer and log the elapsed time."""
         key = f"{self._context}:{label}"
-        entry = _timers.pop(key, None)
+        entry = _get_timers().pop(key, None)
         if entry is None:
             self.warn(f'Timer "{label}" was not started')
             return 0.0
@@ -310,7 +343,7 @@ class Logger:
         for ln in lines:
             print(ln, file=sys.stderr)
             _write_to_log_file(ln)
-            _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", ln))
+            _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", ln))
 
     def subsection(self, title: str) -> None:
         """Print a smaller sub-section header."""
@@ -318,7 +351,7 @@ class Logger:
         output = f"\n{c['cyan']}  ▸ {title}{c['reset']}"
         print(output, file=sys.stderr)
         _write_to_log_file(output)
-        _log_buffer.append(re.sub(r"\033\[[0-9;]*m", "", output))
+        _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", output))
 
 
 def create_logger(context: str) -> Logger:

@@ -12,10 +12,9 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from playwright import async_api
-
 from src.browser import access_detection, device_configs
 from src.models import browser, tracking_data
-from src.utils import image as image_mod
+from src.utils import image
 from src.utils import logger, url as url_mod
 
 log = logger.create_logger("BrowserSession")
@@ -27,9 +26,6 @@ log = logger.create_logger("BrowserSession")
 MAX_TRACKED_REQUESTS = 5000
 MAX_TRACKED_SCRIPTS = 1000
 
-# Ensure browser uses virtual display for headed mode
-if not os.environ.get("DISPLAY") or os.environ.get("DISPLAY") in (":0", ":1"):
-    os.environ["DISPLAY"] = os.environ.get("XVFB_DISPLAY", ":99")
 
 class BrowserSession:
     """
@@ -98,6 +94,10 @@ class BrowserSession:
         self, device_type: browser.DeviceType = "ipad"
     ) -> None:
         """Launch a new Chromium browser instance with device emulation."""
+        # Ensure virtual display is available for headed mode.
+        if not os.environ.get("DISPLAY") or os.environ.get("DISPLAY") in (":0", ":1"):
+            os.environ["DISPLAY"] = os.environ.get("XVFB_DISPLAY", ":99")
+
         log.info("Launching browser", {"deviceType": device_type})
         if device_type not in device_configs.DEVICE_CONFIGS:
             raise ValueError(
@@ -297,11 +297,11 @@ class BrowserSession:
                     )
                 )
             elif len(self._tracked_scripts) == MAX_TRACKED_SCRIPTS:
-                log.debug(f"Script tracking limit reached ({MAX_TRACKED_SCRIPTS})")
+                log.debug("Script tracking limit reached", {"limit": MAX_TRACKED_SCRIPTS})
 
         # Track ALL network requests (with limit)
         if len(self._tracked_network_requests) == MAX_TRACKED_REQUESTS:
-            log.debug(f"Network request tracking limit reached ({MAX_TRACKED_REQUESTS})")
+            log.debug("Network request tracking limit reached", {"limit": MAX_TRACKED_REQUESTS})
         if len(self._tracked_network_requests) < MAX_TRACKED_REQUESTS:
             idx = len(self._tracked_network_requests)
             post_data: str | None = None
@@ -425,7 +425,7 @@ class BrowserSession:
             await self._page.wait_for_load_state("networkidle", timeout=timeout)
             return True
         except Exception:
-            log.debug(f"Network idle timeout after {timeout}ms")
+            log.debug("Network idle timeout", {"timeoutMs": timeout})
             return False
 
     async def check_for_access_denied(self) -> browser.AccessDenialResult:
@@ -444,7 +444,7 @@ class BrowserSession:
             return
 
         cookies = await self._context.cookies()
-        log.debug(f"Captured {len(cookies)} raw cookies from browser")
+        log.debug("Captured raw cookies from browser", {"count": len(cookies)})
         now = datetime.now(timezone.utc).isoformat()
 
         for cookie in cookies:
@@ -524,7 +524,7 @@ class BrowserSession:
         Downscales wide images and compresses to JPEG for smaller
         payloads.  This is a pure CPU operation — no browser round-trip.
         """
-        return image_mod.png_to_data_url(png_bytes)
+        return image.png_to_data_url(png_bytes)
 
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""
@@ -572,21 +572,21 @@ class BrowserSession:
             try:
                 await self._context.close()
             except Exception as exc:
-                log.debug(f"Context close error (non-fatal): {exc}")
+                log.debug("Context close error (non-fatal)", {"error": str(exc)})
             self._context = None
 
         if self._browser:
             try:
                 await self._browser.close()
             except Exception as exc:
-                log.debug(f"Browser close error (non-fatal): {exc}")
+                log.debug("Browser close error (non-fatal)", {"error": str(exc)})
             self._browser = None
 
         if self._playwright:
             try:
                 await self._playwright.stop()
             except Exception as exc:
-                log.debug(f"Playwright stop error (non-fatal): {exc}")
+                log.debug("Playwright stop error (non-fatal)", {"error": str(exc)})
             self._playwright = None
 
         self.clear_tracking_data()
