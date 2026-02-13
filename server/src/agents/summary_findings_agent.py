@@ -14,6 +14,19 @@ from src.agents import base, config
 from src.models import analysis
 from src.utils import json_parsing, logger
 
+
+def _risk_label(score: int) -> str:
+    """Map a 0-100 score to a human risk label."""
+    if score >= 80:
+        return "Critical Risk"
+    if score >= 60:
+        return "High Risk"
+    if score >= 40:
+        return "Moderate Risk"
+    if score >= 20:
+        return "Low Risk"
+    return "Very Low Risk"
+
 log = logger.create_logger("SummaryFindingsAgent")
 
 
@@ -58,6 +71,14 @@ advertising networks
 - "positive": Privacy-respecting practices, minimal \
 tracking, good practices
 
+You will also be given the site's deterministic privacy score \
+(0-100) and its risk classification. Calibrate your severity \
+labels to be consistent with this score. Do NOT use "critical" \
+or "high" severity for a site scored as Low or Very Low Risk \
+unless a specific practice genuinely warrants it — for example, \
+data broker involvement or deceptive dark patterns. Conversely, \
+do not understate findings for a high-scoring site.
+
 Return 5-7 findings maximum, ordered by severity \
 (critical first, positive last).
 
@@ -82,11 +103,14 @@ class SummaryFindingsAgent(base.BaseAgent):
     async def summarise(
         self,
         analysis_text: str,
+        score_breakdown: analysis.ScoreBreakdown | None = None,
     ) -> list[analysis.SummaryFinding]:
         """Generate summary findings from analysis text.
 
         Args:
             analysis_text: Full markdown privacy analysis.
+            score_breakdown: Deterministic privacy score, if
+                available, so the LLM can calibrate severity.
 
         Returns:
             List of typed ``SummaryFinding`` objects.
@@ -94,11 +118,26 @@ class SummaryFindingsAgent(base.BaseAgent):
         log.start_timer("summary-generation")
         log.info("Generating summary findings...")
 
+        score_ctx = ""
+        if score_breakdown:
+            label = _risk_label(score_breakdown.total_score)
+            top = ", ".join(
+                score_breakdown.factors[:5]
+            ) or "none"
+            score_ctx = (
+                f"\n\nDeterministic privacy score: "
+                f"{score_breakdown.total_score}/100 "
+                f"({label}). Top scoring factors: {top}.\n"
+                f"Calibrate your severity labels to be "
+                f"consistent with this score."
+            )
+
         try:
             response = await self._complete(
                 f"Based on this full analysis, create a"
                 f" structured JSON object with key"
                 f" findings:\n\n{analysis_text}"
+                f"{score_ctx}"
             )
             log.end_timer(
                 "summary-generation", "Summary generated"

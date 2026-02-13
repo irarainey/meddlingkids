@@ -9,10 +9,8 @@ import {
   PageErrorDialog,
   ErrorDialog,
   AnalysisTab,
-  ConsentTab,
   CookiesTab,
   NetworkTab,
-  SummaryTab,
   ScriptsTab,
   StorageTab,
 } from './components'
@@ -32,6 +30,7 @@ const {
   sessionStorage,
   activeTab,
   analysisResult,
+  structuredReport,
   analysisError,
   summaryFindings,
   privacyScore,
@@ -166,18 +165,11 @@ function handleViewReport(): void {
       <!-- Tab Navigation -->
       <div ref="tabsRef" class="tabs">
           <button
-            class="tab summary-tab"
-            :class="{ active: activeTab === 'summary', highlight: summaryFindings.length > 0 }"
-            @click="activeTab = 'summary'"
-          >
-            🛡️ Summary
-          </button>
-          <button
             class="tab"
-            :class="{ active: activeTab === 'analysis', highlight: analysisResult }"
+            :class="{ active: activeTab === 'analysis', highlight: structuredReport || summaryFindings.length > 0 }"
             @click="activeTab = 'analysis'"
           >
-            📋 Full Analysis
+            📋 Analysis
           </button>
           <button class="tab" :class="{ active: activeTab === 'cookies' }" @click="activeTab = 'cookies'">
             🍪 Cookies ({{ cookies.length }})
@@ -191,26 +183,17 @@ function handleViewReport(): void {
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})
           </button>
-          <button
-            class="tab"
-            :class="{
-              active: activeTab === 'consent',
-              highlight: consentDetails && (consentDetails.partners.length > 0 || consentDetails.categories.length > 0),
-            }"
-            @click="activeTab = 'consent'"
-          >
-            🎯 Consent ({{ consentDetails?.partners.length || 0 }} partners)
-          </button>
         </div>
 
         <!-- Tab Content Panels -->
-        <SummaryTab v-if="activeTab === 'summary'" :summary-findings="summaryFindings" :privacy-score="privacyScore" />
-
         <AnalysisTab
           v-if="activeTab === 'analysis'"
           :is-analyzing="isLoading && progressStep === 'analysis'"
           :analysis-error="analysisError"
-          :analysis-result="analysisResult"
+          :structured-report="structuredReport"
+          :summary-findings="summaryFindings"
+          :privacy-score="privacyScore"
+          :privacy-summary="privacySummary"
         />
 
         <CookiesTab
@@ -237,8 +220,6 @@ function handleViewReport(): void {
           :script-count="scripts.length"
           :script-groups="scriptGroups"
         />
-
-        <ConsentTab v-if="activeTab === 'consent'" :consent-details="consentDetails" />
     </div>
   </div>
 </template>

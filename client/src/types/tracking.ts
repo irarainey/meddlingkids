@@ -144,6 +144,145 @@ export interface SummaryFinding {
 }
 
 // ============================================================================
+// Structured Report Types
+// ============================================================================
+
+/** A single identified tracking technology. */
+export interface TrackerEntry {
+  name: string
+  domains: string[]
+  cookies: string[]
+  storageKeys: string[]
+  purpose: string
+}
+
+/** Categorised tracking technologies found on the page. */
+export interface TrackingTechnologiesSection {
+  analytics: TrackerEntry[]
+  advertising: TrackerEntry[]
+  identityResolution: TrackerEntry[]
+  socialMedia: TrackerEntry[]
+  other: TrackerEntry[]
+}
+
+/** A type of data being collected. */
+export interface DataCollectionItem {
+  category: string
+  details: string[]
+  risk: 'low' | 'medium' | 'high' | 'critical'
+  sensitive: boolean
+  sharedWith: string[]
+}
+
+/** What data the page collects from users. */
+export interface DataCollectionSection {
+  items: DataCollectionItem[]
+}
+
+/** A categorised group of third-party services. */
+export interface ThirdPartyGroup {
+  category: string
+  services: string[]
+  privacyImpact: string
+}
+
+/** Third-party services contacted by the page. */
+export interface ThirdPartySection {
+  totalDomains: number
+  groups: ThirdPartyGroup[]
+  summary: string
+}
+
+/** A specific factor contributing to risk level. */
+export interface RiskFactor {
+  description: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/** Overall privacy risk assessment. */
+export interface PrivacyRiskSection {
+  overallRisk: 'low' | 'medium' | 'high' | 'very-high'
+  factors: RiskFactor[]
+  summary: string
+}
+
+/** A group of cookies by purpose. */
+export interface CookieGroup {
+  category: string
+  cookies: string[]
+  lifespan: string
+  concernLevel: 'none' | 'low' | 'medium' | 'high'
+}
+
+/** Analysis of cookies by purpose and risk. */
+export interface CookieAnalysisSection {
+  total: number
+  groups: CookieGroup[]
+  concerningCookies: string[]
+}
+
+/** Analysis of localStorage and sessionStorage usage. */
+export interface StorageAnalysisSection {
+  localStorageCount: number
+  sessionStorageCount: number
+  localStorageConcerns: string[]
+  sessionStorageConcerns: string[]
+  summary: string
+}
+
+/** A discrepancy between consent claims and reality. */
+export interface ConsentDiscrepancy {
+  claimed: string
+  actual: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/** Analysis of the consent dialog vs actual tracking. */
+export interface ConsentAnalysisSection {
+  hasConsentDialog: boolean
+  categoriesDisclosed: number
+  partnersDisclosed: number
+  discrepancies: ConsentDiscrepancy[]
+  summary: string
+}
+
+/** A key vendor/partner with privacy implications. */
+export interface VendorEntry {
+  name: string
+  role: string
+  privacyImpact: string
+}
+
+/** Key vendors and their privacy implications. */
+export interface VendorSection {
+  vendors: VendorEntry[]
+}
+
+/** A group of recommendations. */
+export interface RecommendationGroup {
+  category: string
+  items: string[]
+}
+
+/** Actionable recommendations for users. */
+export interface RecommendationsSection {
+  groups: RecommendationGroup[]
+}
+
+/** Complete structured privacy analysis report. */
+export interface StructuredReport {
+  trackingTechnologies: TrackingTechnologiesSection
+  dataCollection: DataCollectionSection
+  thirdPartyServices: ThirdPartySection
+  privacyRisk: PrivacyRiskSection
+  cookieAnalysis: CookieAnalysisSection
+  storageAnalysis: StorageAnalysisSection
+  consentAnalysis: ConsentAnalysisSection
+  keyVendors: VendorSection
+  recommendations: RecommendationsSection
+}
+
+// ============================================================================
 // Client-Only UI Types
 // ============================================================================
 
@@ -175,4 +314,4 @@ export interface ErrorDialogState {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'summary'
+export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis'

@@ -261,11 +261,34 @@ async def _score_and_summarise(
     )
 
     yield sse_helpers.format_progress_event(
-        "ai-summarizing", "Generating summary findings...", 97
+        "ai-summarizing", "Generating structured report...", 96
     )
+
+    # Build structured report and summary findings concurrently
+    report_agent = agents.get_structured_report_agent()
     summary_agent = agents.get_summary_findings_agent()
-    summary_findings = await summary_agent.summarise(full_text)
-    log.info("Summary findings generated", {"count": len(summary_findings)})
+
+    structured_report_task = asyncio.create_task(
+        report_agent.build_report(
+            tracking_summary, consent_details, pre_consent_stats,
+            score_breakdown,
+        )
+    )
+    summary_task = asyncio.create_task(
+        summary_agent.summarise(full_text, score_breakdown)
+    )
+
+    yield sse_helpers.format_progress_event(
+        "ai-report", "Building analysis report...", 97
+    )
+
+    structured_report, summary_findings = await asyncio.gather(
+        structured_report_task, summary_task
+    )
+    log.info(
+        "Structured report and summary generated",
+        {"summaryCount": len(summary_findings)},
+    )
 
     log.end_timer("ai-analysis", "All AI analysis complete")
 
@@ -309,6 +332,11 @@ async def _score_and_summarise(
                 else "Tracking analyzed"
             ),
             "analysis": full_text if analysis_success else None,
+            "structuredReport": (
+                structured_report.model_dump(by_alias=True)
+                if analysis_success and structured_report
+                else None
+            ),
             "summaryFindings": (
                 [
                     {"type": f.type, "text": f.text}

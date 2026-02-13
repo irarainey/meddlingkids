@@ -35,6 +35,7 @@ AGENT_SUMMARY_FINDINGS = "SummaryFindingsAgent"
 AGENT_CONSENT_DETECTION = "ConsentDetectionAgent"
 AGENT_CONSENT_EXTRACTION = "ConsentExtractionAgent"
 AGENT_SCRIPT_ANALYSIS = "ScriptAnalysisAgent"
+AGENT_STRUCTURED_REPORT = "StructuredReportAgent"
 
 
 class AzureOpenAIConfig:

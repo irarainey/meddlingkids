@@ -123,23 +123,29 @@ class BaseAgent:
         return schema
 
     def _build_options(
-        self, max_tokens: int | None = None
+        self,
+        max_tokens: int | None = None,
+        response_model: type[pydantic.BaseModel] | None = None,
     ) -> agent_framework.ChatOptions:
         """Build ``ChatOptions`` with optional structured output.
 
         Args:
             max_tokens: Override for max response tokens.
+            response_model: Override response model for
+                structured output. Falls back to
+                ``self.response_model`` when ``None``.
 
         Returns:
             Configured ``ChatOptions`` instance.
         """
+        model = response_model or self.response_model
         response_format: dict[str, Any] | None = None
-        if self.response_model is not None:
-            raw_schema = self.response_model.model_json_schema()
+        if model is not None:
+            raw_schema = model.model_json_schema()
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": self.response_model.__name__,
+                    "name": model.__name__,
                     "strict": True,
                     "schema": self._prepare_strict_schema(
                         raw_schema
@@ -155,6 +161,7 @@ class BaseAgent:
         self,
         instructions: str | None = None,
         max_tokens: int | None = None,
+        response_model: type[pydantic.BaseModel] | None = None,
     ) -> agent_framework.ChatAgent:
         """Build a ``ChatAgent`` with middleware and options.
 
@@ -165,6 +172,8 @@ class BaseAgent:
             instructions: Override system prompt. Defaults to
                 ``self.instructions``.
             max_tokens: Override max tokens.
+            response_model: Override response model for
+                structured output.
 
         Returns:
             A ``ChatAgent`` ready for ``async with``.
@@ -183,7 +192,9 @@ class BaseAgent:
                 f"Chat agent for {self.agent_name}"
             ),
             tools=[],
-            default_options=self._build_options(max_tokens),
+            default_options=self._build_options(
+                max_tokens, response_model
+            ),
             middleware=[self._retry, self._timing],
         )
 
@@ -195,6 +206,7 @@ class BaseAgent:
         *,
         instructions: str | None = None,
         max_tokens: int | None = None,
+        response_model: type[pydantic.BaseModel] | None = None,
     ) -> agent_framework.AgentResponse:
         """Run a text-only completion and return the raw response.
 
@@ -202,6 +214,8 @@ class BaseAgent:
             user_prompt: User message content.
             instructions: Override system prompt.
             max_tokens: Override max tokens.
+            response_model: Override response model for
+                structured output.
 
         Returns:
             The ``AgentResponse`` from the agent.
@@ -215,7 +229,7 @@ class BaseAgent:
             text=user_prompt,
         )
         async with self._build_agent(
-            instructions, max_tokens
+            instructions, max_tokens, response_model
         ) as agent:
             response = await agent.run(message)
         log.debug(

@@ -16,6 +16,7 @@ import type {
   ScriptGroup,
   PageError,
   ErrorDialogState,
+  StructuredReport,
 } from '../types'
 
 /**
@@ -52,10 +53,12 @@ export function useTrackingAnalysis() {
   const networkRequests = ref<NetworkRequest[]>([])
 
   /** Currently active tab */
-  const activeTab = ref<TabId>('summary')
+  const activeTab = ref<TabId>('analysis')
 
   /** Full AI analysis result (markdown) */
   const analysisResult = ref('')
+  /** Structured analysis report */
+  const structuredReport = ref<StructuredReport | null>(null)
   /** Analysis error message if AI failed */
   const analysisError = ref('')
   /** Summary findings from AI */
@@ -212,6 +215,7 @@ export function useTrackingAnalysis() {
     sessionStorage.value = []
     networkRequests.value = []
     analysisResult.value = ''
+    structuredReport.value = null
     analysisError.value = ''
     summaryFindings.value = []
     privacyScore.value = null
@@ -353,6 +357,9 @@ export function useTrackingAnalysis() {
           if (data.analysis) {
             analysisResult.value = data.analysis
           }
+          if (data.structuredReport) {
+            structuredReport.value = data.structuredReport
+          }
           if (data.analysisError) {
             analysisError.value = data.analysisError
           }
@@ -368,7 +375,7 @@ export function useTrackingAnalysis() {
             scriptGroups.value = data.scriptGroups
           }
 
-          activeTab.value = data.summaryFindings?.length ? 'summary' : 'analysis'
+          activeTab.value = 'analysis'
           statusMessage.value = data.message
           progressPercent.value = 100
           isComplete.value = true
@@ -471,6 +478,7 @@ export function useTrackingAnalysis() {
     sessionStorage,
     activeTab,
     analysisResult,
+    structuredReport,
     analysisError,
     summaryFindings,
     privacyScore,

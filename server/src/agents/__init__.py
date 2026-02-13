@@ -18,6 +18,7 @@ from src.agents import (
     consent_detection_agent,
     consent_extraction_agent,
     script_analysis_agent,
+    structured_report_agent,
     summary_findings_agent,
     tracking_analysis_agent,
 )
@@ -80,10 +81,17 @@ def get_script_analysis_agent() -> script_analysis_agent.ScriptAnalysisAgent:
     return _init_agent(script_analysis_agent.ScriptAnalysisAgent)
 
 
+@functools.lru_cache(maxsize=1)
+def get_structured_report_agent() -> structured_report_agent.StructuredReportAgent:
+    """Get the singleton ``StructuredReportAgent``."""
+    return _init_agent(structured_report_agent.StructuredReportAgent)
+
+
 __all__ = [
     "get_consent_detection_agent",
     "get_consent_extraction_agent",
     "get_script_analysis_agent",
+    "get_structured_report_agent",
     "get_summary_findings_agent",
     "get_tracking_analysis_agent",
 ]
