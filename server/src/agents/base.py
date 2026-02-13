@@ -48,6 +48,8 @@ class BaseAgent:
     instructions: str = ""
     max_tokens: int = 4096
     max_retries: int = 5
+    temperature: float | None = None
+    seed: int | None = None
     response_model: type[pydantic.BaseModel] | None = None
 
     def __init__(self) -> None:
@@ -126,6 +128,8 @@ class BaseAgent:
         self,
         max_tokens: int | None = None,
         response_model: type[pydantic.BaseModel] | None = None,
+        temperature: float | None = None,
+        seed: int | None = None,
     ) -> agent_framework.ChatOptions:
         """Build ``ChatOptions`` with optional structured output.
 
@@ -134,6 +138,8 @@ class BaseAgent:
             response_model: Override response model for
                 structured output. Falls back to
                 ``self.response_model`` when ``None``.
+            temperature: Override LLM temperature.
+            seed: Override deterministic seed.
 
         Returns:
             Configured ``ChatOptions`` instance.
@@ -152,10 +158,22 @@ class BaseAgent:
                     ),
                 },
             }
-        return agent_framework.ChatOptions(
+
+        opts = agent_framework.ChatOptions(
             max_tokens=max_tokens or self.max_tokens,
-            response_format=response_format,
         )
+        if response_format is not None:
+            opts["response_format"] = response_format  # type: ignore[typeddict-item]
+
+        effective_temp = temperature if temperature is not None else self.temperature
+        if effective_temp is not None:
+            opts["temperature"] = effective_temp
+
+        effective_seed = seed if seed is not None else self.seed
+        if effective_seed is not None:
+            opts["seed"] = effective_seed
+
+        return opts
 
     def _build_agent(
         self,

@@ -211,12 +211,29 @@ the actual tracking detected on the page.
 Provide:
 - has_consent_dialog: Whether a consent dialog was detected
 - categories_disclosed: Number of consent categories shown to users
-- partners_disclosed: Number of partners/vendors listed
+- partners_disclosed: Number of partners/vendors disclosed. Use the \
+claimed partner count from the consent dialog text if available \
+(e.g. "We and our 1467 partners"), as this is the number the site \
+claims to share data with, even if individual partner names were \
+not extracted.
 - discrepancies: List of discrepancies between claims and reality, each with:
   - claimed: What the consent dialog says
   - actual: What was actually detected
   - severity: "low", "medium", "high", or "critical"
 - summary: Overall assessment of consent transparency
+
+Severity decision criteria for discrepancies (apply strictly):
+- "critical": Consent dialog actively hides or misrepresents tracking \
+that violates regulation (e.g. no dialog at all while tracking heavily, \
+or dark patterns designed to trick users into accepting).
+- "high": Material gap between disclosure and reality, such as \
+claiming no third-party sharing while dozens of third-party trackers \
+fire, or pre-consent tracking that bypasses user choice entirely.
+- "medium": Vague or incomplete disclosure — e.g. consent categories \
+are too broad, partner count understated, or cookie descriptions \
+are misleading but not deceptive.
+- "low": Minor omission or cosmetic mismatch with no material \
+privacy impact, such as a slightly outdated partner count.
 
 Be specific and factual. Highlight practices where the actual data \
 collection significantly exceeds what is disclosed to users."""
@@ -225,13 +242,16 @@ _VENDOR_PROMPT = """\
 You are a privacy expert. Identify the most significant vendors/partners \
 from a privacy perspective.
 
-List 8-12 key vendors with the highest privacy impact:
+List exactly 32 vendors/partners with the highest privacy impact. \
+Always return 32 entries unless fewer than 32 distinct vendors exist in the data.
 - name: Company name
 - role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
 - privacy_impact: One-sentence privacy impact description
 
 Focus on vendors involved in cross-site tracking, identity resolution, \
-data brokerage, retargeting, and extensive data collection."""
+data brokerage, retargeting, and extensive data collection. You MUST \
+return 32 vendors. Only return fewer if the data genuinely contains \
+fewer than 32 distinct vendors."""
 
 _RECOMMENDATIONS_PROMPT = """\
 You are a privacy expert. Based on the tracking analysis, provide \
@@ -350,7 +370,8 @@ class StructuredReportAgent(base.BaseAgent):
                 "consent-analysis",
             )
             if consent_details
-            and (consent_details.categories or consent_details.partners)
+            and (consent_details.categories or consent_details.partners
+                 or consent_details.claimed_partner_count)
             else _noop_section(report_models.ConsentAnalysisSection())
         )
 
@@ -371,6 +392,33 @@ class StructuredReportAgent(base.BaseAgent):
                 ),
             )
         )
+
+        # ── Deterministic consent overrides ─────────────────
+        # The LLM may miscount or omit consent dialog facts
+        # that we already know deterministically.  Override
+        # the relevant fields so the report is accurate.
+        consent_sec = _extract(
+            consent_analysis,
+            report_models.ConsentAnalysisSection,
+        )
+        if consent_details:
+            consent_sec.has_consent_dialog = True
+            # Use the deterministic category count.
+            if consent_details.categories:
+                consent_sec.categories_disclosed = len(
+                    consent_details.categories
+                )
+            # Use the claimed partner count from the dialog
+            # text (regex-extracted), falling back to the
+            # number of individually extracted partners.
+            if consent_details.claimed_partner_count:
+                consent_sec.partners_disclosed = (
+                    consent_details.claimed_partner_count
+                )
+            elif consent_details.partners:
+                consent_sec.partners_disclosed = len(
+                    consent_details.partners
+                )
 
         result = report_models.StructuredReport(
             tracking_technologies=_extract(
@@ -397,10 +445,7 @@ class StructuredReportAgent(base.BaseAgent):
                 storage_analysis,
                 report_models.StorageAnalysisSection,
             ),
-            consent_analysis=_extract(
-                consent_analysis,
-                report_models.ConsentAnalysisSection,
-            ),
+            consent_analysis=consent_sec,
             key_vendors=_extract(
                 vendors,
                 report_models.VendorSection,
@@ -573,6 +618,7 @@ def _build_data_context(
 
     if consent_details and (
         consent_details.categories or consent_details.partners
+        or consent_details.claimed_partner_count
     ):
         cats = "\n".join(
             f"- {c.name} ({'Required' if c.required else 'Optional'}): {c.description}"
@@ -584,6 +630,13 @@ def _build_data_context(
             for p in consent_details.partners[:50]
         ) or "None listed"
 
+        claimed_count = consent_details.claimed_partner_count
+        claimed_line = (
+            f"\n### Claimed Partner Count: {claimed_count}"
+            if claimed_count
+            else ""
+        )
+
         sections.extend([
             "",
             "## Consent Dialog Information",
@@ -591,6 +644,7 @@ def _build_data_context(
             cats,
             f"### Partners Listed ({len(consent_details.partners)})",
             partners,
+            claimed_line,
             "### Stated Purposes",
             "\n".join(f"- {p}" for p in consent_details.purposes) or "None",
         ])

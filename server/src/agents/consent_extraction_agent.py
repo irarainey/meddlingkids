@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
+import re
 
 import pydantic
 from playwright import async_api
@@ -62,6 +63,7 @@ class _ConsentExtractionResponse(pydantic.BaseModel):
     purposes: list[str] = pydantic.Field(
         default_factory=list
     )
+    claimedPartnerCount: int | None = None
 
 
 # ── System prompt ───────────────────────────────────────────────
@@ -91,6 +93,13 @@ there is a partner list somewhere
 - Partner lists may be in tables, lists, or accordion sections
 - Include EVERY partner name you can find
 
+IMPORTANT: If the consent dialog text mentions a specific \
+number of partners (e.g. "We and our 1467 partners", \
+"842 vendors", "sharing data with 500+ partners"), \
+extract that number into the claimedPartnerCount field. \
+This is the number the dialog CLAIMS, regardless of how \
+many individual partner names you can find.
+
 Also identify if there is a "Manage Preferences", \
 "Cookie Settings", "More Options", or similar button that \
 reveals more details.
@@ -117,12 +126,18 @@ class ConsentExtractionAgent(base.BaseAgent):
         self,
         page: async_api.Page,
         screenshot: bytes,
+        *,
+        pre_captured_text: str | None = None,
     ) -> consent.ConsentDetails:
         """Extract consent details from a page screenshot.
 
         Args:
             page: Playwright page for DOM text extraction.
             screenshot: Raw PNG screenshot bytes.
+            pre_captured_text: DOM text captured while the
+                consent dialog was still visible.  When
+                provided, skips live DOM extraction (the
+                dialog may already be dismissed).
 
         Returns:
             Structured ``ConsentDetails``.
@@ -130,7 +145,14 @@ class ConsentExtractionAgent(base.BaseAgent):
         log.info("Extracting consent details from page...")
 
         log.start_timer("text-extraction")
-        consent_text = await _extract_consent_text(page)
+        if pre_captured_text:
+            consent_text = pre_captured_text
+            log.info(
+                "Using pre-captured consent text",
+                {"length": len(consent_text)},
+            )
+        else:
+            consent_text = await _extract_consent_text(page)
         log.end_timer(
             "text-extraction", "Text extraction complete"
         )
@@ -177,6 +199,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                         "partners": len(result.partners),
                         "purposes": len(result.purposes),
                         "hasManageOptions": result.has_manage_options,
+                        "claimedPartnerCount": result.claimed_partner_count,
                     },
                 )
                 return result
@@ -202,11 +225,67 @@ class ConsentExtractionAgent(base.BaseAgent):
                     {"error": error_msg},
                 )
             return consent.ConsentDetails.empty(
-                consent_text[:5000]
+                consent_text[:5000],
+                claimed_partner_count=_extract_partner_count_from_text(
+                    consent_text
+                ),
             )
 
 
 # ── Helpers ─────────────────────────────────────────────────────
+
+# Patterns that match "We and our 1467 partners", "842 vendors",
+# "sharing data with 500+ partners", etc.  The first capture
+# group is the numeric count.
+_PARTNER_COUNT_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(
+        r"(?:we\s+and\s+)?our\s+(\d[\d,.]*)\s*\+?\s*partners?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(\d[\d,.]*)\s*\+?\s*(?:advertising|ad|iab|tcf)?\s*partners?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(\d[\d,.]*)\s*\+?\s*vendors?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"shar(?:e|ing)\s+(?:data\s+)?with\s+(\d[\d,.]*)\s*\+?\s*(?:partners?|vendors?|companies|third[ -]?parties)",
+        re.IGNORECASE,
+    ),
+]
+
+
+def _extract_partner_count_from_text(
+    text: str,
+) -> int | None:
+    """Extract a claimed partner/vendor count from raw consent text.
+
+    Searches for common phrases like "We and our 1467 partners"
+    and returns the highest number found (to handle cases where
+    multiple counts appear, e.g. sub-sections).
+
+    Args:
+        text: Raw consent dialog text extracted from the DOM.
+
+    Returns:
+        The claimed partner count, or ``None`` if not found.
+    """
+    counts: list[int] = []
+    for pattern in _PARTNER_COUNT_PATTERNS:
+        for match in pattern.finditer(text):
+            try:
+                raw_num = match.group(1).replace(",", "").replace(".", "")
+                num = int(raw_num)
+                # Ignore tiny numbers ("our 2 partners") —
+                # these are usually incidental phrases.
+                if num >= 5:
+                    counts.append(num)
+            except (ValueError, IndexError):
+                continue
+    return max(counts) if counts else None
+
 
 def _to_domain(
     r: _ConsentExtractionResponse,
@@ -242,6 +321,10 @@ def _to_domain(
         ],
         purposes=r.purposes,
         raw_text=raw_text[:5000],
+        claimed_partner_count=(
+            r.claimedPartnerCount
+            or _extract_partner_count_from_text(raw_text)
+        ),
     )
 
 
@@ -287,6 +370,10 @@ def _parse_text_fallback(
             ],
             purposes=raw.get("purposes", []),
             raw_text=raw_text[:5000],
+            claimed_partner_count=(
+                raw.get("claimedPartnerCount")
+                or _extract_partner_count_from_text(raw_text)
+            ),
         )
     return consent.ConsentDetails.empty(raw_text[:5000])
 

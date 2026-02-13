@@ -46,8 +46,10 @@ STREAM_TIMEOUT_SECONDS = 600  # 10 minutes
 # screenshot overhead.
 _REFRESH_INTERVAL_SECONDS = 3.0
 
-
-_MAX_SCREENSHOT_REFRESHES = 5
+# Maximum screenshot updates per stage.  Each pipeline stage
+# (page load, analysis) gets its own fresh cap so the UI stays
+# responsive throughout the run.
+_MAX_SCREENSHOT_REFRESHES = 3
 
 
 async def _screenshot_refresher(
@@ -164,7 +166,8 @@ async def analyze_url_stream(
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
             # ── Phase 1: Browser Setup & Navigation ─────────────
             log.subsection("Phase 1: Browser Setup")
-            yield sse_helpers.format_progress_event("init", "Checking configuration...", 5)
+            log.info("Initializing browser", {"url": url, "device": device_type})
+            yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
 
             nav_events, nav_result = (
                 await browser_phases.setup_and_navigate(
@@ -181,18 +184,43 @@ async def analyze_url_stream(
 
             hostname = parse.urlparse(url).hostname or url
 
+            # Start Stage 1 screenshot refresher — captures
+            # visual changes while the page loads (fonts,
+            # images, layout shifts, ad placements).  Each
+            # stage gets its own refresh cap.
+            refresh_queue: asyncio.Queue[str] = asyncio.Queue()
+            try:
+                initial_png = await session.take_screenshot(
+                    full_page=False
+                )
+                last_screenshot_hash = hashlib.md5(  # noqa: S324
+                    initial_png
+                ).hexdigest()
+            except Exception:
+                last_screenshot_hash = ""
+            refresher_task = asyncio.create_task(
+                _screenshot_refresher(
+                    session, refresh_queue, last_screenshot_hash
+                )
+            )
+            log.debug("Stage 1 screenshot refresher started")
+
             # ── Phase 2: Page Load & Access Check ───────────────
             log.subsection("Phase 2: Page Load & Access Check")
             for event in await browser_phases.wait_for_page_load(
                 session, hostname
             ):
                 yield event
+            for refresh_event in _drain_queue(refresh_queue):
+                yield refresh_event
 
             access_events, denied = await browser_phases.check_access(
                 session, nav_result
             )
             for event in access_events:
                 yield event
+            for refresh_event in _drain_queue(refresh_queue):
+                yield refresh_event
             if denied:
                 return
 
@@ -203,6 +231,18 @@ async def analyze_url_stream(
             )
             for event in capture_events:
                 yield event
+
+            # Cancel Stage 1 refresher — the initial capture
+            # provides the authoritative page state from here.
+            if refresher_task and not refresher_task.done():
+                refresher_task.cancel()
+                try:
+                    await refresher_task
+                except asyncio.CancelledError:
+                    pass
+            for refresh_event in _drain_queue(refresh_queue):
+                yield refresh_event
+            log.debug("Stage 1 screenshot refresher ended")
 
             # Snapshot pre-consent data and classify what is
             # actually tracking vs legitimate infrastructure.
@@ -222,37 +262,9 @@ async def analyze_url_stream(
             for req in session.get_tracked_network_requests():
                 req.pre_consent = True
 
-            # Start background screenshot refresher so the
-            # client sees ads and deferred content as they load.
-            refresh_queue: asyncio.Queue[str] = asyncio.Queue()
-            initial_hash = hashlib.md5(screenshot).hexdigest()  # noqa: S324
-            refresher_task = asyncio.create_task(
-                _screenshot_refresher(session, refresh_queue, initial_hash)
-            )
-            log.debug("Background screenshot refresher started")
-
             # ── Phase 4: Overlay Detection & Handling ───────────
             log.subsection("Phase 4: Overlay Detection & Handling")
             log.start_timer("overlay-handling")
-
-            # Stop the background screenshot refresher before
-            # overlay handling so the initial screenshot
-            # (showing the consent dialog) is preserved in the
-            # client gallery.  The overlay pipeline will emit
-            # its own post-click screenshots.
-            refresher_task.cancel()
-            try:
-                await refresher_task
-            except asyncio.CancelledError:
-                pass
-            log.debug(
-                "Background screenshot refresher paused"
-                " for overlay handling"
-            )
-            # Flush any remaining refresh events queued
-            # before the task was cancelled.
-            for refresh_event in _drain_queue(refresh_queue):
-                yield refresh_event
 
             page = session.get_page()
             consent_details = None
@@ -291,6 +303,7 @@ async def analyze_url_stream(
             # would just duplicate the last image.
 
             if overlay_count == 0:
+                log.info("No overlays dismissed — capturing final page state")
                 yield sse_helpers.format_progress_event(
                     "post-overlay-screenshot",
                     "Capturing final page state...",
@@ -308,24 +321,37 @@ async def analyze_url_stream(
                 storage = await session.capture_storage()
 
             if page and overlay_result.failed:
-                log.error(
-                    "Overlay dismissal failed, aborting analysis",
-                    {"reason": overlay_result.failure_message},
-                )
-                yield sse_helpers.format_sse_event(
-                    "pageError",
-                    {
-                        "type": "overlay-blocked",
-                        "message": overlay_result.failure_message,
-                        "isOverlayBlocked": True,
-                    },
-                )
-                yield sse_helpers.format_progress_event(
-                    "overlay-blocked",
-                    "Could not dismiss page overlay!",
-                    100,
-                )
-                return
+                # If consent data was still captured (pre-click
+                # text preserved despite click failure), continue
+                # analysis so the report includes consent info.
+                if consent_details:
+                    log.warn(
+                        "Overlay click failed but consent"
+                        " data preserved — continuing analysis",
+                        {
+                            "categories": len(consent_details.categories),
+                            "partners": len(consent_details.partners),
+                        },
+                    )
+                else:
+                    log.error(
+                        "Overlay dismissal failed, aborting analysis",
+                        {"reason": overlay_result.failure_message},
+                    )
+                    yield sse_helpers.format_sse_event(
+                        "pageError",
+                        {
+                            "type": "overlay-blocked",
+                            "message": overlay_result.failure_message,
+                            "isOverlayBlocked": True,
+                        },
+                    )
+                    yield sse_helpers.format_progress_event(
+                        "overlay-blocked",
+                        "Could not dismiss page overlay!",
+                        100,
+                    )
+                    return
 
             # ── Post-consent stabilisation ──────────────────
             # After dismissing a consent banner, sites
@@ -339,7 +365,7 @@ async def analyze_url_stream(
                 log.start_timer("post-consent-settle")
                 yield sse_helpers.format_progress_event(
                     "post-consent-settle",
-                    "Waiting for post-consent scripts to load...",
+                    "Waiting for page to settle...",
                     73,
                 )
                 settled = await session.wait_for_network_idle(5000)
@@ -349,38 +375,55 @@ async def analyze_url_stream(
                     f" ({'idle' if settled else 'timeout'})",
                 )
 
-            # Restart the background screenshot refresher so the
-            # client sees visual changes during AI analysis
-            # (e.g. ads loading, deferred content).  Re-use the
-            # global cap so total refreshes across both runs
-            # stays within ``_MAX_SCREENSHOT_REFRESHES``.
-            pre_overlay_updates = _drain_queue(refresh_queue)
-            pre_overlay_count = len(pre_overlay_updates)
-            for evt in pre_overlay_updates:
-                yield evt
-            remaining_refreshes = max(
-                0, _MAX_SCREENSHOT_REFRESHES - pre_overlay_count
-            )
+            # ── Stage 2 screenshot refresher ────────────────
+            # Fresh cap for the analysis phase so the client
+            # sees visual changes (ads loading, deferred
+            # content) independently of Stage 1's quota.
+            remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
+            current_hash = ""
+
+            # Take an immediate screenshot — the page has
+            # very likely changed after page load, consent
+            # dismissal, and post-consent script loading.
+            if remaining_refreshes > 0:
+                try:
+                    png = await session.take_screenshot(
+                        full_page=False
+                    )
+                    current_hash = hashlib.md5(  # noqa: S324
+                        png
+                    ).hexdigest()
+                    optimized = (
+                        browser_session.BrowserSession
+                        .optimize_screenshot_bytes(png)
+                    )
+                    yield sse_helpers.format_screenshot_update_event(
+                        optimized,
+                    )
+                    remaining_refreshes -= 1
+                    log.info(
+                        "Immediate pre-analysis screenshot"
+                        " refresh emitted"
+                    )
+                except Exception:
+                    pass
+
             refresh_queue = asyncio.Queue()
             if remaining_refreshes > 0:
                 refresher_task = asyncio.create_task(
                     _screenshot_refresher(
                         session,
                         refresh_queue,
-                        "",
+                        current_hash,
                         remaining=remaining_refreshes,
                     )
                 )
                 log.debug(
-                    "Background screenshot refresher resumed",
+                    "Stage 2 screenshot refresher started",
                     {"remaining": remaining_refreshes},
                 )
             else:
                 refresher_task = None
-                log.debug(
-                    "Screenshot refresh limit already reached"
-                    " — not restarting"
-                )
 
             # ── Phase 5: AI Analysis ────────────────────────────
             log.subsection("Phase 5: AI Analysis")

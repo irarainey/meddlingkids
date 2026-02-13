@@ -120,33 +120,49 @@ How certain are you that there is a dismissable overlay?
 
 This is the most critical step. Look at the screenshot \
 very carefully and read the EXACT text on the button or \
-link that should be clicked to dismiss or accept.
+link that should be clicked to dismiss the overlay.
+
+**IMPORTANT -- Preferred button priority for cookie-consent \
+dialogs:**
+
+1. **MOST PREFERRED** -- "Reject all", "Decline all", \
+   "Refuse", "Deny", "Necessary only", \
+   "Essential cookies only", "Continue without accepting"
+2. **Acceptable** -- "Close", "Dismiss", "Not now", \
+   "No thanks", "Skip", "Maybe later", \
+   "Continue to site"
+3. **LAST RESORT (only if no reject option exists)** -- \
+   "Accept", "Accept all", "Agree", "Allow all", \
+   "I Accept", "I consent"
+
+Always choose the MOST PRIVACY-PRESERVING option visible \
+in the screenshot. Only fall back to "Accept" buttons \
+when no reject, decline, close, or dismiss option is \
+available.
 
 **Do NOT guess or use generic text.** Read the actual \
 words visible in the screenshot. The text could be \
 anything -- it is not limited to common phrases. Examples \
 of real button/link text seen on websites:
 
-- "Accept additional cookies"
+- "Reject all"
+- "Decline"
+- "Necessary cookies only"
+- "Continue without accepting"
+- "No thanks, take me to the site"
+- "Not now"
+- "Close"
+- "Skip for now"
 - "Maybe later"
+- "Accept additional cookies"
 - "Yes, I agree"
 - "Got it"
 - "I Accept"
-- "No thanks, take me to the site"
-- "Continue without accepting"
 - "Accept & close"
 - "That's OK"
 - "ACCEPT ALL"
-- "I'm OK with that"
-- "Agree and close"
-- "Not now"
 - "Allow all"
-- "Fine by me"
 - "OK, I understand"
-- "Skip for now"
-- "Close and accept"
-- "Sounds good"
-- "Continue to site"
 - "I consent"
 
 Put this EXACT text (as shown in the screenshot, \
@@ -202,10 +218,15 @@ class ConsentDetectionAgent(base.BaseAgent):
                     "Look at this screenshot carefully."
                     " Is there any dialog, banner, overlay,"
                     " or prompt visible that needs to be"
-                    " dismissed or accepted?\n\n"
+                    " dismissed?\n\n"
                     "If yes, read the EXACT text on the"
-                    " button or link to click -- do not"
+                    " button or link to click — do not"
                     " guess, read it from the image.\n\n"
+                    "For cookie-consent dialogs, PREFER"
+                    " reject/decline/necessary-only buttons"
+                    " over accept/allow-all buttons. Only"
+                    " choose accept if no reject option"
+                    " exists.\n\n"
                     "Rate your certainty from 0 to 100."
                 ),
                 screenshot=screenshot,

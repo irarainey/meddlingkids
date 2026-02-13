@@ -5,7 +5,10 @@ data capture phases (Phases 1-3 of the analysis pipeline).
 
 from __future__ import annotations
 
+import asyncio
 from urllib import parse
+
+from playwright import async_api
 
 from src.browser import session as browser_session
 from src.models import browser
@@ -67,6 +70,161 @@ async def setup_and_navigate(
 
 
 # ====================================================================
+# Consent Dialog Readiness
+# ====================================================================
+
+# Keywords in iframe hostnames that indicate a consent-manager frame.
+_CONSENT_HOST_KEYWORDS = (
+    "consent", "onetrust", "cookiebot", "sourcepoint",
+    "trustarc", "didomi", "quantcast", "gdpr", "privacy",
+    "cmp", "cookie",
+)
+
+# Substrings that indicate an ad-tech sync/pixel iframe rather
+# than a real consent-manager frame.
+_CONSENT_HOST_EXCLUDE = (
+    "cookie-sync", "pixel", "-sync.", "ad-sync",
+    "user-sync", "match.", "prebid",
+)
+
+# Well-known container selectors for consent dialogs in the
+# main frame (not inside iframes).
+_CONSENT_CONTAINER_SELECTORS = (
+    "#qc-cmp2-ui",  # Quantcast
+    "#onetrust-banner-sdk",  # OneTrust
+    "#CybotCookiebotDialog",  # Cookiebot
+    '[class*="consent"]',  # Generic
+    '[id*="consent"]',  # Generic
+    '[class*="cookie-banner"]',  # Generic
+    '[id*="cookie-banner"]',  # Generic
+)
+
+# Poll interval and max wait for consent dialog readiness.
+_CONSENT_POLL_INTERVAL_MS = 500
+_CONSENT_MAX_WAIT_MS = 8000
+# Extra delay after buttons appear to let rendering finish.
+_CONSENT_RENDER_SETTLE_MS = 1500
+
+
+async def _wait_for_consent_dialog_ready(
+    page: async_api.Page,
+) -> None:
+    """Wait for a consent dialog to become interactive and rendered.
+
+    Consent dialogs loaded via iframes (Quantcast, OneTrust, etc.)
+    often render their container/header before the buttons load.
+    Even after button elements appear in the DOM they may not be
+    visually painted yet (CSS/fonts still loading).  This function
+    detects that scenario, polls until buttons are **visible**, then
+    waits for the iframe to reach ``load`` state and adds a short
+    rendering-settle delay.
+
+    Does nothing if no consent iframe/container is detected.
+    """
+    # Check for consent-manager iframes
+    consent_frames: list[async_api.Frame] = []
+    for frame in page.frames:
+        if frame == page.main_frame:
+            continue
+        try:
+            hostname = parse.urlparse(frame.url).hostname or ""
+        except Exception:
+            continue
+        hostname_lower = hostname.lower()
+        if any(ex in hostname_lower for ex in _CONSENT_HOST_EXCLUDE):
+            continue
+        if any(kw in hostname_lower for kw in _CONSENT_HOST_KEYWORDS):
+            consent_frames.append(frame)
+
+    # Also check for known containers in the main frame
+    has_main_frame_container = False
+    for sel in _CONSENT_CONTAINER_SELECTORS:
+        try:
+            if await page.locator(sel).count() > 0:
+                has_main_frame_container = True
+                break
+        except Exception:
+            continue
+
+    if not consent_frames and not has_main_frame_container:
+        return  # No consent dialog detected — nothing to wait for
+
+    log.debug(
+        "Consent dialog container detected, waiting for"
+        " buttons to load and render",
+        {
+            "consentFrames": len(consent_frames),
+            "mainFrameContainer": has_main_frame_container,
+        },
+    )
+
+    # Poll for buttons to become *visible* in the consent
+    # frames and/or main-frame containers.
+    frames_to_check = consent_frames if consent_frames else [page.main_frame]
+    polls = _CONSENT_MAX_WAIT_MS // _CONSENT_POLL_INTERVAL_MS
+    buttons_ready = False
+
+    for attempt in range(polls):
+        for frame in frames_to_check:
+            try:
+                buttons = frame.get_by_role("button")
+                # Check that at least 2 buttons are both
+                # present and *visible* (painted on screen).
+                visible_count = 0
+                total = await buttons.count()
+                for i in range(min(total, 6)):
+                    try:
+                        if await buttons.nth(i).is_visible():
+                            visible_count += 1
+                    except Exception:
+                        continue
+                if visible_count >= 2:
+                    log.debug(
+                        "Consent dialog buttons visible",
+                        {
+                            "visible": visible_count,
+                            "total": total,
+                            "waitMs": (
+                                attempt * _CONSENT_POLL_INTERVAL_MS
+                            ),
+                        },
+                    )
+                    buttons_ready = True
+                    break
+            except Exception:
+                continue
+        if buttons_ready:
+            break
+
+        await asyncio.sleep(_CONSENT_POLL_INTERVAL_MS / 1000)
+
+    if not buttons_ready:
+        log.debug(
+            "Consent dialog readiness wait exhausted"
+            " — proceeding anyway",
+            {"maxWaitMs": _CONSENT_MAX_WAIT_MS},
+        )
+
+    # Wait for consent iframe(s) to finish loading resources
+    # (CSS, fonts, images) so the dialog is fully rendered
+    # when the screenshot is taken.
+    for frame in consent_frames:
+        try:
+            async with asyncio.timeout(3):
+                await frame.wait_for_load_state("load")
+            log.debug(
+                "Consent frame reached load state",
+                {"url": frame.url[:80]},
+            )
+        except (TimeoutError, Exception):
+            pass
+
+    # Final rendering-settle delay — even after load, the
+    # browser may need a moment to paint the composited frame.
+    await asyncio.sleep(_CONSENT_RENDER_SETTLE_MS / 1000)
+
+
+# ====================================================================
 # Phase 2 — Wait for Page Load and Check Access
 # ====================================================================
 
@@ -105,7 +263,7 @@ async def wait_for_page_load(
         log.success("Network became idle")
         events.append(
             sse_helpers.format_progress_event(
-                "wait-done", "Page fully loaded...", 25
+                "wait-done", "Page loaded...", 25
             )
         )
     else:
@@ -116,7 +274,7 @@ async def wait_for_page_load(
         events.append(
             sse_helpers.format_progress_event(
                 "wait-continue",
-                "Page loaded, continuing...",
+                "Page loaded...",
                 25,
             )
         )
@@ -124,10 +282,19 @@ async def wait_for_page_load(
     # Brief grace period for consent banners and overlays to render.
     events.append(
         sse_helpers.format_progress_event(
-            "wait-overlays", "Checking for page overlays...", 28
+            "wait-overlays", "Waiting for page content to render...", 28
         )
     )
     await session.wait_for_timeout(2000)
+
+    # If a consent dialog container/iframe is present but its
+    # buttons haven't loaded yet (dynamic iframe content), wait
+    # a bit longer for the dialog to become interactive.
+    page = session.get_page()
+    if page:
+        await _wait_for_consent_dialog_ready(page)
+
+    log.info("Page content rendering complete")
     return events
 
 
@@ -204,7 +371,7 @@ async def capture_initial_data(
 
     events.append(
         sse_helpers.format_progress_event(
-            "capture", "Collecting cookies and storage...", 32
+            "capture", "Capturing page data...", 32
         )
     )
     await session.capture_current_cookies()
@@ -212,7 +379,7 @@ async def capture_initial_data(
 
     events.append(
         sse_helpers.format_progress_event(
-            "screenshot", "Taking screenshot...", 38
+            "screenshot", "Recording page state...", 38
         )
     )
 
@@ -240,7 +407,7 @@ async def capture_initial_data(
     events.append(
         sse_helpers.format_progress_event(
             "captured",
-            "Page data captured...",
+            "Checking for overlays...",
             42,
         )
     )

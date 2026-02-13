@@ -16,8 +16,10 @@ from src.analysis import scoring as privacy_score_mod
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
+from src.models import report as report_models  # type: ignore[attr-defined]
 from src.pipeline import sse_helpers
 from src.utils import logger
+from src.utils import url as url_mod
 
 log = logger.create_logger("Analysis")
 
@@ -54,7 +56,7 @@ async def run_ai_analysis(
     )
     yield sse_helpers.format_progress_event(
         "analysis-start",
-        "Starting analysis...",
+        "Analyzing page content...",
         75,
     )
 
@@ -220,6 +222,178 @@ def _launch_concurrent_tasks(
     return script_task, tracking_task
 
 
+def _render_report_text(
+    url: str,
+    score: int,
+    score_summary: str,
+    summary_findings: list[analysis.SummaryFinding],
+    report: report_models.StructuredReport,
+) -> str:
+    """Render the structured report as a plain-text file.
+
+    Produces a human-readable text version of the complete
+    analysis for archival purposes.
+    """
+    lines: list[str] = [
+        "=" * 72,
+        f"  Privacy Analysis Report — {url}",
+        "=" * 72,
+        "",
+        f"Privacy Score: {score}/100",
+        score_summary,
+        "",
+    ]
+
+    # Summary findings
+    if summary_findings:
+        lines.append("─" * 40)
+        lines.append("SUMMARY")
+        lines.append("─" * 40)
+        for f in summary_findings:
+            lines.append(f"  [{f.type.upper()}] {f.text}")
+        lines.append("")
+
+    # Privacy risk
+    risk = report.privacy_risk
+    if risk.summary:
+        lines.append("─" * 40)
+        lines.append(f"PRIVACY RISK ASSESSMENT — {risk.overall_risk.upper()}")
+        lines.append("─" * 40)
+        lines.append(risk.summary)
+        for rf in risk.factors:
+            lines.append(f"  [{rf.severity.upper()}] {rf.description}")
+        lines.append("")
+
+    # Tracking technologies
+    tech = report.tracking_technologies
+    all_trackers = (
+        tech.analytics + tech.advertising
+        + tech.identity_resolution + tech.social_media
+        + tech.other
+    )
+    if all_trackers:
+        lines.append("─" * 40)
+        lines.append("TRACKING TECHNOLOGIES")
+        lines.append("─" * 40)
+        for cat_name, cat_list in [
+            ("Analytics", tech.analytics),
+            ("Advertising", tech.advertising),
+            ("Identity Resolution", tech.identity_resolution),
+            ("Social Media", tech.social_media),
+            ("Other", tech.other),
+        ]:
+            if cat_list:
+                lines.append(f"\n  {cat_name}:")
+                for t in cat_list:
+                    lines.append(f"    • {t.name}: {t.purpose}")
+        lines.append("")
+
+    # Data collection
+    if report.data_collection.items:
+        lines.append("─" * 40)
+        lines.append("DATA COLLECTION")
+        lines.append("─" * 40)
+        for item in report.data_collection.items:
+            sens = " [SENSITIVE]" if item.sensitive else ""
+            lines.append(f"  {item.category} ({item.risk}){sens}")
+            for d in item.details:
+                lines.append(f"    - {d}")
+            if item.shared_with:
+                lines.append(f"    Shared with: {', '.join(item.shared_with)}")
+        lines.append("")
+
+    # Third-party services
+    tp = report.third_party_services
+    if tp.groups:
+        lines.append("─" * 40)
+        lines.append(f"THIRD-PARTY SERVICES ({tp.total_domains} domains)")
+        lines.append("─" * 40)
+        for tpg in tp.groups:
+            lines.append(f"  {tpg.category}: {', '.join(tpg.services)}")
+            lines.append(f"    Impact: {tpg.privacy_impact}")
+        if tp.summary:
+            lines.append(f"\n  {tp.summary}")
+        lines.append("")
+
+    # Cookie analysis
+    cookie_sec = report.cookie_analysis
+    if cookie_sec.groups:
+        lines.append("─" * 40)
+        lines.append(f"COOKIE ANALYSIS ({cookie_sec.total} cookies)")
+        lines.append("─" * 40)
+        for cookie_grp in cookie_sec.groups:
+            lines.append(
+                f"  {cookie_grp.category} ({cookie_grp.concern_level}): "
+                f"{', '.join(cookie_grp.cookies[:10])}"
+                f"{'...' if len(cookie_grp.cookies) > 10 else ''}"
+            )
+        if cookie_sec.concerning_cookies:
+            lines.append("\n  Concerning cookies:")
+            for concern_cookie in cookie_sec.concerning_cookies:
+                lines.append(f"    • {concern_cookie}")
+        lines.append("")
+
+    # Storage analysis
+    sa = report.storage_analysis
+    if sa.local_storage_count or sa.session_storage_count:
+        lines.append("─" * 40)
+        lines.append("STORAGE ANALYSIS")
+        lines.append("─" * 40)
+        lines.append(f"  localStorage: {sa.local_storage_count} items")
+        lines.append(f"  sessionStorage: {sa.session_storage_count} items")
+        for concern in sa.local_storage_concerns:
+            lines.append(f"    [localStorage] {concern}")
+        for concern in sa.session_storage_concerns:
+            lines.append(f"    [sessionStorage] {concern}")
+        if sa.summary:
+            lines.append(f"\n  {sa.summary}")
+        lines.append("")
+
+    # Consent analysis
+    consent_sec = report.consent_analysis
+    if consent_sec.has_consent_dialog or consent_sec.discrepancies:
+        lines.append("─" * 40)
+        lines.append("CONSENT ANALYSIS")
+        lines.append("─" * 40)
+        lines.append(
+            f"  Consent dialog: {'Yes' if consent_sec.has_consent_dialog else 'No'}"
+        )
+        if consent_sec.categories_disclosed:
+            lines.append(f"  Categories disclosed: {consent_sec.categories_disclosed}")
+        if consent_sec.partners_disclosed:
+            lines.append(f"  Partners disclosed: {consent_sec.partners_disclosed}")
+        for disc in consent_sec.discrepancies:
+            lines.append(f"  [{disc.severity.upper()}] Claimed: {disc.claimed}")
+            lines.append(f"    Actual: {disc.actual}")
+        if consent_sec.summary:
+            lines.append(f"\n  {consent_sec.summary}")
+        lines.append("")
+
+    # Key vendors
+    if report.key_vendors.vendors:
+        lines.append("─" * 40)
+        lines.append("TOP VENDORS AND PARTNERS")
+        lines.append("─" * 40)
+        for v in report.key_vendors.vendors:
+            lines.append(f"  • {v.name} ({v.role})")
+            lines.append(f"    {v.privacy_impact}")
+        lines.append("")
+
+    # Recommendations
+    if report.recommendations.groups:
+        lines.append("─" * 40)
+        lines.append("RECOMMENDATIONS")
+        lines.append("─" * 40)
+        for rg in report.recommendations.groups:
+            lines.append(f"\n  {rg.category}:")
+            for rec in rg.items:
+                lines.append(f"    • {rec}")
+        lines.append("")
+
+    lines.append("=" * 72)
+    return "\n".join(lines)
+
+
 async def _score_and_summarise(
     final_cookies: list[tracking_data.TrackedCookie],
     final_scripts: list[tracking_data.TrackedScript],
@@ -259,10 +433,15 @@ async def _score_and_summarise(
         consent_details,
         pre_consent_stats,
     )
+    log.info(
+        "Privacy score calculated",
+        {"score": score_breakdown.total_score},
+    )
 
     yield sse_helpers.format_progress_event(
-        "ai-summarizing", "Generating structured report...", 96
+        "ai-summarizing", "Generating summary...", 96
     )
+    log.info("Starting summary and report generation")
 
     # Build structured report and summary findings concurrently
     report_agent = agents.get_structured_report_agent()
@@ -279,7 +458,7 @@ async def _score_and_summarise(
     )
 
     yield sse_helpers.format_progress_event(
-        "ai-report", "Building analysis report...", 97
+        "ai-report", "Building report...", 97
     )
 
     structured_report, summary_findings = await asyncio.gather(
@@ -292,9 +471,22 @@ async def _score_and_summarise(
 
     log.end_timer("ai-analysis", "All AI analysis complete")
 
-    # ── Build final payload ─────────────────────────────────
+    # ── Save report to file (when log-to-file is enabled) ───
     analysis_success = bool(full_text)
     privacy_score = score_breakdown.total_score
+
+    if analysis_success and structured_report:
+        report_text = _render_report_text(
+            url,
+            privacy_score,
+            score_breakdown.summary,
+            summary_findings,
+            structured_report,
+        )
+        domain = url_mod.extract_domain(url)
+        logger.save_report_file(domain, report_text)
+
+    # ── Build final payload ─────────────────────────────────
 
     if analysis_success:
         log.success(

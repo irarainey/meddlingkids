@@ -77,6 +77,7 @@ async def detect_overlay(
         "screenshotBytes": len(viewport_screenshot),
     })
 
+    log.info("Sending screenshot to consent detection model...")
     detection = await consent_detection_mod.detect_cookie_consent(
         viewport_screenshot
     )
@@ -199,6 +200,173 @@ async def click_and_capture(
 
 
 # ====================================================================
+# Consent Dialog Expansion
+# ====================================================================
+
+# Button labels that typically expand the consent dialog to show
+# partner lists, detailed categories, vendor info, etc.
+_EXPAND_LABELS: list[str] = [
+    "More options",
+    "More Options",
+    "Manage options",
+    "Manage Options",
+    "Manage preferences",
+    "Manage Preferences",
+    "Cookie settings",
+    "Cookie Settings",
+    "Show partners",
+    "View partners",
+    "Show vendors",
+    "View vendors",
+    "Partner list",
+    "Vendor list",
+    "Customise",
+    "Customize",
+    "Purposes",
+    "Legitimate interest",
+]
+
+
+async def expand_consent_dialog(
+    page: async_api.Page,
+    session: browser_session.BrowserSession,
+) -> tuple[str, bytes]:
+    """Try to expand a consent dialog before dismissing it.
+
+    Clicks "More Options" / "Manage Preferences" style buttons
+    to reveal hidden partner lists, detailed categories, and
+    vendor information that is dynamically added to the DOM.
+
+    After expansion (or if no expandable button is found),
+    captures the consent DOM text and an updated screenshot.
+
+    Args:
+        page: Playwright page with the visible consent dialog.
+        session: Browser session for taking screenshots.
+
+    Returns:
+        A tuple of (consent_text, screenshot) captured from
+        the expanded (or original) dialog state.
+    """
+    expanded = False
+
+    # Search in main frame and consent iframes
+    frames: list[async_api.Frame] = [page.main_frame]
+    for frame in page.frames:
+        if frame == page.main_frame:
+            continue
+        frame_url = frame.url.lower()
+        if any(
+            kw in frame_url
+            for kw in (
+                "consent", "cmp", "cookie", "gdpr",
+                "privacy", "quantcast", "onetrust",
+            )
+        ):
+            frames.append(frame)
+
+    for label in _EXPAND_LABELS:
+        if expanded:
+            break
+        for frame in frames:
+            try:
+                # Try button role first (most specific)
+                btn = frame.get_by_role("button", name=label)
+                if await btn.count() > 0:
+                    await btn.first.click(timeout=3000)
+                    log.info(
+                        "Expanded consent dialog via button",
+                        {"label": label},
+                    )
+                    expanded = True
+                    break
+            except Exception:
+                pass
+            try:
+                # Fall back to any clickable element with
+                # matching text (links, divs, etc.)
+                el = frame.get_by_text(label, exact=True)
+                if await el.count() > 0:
+                    await el.first.click(timeout=3000)
+                    log.info(
+                        "Expanded consent dialog via text",
+                        {"label": label},
+                    )
+                    expanded = True
+                    break
+            except Exception:
+                pass
+
+    if expanded:
+        # Wait for the DOM to settle after the expand click
+        with contextlib.suppress(TimeoutError):
+            async with asyncio.timeout(1.5):
+                await page.wait_for_load_state(
+                    "domcontentloaded"
+                )
+        # Extra short wait for dynamic content to render
+        await asyncio.sleep(0.5)
+    else:
+        log.debug("No expand button found on consent dialog")
+
+    # Capture the consent text from the (possibly expanded) DOM
+    from src.agents.consent_extraction_agent import (
+        _extract_consent_text,
+    )
+    consent_text = await _extract_consent_text(page)
+    screenshot = await session.take_screenshot(full_page=False)
+
+    # Navigate back to the main consent view so the original
+    # Accept button is still clickable.  Try common "back"
+    # patterns used by CMP dialogs.
+    if expanded:
+        navigated_back = False
+        _BACK_LABELS = [
+            "Back",
+            "Back to main",
+            "Go back",
+            "← Back",
+            "Save and exit",
+        ]
+        for label in _BACK_LABELS:
+            if navigated_back:
+                break
+            for frame in frames:
+                try:
+                    btn = frame.get_by_role(
+                        "button", name=label
+                    )
+                    if await btn.count() > 0:
+                        await btn.first.click(timeout=3000)
+                        log.info(
+                            "Navigated back to main"
+                            " consent view",
+                            {"label": label},
+                        )
+                        navigated_back = True
+                        break
+                except Exception:
+                    pass
+        if navigated_back:
+            with contextlib.suppress(TimeoutError):
+                async with asyncio.timeout(1.0):
+                    await page.wait_for_load_state(
+                        "domcontentloaded"
+                    )
+            await asyncio.sleep(0.3)
+
+    log.info(
+        "Pre-click consent capture complete",
+        {
+            "expanded": expanded,
+            "textLength": len(consent_text),
+        },
+    )
+
+    return consent_text, screenshot
+
+
+# ====================================================================
 # Consent Extraction
 # ====================================================================
 
@@ -207,23 +375,34 @@ async def extract_and_classify_consent(
     page: async_api.Page,
     pre_click_screenshot: bytes,
     result: OverlayHandlingResult,
-    progress_base: int,
+    pre_click_consent_text: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Extract consent details and classify partner risk levels.
 
     Only called for the first cookie-consent overlay after a
     successful click.  Uses the pre-click screenshot so the
     consent dialog is still visible for the extraction agent.
+
+    Args:
+        page: Playwright page (for fallback DOM extraction).
+        pre_click_screenshot: Screenshot with dialog visible.
+        result: Mutable overlay result to populate.
+        pre_click_consent_text: DOM text captured while the
+            consent dialog was still visible (and possibly
+            expanded).  If provided, the extraction agent
+            uses this instead of re-extracting from the
+            (now-dismissed) page.
     """
     log.start_timer("consent-extraction")
     yield sse_helpers.format_progress_event(
         "consent-extract",
-        "Analyzing page content...",
-        progress_base + 4,
+        "Extracting consent information...",
+        71,
     )
     result.consent_details = (
         await extraction.extract_consent_details(
-            page, pre_click_screenshot
+            page, pre_click_screenshot,
+            pre_captured_text=pre_click_consent_text,
         )
     )
     log.end_timer("consent-extraction", "Consent details extracted")
@@ -241,8 +420,8 @@ async def extract_and_classify_consent(
         log.start_timer("partner-classification")
         yield sse_helpers.format_progress_event(
             "partner-classify",
-            "Analyzing partner risk levels...",
-            progress_base + 5,
+            "Classifying partners...",
+            72,
         )
 
         risk_summary = partner_classification.get_partner_risk_summary(
@@ -287,7 +466,7 @@ async def collect_extraction_events(
     page: async_api.Page,
     pre_click_screenshot: bytes,
     result: OverlayHandlingResult,
-    progress_base: int,
+    pre_click_consent_text: str | None = None,
 ) -> list[str]:
     """Run consent extraction, returning events for deferred yielding.
 
@@ -296,7 +475,8 @@ async def collect_extraction_events(
     """
     events: list[str] = []
     async for event in extract_and_classify_consent(
-        page, pre_click_screenshot, result, progress_base
+        page, pre_click_screenshot, result,
+        pre_click_consent_text=pre_click_consent_text,
     ):
         events.append(event)
     return events
@@ -316,7 +496,7 @@ def build_no_overlay_events(
         log.info("No overlay detected", {"reason": reason})
         return [
             sse_helpers.format_progress_event(
-                "consent-none", "No overlay detected...", 70
+                "consent-none", "No consent dialog detected...", 70
             ),
             sse_helpers.format_sse_event(
                 "consent",
@@ -328,13 +508,19 @@ def build_no_overlay_events(
                 },
             ),
         ]
+    dismissed_label = "overlay" if overlay_count == 1 else "overlays"
     log.success(
-        f"Dismissed {overlay_count} overlay(s), no more found"
+        f"Dismissed {overlay_count} {dismissed_label}, no more found"
+    )
+    dismissed_text = (
+        "Dismissed 1 overlay..."
+        if overlay_count == 1
+        else f"Dismissed {overlay_count} overlays..."
     )
     return [
         sse_helpers.format_progress_event(
             "overlays-done",
-            f"Dismissed {overlay_count} overlay(s)...",
+            dismissed_text,
             70,
         )
     ]

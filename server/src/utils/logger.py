@@ -19,7 +19,7 @@ from pathlib import Path
 # Timer storage
 # ============================================================================
 
-_timers: dict[str, float] = {}
+_timers: dict[str, tuple[float, str]] = {}  # key -> (monotonic_ms, start_timestamp)
 
 # ============================================================================
 # File Logging
@@ -73,6 +73,45 @@ def end_log_file() -> None:
             pass
         _log_file_stream = None
         _log_file_path = None
+
+
+def save_report_file(
+    domain: str,
+    report_text: str,
+) -> str | None:
+    """Save the final structured report as a text file.
+
+    Only writes when ``WRITE_LOG_TO_FILE`` is enabled.
+
+    Args:
+        domain: The analysed domain (used in filename).
+        report_text: Rendered report content.
+
+    Returns:
+        The file path written, or ``None`` if skipped.
+    """
+    if not _write_to_file:
+        return None
+
+    reports_dir = Path.cwd() / ".reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_domain = domain.lstrip("www.")
+    safe_domain = "".join(
+        c if c.isalnum() or c in ".-" else "_" for c in safe_domain
+    )[:50]
+
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    path = reports_dir / f"{safe_domain}_{timestamp}.txt"
+
+    try:
+        path.write_text(report_text, encoding="utf-8")
+        print(f"\033[36m\u2139 [Logger] Report saved to: {path}\033[0m")
+        return str(path)
+    except Exception as err:
+        print(f"\033[31m\u2717 [Logger] Failed to save report: {err}\033[0m")
+        return None
 
 
 def _write_to_log_file(line: str) -> None:
@@ -216,22 +255,27 @@ class Logger:
     def start_timer(self, label: str) -> None:
         """Start a named timer for performance measurement."""
         key = f"{self._context}:{label}"
-        _timers[key] = time.monotonic() * 1000
+        _timers[key] = (time.monotonic() * 1000, _get_timestamp())
         self._log("timing", f"Starting: {label}")
 
     def end_timer(self, label: str, message: str | None = None) -> float:
         """Stop a named timer and log the elapsed time."""
         key = f"{self._context}:{label}"
-        start = _timers.pop(key, None)
-        if start is None:
+        entry = _timers.pop(key, None)
+        if entry is None:
             self.warn(f'Timer "{label}" was not started')
             return 0.0
 
-        duration = time.monotonic() * 1000 - start
+        start_ms, start_ts = entry
+        duration = time.monotonic() * 1000 - start_ms
         c = _colours
         duration_str = f"{c['magenta']}{_format_duration(duration)}{c['reset']}"
         display_message = message or f"Completed: {label}"
-        self._log("timing", f"{display_message} {c['dim']}took{c['reset']} {duration_str}")
+        self._log(
+            "timing",
+            f"{display_message} {c['dim']}took{c['reset']} {duration_str}"
+            f" {c['dim']}(started {start_ts}){c['reset']}",
+        )
         return duration
 
     def section(self, title: str) -> None:

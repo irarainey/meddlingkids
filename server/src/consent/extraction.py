@@ -17,19 +17,26 @@ log = logger.create_logger("Consent-Extract")
 
 
 async def extract_consent_details(
-    page: async_api.Page, screenshot: bytes
+    page: async_api.Page,
+    screenshot: bytes,
+    *,
+    pre_captured_text: str | None = None,
 ) -> consent.ConsentDetails:
     """Extract detailed consent information from a page.
 
     Args:
         page: Playwright page for DOM text extraction.
         screenshot: Raw PNG screenshot bytes.
+        pre_captured_text: DOM text captured while the consent
+            dialog was still visible. If provided, the agent
+            uses this instead of re-extracting from the page.
 
     Returns:
         Structured ``ConsentDetails``.
     """
     log.info("Starting consent extraction", {
         "screenshotBytes": len(screenshot),
+        "hasPreCapturedText": pre_captured_text is not None,
     })
     agent = agents.get_consent_extraction_agent()
     if not agent.is_configured:
@@ -39,4 +46,7 @@ async def extract_consent_details(
         )
         return consent.ConsentDetails.empty()
 
-    return await agent.extract(page, screenshot)
+    return await agent.extract(
+        page, screenshot,
+        pre_captured_text=pre_captured_text,
+    )

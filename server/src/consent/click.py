@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 from urllib import parse
 
 from playwright import async_api
@@ -14,6 +15,11 @@ from playwright import async_api
 from src.utils import logger
 
 log = logger.create_logger("Consent-Click")
+
+# Maximum total wall-clock time (seconds) for all click attempts.
+# Prevents runaway retry cascades on heavy pages where every safety
+# evaluation times out (~2s each × 16+ selectors = 40s+ wasted).
+_MAX_CLICK_TIME_SECONDS = 15.0
 
 # Consent-manager keywords matched against iframe **hostname** only.
 # Matching the full URL would false-positive on ad-sync iframes that
@@ -128,9 +134,16 @@ async def try_click_consent_button(
 
     After every successful click the URL is checked; if it changed
     the browser navigates back and the click is treated as failed.
+
+    All click attempts are capped at ``_MAX_CLICK_TIME_SECONDS``
+    total wall-clock time to avoid runaway retry cascades.
     """
     log.info("Attempting click", {"selector": selector, "buttonText": button_text})
     original_url = page.url
+    deadline = time.monotonic() + _MAX_CLICK_TIME_SECONDS
+
+    def _time_remaining() -> bool:
+        return time.monotonic() < deadline
 
     # Phase 0: Try the frame where validation already found the element
     if found_in_frame and found_in_frame != page.main_frame:
@@ -140,6 +153,9 @@ async def try_click_consent_button(
                 return False
             log.success("Click succeeded in validated frame", {"url": found_in_frame.url[:50]})
             return True
+        if not _time_remaining():
+            log.warn("Click attempt time limit reached")
+            return False
 
     # Phase 1: LLM suggestion on main page
     if await _try_click_in_frame(page.main_frame, selector, button_text, 3000):
@@ -147,12 +163,18 @@ async def try_click_consent_button(
             return False
         log.success("Click succeeded on main page")
         return True
+    if not _time_remaining():
+        log.warn("Click attempt time limit reached")
+        return False
 
     # Phase 2: LLM suggestion on consent-manager iframes
     consent_frames = [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
     if consent_frames:
         log.debug("Trying consent iframes", {"count": len(consent_frames)})
         for frame in consent_frames:
+            if not _time_remaining():
+                log.warn("Click attempt time limit reached")
+                return False
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
             if await _try_click_in_frame(frame, selector, button_text, 3000):
@@ -161,9 +183,13 @@ async def try_click_consent_button(
                 log.success("Click succeeded in consent iframe", {"url": frame_url[:50]})
                 return True
 
+    if not _time_remaining():
+        log.warn("Click attempt time limit reached")
+        return False
+
     # Phase 3: Generic close-button heuristics (main frame only)
     log.debug("Trying generic close buttons on main frame...")
-    if await _try_close_buttons(page.main_frame):
+    if await _try_close_buttons(page.main_frame, deadline=deadline):
         if await _did_navigate_away(page, original_url):
             return False
         return True
@@ -397,7 +423,11 @@ async def _try_click_in_frame(
     return False
 
 
-async def _try_close_buttons(frame: async_api.Frame) -> bool:
+async def _try_close_buttons(
+    frame: async_api.Frame,
+    *,
+    deadline: float = 0.0,
+) -> bool:
     """Try common close button patterns as a last resort.
 
     Searches **only** within the given frame (typically the main
@@ -412,16 +442,16 @@ async def _try_close_buttons(frame: async_api.Frame) -> bool:
 
     Prefers role-based locators (``get_by_role``) for accessibility,
     then falls back to CSS attribute/class selectors.
+
+    Respects the *deadline* (monotonic clock) to avoid exhausting
+    the total click time budget on generic fallbacks.
     """
-    # Role-based strategies — try common accept/dismiss button text
+    def _time_ok() -> bool:
+        return deadline <= 0.0 or time.monotonic() < deadline
+
+    # Role-based strategies — try common dismiss/reject button
+    # text first, then accept patterns as fallback.
     role_patterns: list[tuple[str, async_api.Locator]] = [
-        (
-            "button[name~=accept]",
-            frame.get_by_role("button", name=re.compile(
-                r"accept|agree|allow|got it|i understand|okay|ok\b|continue|confirm",
-                re.IGNORECASE,
-            )),
-        ),
         (
             "button[name~=dismiss]",
             frame.get_by_role("button", name=re.compile(
@@ -429,8 +459,17 @@ async def _try_close_buttons(frame: async_api.Frame) -> bool:
                 re.IGNORECASE,
             )),
         ),
+        (
+            "button[name~=accept]",
+            frame.get_by_role("button", name=re.compile(
+                r"accept|agree|allow|got it|i understand|okay|ok\b|continue|confirm",
+                re.IGNORECASE,
+            )),
+        ),
     ]
     for label, locator in role_patterns:
+        if not _time_ok():
+            return False
         log.debug("Trying close button", {"selector": label})
         if await _safe_click(locator, 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": label})
@@ -440,9 +479,13 @@ async def _try_close_buttons(frame: async_api.Frame) -> bool:
     css_selectors = [
         '[aria-label*="close" i]',
         '[aria-label*="dismiss" i]',
+        '[aria-label*="reject" i]',
+        '[aria-label*="decline" i]',
         '[aria-label*="accept" i]',
         '[aria-label*="agree" i]',
         'button[class*="close"]',
+        'button[class*="reject"]',
+        'button[class*="decline"]',
         'button[class*="accept"]',
         'button[class*="agree"]',
         'button[class*="consent"]',
@@ -450,6 +493,8 @@ async def _try_close_buttons(frame: async_api.Frame) -> bool:
         '[class*="banner-close"]',
     ]
     for sel in css_selectors:
+        if not _time_ok():
+            return False
         log.debug("Trying close button", {"selector": sel})
         if await _safe_click(frame.locator(sel), 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": sel})

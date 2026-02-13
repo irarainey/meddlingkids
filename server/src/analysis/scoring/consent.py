@@ -113,10 +113,14 @@ def calculate(
         )
 
     # ── Partner count ───────────────────────────────────────
-    partner_count = len(consent_details.partners)
+    extracted_count = len(consent_details.partners)
+    claimed_count = consent_details.claimed_partner_count or 0
+    partner_count = max(extracted_count, claimed_count)
 
     log.debug("Consent details", data={
-        "partner_count": partner_count,
+        "extracted_partner_count": extracted_count,
+        "claimed_partner_count": claimed_count,
+        "effective_partner_count": partner_count,
         "purposes": len(consent_details.purposes),
         "categories": len(consent_details.categories),
     })

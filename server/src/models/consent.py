@@ -81,9 +81,14 @@ class ConsentDetails(pydantic.BaseModel):
     purposes: list[str]
     raw_text: str
     expanded: bool | None = None
+    claimed_partner_count: int | None = None
 
     @classmethod
-    def empty(cls, raw_text: str = "") -> ConsentDetails:
+    def empty(
+        cls,
+        raw_text: str = "",
+        claimed_partner_count: int | None = None,
+    ) -> ConsentDetails:
         """Return a default empty consent-details result."""
         return cls(
             has_manage_options=False,
@@ -92,4 +97,5 @@ class ConsentDetails(pydantic.BaseModel):
             partners=[],
             purposes=[],
             raw_text=raw_text,
+            claimed_partner_count=claimed_partner_count,
         )

@@ -61,15 +61,20 @@ Each finding should have:
 - "text": A single sentence describing the finding. Be \
 specific about company names.
 
-Types explained:
-- "critical": Cross-site tracking, fingerprinting, data \
-selling, deceptive practices
-- "high": Persistent tracking, third-party data sharing, \
-advertising networks
-- "moderate": Standard analytics, typical ad tracking
-- "info": General information about cookies or consent
-- "positive": Privacy-respecting practices, minimal \
-tracking, good practices
+Severity decision criteria (apply strictly):
+- "critical": Deceptive practices, data broker involvement, \
+fingerprinting for cross-site identity, selling personal data, \
+or consent dialog actively hiding significant tracking.
+- "high": Persistent cross-session tracking via third-party \
+identifiers, undisclosed advertising networks, pre-consent \
+tracking scripts that bypass user choice.
+- "moderate": Standard analytics with pseudonymous IDs, \
+automated audience measurement, typical third-party media \
+analytics.
+- "info": Neutral observations about cookies, storage, or \
+consent mechanisms without clear privacy harm.
+- "positive": Privacy-respecting practices such as no \
+advertising, minimal tracking, or strong consent controls.
 
 You will also be given the site's deterministic privacy score \
 (0-100) and its risk classification. Calibrate your severity \
@@ -79,8 +84,27 @@ unless a specific practice genuinely warrants it — for example, \
 data broker involvement or deceptive dark patterns. Conversely, \
 do not understate findings for a high-scoring site.
 
-Return 5-7 findings maximum, ordered by severity \
-(critical first, positive last).
+Return exactly 6 findings, ordered by severity \
+(most severe first, positive last).
+
+Example output for a site scoring 35/100 (Low Risk) with \
+analytics tracking and no advertising:
+{"findings": [
+  {"type": "high", "text": "Site loads Comscore and Chartbeat \
+analytics scripts before user consent, bypassing the consent \
+dialog."},
+  {"type": "moderate", "text": "DotMetrics sets persistent \
+cookies that enable cross-session audience measurement."},
+  {"type": "moderate", "text": "Audience data is shared with \
+three third-party analytics providers for media measurement."},
+  {"type": "moderate", "text": "Scroll depth and time-on-page \
+metrics are collected for behavioural engagement analytics."},
+  {"type": "info", "text": "Consent dialog groups all optional \
+tracking under a single vague category without listing \
+partners."},
+  {"type": "positive", "text": "No advertising networks, \
+retargeting, or data broker integrations are present."}
+]}
 
 Return ONLY a JSON object matching the required schema."""
 

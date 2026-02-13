@@ -2,6 +2,9 @@
 .logs/
 *.log
 
+# Reports
+.reports/
+
 # Overlay cache
 .overlay_cache/
 npm-debug.log*

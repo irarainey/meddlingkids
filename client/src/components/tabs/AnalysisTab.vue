@@ -447,11 +447,11 @@ function findingLabel(type: SummaryFindingType): string {
         </div>
       </section>
 
-      <!-- ── Section 8: Key Vendors ──────────────────────────── -->
+      <!-- ── Section 8: Top Vendors ──────────────────────────── -->
       <section v-if="structuredReport.keyVendors.vendors.length" class="report-section">
         <h2>
           <span class="section-icon">🏢</span>
-          Key Vendors &amp; Partners
+          Top Vendors and Partners
           <span class="count-badge">{{ structuredReport.keyVendors.vendors.length }}</span>
         </h2>
         <div class="vendor-grid">
@@ -747,8 +747,8 @@ function findingLabel(type: SummaryFindingType): string {
 .factor-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
   border-bottom: 1px solid #2d3350;
   font-size: 0.95rem;
 }
@@ -762,6 +762,7 @@ function findingLabel(type: SummaryFindingType): string {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-right: 0.15rem;
 }
 
 .severity-dot.badge-critical { background: #ef4444; }
@@ -772,6 +773,7 @@ function findingLabel(type: SummaryFindingType): string {
 
 .factor-text {
   flex: 1;
+  margin-right: 0.25rem;
 }
 
 /* ── Tracker cards ──────────────────────────────────── */

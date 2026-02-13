@@ -11,6 +11,7 @@ module focused on orchestration.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import AsyncGenerator
 
 import pydantic
@@ -25,6 +26,21 @@ from src.utils import logger
 log = logger.create_logger("Overlays")
 
 MAX_OVERLAYS = 5
+
+# Accept-style button text patterns.  When a cached overlay
+# uses one of these, we try to find a reject/decline
+# alternative first so the tool preserves user privacy.
+_ACCEPT_BUTTON_RE = re.compile(
+    r"accept|agree|allow|got it|i understand|okay"
+    r"|ok\b|continue|confirm",
+    re.IGNORECASE,
+)
+
+# Reject-style label regex used to locate a better button.
+_REJECT_BUTTON_RE = re.compile(
+    r"reject|decline|deny|refuse",
+    re.IGNORECASE,
+)
 
 
 # ====================================================================
@@ -51,6 +67,40 @@ class OverlayHandlingResult(pydantic.BaseModel):
         str, list[tracking_data.StorageItem]
     ] = pydantic.Field(default_factory=_empty_storage)
 
+
+
+# ====================================================================
+# Reject-button helper
+# ====================================================================
+
+
+async def _find_reject_button(
+    frame: async_api.Frame,
+) -> str | None:
+    """Search *frame* for a reject/decline button.
+
+    Returns the accessible name of the first matching button,
+    or ``None`` if none was found.
+    """
+    try:
+        locator = frame.get_by_role(
+            "button", name=_REJECT_BUTTON_RE
+        )
+        if await locator.count() > 0:
+            # Prefer the button whose text contains "all"
+            # (e.g. "Reject all") for a more complete opt-out.
+            for i in range(await locator.count()):
+                text = (
+                    await locator.nth(i).inner_text()
+                )
+                if text and "all" in text.lower():
+                    return text.strip()
+            # Fall back to the first match.
+            text = await locator.first.inner_text()
+            return text.strip() if text else None
+    except Exception:
+        pass
+    return None
 
 
 # ====================================================================
@@ -84,7 +134,7 @@ class OverlayPipeline:
         self._cache_dismissed = 0
         self._failed_cache_types: set[str] = set()
         self._deferred_extraction: (
-            tuple[bytes, int] | None
+            tuple[bytes, str | None] | None
         ) = None
 
     async def run(self) -> AsyncGenerator[str, None]:
@@ -140,7 +190,7 @@ class OverlayPipeline:
                 # background task so it runs concurrently
                 # with the verification vision detect.
                 if self._deferred_extraction:
-                    ext_screenshot, ext_progress = (
+                    ext_screenshot, ext_text = (
                         self._deferred_extraction
                     )
                     self._deferred_extraction = None
@@ -149,7 +199,7 @@ class OverlayPipeline:
                             page,
                             ext_screenshot,
                             result,
-                            ext_progress,
+                            pre_click_consent_text=ext_text,
                         )
                     )
 
@@ -163,12 +213,14 @@ class OverlayPipeline:
             if pending_extract is not None:
                 # Consent extraction is the dominant task
                 # (runs concurrently with overlay verify).
+                log.info("Processing consent dialog concurrently with overlay verification")
                 yield sse_helpers.format_progress_event(
                     "consent-analyze",
-                    "Analyzing consent details...",
+                    "Processing consent dialog...",
                     68,
                 )
             else:
+                log.info("Checking for additional overlays after dismissal")
                 yield sse_helpers.format_progress_event(
                     "overlays-verify",
                     "Checking for additional overlays...",
@@ -218,13 +270,41 @@ class OverlayPipeline:
                 page, detection
             )
             if not found_in_frame:
-                for event in steps.build_no_overlay_events(
-                    overlay_count,
-                    "Detection false positive — element not"
-                    " found in DOM",
+                # For cookie-consent overlays, the dialog
+                # container may be visible but buttons may
+                # still be loading (iframe content).  Wait
+                # and retry validation before giving up.
+                if (
+                    detection.overlay_type == "cookie-consent"
+                    and overlay_count == 0
                 ):
-                    yield event
-                break
+                    log.info(
+                        "Cookie-consent detected but"
+                        " button not in DOM — waiting"
+                        " for dialog content to load"
+                    )
+                    for _retry in range(4):
+                        await asyncio.sleep(1.5)
+                        found_in_frame = (
+                            await steps.validate_overlay_in_dom(
+                                page, detection
+                            )
+                        )
+                        if found_in_frame:
+                            log.info(
+                                "Consent button appeared"
+                                " after retry",
+                                {"retries": _retry + 1},
+                            )
+                            break
+                if not found_in_frame:
+                    for event in steps.build_no_overlay_events(
+                        overlay_count,
+                        "Detection false positive — element not"
+                        " found in DOM",
+                    ):
+                        yield event
+                    break
 
             overlay_count += 1
             progress_base = 45 + (overlay_count * 5)
@@ -250,11 +330,25 @@ class OverlayPipeline:
                 detection.overlay_type == "cookie-consent"
                 and not result.consent_details
             )
-            pre_click_screenshot = (
-                screenshot
-                if is_first_cookie_consent
-                else None
-            )
+
+            # ── Expand dialog & capture pre-click state ─────
+            # For cookie-consent overlays, try to click
+            # "More Options" to expand hidden partner lists
+            # and capture the DOM text while the dialog is
+            # still visible.
+            pre_click_screenshot: bytes | None = None
+            pre_click_consent_text: str | None = None
+            if is_first_cookie_consent:
+                yield sse_helpers.format_progress_event(
+                    f"overlay-{overlay_count}-expand",
+                    "Expanding consent details...",
+                    progress_base,
+                )
+                pre_click_consent_text, pre_click_screenshot = (
+                    await steps.expand_consent_dialog(
+                        page, session,
+                    )
+                )
 
             # ── Click ───────────────────────────────────────
             yield sse_helpers.format_progress_event(
@@ -280,6 +374,36 @@ class OverlayPipeline:
                     # Record this detection so we don't
                     # waste time re-detecting it.
                     failed_signatures.add(sig)
+
+                    # Even though click failed, preserve
+                    # any pre-click consent data (text +
+                    # screenshot) so the report includes
+                    # consent analysis.
+                    if (
+                        is_first_cookie_consent
+                        and pre_click_screenshot
+                    ):
+                        log.info(
+                            "Click failed but pre-click"
+                            " consent data available"
+                            " — preserving for analysis",
+                            {
+                                "textLength": len(
+                                    pre_click_consent_text
+                                    or ""
+                                ),
+                            },
+                        )
+                        pending_extract = asyncio.create_task(
+                            steps.collect_extraction_events(
+                                page,
+                                pre_click_screenshot,
+                                result,
+                                pre_click_consent_text=(
+                                    pre_click_consent_text
+                                ),
+                            )
+                        )
 
                     event, msg = steps.build_click_failure(
                         detection, overlay_count
@@ -315,6 +439,28 @@ class OverlayPipeline:
 
             except Exception as click_error:
                 failed_signatures.add(sig)
+
+                # Preserve pre-click consent data on error
+                if (
+                    is_first_cookie_consent
+                    and pre_click_screenshot
+                ):
+                    log.info(
+                        "Click errored but pre-click"
+                        " consent data available"
+                        " — preserving for analysis",
+                    )
+                    pending_extract = asyncio.create_task(
+                        steps.collect_extraction_events(
+                            page,
+                            pre_click_screenshot,
+                            result,
+                            pre_click_consent_text=(
+                                pre_click_consent_text
+                            ),
+                        )
+                    )
+
                 event, msg = steps.build_click_failure(
                     detection,
                     overlay_count,
@@ -349,7 +495,7 @@ class OverlayPipeline:
                         page,
                         pre_click_screenshot,
                         result,
-                        progress_base,
+                        pre_click_consent_text=pre_click_consent_text,
                     )
                 )
 
@@ -442,17 +588,116 @@ class OverlayPipeline:
                 page, detection
             )
             if not found_in_frame:
-                # Not shown on this page — skip but keep
-                # in cache for other pages on the domain.
-                log.info(
-                    "Cached overlay not present on this"
-                    " page — skipping",
-                    {
-                        "type": cached.overlay_type,
-                        "buttonText": cached.button_text,
-                    },
+                # For cookie-consent overlays, the dialog
+                # container may appear before its buttons
+                # load (iframe content).  Wait and retry.
+                if (
+                    cached.overlay_type == "cookie-consent"
+                    and dismissed == 0
+                ):
+                    log.info(
+                        "Cached cookie-consent button"
+                        " not in DOM — waiting for"
+                        " dialog content to load"
+                    )
+                    for _retry in range(4):
+                        await asyncio.sleep(1.5)
+                        found_in_frame = (
+                            await steps.validate_overlay_in_dom(
+                                page, detection
+                            )
+                        )
+                        if found_in_frame:
+                            log.info(
+                                "Cached consent button"
+                                " appeared after retry",
+                                {"retries": _retry + 1},
+                            )
+                            break
+                if not found_in_frame:
+                    # Not shown on this page — skip but keep
+                    # in cache for other pages on the domain.
+                    log.info(
+                        "Cached overlay not present on this"
+                        " page — skipping",
+                        {
+                            "type": cached.overlay_type,
+                            "buttonText": cached.button_text,
+                        },
+                    )
+                    continue
+
+            # ── Prefer reject over cached accept ───────
+            # The cache may store an "accept" button from a
+            # previous run.  Try to find a reject/decline
+            # alternative first.
+            if (
+                cached.overlay_type == "cookie-consent"
+                and cached.button_text
+                and _ACCEPT_BUTTON_RE.search(
+                    cached.button_text
                 )
-                continue
+            ):
+                reject_alt = await _find_reject_button(
+                    found_in_frame
+                )
+                if reject_alt:
+                    log.info(
+                        "Found reject button — overriding"
+                        " cached accept",
+                        {
+                            "cachedButton": (
+                                cached.button_text
+                            ),
+                            "rejectButton": reject_alt,
+                        },
+                    )
+                    detection = consent.CookieConsentDetection(
+                        found=True,
+                        overlay_type="cookie-consent",
+                        selector=None,
+                        button_text=reject_alt,
+                        confidence="high",
+                        reason=(
+                            "reject preferred over"
+                            " cached accept"
+                        ),
+                    )
+                    # Re-validate so found_in_frame points
+                    # at the frame containing the reject
+                    # button (usually the same frame).
+                    alt_frame = (
+                        await steps.validate_overlay_in_dom(
+                            page, detection
+                        )
+                    )
+                    if alt_frame:
+                        found_in_frame = alt_frame
+                    else:
+                        # Reject button vanished between
+                        # search and validation — fall back
+                        # to the original cached accept.
+                        log.info(
+                            "Reject button not found on"
+                            " re-validation — using"
+                            " cached accept",
+                        )
+                        detection = (
+                            consent.CookieConsentDetection(
+                                found=True,
+                                overlay_type=(
+                                    cached.overlay_type  # type: ignore[arg-type]
+                                ),
+                                selector=cached.selector,
+                                button_text=(
+                                    cached.button_text
+                                ),
+                                confidence="high",
+                                reason=(
+                                    "from overlay cache"
+                                ),
+                            )
+                        )
 
             overlay_number = (
                 result.overlay_count + dismissed + 1
@@ -464,7 +709,7 @@ class OverlayPipeline:
                 " validated in DOM",
                 {
                     "type": cached.overlay_type,
-                    "buttonText": cached.button_text,
+                    "buttonText": detection.button_text,
                     "accessorType": cached.accessor_type,
                 },
             )
@@ -481,19 +726,25 @@ class OverlayPipeline:
                 cached.overlay_type == "cookie-consent"
                 and not result.consent_details
             )
-            # Use the latest screenshot (updated after each
-            # successful click) so the consent extraction
-            # agent sees the cookie dialog, not an earlier
-            # overlay like sign-in.
-            pre_click_screenshot = (
-                latest_screenshot
-                if is_first_cookie
-                else None
-            )
+
+            # ── Expand dialog & capture pre-click state ─────
+            pre_click_screenshot: bytes | None = None
+            pre_click_consent_text: str | None = None
+            if is_first_cookie:
+                yield sse_helpers.format_progress_event(
+                    f"overlay-{overlay_number}-expand",
+                    "Expanding consent details...",
+                    progress_base,
+                )
+                pre_click_consent_text, pre_click_screenshot = (
+                    await steps.expand_consent_dialog(
+                        page, session,
+                    )
+                )
 
             yield sse_helpers.format_progress_event(
                 f"overlay-{overlay_number}-click",
-                "Dismissing overlay (cached)...",
+                "Dismissing overlay...",
                 progress_base + 1,
             )
 
@@ -537,7 +788,7 @@ class OverlayPipeline:
                 if is_first_cookie and pre_click_screenshot:
                     self._deferred_extraction = (
                         pre_click_screenshot,
-                        progress_base,
+                        pre_click_consent_text,
                     )
             else:
                 log.info(
@@ -551,6 +802,19 @@ class OverlayPipeline:
                 self._failed_cache_types.add(
                     cached.overlay_type
                 )
+                # Preserve pre-click consent data even
+                # when the cached click fails so consent
+                # analysis is still included in the report.
+                if is_first_cookie and pre_click_screenshot:
+                    log.info(
+                        "Cached click failed but pre-click"
+                        " consent data available"
+                        " — preserving for analysis",
+                    )
+                    self._deferred_extraction = (
+                        pre_click_screenshot,
+                        pre_click_consent_text,
+                    )
 
         result.overlay_count += dismissed
         self._cache_dismissed = dismissed
