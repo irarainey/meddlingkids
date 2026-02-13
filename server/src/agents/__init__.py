@@ -12,6 +12,7 @@ thread-safely, and reused.
 from __future__ import annotations
 
 import functools
+from typing import TypeVar
 
 from src.agents import (
     base,
@@ -26,11 +27,13 @@ from src.utils import logger
 
 log = logger.create_logger("Agents")
 
+_T = TypeVar("_T", bound=base.BaseAgent)
+
 
 # ── Singletons ─────────────────────────────────────────────────
 
 
-def _init_agent[T: base.BaseAgent](agent_cls: type[T]) -> T:
+def _init_agent(agent_cls: type[_T]) -> _T:
     """Instantiate and initialise an agent, logging on failure.
 
     Args:
@@ -41,11 +44,7 @@ def _init_agent[T: base.BaseAgent](agent_cls: type[T]) -> T:
     """
     agent = agent_cls()
     if not agent.initialise():
-        log.warn(
-            f"{agent_cls.__name__} created but LLM not"
-            " configured — calls will fail until config"
-            " is set."
-        )
+        log.warn(f"{agent_cls.__name__} created but LLM not configured — calls will fail until config is set.")
     return agent
 
 
@@ -56,9 +55,7 @@ def get_consent_detection_agent() -> consent_detection_agent.ConsentDetectionAge
 
 
 @functools.lru_cache(maxsize=1)
-def get_consent_extraction_agent() -> (
-    consent_extraction_agent.ConsentExtractionAgent
-):
+def get_consent_extraction_agent() -> consent_extraction_agent.ConsentExtractionAgent:
     """Get the singleton ``ConsentExtractionAgent``."""
     return _init_agent(consent_extraction_agent.ConsentExtractionAgent)
 

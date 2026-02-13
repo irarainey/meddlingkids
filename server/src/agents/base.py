@@ -16,8 +16,7 @@ import pydantic
 
 from src.agents import llm_client
 from src.agents import middleware as middleware_mod
-from src.utils import image as image_mod
-from src.utils import logger
+from src.utils import image, logger
 
 log = logger.create_logger("BaseAgent")
 
@@ -54,13 +53,9 @@ class BaseAgent:
 
     def __init__(self) -> None:
         """Initialise with a shared LLM chat client."""
-        self._chat_client: (
-            agent_framework.ChatClientProtocol | None
-        ) = None
+        self._chat_client: agent_framework.ChatClientProtocol | None = None
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
-        self._retry = middleware_mod.RetryChatMiddleware(
-            self.agent_name, max_retries=self.max_retries
-        )
+        self._retry = middleware_mod.RetryChatMiddleware(self.agent_name, max_retries=self.max_retries)
 
     def initialise(self) -> bool:
         """Create the underlying LLM chat client.
@@ -68,9 +63,7 @@ class BaseAgent:
         Returns:
             ``True`` when the client was created.
         """
-        self._chat_client = llm_client.get_chat_client(
-            agent_name=self.agent_name
-        )
+        self._chat_client = llm_client.get_chat_client(agent_name=self.agent_name)
         return self._chat_client is not None
 
     @property
@@ -153,9 +146,7 @@ class BaseAgent:
                 "json_schema": {
                     "name": model.__name__,
                     "strict": True,
-                    "schema": self._prepare_strict_schema(
-                        raw_schema
-                    ),
+                    "schema": self._prepare_strict_schema(raw_schema),
                 },
             }
 
@@ -197,22 +188,15 @@ class BaseAgent:
             A ``ChatAgent`` ready for ``async with``.
         """
         if self._chat_client is None:
-            raise ValueError(
-                f"{self.agent_name}: chat client not"
-                " initialised. Call initialise() first."
-            )
+            raise ValueError(f"{self.agent_name}: chat client not initialised. Call initialise() first.")
 
         return agent_framework.ChatAgent(
             chat_client=self._chat_client,
             instructions=instructions or self.instructions,
             name=self.agent_name,
-            description=(
-                f"Chat agent for {self.agent_name}"
-            ),
+            description=(f"Chat agent for {self.agent_name}"),
             tools=[],
-            default_options=self._build_options(
-                max_tokens, response_model
-            ),
+            default_options=self._build_options(max_tokens, response_model),
             middleware=[self._retry, self._timing],
         )
 
@@ -246,9 +230,7 @@ class BaseAgent:
             role=agent_framework.Role.USER,
             text=user_prompt,
         )
-        async with self._build_agent(
-            instructions, max_tokens, response_model
-        ) as agent:
+        async with self._build_agent(instructions, max_tokens, response_model) as agent:
             response = await agent.run(message)
         log.debug(
             f"{self.agent_name}: response received",
@@ -277,9 +259,7 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
-        image_uri, jpeg_size = image_mod.optimize_for_llm(
-            screenshot
-        )
+        image_uri, jpeg_size = image.optimize_for_llm(screenshot)
         log.debug(
             f"{self.agent_name}: vision completion",
             {
@@ -293,15 +273,11 @@ class BaseAgent:
         message = agent_framework.ChatMessage(
             role=agent_framework.Role.USER,
             contents=[
-                agent_framework.Content.from_uri(
-                    image_uri, media_type="image/jpeg"
-                ),
+                agent_framework.Content.from_uri(image_uri, media_type="image/jpeg"),
                 agent_framework.Content.from_text(user_text),
             ],
         )
-        async with self._build_agent(
-            instructions, max_tokens
-        ) as agent:
+        async with self._build_agent(instructions, max_tokens) as agent:
             response = await agent.run(message)
         log.debug(
             f"{self.agent_name}: vision response received",
@@ -329,10 +305,7 @@ class BaseAgent:
             return response.try_parse_value(model)
         except Exception as exc:
             log.warn(
-                f"{self.agent_name}: failed to parse"
-                f" structured output: {exc}",
+                f"{self.agent_name}: failed to parse structured output: {exc}",
                 {"responsePreview": (response.text or "")[:200]},
             )
             return None
-
-

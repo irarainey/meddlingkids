@@ -7,15 +7,17 @@ allowing multiple concurrent URL analyses without interference.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from playwright import async_api
+
 from src.browser import access_detection, device_configs
 from src.models import browser, tracking_data
-from src.utils import image
-from src.utils import logger, url as url_mod
+from src.utils import image, logger
+from src.utils import url as url_mod
 
 log = logger.create_logger("BrowserSession")
 
@@ -90,9 +92,7 @@ class BrowserSession:
     # Browser Lifecycle
     # ==========================================================================
 
-    async def launch_browser(
-        self, device_type: browser.DeviceType = "ipad"
-    ) -> None:
+    async def launch_browser(self, device_type: browser.DeviceType = "ipad") -> None:
         """Launch a new Chromium browser instance with device emulation."""
         # Ensure virtual display is available for headed mode.
         if not os.environ.get("DISPLAY") or os.environ.get("DISPLAY") in (":0", ":1"):
@@ -100,30 +100,21 @@ class BrowserSession:
 
         log.info("Launching browser", {"deviceType": device_type})
         if device_type not in device_configs.DEVICE_CONFIGS:
-            raise ValueError(
-                f"Unknown device type {device_type!r}. "
-                f"Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}"
-            )
+            raise ValueError(f"Unknown device type {device_type!r}. Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}")
         device_config = device_configs.DEVICE_CONFIGS[device_type]
 
         # Close existing resources
         if self._context:
-            try:
+            with contextlib.suppress(Exception):
                 await self._context.close()
-            except Exception:
-                pass
             self._context = None
         if self._browser:
-            try:
+            with contextlib.suppress(Exception):
                 await self._browser.close()
-            except Exception:
-                pass
             self._browser = None
         if self._playwright:
-            try:
+            with contextlib.suppress(Exception):
                 await self._playwright.stop()
-            except Exception:
-                pass
             self._playwright = None
         self._page = None
 
@@ -152,14 +143,12 @@ class BrowserSession:
 
         try:
             br = await pw.chromium.launch(
-                channel="chrome", **launch_kwargs  # type: ignore[arg-type]
+                channel="chrome",
+                **launch_kwargs,  # type: ignore[arg-type]
             )
             log.info("Launched real Chrome browser")
         except Exception:
-            log.info(
-                "Real Chrome not available, falling"
-                " back to bundled Chromium"
-            )
+            log.info("Real Chrome not available, falling back to bundled Chromium")
             br = await pw.chromium.launch(
                 **launch_kwargs  # type: ignore[arg-type]
             )
@@ -171,7 +160,10 @@ class BrowserSession:
         # mismatched UA (e.g. Safari on iPad) vs Chrome TLS
         # handshake is a top bot-detection signal.
         self._context = await br.new_context(
-            viewport={"width": device_config.viewport.width, "height": device_config.viewport.height},
+            viewport={
+                "width": device_config.viewport.width,
+                "height": device_config.viewport.height,
+            },
             device_scale_factor=device_config.device_scale_factor,
             is_mobile=device_config.is_mobile,
             has_touch=device_config.has_touch,
@@ -181,11 +173,14 @@ class BrowserSession:
         )
 
         self._page = await self._context.new_page()
-        log.debug("Browser launched", {
-            "viewport": f"{device_config.viewport.width}x{device_config.viewport.height}",
-            "deviceType": device_type,
-            "isMobile": device_config.is_mobile,
-        })
+        log.debug(
+            "Browser launched",
+            {
+                "viewport": f"{device_config.viewport.width}x{device_config.viewport.height}",
+                "deviceType": device_type,
+                "isMobile": device_config.is_mobile,
+            },
+        )
 
         # ── Anti-bot-detection hardening ─────────────────
         # Mask automation signals that paywall and bot-detection
@@ -282,18 +277,13 @@ class BrowserSession:
         # scripts that cannot be fetched or meaningfully
         # analysed.
         if resource_type == "script" and not request_url.startswith("blob:"):
-            if (
-                len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS
-                and request_url not in self._seen_script_urls
-            ):
+            if len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS and request_url not in self._seen_script_urls:
                 self._seen_script_urls.add(request_url)
                 self._tracked_scripts.append(
                     tracking_data.TrackedScript(
                         url=request_url,
                         domain=domain,
-                        timestamp=datetime.now(
-                            timezone.utc
-                        ).isoformat(),
+                        timestamp=datetime.now(UTC).isoformat(),
                     )
                 )
             elif len(self._tracked_scripts) == MAX_TRACKED_SCRIPTS:
@@ -320,16 +310,12 @@ class BrowserSession:
                         request_url,
                         self._current_page_url,
                     ),
-                    timestamp=datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     post_data=post_data,
                 )
             )
             # Index for O(1) response matching
-            self._pending_responses.setdefault(
-                request_url, []
-            ).append(idx)
+            self._pending_responses.setdefault(request_url, []).append(idx)
 
     def _on_response(self, response: async_api.Response) -> None:
         """Handle intercepted responses to capture status codes."""
@@ -337,9 +323,7 @@ class BrowserSession:
         indices = self._pending_responses.get(request_url)
         if indices:
             idx = indices.pop()
-            self._tracked_network_requests[idx].status_code = (
-                response.status
-            )
+            self._tracked_network_requests[idx].status_code = response.status
             if not indices:
                 del self._pending_responses[request_url]
 
@@ -350,9 +334,7 @@ class BrowserSession:
     async def navigate_to(
         self,
         url: str,
-        wait_until: Literal[
-            "commit", "domcontentloaded", "load", "networkidle"
-        ] = "networkidle",
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
         timeout: int = 90000,
     ) -> browser.NavigationResult:
         """Navigate the current page to a URL and wait for it to load."""
@@ -379,8 +361,7 @@ class BrowserSession:
                 # handle dismissal.
                 if status_code == 402:
                     log.info(
-                        "Paywall detected (HTTP 402)"
-                        " — proceeding with analysis",
+                        "Paywall detected (HTTP 402) — proceeding with analysis",
                         {"statusCode": status_code},
                     )
                 else:
@@ -391,9 +372,7 @@ class BrowserSession:
                         status_text=status_text,
                         is_access_denied=is_access_denied,
                         error_message=(
-                            f"Access denied ({status_code})"
-                            if is_access_denied
-                            else f"Server error ({status_code}: {status_text})"
+                            f"Access denied ({status_code})" if is_access_denied else f"Server error ({status_code}: {status_text})"
                         ),
                     )
 
@@ -445,7 +424,7 @@ class BrowserSession:
 
         cookies = await self._context.cookies()
         log.debug("Captured raw cookies from browser", {"count": len(cookies)})
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         for cookie in cookies:
             name = cookie.get("name", "")
@@ -468,9 +447,7 @@ class BrowserSession:
             if existing_idx is not None:
                 self._tracked_cookies[existing_idx] = tracked
             else:
-                self._cookie_index[cookie_key] = len(
-                    self._tracked_cookies
-                )
+                self._cookie_index[cookie_key] = len(self._tracked_cookies)
                 self._tracked_cookies.append(tracked)
 
     async def capture_storage(self) -> dict[str, list[tracking_data.StorageItem]]:
@@ -496,11 +473,10 @@ class BrowserSession:
                 }"""
             )
 
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             return {
                 "local_storage": [
-                    tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now)
-                    for item in storage_data["localStorage"]
+                    tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now) for item in storage_data["localStorage"]
                 ],
                 "session_storage": [
                     tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now)
@@ -547,9 +523,7 @@ class BrowserSession:
 
     async def wait_for_load_state(
         self,
-        state: Literal[
-            "domcontentloaded", "load", "networkidle"
-        ] = "load",
+        state: Literal["domcontentloaded", "load", "networkidle"] = "load",
     ) -> None:
         """Wait for a specific page load state."""
         if not self._page:

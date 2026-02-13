@@ -13,7 +13,7 @@ Python FastAPI backend that orchestrates browser automation and AI-powered track
 ```bash
 cd server
 uv sync
-uv run playwright install chrome
+uv run playwright install --with-deps chrome
 uv run playwright install chromium
 ```
 
@@ -33,7 +33,7 @@ uv run playwright install chromium
 ### Server
 - `UVICORN_HOST` - Server host (default: `0.0.0.0`)
 - `UVICORN_PORT` - Server port (default: `3001`)
-- `WRITE_LOG_TO_FILE` - Set to `true` to enable file logging
+- `WRITE_TO_FILE` - Set to `true` to write logs and reports to files
 
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
@@ -41,12 +41,9 @@ uv run playwright install chromium
 ## Running
 
 ```bash
-# Development (from project root)
-npm run dev:server
-
-# Or directly
+# Development
 cd server
-uv run uvicorn src.main:app --host 0.0.0.0 --port 3001 --reload --env-file ../.env
+uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 ```
 
 ## Architecture
@@ -65,7 +62,17 @@ src/
 │   ├── structured_report_agent.py   # Structured privacy report agent
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
+│   ├── observability_setup.py       # Azure Monitor / App Insights telemetry setup
+│   ├── prompts/                     # System prompts (one module per agent)
+│   │   ├── consent_detection.py     # Consent detection prompt
+│   │   ├── consent_extraction.py    # Consent extraction prompt
+│   │   ├── script_analysis.py       # Script analysis prompt
+│   │   ├── structured_report.py     # Structured report section prompts
+│   │   ├── summary_findings.py      # Summary findings prompt
+│   │   └── tracking_analysis.py     # Tracking analysis prompt
 │   └── scripts/                     # JavaScript snippets evaluated in-browser
+│       ├── extract_consent_text.js  # Extract consent dialog text from DOM
+│       └── extract_iframe_text.js   # Extract text from consent iframes
 ├── browser/                         # Browser automation
 │   ├── session.py                   # Playwright async browser session
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
@@ -120,6 +127,23 @@ src/
     ├── serialization.py             # Pydantic model serialization helpers
     └── url.py                       # URL / domain utilities
 ```
+
+## Linting and Formatting
+
+The server uses [ruff](https://docs.astral.sh/ruff/) for linting/formatting and
+[mypy](https://mypy.readthedocs.io/) for static type checking, orchestrated by
+[poethepoet](https://poethepoet.naber.dev/) task runner.
+
+```bash
+cd server
+
+poe lint          # Run all linting (ruff check + format check + mypy)
+poe lint:ruff     # Run ruff linter and format check only
+poe lint:mypy     # Run mypy type checking only
+poe format        # Auto-fix ruff lint issues and format code
+```
+
+Configuration for all tools is in `pyproject.toml`.
 
 ## Microsoft Agent Framework
 

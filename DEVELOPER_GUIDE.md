@@ -324,7 +324,7 @@ App.vue
     ├── StorageTab
     ├── NetworkTab
     ├── ScriptsTab
-    └── DebugLogTab (debug mode only)
+    └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```
 
 ---
@@ -333,7 +333,7 @@ App.vue
 
 ### Agent Layer
 
-AI interactions use the **Microsoft Agent Framework** (`agent-framework-core` package). Each agent subclasses `BaseAgent` and defines its own instructions, response model, and token limits. Prompts are embedded in the agent files — there is no separate `prompts/` directory.
+AI interactions use the **Microsoft Agent Framework** (`agent-framework-core` package). Each agent subclasses `BaseAgent` and defines its own response model and token limits. System prompts are stored in the `agents/prompts/` directory — one module per agent — keeping prompt text separate from agent logic.
 
 Key framework types used:
 - `agent_framework.ChatAgent` — orchestrates a chat conversation with middleware
@@ -359,6 +359,7 @@ Key framework types used:
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
+| `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
 
 ### Domain Packages
 
@@ -530,6 +531,8 @@ class NetworkRequest(BaseModel):
     is_third_party: bool
     timestamp: str
     status_code: int | None = None
+    post_data: str | None = None
+    pre_consent: bool = False
 ```
 
 ### ConsentDetails
@@ -542,6 +545,7 @@ class ConsentDetails(BaseModel):
     purposes: list[str]
     raw_text: str
     expanded: bool | None = None
+    claimed_partner_count: int | None = None
 ```
 
 ---
@@ -582,7 +586,8 @@ class ConsentDetails(BaseModel):
 ### Adding a New AI Analysis
 
 1. Create an agent class in `server/src/agents/` subclassing `BaseAgent`
-2. Define `agent_name`, `instructions`, `max_tokens`, and optionally `response_model`
+2. Create a prompt module in `server/src/agents/prompts/` with the system prompt
+3. Define `agent_name`, `instructions` (imported from the prompt module), `max_tokens`, and optionally `response_model`
 3. Add an orchestration function in the relevant domain package (`server/src/analysis/`, `server/src/consent/`, etc.) that calls the agent
 4. Call from `stream.py` in `server/src/pipeline/` (consider `asyncio.gather()` for parallel execution)
 5. Include in `complete` event payload
@@ -591,13 +596,30 @@ class ConsentDetails(BaseModel):
 ### Adding a New Overlay Type
 
 1. Update `CookieConsentDetection` type in `server/src/models/consent.py`
-2. Update detection instructions in `server/src/agents/consent_detection_agent.py`
+2. Update detection instructions in `server/src/agents/prompts/consent_detection.py`
 3. Add click strategy in `server/src/consent/click.py`
 4. Update `get_overlay_message()` in `server/src/pipeline/overlay_steps.py`
 
 ---
 
 ## Development Tips
+
+### Linting and Formatting
+
+The server uses [ruff](https://docs.astral.sh/ruff/) for linting/formatting and
+[mypy](https://mypy.readthedocs.io/) for static type checking, orchestrated by
+[poethepoet](https://poethepoet.naber.dev/).
+
+```bash
+cd server
+
+poe lint          # Run all linting (ruff check + format check + mypy)
+poe lint:ruff     # Run ruff linter and format check only
+poe lint:mypy     # Run mypy type checking only
+poe format        # Auto-fix ruff lint issues and format code
+```
+
+All tool configuration (ruff rules, mypy settings, poe tasks) lives in `server/pyproject.toml`.
 
 ### Virtual Display Setup
 
@@ -607,7 +629,8 @@ The browser runs in headed mode on a virtual display (Xvfb) to avoid bot detecti
 - `containerEnv` in `devcontainer.json` sets `DISPLAY=:99`
 - `postStartCommand` runs `.devcontainer/init.sh` which:
   - Installs npm dependencies if needed
-  - Installs real Chrome for Python (preferred for TLS fingerprint authenticity)
+  - Installs Python dependencies via `uv sync`
+  - Installs real Chrome for Python with system dependencies (`--with-deps`)
   - Installs Chromium as fallback for Python
   - Installs Xvfb if not present
   - Cleans up stale lock files and starts Xvfb on display `:99` if not already running
@@ -627,7 +650,8 @@ Xvfb :99 -screen 0 1920x1080x24 -ac &
 
 # Set DISPLAY before running the server
 export DISPLAY=:99
-npm run dev:server
+cd server
+uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 ```
 
 ### Debugging SSE
@@ -673,16 +697,19 @@ log.end_timer('my-operation', 'Operation complete')
 log.success('Done!', {'result': data})
 ```
 
-**File Logging:**
+**File Output:**
 
-Set `WRITE_LOG_TO_FILE=true` in your environment to write logs to timestamped files in the `/logs` folder. The folder is created automatically if it doesn't exist. Each analysis creates a new log file named after the domain being analyzed. File logs are plain text with ANSI color codes stripped for readability.
+Set `WRITE_TO_FILE=true` in your environment to write logs and reports to files. Folders are created automatically if they don't exist.
+
+- **Logs** are saved to the `/.logs` folder. Each analysis creates a new log file named after the domain being analyzed. File logs are plain text with ANSI color codes stripped for readability.
+- **Reports** are saved to the `/.reports` folder. Each analysis creates a text file containing the final structured report.
 
 ```bash
-# Enable file logging
-WRITE_LOG_TO_FILE=true npm run dev:server
+# Enable file output
+WRITE_TO_FILE=true npm run dev:server
 ```
 
-Log files are named `<domain>_YYYY-MM-DD_HH-MM-SS.log` (e.g., `example.com_2026-01-29_11-32-57.log`) and contain the same output as the console without color formatting.
+Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions (e.g., `example.com_2026-01-29_11-32-57.log`).
 
 ### Concurrency
 

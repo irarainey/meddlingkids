@@ -11,6 +11,7 @@ import time
 from urllib import parse
 
 from playwright import async_api
+
 from src.consent import constants
 from src.utils import logger
 
@@ -47,10 +48,7 @@ async def validate_element_exists(
     iframes.  Returns the frame where the element was found, or
     ``None`` if not found anywhere.
     """
-    frames = [page.main_frame] + [
-        f for f in page.frames
-        if _is_consent_frame(f, page.main_frame)
-    ]
+    frames = [page.main_frame] + [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
 
     for frame in frames:
         if selector:
@@ -58,34 +56,40 @@ async def validate_element_exists(
             if css_selector:
                 try:
                     if await frame.locator(css_selector).count() > 0:
-                        log.debug("Element found via CSS selector", {"selector": css_selector, "frame": frame.url})
+                        log.debug(
+                            "Element found via CSS selector",
+                            {"selector": css_selector, "frame": frame.url},
+                        )
                         return frame
                 except Exception:
                     pass
             if text_from_selector:
                 try:
-                    if await frame.get_by_text(
-                        text_from_selector, exact=False
-                    ).count() > 0:
-                        log.debug("Element found via selector text", {"text": text_from_selector, "frame": frame.url})
+                    if await frame.get_by_text(text_from_selector, exact=False).count() > 0:
+                        log.debug(
+                            "Element found via selector text",
+                            {"text": text_from_selector, "frame": frame.url},
+                        )
                         return frame
                 except Exception:
                     pass
 
         if button_text:
             try:
-                if await frame.get_by_role(
-                    "button", name=button_text
-                ).count() > 0:
-                    log.debug("Element found via button role", {"buttonText": button_text, "frame": frame.url})
+                if await frame.get_by_role("button", name=button_text).count() > 0:
+                    log.debug(
+                        "Element found via button role",
+                        {"buttonText": button_text, "frame": frame.url},
+                    )
                     return frame
             except Exception:
                 pass
             try:
-                if await frame.get_by_text(
-                    button_text, exact=False
-                ).count() > 0:
-                    log.debug("Element found via text search", {"buttonText": button_text, "frame": frame.url})
+                if await frame.get_by_text(button_text, exact=False).count() > 0:
+                    log.debug(
+                        "Element found via text search",
+                        {"buttonText": button_text, "frame": frame.url},
+                    )
                     return frame
             except Exception:
                 pass
@@ -174,9 +178,7 @@ async def try_click_consent_button(
     # Phase 3: Generic close-button heuristics (main frame only)
     log.debug("Trying generic close buttons on main frame...")
     if await _try_close_buttons(page.main_frame, deadline=deadline):
-        if await _did_navigate_away(page, original_url):
-            return False
-        return True
+        return not await _did_navigate_away(page, original_url)
 
     log.warn("All click strategies failed")
     return False
@@ -204,9 +206,7 @@ async def _did_navigate_away(page: async_api.Page, original_url: str) -> bool:
     return False
 
 
-async def _is_safe_to_click(
-    locator: async_api.Locator, timeout: int = 2000
-) -> bool | None:
+async def _is_safe_to_click(locator: async_api.Locator, timeout: int = 2000) -> bool | None:
     """Return whether clicking this element will navigate away.
 
     Returns:
@@ -229,7 +229,7 @@ async def _is_safe_to_click(
     (30 s), so a short timeout avoids blocking the pipeline.
     """
     try:
-        return await locator.evaluate(
+        return await locator.evaluate(  # type: ignore[no-any-return]
             r"""
             el => {
                 const tag = el.tagName.toLowerCase();
@@ -317,8 +317,7 @@ async def _safe_click(
 
         if safety is None:
             log.debug(
-                "Safety evaluation timed out — clicking"
-                " anyway (LLM-identified element)",
+                "Safety evaluation timed out — clicking anyway (LLM-identified element)",
                 {"locator": str(locator)},
             )
 
@@ -372,12 +371,12 @@ async def _try_click_in_frame(
     if selector:
         css_selector, text_from_selector = _parse_selector(selector)
 
-        if css_selector:
-            if await _safe_click(
-                frame.locator(css_selector), timeout,
-                force_on_timeout=True,
-            ):
-                return True
+        if css_selector and await _safe_click(
+            frame.locator(css_selector),
+            timeout,
+            force_on_timeout=True,
+        ):
+            return True
 
         # If the LLM gave :has-text() / :contains(), use the inner
         # text with Playwright's role and text locators.
@@ -387,7 +386,9 @@ async def _try_click_in_frame(
                 frame.get_by_text(text_from_selector, exact=False),
             ]:
                 if await _safe_click(
-                    locator, timeout, force_on_timeout=True,
+                    locator,
+                    timeout,
+                    force_on_timeout=True,
                 ):
                     return True
 
@@ -400,7 +401,9 @@ async def _try_click_in_frame(
             frame.get_by_text(button_text, exact=False),
         ]:
             if await _safe_click(
-                locator, timeout, force_on_timeout=True,
+                locator,
+                timeout,
+                force_on_timeout=True,
             ):
                 return True
 
@@ -430,6 +433,7 @@ async def _try_close_buttons(
     Respects the *deadline* (monotonic clock) to avoid exhausting
     the total click time budget on generic fallbacks.
     """
+
     def _time_ok() -> bool:
         return deadline <= 0.0 or time.monotonic() < deadline
 
@@ -438,17 +442,23 @@ async def _try_close_buttons(
     role_patterns: list[tuple[str, async_api.Locator]] = [
         (
             "button[name~=dismiss]",
-            frame.get_by_role("button", name=re.compile(
-                r"close|dismiss|skip|no thanks|not now|maybe later|later|reject|decline|deny",
-                re.IGNORECASE,
-            )),
+            frame.get_by_role(
+                "button",
+                name=re.compile(
+                    r"close|dismiss|skip|no thanks|not now|maybe later|later|reject|decline|deny",
+                    re.IGNORECASE,
+                ),
+            ),
         ),
         (
             "button[name~=accept]",
-            frame.get_by_role("button", name=re.compile(
-                r"accept|agree|allow|got it|i understand|okay|ok\b|continue|confirm",
-                re.IGNORECASE,
-            )),
+            frame.get_by_role(
+                "button",
+                name=re.compile(
+                    r"accept|agree|allow|got it|i understand|okay|ok\b|continue|confirm",
+                    re.IGNORECASE,
+                ),
+            ),
         ),
     ]
     for label, locator in role_patterns:
@@ -484,4 +494,3 @@ async def _try_close_buttons(
             log.success("Close button clicked", {"selector": sel})
             return True
     return False
-

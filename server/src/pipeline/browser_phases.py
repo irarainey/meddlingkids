@@ -9,6 +9,7 @@ import asyncio
 from urllib import parse
 
 from playwright import async_api
+
 from src.browser import session as browser_session
 from src.consent import constants
 from src.models import browser
@@ -41,23 +42,15 @@ async def setup_and_navigate(
 
     log.start_timer("browser-launch")
     log.info("Launching browser", {"deviceType": device_type})
-    events.append(
-        sse_helpers.format_progress_event("browser", "Launching browser...", 8)
-    )
+    events.append(sse_helpers.format_progress_event("browser", "Launching browser...", 8))
     await session.launch_browser(device_type)
     log.end_timer("browser-launch", "Browser launched")
 
     log.start_timer("navigation")
     log.info("Navigating to page", {"hostname": hostname})
-    events.append(
-        sse_helpers.format_progress_event(
-            "navigate", f"Loading {hostname}...", 12
-        )
-    )
+    events.append(sse_helpers.format_progress_event("navigate", f"Loading {hostname}...", 12))
 
-    nav_result = await session.navigate_to(
-        url, "domcontentloaded", 30000
-    )
+    nav_result = await session.navigate_to(url, "domcontentloaded", 30000)
     log.end_timer("navigation", "Initial navigation complete")
     log.info(
         "Navigation result",
@@ -138,8 +131,7 @@ async def _wait_for_consent_dialog_ready(
         return  # No consent dialog detected — nothing to wait for
 
     log.debug(
-        "Consent dialog container detected, waiting for"
-        " buttons to load and render",
+        "Consent dialog container detected, waiting for buttons to load and render",
         {
             "consentFrames": len(consent_frames),
             "mainFrameContainer": has_main_frame_container,
@@ -172,9 +164,7 @@ async def _wait_for_consent_dialog_ready(
                         {
                             "visible": visible_count,
                             "total": total,
-                            "waitMs": (
-                                attempt * _CONSENT_POLL_INTERVAL_MS
-                            ),
+                            "waitMs": (attempt * _CONSENT_POLL_INTERVAL_MS),
                         },
                     )
                     buttons_ready = True
@@ -188,8 +178,7 @@ async def _wait_for_consent_dialog_ready(
 
     if not buttons_ready:
         log.debug(
-            "Consent dialog readiness wait exhausted"
-            " — proceeding anyway",
+            "Consent dialog readiness wait exhausted — proceeding anyway",
             {"maxWaitMs": _CONSENT_MAX_WAIT_MS},
         )
 
@@ -236,11 +225,7 @@ async def wait_for_page_load(
     events: list[str] = []
 
     log.start_timer("network-idle")
-    events.append(
-        sse_helpers.format_progress_event(
-            "wait-network", f"Waiting for {hostname} to settle...", 18
-        )
-    )
+    events.append(sse_helpers.format_progress_event("wait-network", f"Waiting for {hostname} to settle...", 18))
 
     # Short race: give the page 3 s to reach network idle.
     # If it doesn't (ad-heavy sites), that's fine — proceed anyway.
@@ -249,16 +234,9 @@ async def wait_for_page_load(
 
     if network_idle:
         log.success("Network became idle")
-        events.append(
-            sse_helpers.format_progress_event(
-                "wait-done", "Page loaded...", 25
-            )
-        )
+        events.append(sse_helpers.format_progress_event("wait-done", "Page loaded...", 25))
     else:
-        log.info(
-            "Network still active (normal for ad-heavy sites),"
-            " proceeding with loaded DOM"
-        )
+        log.info("Network still active (normal for ad-heavy sites), proceeding with loaded DOM")
         events.append(
             sse_helpers.format_progress_event(
                 "wait-continue",
@@ -268,11 +246,7 @@ async def wait_for_page_load(
         )
 
     # Brief grace period for consent banners and overlays to render.
-    events.append(
-        sse_helpers.format_progress_event(
-            "wait-overlays", "Waiting for page content to render...", 28
-        )
-    )
+    events.append(sse_helpers.format_progress_event("wait-overlays", "Waiting for page content to render...", 28))
     await session.wait_for_timeout(2000)
 
     # If a consent dialog container/iframe is present but its
@@ -305,9 +279,7 @@ async def check_access(
     if not access_check.denied:
         return events, False
 
-    log.error(
-        "Access denied detected", {"reason": access_check.reason}
-    )
+    log.error("Access denied detected", {"reason": access_check.reason})
 
     event_str, _, _ = await sse_helpers.take_screenshot_event(
         session,
@@ -324,20 +296,13 @@ async def check_access(
             {
                 "type": "access-denied",
                 "statusCode": nav_result.status_code,
-                "message": (
-                    "Access denied - this site has bot protection"
-                    " that blocked our request"
-                ),
+                "message": ("Access denied - this site has bot protection that blocked our request"),
                 "isAccessDenied": True,
                 "reason": access_check.reason,
             },
         )
     )
-    events.append(
-        sse_helpers.format_progress_event(
-            "blocked", "Site blocked access!", 100
-        )
-    )
+    events.append(sse_helpers.format_progress_event("blocked", "Site blocked access!", 100))
     return events, True
 
 
@@ -357,23 +322,13 @@ async def capture_initial_data(
     events: list[str] = []
     log.start_timer("initial-capture")
 
-    events.append(
-        sse_helpers.format_progress_event(
-            "capture", "Capturing page data...", 32
-        )
-    )
+    events.append(sse_helpers.format_progress_event("capture", "Capturing page data...", 32))
     await session.capture_current_cookies()
     storage = await session.capture_storage()
 
-    events.append(
-        sse_helpers.format_progress_event(
-            "screenshot", "Recording page state...", 38
-        )
-    )
+    events.append(sse_helpers.format_progress_event("screenshot", "Recording page state...", 38))
 
-    event_str, screenshot_bytes, storage = (
-        await sse_helpers.take_screenshot_event(session, storage)
-    )
+    event_str, screenshot_bytes, storage = await sse_helpers.take_screenshot_event(session, storage)
     events.append(event_str)
 
     cookie_count = len(session.get_tracked_cookies())

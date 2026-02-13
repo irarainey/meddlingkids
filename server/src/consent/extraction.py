@@ -34,19 +34,20 @@ async def extract_consent_details(
     Returns:
         Structured ``ConsentDetails``.
     """
-    log.info("Starting consent extraction", {
-        "screenshotBytes": len(screenshot),
-        "hasPreCapturedText": pre_captured_text is not None,
-    })
+    log.info(
+        "Starting consent extraction",
+        {
+            "screenshotBytes": len(screenshot),
+            "hasPreCapturedText": pre_captured_text is not None,
+        },
+    )
     agent = agents.get_consent_extraction_agent()
     if not agent.is_configured:
-        log.warn(
-            "LLM not configured, skipping consent"
-            " extraction"
-        )
+        log.warn("LLM not configured, skipping consent extraction")
         return consent.ConsentDetails.empty()
 
     return await agent.extract(
-        page, screenshot,
+        page,
+        screenshot,
         pre_captured_text=pre_captured_text,
     )

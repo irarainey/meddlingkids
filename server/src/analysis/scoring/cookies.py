@@ -37,33 +37,26 @@ def calculate(
     points = 0
     now = time.time()
 
-    log.debug("Cookie scoring input", data={
-        "total_cookies": len(cookies),
-        "base_domain": base_domain,
-    })
+    log.debug(
+        "Cookie scoring input",
+        data={
+            "total_cookies": len(cookies),
+            "base_domain": base_domain,
+        },
+    )
 
-    third_party = [
-        c for c in cookies
-        if not c.domain.lstrip(".").endswith(base_domain)
-    ]
-    tracking = [
-        c for c in cookies
-        if any(
-            p.search(c.name)
-            for p in tracker_patterns.TRACKING_COOKIE_PATTERNS
-        )
-    ]
-    long_lived = [
-        c for c in cookies
-        if c.expires > 0
-        and (c.expires - now) > 365 * 24 * 60 * 60
-    ]
+    third_party = [c for c in cookies if not c.domain.lstrip(".").endswith(base_domain)]
+    tracking = [c for c in cookies if any(p.search(c.name) for p in tracker_patterns.TRACKING_COOKIE_PATTERNS)]
+    long_lived = [c for c in cookies if c.expires > 0 and (c.expires - now) > 365 * 24 * 60 * 60]
 
-    log.debug("Cookie classification", data={
-        "third_party": len(third_party),
-        "tracking": len(tracking),
-        "long_lived": len(long_lived),
-    })
+    log.debug(
+        "Cookie classification",
+        data={
+            "third_party": len(third_party),
+            "tracking": len(tracking),
+            "long_lived": len(long_lived),
+        },
+    )
 
     # ── Volume ──────────────────────────────────────────────
     if len(cookies) > 100:
@@ -74,9 +67,7 @@ def calculate(
         issues.append(f"{len(cookies)} cookies set (heavy)")
     elif len(cookies) > 30:
         points += 5
-        issues.append(
-            f"{len(cookies)} cookies set (heavy tracking)"
-        )
+        issues.append(f"{len(cookies)} cookies set (heavy tracking)")
     elif len(cookies) > 15:
         points += 4
         issues.append(f"{len(cookies)} cookies set")
@@ -86,49 +77,38 @@ def calculate(
     # ── Third-party ─────────────────────────────────────────
     if len(third_party) > 15:
         points += 7
-        issues.append(
-            f"{len(third_party)} third-party cookies"
-        )
+        issues.append(f"{len(third_party)} third-party cookies")
     elif len(third_party) > 5:
         points += 5
-        issues.append(
-            f"{len(third_party)} third-party cookies"
-        )
+        issues.append(f"{len(third_party)} third-party cookies")
     elif len(third_party) > 2:
         points += 3
-        issues.append(
-            f"{len(third_party)} third-party cookies"
-        )
+        issues.append(f"{len(third_party)} third-party cookies")
     elif len(third_party) > 0:
         points += 2
 
     # ── Known tracking cookies ──────────────────────────────
     if len(tracking) > 3:
         points += 5
-        issues.append(
-            f"{len(tracking)} known tracking cookies"
-        )
+        issues.append(f"{len(tracking)} known tracking cookies")
     elif len(tracking) > 0:
         points += 3
-        issues.append(
-            f"{len(tracking)} tracking cookies detected"
-        )
+        issues.append(f"{len(tracking)} tracking cookies detected")
 
     # ── Persistence ─────────────────────────────────────────
     if len(long_lived) > 3:
         points += 2
-        issues.append(
-            f"{len(long_lived)} cookies persist over 1 year"
-        )
+        issues.append(f"{len(long_lived)} cookies persist over 1 year")
     elif len(long_lived) > 0:
         points += 1
 
-    log.info("Cookie score", data={
-        "points": points,
-        "max_points": 22,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=22, issues=issues
+    log.info(
+        "Cookie score",
+        data={
+            "points": points,
+            "max_points": 22,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=22, issues=issues)

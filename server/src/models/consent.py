@@ -6,7 +6,7 @@ from typing import Literal
 
 import pydantic
 
-from src.utils.serialization import snake_to_camel
+from src.utils import serialization
 
 OverlayType = Literal[
     "cookie-consent",
@@ -54,9 +54,7 @@ class ConsentCategory(pydantic.BaseModel):
 class ConsentPartner(pydantic.BaseModel):
     """A third-party partner/vendor listed in a consent dialog."""
 
-    model_config = pydantic.ConfigDict(
-        alias_generator=snake_to_camel, populate_by_name=True
-    )
+    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     name: str
     purpose: str
@@ -70,9 +68,7 @@ class ConsentPartner(pydantic.BaseModel):
 class ConsentDetails(pydantic.BaseModel):
     """Detailed information extracted from a cookie consent dialog."""
 
-    model_config = pydantic.ConfigDict(
-        alias_generator=snake_to_camel, populate_by_name=True
-    )
+    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     has_manage_options: bool
     manage_options_selector: str | None

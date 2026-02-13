@@ -45,42 +45,40 @@ async def stream_tracking_analysis(
     Yields:
         Incremental text chunks of the analysis.
     """
-    log.info("Starting tracking analysis stream", {
-        "url": analyzed_url,
-        "cookies": len(cookies),
-        "scripts": len(scripts),
-        "requests": len(network_requests),
-        "localStorage": len(local_storage),
-        "sessionStorage": len(session_storage),
-        "hasConsent": consent_details is not None,
-    })
+    log.info(
+        "Starting tracking analysis stream",
+        {
+            "url": analyzed_url,
+            "cookies": len(cookies),
+            "scripts": len(scripts),
+            "requests": len(network_requests),
+            "localStorage": len(local_storage),
+            "sessionStorage": len(session_storage),
+            "hasConsent": consent_details is not None,
+        },
+    )
     tracking_agent = agents.get_tracking_analysis_agent()
 
-    tracking_summary = (
-        tracking_summary_mod.build_tracking_summary(
-            cookies,
-            scripts,
-            network_requests,
-            local_storage,
-            session_storage,
-            analyzed_url,
-        )
+    tracking_summary = tracking_summary_mod.build_tracking_summary(
+        cookies,
+        scripts,
+        network_requests,
+        local_storage,
+        session_storage,
+        analyzed_url,
     )
-    log.debug("Tracking summary built", {
-        "thirdPartyDomains": len(tracking_summary.third_party_domains),
-        "domainBreakdowns": len(tracking_summary.domain_breakdown),
-    })
+    log.debug(
+        "Tracking summary built",
+        {
+            "thirdPartyDomains": len(tracking_summary.third_party_domains),
+            "domainBreakdowns": len(tracking_summary.domain_breakdown),
+        },
+    )
 
     chunk_count = 0
-    async for update in tracking_agent.analyze_stream(
-        tracking_summary, consent_details
-    ):
+    async for update in tracking_agent.analyze_stream(tracking_summary, consent_details):
         if update.text:
-            text = (
-                update.text
-                if isinstance(update.text, str)
-                else str(update.text)
-            )
+            text = update.text if isinstance(update.text, str) else str(update.text)
             if text:
                 chunk_count += 1
                 yield text

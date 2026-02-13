@@ -72,43 +72,39 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Social media scoring input", data={
-        "scripts": len(scripts),
-        "network_requests": len(network_requests),
-        "all_urls": len(all_urls),
-    })
+    log.debug(
+        "Social media scoring input",
+        data={
+            "scripts": len(scripts),
+            "network_requests": len(network_requests),
+            "all_urls": len(all_urls),
+        },
+    )
 
     social_trackers: set[str] = set()
     for url in all_urls:
         for pattern in tracker_patterns.SOCIAL_MEDIA_TRACKERS:
             if pattern.search(url):
-                social_trackers.add(
-                    _resolve_tracker_name(url)
-                )
+                social_trackers.add(_resolve_tracker_name(url))
                 break
 
-    log.debug("Social tracker detection", data={
-        "social_trackers": list(social_trackers),
-    })
+    log.debug(
+        "Social tracker detection",
+        data={
+            "social_trackers": list(social_trackers),
+        },
+    )
 
     # ── Tracker count ───────────────────────────────────────
     if len(social_trackers) > 3:
         points += 10
-        issues.append(
-            f"{len(social_trackers)} social media trackers:"
-            f" {', '.join(social_trackers)}"
-        )
+        issues.append(f"{len(social_trackers)} social media trackers: {', '.join(social_trackers)}")
     elif len(social_trackers) > 1:
         points += 6
-        issues.append(
-            f"Social media tracking:"
-            f" {', '.join(social_trackers)}"
-        )
+        issues.append(f"Social media tracking: {', '.join(social_trackers)}")
     elif len(social_trackers) > 0:
         points += 4
-        issues.append(
-            f"{', '.join(social_trackers)} tracking present"
-        )
+        issues.append(f"{', '.join(social_trackers)} tracking present")
 
     # ── Embedded plugins ────────────────────────────────────
     social_plugins = [
@@ -123,20 +119,21 @@ def calculate(
     ]
     if social_plugins:
         points += 3
-        log.debug("Social plugins embedded", data={
-            "plugin_urls": len(social_plugins),
-        })
-        issues.append(
-            "Social media plugins embedded"
-            " (tracks even without interaction)"
+        log.debug(
+            "Social plugins embedded",
+            data={
+                "plugin_urls": len(social_plugins),
+            },
         )
+        issues.append("Social media plugins embedded (tracks even without interaction)")
 
-    log.info("Social media score", data={
-        "points": points,
-        "max_points": 13,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=13, issues=issues
+    log.info(
+        "Social media score",
+        data={
+            "points": points,
+            "max_points": 13,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=13, issues=issues)

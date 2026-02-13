@@ -4,7 +4,7 @@ import type { ScreenshotModal } from '../types'
 /**
  * Screenshot gallery with thumbnails and fullscreen modal.
  */
-const props = defineProps<{
+defineProps<{
   /** Array of base64 screenshot data URLs */
   screenshots: string[]
   /** Currently selected screenshot for modal display */

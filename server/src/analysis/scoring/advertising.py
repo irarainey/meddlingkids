@@ -82,12 +82,15 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Advertising scoring input", data={
-        "scripts": len(scripts),
-        "network_requests": len(network_requests),
-        "cookies": len(cookies),
-        "all_urls": len(all_urls),
-    })
+    log.debug(
+        "Advertising scoring input",
+        data={
+            "scripts": len(scripts),
+            "network_requests": len(network_requests),
+            "cookies": len(cookies),
+            "all_urls": len(all_urls),
+        },
+    )
 
     ad_networks: set[str] = set()
     for url in all_urls:
@@ -96,52 +99,39 @@ def calculate(
                 ad_networks.add(_resolve_network_name(url))
                 break
 
-    log.debug("Ad network detection", data={
-        "ad_networks": list(ad_networks),
-    })
+    log.debug(
+        "Ad network detection",
+        data={
+            "ad_networks": list(ad_networks),
+        },
+    )
 
     # ── Network count ───────────────────────────────────────
     if len(ad_networks) > 6:
         points += 12
         names = ", ".join(list(ad_networks)[:5])
-        issues.append(
-            f"{len(ad_networks)} advertising networks:"
-            f" {names}..."
-        )
+        issues.append(f"{len(ad_networks)} advertising networks: {names}...")
     elif len(ad_networks) > 3:
         points += 8
-        issues.append(
-            f"{len(ad_networks)} ad networks:"
-            f" {', '.join(ad_networks)}"
-        )
+        issues.append(f"{len(ad_networks)} ad networks: {', '.join(ad_networks)}")
     elif len(ad_networks) > 1:
         points += 5
-        issues.append(
-            f"{len(ad_networks)} ad networks:"
-            f" {', '.join(ad_networks)}"
-        )
+        issues.append(f"{len(ad_networks)} ad networks: {', '.join(ad_networks)}")
     elif len(ad_networks) > 0:
         points += 3
-        issues.append(
-            f"Ad network detected:"
-            f" {next(iter(ad_networks))}"
-        )
+        issues.append(f"Ad network detected: {next(iter(ad_networks))}")
 
     # ── Retargeting ─────────────────────────────────────────
-    retargeting = [
-        c
-        for c in cookies
-        if re.search(r"criteo|adroll|retarget", c.name, re.I)
-        or re.search(r"criteo|adroll", c.domain, re.I)
-    ]
+    retargeting = [c for c in cookies if re.search(r"criteo|adroll|retarget", c.name, re.I) or re.search(r"criteo|adroll", c.domain, re.I)]
     if retargeting:
         points += 4
-        log.debug("Retargeting cookies found", data={
-            "count": len(retargeting),
-        })
-        issues.append(
-            "Retargeting cookies present (ads follow you)"
+        log.debug(
+            "Retargeting cookies found",
+            data={
+                "count": len(retargeting),
+            },
         )
+        issues.append("Retargeting cookies present (ads follow you)")
 
     # ── Real-time bidding ───────────────────────────────────
     bidding = [
@@ -156,17 +146,21 @@ def calculate(
     ]
     if bidding:
         points += 4
-        log.debug("RTB infrastructure detected", data={
-            "bidding_urls": len(bidding),
-        })
+        log.debug(
+            "RTB infrastructure detected",
+            data={
+                "bidding_urls": len(bidding),
+            },
+        )
         issues.append("Real-time ad bidding detected")
 
-    log.info("Advertising score", data={
-        "points": points,
-        "max_points": 20,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=20, issues=issues
+    log.info(
+        "Advertising score",
+        data={
+            "points": points,
+            "max_points": 20,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=20, issues=issues)

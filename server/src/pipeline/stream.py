@@ -15,20 +15,18 @@ Thin orchestrator that delegates each phase to a focused module:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
-from typing import AsyncGenerator, cast
+from collections.abc import AsyncGenerator
+from typing import cast
 from urllib import parse
 
 from src.agents import config
 from src.analysis import tracking_summary
-from src.browser import device_configs, session as browser_session
+from src.browser import device_configs
+from src.browser import session as browser_session
 from src.models import browser
-from src.pipeline import (
-    analysis_pipeline,
-    browser_phases,
-    overlay_pipeline,
-    sse_helpers,
-)
+from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import errors, logger
 from src.utils import url as url_mod
 
@@ -82,13 +80,10 @@ async def _screenshot_refresher(
         await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
         try:
             png_bytes = await session.take_screenshot(full_page=False)
-            new_hash = hashlib.md5(png_bytes).hexdigest()  # noqa: S324
+            new_hash = hashlib.md5(png_bytes).hexdigest()
             if new_hash != current_hash:
                 current_hash = new_hash
-                optimized = (
-                    browser_session.BrowserSession
-                    .optimize_screenshot_bytes(png_bytes)
-                )
+                optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png_bytes)
                 event = sse_helpers.format_screenshot_update_event(
                     optimized,
                 )
@@ -120,9 +115,7 @@ def _drain_queue(queue: asyncio.Queue[str]) -> list[str]:
     return events
 
 
-async def analyze_url_stream(
-    url: str, device: str = "ipad"
-) -> AsyncGenerator[str, None]:
+async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[str, None]:
     """Analyze tracking on a URL with streaming progress via SSE.
 
     Opens a browser, navigates to the URL, detects and handles
@@ -148,9 +141,7 @@ async def analyze_url_stream(
         log.warn("Invalid device type, defaulting to 'ipad'", {"device": device})
 
     if not url:
-        yield sse_helpers.format_sse_event(
-            "error", {"error": "URL is required"}
-        )
+        yield sse_helpers.format_sse_event("error", {"error": "URL is required"})
         return
 
     session = browser_session.BrowserSession()
@@ -170,11 +161,7 @@ async def analyze_url_stream(
             log.info("Initializing browser", {"url": url, "device": device_type})
             yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
 
-            nav_events, nav_result = (
-                await browser_phases.setup_and_navigate(
-                    session, url, device_type
-                )
-            )
+            nav_events, nav_result = await browser_phases.setup_and_navigate(session, url, device_type)
             for event in nav_events:
                 yield event
 
@@ -191,33 +178,21 @@ async def analyze_url_stream(
             # stage gets its own refresh cap.
             refresh_queue: asyncio.Queue[str] = asyncio.Queue()
             try:
-                initial_png = await session.take_screenshot(
-                    full_page=False
-                )
-                last_screenshot_hash = hashlib.md5(  # noqa: S324
-                    initial_png
-                ).hexdigest()
+                initial_png = await session.take_screenshot(full_page=False)
+                last_screenshot_hash = hashlib.md5(initial_png).hexdigest()
             except Exception:
                 last_screenshot_hash = ""
-            refresher_task = asyncio.create_task(
-                _screenshot_refresher(
-                    session, refresh_queue, last_screenshot_hash
-                )
-            )
+            refresher_task = asyncio.create_task(_screenshot_refresher(session, refresh_queue, last_screenshot_hash))
             log.debug("Stage 1 screenshot refresher started")
 
             # ── Phase 2: Page Load & Access Check ───────────────
             log.subsection("Phase 2: Page Load & Access Check")
-            for event in await browser_phases.wait_for_page_load(
-                session, hostname
-            ):
+            for event in await browser_phases.wait_for_page_load(session, hostname):
                 yield event
             for refresh_event in _drain_queue(refresh_queue):
                 yield refresh_event
 
-            access_events, denied = await browser_phases.check_access(
-                session, nav_result
-            )
+            access_events, denied = await browser_phases.check_access(session, nav_result)
             for event in access_events:
                 yield event
             for refresh_event in _drain_queue(refresh_queue):
@@ -227,9 +202,7 @@ async def analyze_url_stream(
 
             # ── Phase 3: Initial Data Capture ───────────────────
             log.subsection("Phase 3: Initial Data Capture")
-            capture_events, screenshot, storage = (
-                await browser_phases.capture_initial_data(session)
-            )
+            capture_events, screenshot, storage = await browser_phases.capture_initial_data(session)
             for event in capture_events:
                 yield event
 
@@ -237,23 +210,19 @@ async def analyze_url_stream(
             # provides the authoritative page state from here.
             if refresher_task and not refresher_task.done():
                 refresher_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await refresher_task
-                except asyncio.CancelledError:
-                    pass
             for refresh_event in _drain_queue(refresh_queue):
                 yield refresh_event
             log.debug("Stage 1 screenshot refresher ended")
 
             # Snapshot pre-consent data and classify what is
             # actually tracking vs legitimate infrastructure.
-            pre_consent_stats = (
-                tracking_summary.build_pre_consent_stats(
-                    session.get_tracked_cookies(),
-                    session.get_tracked_scripts(),
-                    session.get_tracked_network_requests(),
-                    storage,
-                )
+            pre_consent_stats = tracking_summary.build_pre_consent_stats(
+                session.get_tracked_cookies(),
+                session.get_tracked_scripts(),
+                session.get_tracked_network_requests(),
+                storage,
             )
 
             # Tag every request captured so far as pre-consent.
@@ -272,9 +241,7 @@ async def analyze_url_stream(
             overlay_count = 0
 
             if page:
-                pipeline = overlay_pipeline.OverlayPipeline(
-                    session, page, screenshot, domain=domain
-                )
+                pipeline = overlay_pipeline.OverlayPipeline(session, page, screenshot, domain=domain)
                 async for event in pipeline.run():
                     yield event
                 overlay_result = pipeline.result
@@ -282,13 +249,9 @@ async def analyze_url_stream(
                 overlay_count = overlay_result.overlay_count
                 storage = overlay_result.final_storage
             else:
-                overlay_result = (
-                    overlay_pipeline.OverlayHandlingResult()
-                )
+                overlay_result = overlay_pipeline.OverlayHandlingResult()
 
-            log.end_timer(
-                "overlay-handling", "Overlay handling complete"
-            )
+            log.end_timer("overlay-handling", "Overlay handling complete")
             log.info(
                 "Overlay handling result",
                 {
@@ -311,9 +274,7 @@ async def analyze_url_stream(
                     72,
                 )
                 await session.capture_current_cookies()
-                event_str, _, storage = (
-                    await sse_helpers.take_screenshot_event(session)
-                )
+                event_str, _, storage = await sse_helpers.take_screenshot_event(session)
                 yield event_str
             else:
                 # Still refresh cookies/storage for analysis,
@@ -327,8 +288,7 @@ async def analyze_url_stream(
                 # analysis so the report includes consent info.
                 if consent_details:
                     log.warn(
-                        "Overlay click failed but consent"
-                        " data preserved — continuing analysis",
+                        "Overlay click failed but consent data preserved — continuing analysis",
                         {
                             "categories": len(consent_details.categories),
                             "partners": len(consent_details.partners),
@@ -372,8 +332,7 @@ async def analyze_url_stream(
                 settled = await session.wait_for_network_idle(5000)
                 log.end_timer(
                     "post-consent-settle",
-                    "Post-consent settle"
-                    f" ({'idle' if settled else 'timeout'})",
+                    f"Post-consent settle ({'idle' if settled else 'timeout'})",
                 )
 
             # ── Stage 2 screenshot refresher ────────────────
@@ -388,24 +347,14 @@ async def analyze_url_stream(
             # dismissal, and post-consent script loading.
             if remaining_refreshes > 0:
                 try:
-                    png = await session.take_screenshot(
-                        full_page=False
-                    )
-                    current_hash = hashlib.md5(  # noqa: S324
-                        png
-                    ).hexdigest()
-                    optimized = (
-                        browser_session.BrowserSession
-                        .optimize_screenshot_bytes(png)
-                    )
+                    png = await session.take_screenshot(full_page=False)
+                    current_hash = hashlib.md5(png).hexdigest()
+                    optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png)
                     yield sse_helpers.format_screenshot_update_event(
                         optimized,
                     )
                     remaining_refreshes -= 1
-                    log.info(
-                        "Immediate pre-analysis screenshot"
-                        " refresh emitted"
-                    )
+                    log.info("Immediate pre-analysis screenshot refresh emitted")
                 except Exception:
                     pass
 
@@ -446,18 +395,14 @@ async def analyze_url_stream(
             # no value in updating screenshots after this point.
             if refresher_task and not refresher_task.done():
                 refresher_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await refresher_task
-                except asyncio.CancelledError:
-                    pass
             # Drain any remaining refresh events after analysis
             for refresh_event in _drain_queue(refresh_queue):
                 yield refresh_event
 
             # ── Phase 6: Complete ───────────────────────────────
-            total_time = log.end_timer(
-                "total-analysis", "Analysis complete"
-            )
+            total_time = log.end_timer("total-analysis", "Analysis complete")
             log.success(
                 "Investigation complete!",
                 {
@@ -474,10 +419,7 @@ async def analyze_url_stream(
         yield sse_helpers.format_sse_event(
             "error",
             {
-                "error": (
-                    f"Analysis timed out after"
-                    f" {STREAM_TIMEOUT_SECONDS // 60} minutes"
-                ),
+                "error": (f"Analysis timed out after {STREAM_TIMEOUT_SECONDS // 60} minutes"),
             },
         )
     except Exception as error:
@@ -494,10 +436,8 @@ async def analyze_url_stream(
         # still running (e.g. due to an early return or error).
         if refresher_task and not refresher_task.done():
             refresher_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await refresher_task
-            except asyncio.CancelledError:
-                pass
         log.debug("Cleaning up browser resources...")
         logger.end_log_file()
         try:
@@ -514,11 +454,7 @@ def _emit_nav_failure(
     nav_result: browser.NavigationResult,
 ) -> list[str]:
     """Build SSE events for a navigation failure."""
-    error_type = (
-        "access-denied"
-        if nav_result.is_access_denied
-        else "server-error"
-    )
+    error_type = "access-denied" if nav_result.is_access_denied else "server-error"
     log.error(
         "Navigation failed",
         {

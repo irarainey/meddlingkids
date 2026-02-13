@@ -10,19 +10,10 @@ from __future__ import annotations
 
 import re
 
-from src.analysis.scoring import (
-    advertising,
-    consent as consent_scoring,
-    cookies,
-    data_collection,
-    fingerprinting,
-    sensitive_data,
-    social_media,
-    third_party,
-)
+from src.analysis.scoring import advertising, cookies, data_collection, fingerprinting, sensitive_data, social_media, third_party
+from src.analysis.scoring import consent as consent_scoring
 from src.models import analysis, consent, tracking_data
-from src.utils import logger
-from src.utils import url as url_mod
+from src.utils import logger, url
 
 log = logger.create_logger("PrivacyScore")
 
@@ -116,35 +107,23 @@ def calculate_privacy_score(
         },
     )
 
-    site_hostname = url_mod.extract_domain(analyzed_url)
-    base_domain = url_mod.get_base_domain(site_hostname)
+    site_hostname = url.extract_domain(analyzed_url)
+    base_domain = url.get_base_domain(site_hostname)
 
-    all_urls = [s.url for s in scripts] + [
-        r.url for r in network_requests
-    ]
+    all_urls = [s.url for s in scripts] + [r.url for r in network_requests]
 
     # ── Per-category scoring (uncapped) ─────────────────────
     cookie_score = cookies.calculate(cookies_list, base_domain)
-    third_party_score = third_party.calculate(
-        network_requests, scripts, base_domain, all_urls
-    )
-    data_collection_score = data_collection.calculate(
-        local_storage, session_storage, network_requests
-    )
-    fingerprint_score = fingerprinting.calculate(
-        cookies_list, scripts, network_requests, all_urls
-    )
-    advertising_score = advertising.calculate(
-        scripts, network_requests, cookies_list, all_urls
-    )
-    social_media_score = social_media.calculate(
-        scripts, network_requests, all_urls
-    )
-    sensitive_data_score = sensitive_data.calculate(
-        consent_details, all_urls
-    )
+    third_party_score = third_party.calculate(network_requests, scripts, base_domain, all_urls)
+    data_collection_score = data_collection.calculate(local_storage, session_storage, network_requests)
+    fingerprint_score = fingerprinting.calculate(cookies_list, scripts, network_requests, all_urls)
+    advertising_score = advertising.calculate(scripts, network_requests, cookies_list, all_urls)
+    social_media_score = social_media.calculate(scripts, network_requests, all_urls)
+    sensitive_data_score = sensitive_data.calculate(consent_details, all_urls)
     consent_score = consent_scoring.calculate(
-        consent_details, cookies_list, scripts,
+        consent_details,
+        cookies_list,
+        scripts,
         pre_consent_stats,
     )
 
@@ -178,9 +157,7 @@ def calculate_privacy_score(
     if sensitive_data_score.issues:
         factors.extend(sensitive_data_score.issues[:1])
 
-    summary = _generate_summary(
-        site_hostname, total_score, factors
-    )
+    summary = _generate_summary(site_hostname, total_score, factors)
 
     log.success(
         "Privacy score calculated",
@@ -257,43 +234,25 @@ def _generate_summary(
 
     if score >= 80:
         severity = "extensive"
-        description = (
-            "with aggressive cross-site tracking"
-            " and data sharing"
-        )
+        description = "with aggressive cross-site tracking and data sharing"
     elif score >= 60:
         severity = "significant"
-        description = (
-            "with multiple advertising networks"
-            " and third-party trackers"
-        )
+        description = "with multiple advertising networks and third-party trackers"
     elif score >= 40:
         severity = "moderate"
-        description = (
-            "with standard analytics"
-            " and some advertising trackers"
-        )
+        description = "with standard analytics and some advertising trackers"
     elif score >= 20:
         severity = "limited"
-        description = (
-            "with basic analytics"
-            " and minimal third-party presence"
-        )
+        description = "with basic analytics and minimal third-party presence"
     else:
         severity = "minimal"
         description = "with privacy-respecting practices"
 
     top_factor = (factors[0] if factors else "").lower()
     if "session replay" in top_factor:
-        description = (
-            "including session recording that captures"
-            " your interactions"
-        )
+        description = "including session recording that captures your interactions"
     elif "fingerprint" in top_factor:
-        description = (
-            "including device fingerprinting"
-            " for cross-site tracking"
-        )
+        description = "including device fingerprinting for cross-site tracking"
     elif "ad network" in top_factor:
         description = f"including {top_factor}"
 

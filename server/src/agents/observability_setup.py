@@ -16,6 +16,7 @@ from typing import Any, cast
 
 from agent_framework import observability
 from azure.monitor.opentelemetry import exporter
+
 from src.utils import logger
 
 log = logger.create_logger("Observability")
@@ -26,9 +27,7 @@ def setup() -> None:
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
     if not connection_string:
-        log.warn(
-            "APPLICATIONINSIGHTS_CONNECTION_STRING not set — telemetry disabled"
-        )
+        log.warn("APPLICATIONINSIGHTS_CONNECTION_STRING not set — telemetry disabled")
         return
 
     exporters = [

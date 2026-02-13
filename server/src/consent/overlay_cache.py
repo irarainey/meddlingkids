@@ -25,6 +25,7 @@ import pathlib
 from typing import Literal
 
 import pydantic
+
 from src.utils import logger
 
 log = logger.create_logger("OverlayCache")
@@ -37,10 +38,7 @@ AccessorType = Literal[
 ]
 
 # Cache directory — lives alongside server source, gitignored.
-_CACHE_DIR = (
-    pathlib.Path(__file__).resolve().parent.parent.parent
-    / ".overlay_cache"
-)
+_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".overlay_cache"
 
 
 class CachedOverlay(pydantic.BaseModel):
@@ -66,7 +64,7 @@ class OverlayCacheEntry(pydantic.BaseModel):
     overlays: list[CachedOverlay]
 
     @pydantic.model_validator(mode="after")
-    def _deduplicate_overlays(self) -> "OverlayCacheEntry":
+    def _deduplicate_overlays(self) -> OverlayCacheEntry:
         """Remove duplicate overlays based on selector + button text."""
         seen: set[str] = set()
         unique: list[CachedOverlay] = []
@@ -86,11 +84,8 @@ def _domain_path(domain: str) -> pathlib.Path:
     ``example.com`` share the same cache entry.  Invalid
     filesystem characters are replaced with underscores.
     """
-    safe = domain.lower().lstrip("www.")
-    safe = "".join(
-        c if c.isalnum() or c in ".-" else "_"
-        for c in safe
-    )[:100]
+    safe = domain.lower().removeprefix("www.")
+    safe = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe)[:100]
     return _CACHE_DIR / f"{safe}.json"
 
 
@@ -102,24 +97,33 @@ def load(domain: str) -> OverlayCacheEntry | None:
     """
     path = _domain_path(domain)
     if not path.exists():
-        log.debug("No overlay cache for domain", {
-            "domain": domain,
-        })
+        log.debug(
+            "No overlay cache for domain",
+            {
+                "domain": domain,
+            },
+        )
         return None
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         entry = OverlayCacheEntry.model_validate(data)
-        log.info("Overlay cache loaded", {
-            "domain": domain,
-            "overlays": len(entry.overlays),
-        })
+        log.info(
+            "Overlay cache loaded",
+            {
+                "domain": domain,
+                "overlays": len(entry.overlays),
+            },
+        )
         return entry
     except Exception as exc:
-        log.warn("Failed to read overlay cache, removing", {
-            "domain": domain,
-            "error": str(exc),
-        })
+        log.warn(
+            "Failed to read overlay cache, removing",
+            {
+                "domain": domain,
+                "error": str(exc),
+            },
+        )
         _remove(path)
         return None
 
@@ -136,16 +140,22 @@ def save(entry: OverlayCacheEntry) -> None:
             entry.model_dump_json(indent=2),
             encoding="utf-8",
         )
-        log.info("Overlay cache saved", {
-            "domain": entry.domain,
-            "overlays": len(entry.overlays),
-            "path": str(path.name),
-        })
+        log.info(
+            "Overlay cache saved",
+            {
+                "domain": entry.domain,
+                "overlays": len(entry.overlays),
+                "path": str(path.name),
+            },
+        )
     except Exception as exc:
-        log.warn("Failed to write overlay cache", {
-            "domain": entry.domain,
-            "error": str(exc),
-        })
+        log.warn(
+            "Failed to write overlay cache",
+            {
+                "domain": entry.domain,
+                "error": str(exc),
+            },
+        )
 
 
 def remove(domain: str) -> None:
@@ -159,14 +169,20 @@ def _remove(path: pathlib.Path) -> None:
     if path.exists():
         try:
             path.unlink()
-            log.info("Overlay cache removed", {
-                "path": str(path.name),
-            })
+            log.info(
+                "Overlay cache removed",
+                {
+                    "path": str(path.name),
+                },
+            )
         except Exception as exc:
-            log.warn("Failed to remove overlay cache", {
-                "path": str(path.name),
-                "error": str(exc),
-            })
+            log.warn(
+                "Failed to remove overlay cache",
+                {
+                    "path": str(path.name),
+                    "error": str(exc),
+                },
+            )
 
 
 def merge_and_save(
@@ -199,20 +215,14 @@ def merge_and_save(
         for cached in previous_entry.overlays:
             if cached.overlay_type in failed_types:
                 continue
-            key = (
-                f"{cached.selector or ''}"
-                f"|{cached.button_text or ''}"
-            )
+            key = f"{cached.selector or ''}|{cached.button_text or ''}"
             if key not in seen_keys:
                 seen_keys.add(key)
                 overlays.append(cached)
 
     # Add new overlays.
     for overlay in new_overlays:
-        key = (
-            f"{overlay.selector or ''}"
-            f"|{overlay.button_text or ''}"
-        )
+        key = f"{overlay.selector or ''}|{overlay.button_text or ''}"
         if key not in seen_keys:
             seen_keys.add(key)
             overlays.append(overlay)

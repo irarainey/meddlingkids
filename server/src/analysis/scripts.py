@@ -11,7 +11,7 @@ concurrent execution bounded by a semaphore.
 from __future__ import annotations
 
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
 import aiohttp
 import pydantic
@@ -34,6 +34,7 @@ MAX_CONCURRENCY = 10
 # Known script identification
 # ============================================================================
 
+
 def _identify_tracking_script(url: str) -> str | None:
     """Check if a script is a known tracking script."""
     for entry in loader.get_tracking_scripts():
@@ -54,9 +55,7 @@ def _identify_benign_script(url: str) -> str | None:
 # Content fetching
 # ============================================================================
 
-_FETCH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"
-}
+_FETCH_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"}
 _FETCH_TIMEOUT = aiohttp.ClientTimeout(total=5)
 
 
@@ -72,17 +71,10 @@ async def _fetch_script_content(
     """
     for attempt in range(retries + 1):
         try:
-            async with http_session.get(
-                url, headers=_FETCH_HEADERS
-            ) as response:
+            async with http_session.get(url, headers=_FETCH_HEADERS) as response:
                 if response.status >= 400:
-                    if attempt < retries and (
-                        response.status >= 500
-                        or response.status == 429
-                    ):
-                        await asyncio.sleep(
-                            0.5 * (attempt + 1)
-                        )
+                    if attempt < retries and (response.status >= 500 or response.status == 429):
+                        await asyncio.sleep(0.5 * (attempt + 1))
                         continue
                     log.debug("Script fetch failed", {"url": url, "status": response.status})
                     return None
@@ -99,6 +91,7 @@ async def _fetch_script_content(
 # ============================================================================
 # LLM analysis
 # ============================================================================
+
 
 async def _analyze_one_with_llm(
     url: str,
@@ -194,7 +187,9 @@ async def analyze_scripts(
         tracking_desc = _identify_tracking_script(script.url)
         if tracking_desc:
             results[i] = tracking_data.TrackedScript(
-                url=script.url, domain=script.domain, description=tracking_desc,
+                url=script.url,
+                domain=script.domain,
+                description=tracking_desc,
                 resource_type=script.resource_type,
             )
             continue
@@ -202,13 +197,17 @@ async def analyze_scripts(
         benign_desc = _identify_benign_script(script.url)
         if benign_desc:
             results[i] = tracking_data.TrackedScript(
-                url=script.url, domain=script.domain, description=benign_desc,
+                url=script.url,
+                domain=script.domain,
+                description=benign_desc,
                 resource_type=script.resource_type,
             )
             continue
 
         results[i] = tracking_data.TrackedScript(
-            url=script.url, domain=script.domain, description="Analyzing...",
+            url=script.url,
+            domain=script.domain,
+            description="Analyzing...",
             resource_type=script.resource_type,
         )
         unknown_scripts.append((script, i))
@@ -225,12 +224,15 @@ async def analyze_scripts(
     total_to_analyze = len(unknown_scripts)
 
     if unknown_scripts:
-        log.info("Starting LLM analysis of unknown scripts", {
-            "toAnalyze": total_to_analyze,
-            "grouped": grouped_count,
-            "knownCount": known_count,
-            "total": len(scripts),
-        })
+        log.info(
+            "Starting LLM analysis of unknown scripts",
+            {
+                "toAnalyze": total_to_analyze,
+                "grouped": grouped_count,
+                "knownCount": known_count,
+                "total": len(scripts),
+            },
+        )
 
         if on_progress:
             on_progress("fetching", 0, total_to_analyze, f"Fetching {total_to_analyze} script contents...")
@@ -243,20 +245,19 @@ async def analyze_scripts(
             http_session: aiohttp.ClientSession,
         ) -> tuple[str, str | None]:
             nonlocal fetched_count
-            content = await _fetch_script_content(
-                script.url, http_session
-            )
+            content = await _fetch_script_content(script.url, http_session)
             fetched_count += 1
             if on_progress and (fetched_count % 5 == 0 or fetched_count == total_to_analyze):
-                on_progress("fetching", fetched_count, total_to_analyze, f"Fetched {fetched_count}/{total_to_analyze} scripts...")
+                on_progress(
+                    "fetching",
+                    fetched_count,
+                    total_to_analyze,
+                    f"Fetched {fetched_count}/{total_to_analyze} scripts...",
+                )
             return script.url, content
 
-        async with aiohttp.ClientSession(
-            timeout=_FETCH_TIMEOUT
-        ) as http_session:
-            script_contents = await asyncio.gather(
-                *(fetch_one(s, http_session) for s, _ in unknown_scripts)
-            )
+        async with aiohttp.ClientSession(timeout=_FETCH_TIMEOUT) as http_session:
+            script_contents = await asyncio.gather(*(fetch_one(s, http_session) for s, _ in unknown_scripts))
 
         # Build a lookup from URL → (content, result_index)
         url_to_info: dict[str, tuple[str | None, int]] = {}
@@ -280,36 +281,38 @@ async def analyze_scripts(
             completed_count += 1
             if on_progress:
                 on_progress(
-                    "analyzing", completed_count, total_to_analyze,
+                    "analyzing",
+                    completed_count,
+                    total_to_analyze,
                     f"Analyzed {completed_count}/{total_to_analyze} scripts...",
                 )
             return result
 
-        llm_results = await asyncio.gather(
-            *(
-                analyze_with_progress(url, content)
-                for url, (content, _) in url_to_info.items()
-            )
-        )
+        llm_results = await asyncio.gather(*(analyze_with_progress(url, content) for url, (content, _) in url_to_info.items()))
 
         # Write descriptions back into the results list.
         for url, description in llm_results:
             _, result_index = url_to_info[url]
             old = results[result_index]
             results[result_index] = tracking_data.TrackedScript(
-                url=old.url, domain=old.domain, description=description,
+                url=old.url,
+                domain=old.domain,
+                description=description,
                 resource_type=old.resource_type,
             )
 
         if on_progress:
             on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete...")
 
-        log.success("Script analysis complete", {
-            "analyzed": total_to_analyze,
-            "concurrency": MAX_CONCURRENCY,
-            "grouped": grouped_count,
-            "total": len(results),
-        })
+        log.success(
+            "Script analysis complete",
+            {
+                "analyzed": total_to_analyze,
+                "concurrency": MAX_CONCURRENCY,
+                "grouped": grouped_count,
+                "total": len(results),
+            },
+        )
     else:
         log.info("All scripts identified from patterns or grouped, no LLM analysis needed")
         if on_progress:

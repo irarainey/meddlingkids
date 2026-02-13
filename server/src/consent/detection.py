@@ -24,17 +24,15 @@ async def detect_cookie_consent(
     Returns:
         Detection result with button text.
     """
-    log.info("Starting consent detection", {
-        "screenshotBytes": len(screenshot),
-    })
+    log.info(
+        "Starting consent detection",
+        {
+            "screenshotBytes": len(screenshot),
+        },
+    )
     agent = agents.get_consent_detection_agent()
     if not agent.is_configured:
-        log.warn(
-            "LLM not configured, skipping consent"
-            " detection"
-        )
-        return consent.CookieConsentDetection.not_found(
-            "LLM not configured"
-        )
+        log.warn("LLM not configured, skipping consent detection")
+        return consent.CookieConsentDetection.not_found("LLM not configured")
 
     return await agent.detect(screenshot)

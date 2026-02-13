@@ -40,12 +40,15 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Third-party scoring input", data={
-        "network_requests": len(network_requests),
-        "scripts": len(scripts),
-        "base_domain": base_domain,
-        "all_urls": len(all_urls),
-    })
+    log.debug(
+        "Third-party scoring input",
+        data={
+            "network_requests": len(network_requests),
+            "scripts": len(scripts),
+            "base_domain": base_domain,
+            "all_urls": len(all_urls),
+        },
+    )
 
     third_party_domains: set[str] = set()
     for req in network_requests:
@@ -55,9 +58,7 @@ def calculate(
         if not script.domain.endswith(base_domain):
             third_party_domains.add(script.domain)
 
-    third_party_requests = [
-        r for r in network_requests if r.is_third_party
-    ]
+    third_party_requests = [r for r in network_requests if r.is_third_party]
 
     known_trackers: set[str] = set()
     tracking_scripts = loader.get_tracking_scripts()
@@ -69,56 +70,42 @@ def calculate(
                     known_trackers.add(m.group(1))
                 break
 
-    log.debug("Third-party detection", data={
-        "unique_domains": len(third_party_domains),
-        "third_party_requests": len(third_party_requests),
-        "known_trackers": len(known_trackers),
-        "tracker_domains": list(known_trackers)[:10],
-    })
+    log.debug(
+        "Third-party detection",
+        data={
+            "unique_domains": len(third_party_domains),
+            "third_party_requests": len(third_party_requests),
+            "known_trackers": len(known_trackers),
+            "tracker_domains": list(known_trackers)[:10],
+        },
+    )
 
     # ── Domain count ────────────────────────────────────────
     if len(third_party_domains) > 50:
         points += 14
-        issues.append(
-            f"{len(third_party_domains)} third-party domains"
-            " contacted (extreme)"
-        )
+        issues.append(f"{len(third_party_domains)} third-party domains contacted (extreme)")
     elif len(third_party_domains) > 35:
         points += 12
-        issues.append(
-            f"{len(third_party_domains)} third-party domains"
-            " contacted"
-        )
+        issues.append(f"{len(third_party_domains)} third-party domains contacted")
     elif len(third_party_domains) > 20:
         points += 10
-        issues.append(
-            f"{len(third_party_domains)} third-party domains"
-            " contacted"
-        )
+        issues.append(f"{len(third_party_domains)} third-party domains contacted")
     elif len(third_party_domains) > 10:
         points += 7
-        issues.append(
-            f"{len(third_party_domains)} third-party domains"
-        )
+        issues.append(f"{len(third_party_domains)} third-party domains")
     elif len(third_party_domains) > 5:
         points += 5
-        issues.append(
-            f"{len(third_party_domains)} third-party domains"
-        )
+        issues.append(f"{len(third_party_domains)} third-party domains")
     elif len(third_party_domains) > 0:
         points += 3
 
     # ── Request volume ──────────────────────────────────────
     if len(third_party_requests) > 200:
         points += 7
-        issues.append(
-            f"{len(third_party_requests)} third-party requests"
-        )
+        issues.append(f"{len(third_party_requests)} third-party requests")
     elif len(third_party_requests) > 100:
         points += 5
-        issues.append(
-            f"{len(third_party_requests)} third-party requests"
-        )
+        issues.append(f"{len(third_party_requests)} third-party requests")
     elif len(third_party_requests) > 50:
         points += 3
     elif len(third_party_requests) > 20:
@@ -127,35 +114,26 @@ def calculate(
     # ── Known trackers ──────────────────────────────────────
     if len(known_trackers) > 15:
         points += 10
-        issues.append(
-            f"{len(known_trackers)} known tracking services"
-            " identified"
-        )
+        issues.append(f"{len(known_trackers)} known tracking services identified")
     elif len(known_trackers) > 8:
         points += 8
-        issues.append(
-            f"{len(known_trackers)} known tracking services"
-            " identified"
-        )
+        issues.append(f"{len(known_trackers)} known tracking services identified")
     elif len(known_trackers) > 4:
         points += 6
-        issues.append(
-            f"{len(known_trackers)} known tracking services"
-        )
+        issues.append(f"{len(known_trackers)} known tracking services")
     elif len(known_trackers) > 1:
         points += 4
-        issues.append(
-            f"{len(known_trackers)} known trackers"
-        )
+        issues.append(f"{len(known_trackers)} known trackers")
     elif len(known_trackers) > 0:
         points += 2
 
-    log.info("Third-party score", data={
-        "points": points,
-        "max_points": 31,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=31, issues=issues
+    log.info(
+        "Third-party score",
+        data={
+            "points": points,
+            "max_points": 31,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=31, issues=issues)

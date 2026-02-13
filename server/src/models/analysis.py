@@ -7,7 +7,7 @@ from typing import Literal
 import pydantic
 
 from src.models import tracking_data
-from src.utils.serialization import snake_to_camel
+from src.utils import serialization
 
 
 class DomainData(pydantic.BaseModel):
@@ -15,9 +15,7 @@ class DomainData(pydantic.BaseModel):
 
     cookies: list[tracking_data.TrackedCookie] = pydantic.Field(default_factory=list)
     scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
-    network_requests: list[tracking_data.NetworkRequest] = pydantic.Field(
-        default_factory=list
-    )
+    network_requests: list[tracking_data.NetworkRequest] = pydantic.Field(default_factory=list)
 
 
 class DomainBreakdown(pydantic.BaseModel):
@@ -46,9 +44,7 @@ class TrackingSummary(pydantic.BaseModel):
     session_storage: list[dict[str, str]]
 
 
-SummaryFindingType = Literal[
-    "critical", "high", "moderate", "info", "positive"
-]
+SummaryFindingType = Literal["critical", "high", "moderate", "info", "positive"]
 
 
 class SummaryFinding(pydantic.BaseModel):
@@ -61,9 +57,7 @@ class SummaryFinding(pydantic.BaseModel):
 class CategoryScore(pydantic.BaseModel):
     """Score for an individual category."""
 
-    model_config = pydantic.ConfigDict(
-        alias_generator=snake_to_camel, populate_by_name=True
-    )
+    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     points: int = 0
     max_points: int = 0
@@ -97,13 +91,9 @@ class PreConsentStats(pydantic.BaseModel):
 class ScoreBreakdown(pydantic.BaseModel):
     """Detailed breakdown of how the score was calculated."""
 
-    model_config = pydantic.ConfigDict(
-        alias_generator=snake_to_camel, populate_by_name=True
-    )
+    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     total_score: int = 0
-    categories: dict[str, CategoryScore] = pydantic.Field(
-        default_factory=dict
-    )
+    categories: dict[str, CategoryScore] = pydantic.Field(default_factory=dict)
     factors: list[str] = pydantic.Field(default_factory=list)
     summary: str = ""

@@ -14,10 +14,11 @@ import dotenv
 import fastapi
 from fastapi import staticfiles
 from fastapi.middleware import cors
+from starlette import responses
+
 from src.agents import observability_setup
 from src.pipeline import stream
 from src.utils import logger
-from starlette import responses
 
 
 def _bootstrap() -> None:

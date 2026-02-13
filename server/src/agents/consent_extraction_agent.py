@@ -16,6 +16,7 @@ import pydantic
 from playwright import async_api
 
 from src.agents import base, config
+from src.agents.prompts import consent_extraction
 from src.models import consent
 from src.utils import errors, json_parsing, logger
 
@@ -23,13 +24,10 @@ log = logger.create_logger("ConsentExtractionAgent")
 
 # Pre-load JavaScript snippets evaluated in the browser.
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
-_EXTRACT_CONSENT_JS = (
-    (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
-)
-_EXTRACT_IFRAME_JS = (
-    (_SCRIPTS_DIR / "extract_iframe_text.js").read_text()
-)
+_EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
+_EXTRACT_IFRAME_JS = (_SCRIPTS_DIR / "extract_iframe_text.js").read_text()
 # ── Structured output models ───────────────────────────────────
+
 
 class _CategoryResponse(pydantic.BaseModel):
     """Cookie category from the consent dialog."""
@@ -44,9 +42,7 @@ class _PartnerResponse(pydantic.BaseModel):
 
     name: str
     purpose: str = ""
-    dataCollected: list[str] = pydantic.Field(
-        default_factory=list
-    )
+    dataCollected: list[str] = pydantic.Field(default_factory=list)
 
 
 class _ConsentExtractionResponse(pydantic.BaseModel):
@@ -54,60 +50,14 @@ class _ConsentExtractionResponse(pydantic.BaseModel):
 
     hasManageOptions: bool = False
     manageOptionsSelector: str | None = None
-    categories: list[_CategoryResponse] = pydantic.Field(
-        default_factory=list
-    )
-    partners: list[_PartnerResponse] = pydantic.Field(
-        default_factory=list
-    )
-    purposes: list[str] = pydantic.Field(
-        default_factory=list
-    )
+    categories: list[_CategoryResponse] = pydantic.Field(default_factory=list)
+    partners: list[_PartnerResponse] = pydantic.Field(default_factory=list)
+    purposes: list[str] = pydantic.Field(default_factory=list)
     claimedPartnerCount: int | None = None
 
 
-# ── System prompt ───────────────────────────────────────────────
-
-_INSTRUCTIONS = """\
-You are an expert at analyzing cookie consent dialogs and \
-extracting detailed information about tracking and data \
-collection.
-
-Your task is to extract ALL information about:
-1. Cookie categories (necessary, functional, analytics, \
-advertising, etc.)
-2. Third-party partners/vendors and what they do — EXTRACT \
-ALL PARTNERS, even if there are hundreds
-3. What data is being collected
-4. Purposes of data collection
-5. Any retention periods mentioned
-
-IMPORTANT INSTRUCTIONS FOR PARTNERS:
-- Look for "View Partners", "Show Vendors", "IAB Vendors", \
-or similar expandable sections
-- Many consent dialogs hide the full partner list behind a \
-button — look for this in the HTML
-- TCF dialogs often have 100+ partners — include them ALL
-- If you see text like "We and our 842 partners" or similar, \
-there is a partner list somewhere
-- Partner lists may be in tables, lists, or accordion sections
-- Include EVERY partner name you can find
-
-IMPORTANT: If the consent dialog text mentions a specific \
-number of partners (e.g. "We and our 1467 partners", \
-"842 vendors", "sharing data with 500+ partners"), \
-extract that number into the claimedPartnerCount field. \
-This is the number the dialog CLAIMS, regardless of how \
-many individual partner names you can find.
-
-Also identify if there is a "Manage Preferences", \
-"Cookie Settings", "More Options", or similar button that \
-reveals more details.
-
-Return ONLY a JSON object matching the required schema."""
-
-
 # ── Agent class ─────────────────────────────────────────────────
+
 
 class ConsentExtractionAgent(base.BaseAgent):
     """Vision agent that extracts consent dialog details.
@@ -117,7 +67,7 @@ class ConsentExtractionAgent(base.BaseAgent):
     """
 
     agent_name = config.AGENT_CONSENT_EXTRACTION
-    instructions = _INSTRUCTIONS
+    instructions = consent_extraction.INSTRUCTIONS
     max_tokens = 4096
     max_retries = 5
     response_model = _ConsentExtractionResponse
@@ -153,9 +103,7 @@ class ConsentExtractionAgent(base.BaseAgent):
             )
         else:
             consent_text = await _extract_consent_text(page)
-        log.end_timer(
-            "text-extraction", "Text extraction complete"
-        )
+        log.end_timer("text-extraction", "Text extraction complete")
         log.debug(
             "Extracted consent text",
             {"length": len(consent_text)},
@@ -187,9 +135,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                 "Vision extraction complete",
             )
 
-            parsed = self._parse_response(
-                response, _ConsentExtractionResponse
-            )
+            parsed = self._parse_response(response, _ConsentExtractionResponse)
             if parsed:
                 result = _to_domain(parsed, consent_text)
                 log.info(
@@ -206,9 +152,7 @@ class ConsentExtractionAgent(base.BaseAgent):
 
             # Fallback: manual parse from text
             log.debug("Structured parse failed, trying text fallback")
-            return _parse_text_fallback(
-                response.text, consent_text
-            )
+            return _parse_text_fallback(response.text, consent_text)
         except Exception as error:
             log.end_timer(
                 "vision-extraction",
@@ -226,9 +170,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                 )
             return consent.ConsentDetails.empty(
                 consent_text[:5000],
-                claimed_partner_count=_extract_partner_count_from_text(
-                    consent_text
-                ),
+                claimed_partner_count=_extract_partner_count_from_text(consent_text),
             )
 
 
@@ -321,10 +263,7 @@ def _to_domain(
         ],
         purposes=r.purposes,
         raw_text=raw_text[:5000],
-        claimed_partner_count=(
-            r.claimedPartnerCount
-            or _extract_partner_count_from_text(raw_text)
-        ),
+        claimed_partner_count=(r.claimedPartnerCount or _extract_partner_count_from_text(raw_text)),
     )
 
 
@@ -344,12 +283,8 @@ def _parse_text_fallback(
     raw = json_parsing.load_json_from_text(text)
     if isinstance(raw, dict):
         return consent.ConsentDetails(
-            has_manage_options=raw.get(
-                "hasManageOptions", False
-            ),
-            manage_options_selector=raw.get(
-                "manageOptionsSelector"
-            ),
+            has_manage_options=raw.get("hasManageOptions", False),
+            manage_options_selector=raw.get("manageOptionsSelector"),
             categories=[
                 consent.ConsentCategory(
                     name=c.get("name", ""),
@@ -362,18 +297,13 @@ def _parse_text_fallback(
                 consent.ConsentPartner(
                     name=p.get("name", ""),
                     purpose=p.get("purpose", ""),
-                    data_collected=p.get(
-                        "dataCollected", []
-                    ),
+                    data_collected=p.get("dataCollected", []),
                 )
                 for p in raw.get("partners", [])
             ],
             purposes=raw.get("purposes", []),
             raw_text=raw_text[:5000],
-            claimed_partner_count=(
-                raw.get("claimedPartnerCount")
-                or _extract_partner_count_from_text(raw_text)
-            ),
+            claimed_partner_count=(raw.get("claimedPartnerCount") or _extract_partner_count_from_text(raw_text)),
         )
     return consent.ConsentDetails.empty(raw_text[:5000])
 
@@ -392,9 +322,7 @@ async def _extract_consent_text(
     Returns:
         Combined consent text, truncated to 50 000 chars.
     """
-    main_page_text: str = await page.evaluate(
-        _EXTRACT_CONSENT_JS
-    )
+    main_page_text: str = await page.evaluate(_EXTRACT_CONSENT_JS)
 
     iframe_texts: list[str] = []
     consent_keywords = (
@@ -415,22 +343,19 @@ async def _extract_consent_text(
         frame_url = frame.url.lower()
         if any(kw in frame_url for kw in consent_keywords):
             try:
-                iframe_text: str = await frame.evaluate(
-                    _EXTRACT_IFRAME_JS
-                )
+                iframe_text: str = await frame.evaluate(_EXTRACT_IFRAME_JS)
                 if iframe_text:
-                    iframe_texts.append(
-                        f"[CONSENT IFRAME]:\n{iframe_text}"
-                    )
+                    iframe_texts.append(f"[CONSENT IFRAME]:\n{iframe_text}")
             except Exception as exc:
                 log.debug("Failed to extract iframe text", {"url": frame.url, "error": str(exc)})
 
-    all_texts = [
-        t for t in [*iframe_texts, main_page_text] if t
-    ]
-    log.debug("Consent text extraction", {
-        "mainTextChars": len(main_page_text),
-        "iframeCount": len(iframe_texts),
-        "totalChars": sum(len(t) for t in all_texts),
-    })
+    all_texts = [t for t in [*iframe_texts, main_page_text] if t]
+    log.debug(
+        "Consent text extraction",
+        {
+            "mainTextChars": len(main_page_text),
+            "iframeCount": len(iframe_texts),
+            "totalChars": sum(len(t) for t in all_texts),
+        },
+    )
     return "\n\n---\n\n".join(all_texts)[:50000]

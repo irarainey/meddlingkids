@@ -32,9 +32,7 @@ def _load_json(relative_path: str) -> Any:
     """
     full_path = _DATA_DIR / relative_path
     if not full_path.exists():
-        raise FileNotFoundError(
-            f"Data file not found: {relative_path}"
-        )
+        raise FileNotFoundError(f"Data file not found: {relative_path}")
     with open(full_path, encoding="utf-8") as f:
         try:
             return json.load(f)
@@ -99,10 +97,7 @@ _partner_database_cache: dict[str, dict[str, partners.PartnerEntry]] = {}
 def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
     """Load partner database from a JSON file."""
     raw: dict[str, dict[str, Any]] = _load_json(f"partners/{filename}")
-    return {
-        key: partners.PartnerEntry(concerns=val.get("concerns", []), aliases=val.get("aliases", []))
-        for key, val in raw.items()
-    }
+    return {key: partners.PartnerEntry(concerns=val.get("concerns", []), aliases=val.get("aliases", [])) for key, val in raw.items()}
 
 
 def get_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:

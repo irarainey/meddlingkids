@@ -36,9 +36,7 @@ def _classify_against_database(
     return None
 
 
-def _classify_by_purpose(
-    partner: consent.ConsentPartner, purpose_lower: str
-) -> partners_mod.PartnerClassification | None:
+def _classify_by_purpose(partner: consent.ConsentPartner, purpose_lower: str) -> partners_mod.PartnerClassification | None:
     """Classify a partner based on its purpose text."""
     if any(w in purpose_lower for w in ("sell", "broker", "data marketplace")):
         return partners_mod.PartnerClassification(

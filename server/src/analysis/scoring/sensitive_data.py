@@ -23,13 +23,28 @@ log = logger.create_logger("Score-SensitiveData")
 # per pattern.
 
 _PURPOSE_LABELS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"location|geo|gps|postcode|zip", re.I), "Location / postcode data collection disclosed"),
+    (
+        re.compile(r"location|geo|gps|postcode|zip", re.I),
+        "Location / postcode data collection disclosed",
+    ),
     (re.compile(r"politic", re.I), "Political interest tracking disclosed"),
-    (re.compile(r"health|medical|pharma|wellness", re.I), "Health-related data collection disclosed"),
-    (re.compile(r"financial|credit|income|debt|mortgage", re.I), "Financial data tracking disclosed"),
+    (
+        re.compile(r"health|medical|pharma|wellness", re.I),
+        "Health-related data collection disclosed",
+    ),
+    (
+        re.compile(r"financial|credit|income|debt|mortgage", re.I),
+        "Financial data tracking disclosed",
+    ),
     (re.compile(r"pregnan|fertility|baby", re.I), "Pregnancy / fertility tracking disclosed"),
-    (re.compile(r"mental.?health|depression|anxiety", re.I), "Mental health data tracking disclosed"),
-    (re.compile(r"addiction|gambling|alcohol|substance", re.I), "Addiction / substance-related tracking disclosed"),
+    (
+        re.compile(r"mental.?health|depression|anxiety", re.I),
+        "Mental health data tracking disclosed",
+    ),
+    (
+        re.compile(r"addiction|gambling|alcohol|substance", re.I),
+        "Addiction / substance-related tracking disclosed",
+    ),
     (re.compile(r"child|minor|kid", re.I), "Child-related data tracking disclosed"),
     (re.compile(r"criminal|arrest|conviction", re.I), "Criminal record data tracking disclosed"),
     (re.compile(r"disabilit|handicap", re.I), "Disability-related data tracking disclosed"),
@@ -74,10 +89,13 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Sensitive data scoring input", data={
-        "has_consent": consent_details is not None,
-        "all_urls": len(all_urls),
-    })
+    log.debug(
+        "Sensitive data scoring input",
+        data={
+            "has_consent": consent_details is not None,
+            "all_urls": len(all_urls),
+        },
+    )
 
     # ── Sensitive purpose disclosures (consent text) ────────
     # Scan ALL matching categories, not just the first.
@@ -85,10 +103,7 @@ def calculate(
         all_purposes = " ".join(
             [
                 *consent_details.purposes,
-                *[
-                    c.description
-                    for c in consent_details.categories
-                ],
+                *[c.description for c in consent_details.categories],
                 consent_details.raw_text or "",
             ]
         )
@@ -107,10 +122,13 @@ def calculate(
         elif matched_purposes > 0:
             points += 2
 
-        log.debug("Sensitive purposes matched", data={
-            "matched_purposes": matched_purposes,
-            "labels": [i for i in issues],
-        })
+        log.debug(
+            "Sensitive purposes matched",
+            data={
+                "matched_purposes": matched_purposes,
+                "labels": [i for i in issues],
+            },
+        )
 
     # ── Granular location / ISP tracking ────────────────────
     location_hits: set[str] = set()
@@ -131,9 +149,12 @@ def calculate(
                 break
 
     if location_hits:
-        log.debug("Location/ISP tracking detected", data={
-            "tiers": list(location_hits),
-        })
+        log.debug(
+            "Location/ISP tracking detected",
+            data={
+                "tiers": list(location_hits),
+            },
+        )
 
     if "precise" in location_hits or "postcode" in location_hits:
         points += 6
@@ -144,20 +165,13 @@ def calculate(
             extras.append("precise GPS")
         if "isp" in location_hits:
             extras.append("broadband provider")
-        issues.append(
-            "Granular location tracking detected"
-            f" ({', '.join(extras)})"
-        )
+        issues.append(f"Granular location tracking detected ({', '.join(extras)})")
     elif "geofence" in location_hits:
         points += 5
-        issues.append(
-            "Geo-fencing / geo-targeted tracking detected"
-        )
+        issues.append("Geo-fencing / geo-targeted tracking detected")
     elif "isp" in location_hits:
         points += 4
-        issues.append(
-            "ISP / broadband provider tracking detected"
-        )
+        issues.append("ISP / broadband provider tracking detected")
     elif "ip-geo" in location_hits:
         points += 3
         issues.append("IP-based geolocation tracking detected")
@@ -173,10 +187,7 @@ def calculate(
         for url in all_urls
     ):
         points += 4
-        issues.append(
-            "Cross-site identity tracking"
-            " (identity resolution service)"
-        )
+        issues.append("Cross-site identity tracking (identity resolution service)")
 
     # ── Content topic profiling ─────────────────────────────
     profiling_services: set[str] = set()
@@ -189,29 +200,27 @@ def calculate(
                 break
 
     if len(profiling_services) > 0:
-        log.debug("Content profiling services", data={
-            "services": list(profiling_services),
-        })
+        log.debug(
+            "Content profiling services",
+            data={
+                "services": list(profiling_services),
+            },
+        )
 
     if len(profiling_services) > 2:
         points += 6
-        issues.append(
-            f"{len(profiling_services)} content profiling"
-            " services track which topics you read"
-        )
+        issues.append(f"{len(profiling_services)} content profiling services track which topics you read")
     elif len(profiling_services) > 0:
         points += 4
-        issues.append(
-            "Content topic profiling active"
-            " - what you read is categorised and shared"
-        )
+        issues.append("Content topic profiling active - what you read is categorised and shared")
 
-    log.info("Sensitive data score", data={
-        "points": points,
-        "max_points": 22,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=22, issues=issues
+    log.info(
+        "Sensitive data score",
+        data={
+            "points": points,
+            "max_points": 22,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=22, issues=issues)

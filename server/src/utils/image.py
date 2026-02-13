@@ -12,7 +12,6 @@ import io
 
 from PIL import Image
 
-
 # ── Client display settings ─────────────────────────────────
 # Maximum width before downscaling.  iPad screenshots are
 # 2048 px wide due to ``device_scale_factor=2``; the extra

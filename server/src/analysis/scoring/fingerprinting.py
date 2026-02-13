@@ -41,12 +41,15 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Fingerprinting scoring input", data={
-        "cookies": len(cookies),
-        "scripts": len(scripts),
-        "network_requests": len(network_requests),
-        "all_urls": len(all_urls),
-    })
+    log.debug(
+        "Fingerprinting scoring input",
+        data={
+            "cookies": len(cookies),
+            "scripts": len(scripts),
+            "network_requests": len(network_requests),
+            "all_urls": len(all_urls),
+        },
+    )
 
     fingerprint_services: list[str] = []
     for url in all_urls:
@@ -56,108 +59,75 @@ def calculate(
                 if m and m.group(1) not in fingerprint_services:
                     fingerprint_services.append(m.group(1))
 
-    session_replay_services = [
-        s
-        for s in fingerprint_services
-        if any(
-            p.search(s)
-            for p in tracker_patterns.SESSION_REPLAY_PATTERNS
-        )
-    ]
+    session_replay_services = [s for s in fingerprint_services if any(p.search(s) for p in tracker_patterns.SESSION_REPLAY_PATTERNS)]
 
-    cross_device_trackers = [
-        url
-        for url in all_urls
-        if any(
-            p.search(url)
-            for p in tracker_patterns.CROSS_DEVICE_PATTERNS
-        )
-    ]
+    cross_device_trackers = [url for url in all_urls if any(p.search(url) for p in tracker_patterns.CROSS_DEVICE_PATTERNS)]
 
-    fingerprint_cookies = [
-        c
-        for c in cookies
-        if any(
-            p.search(c.name)
-            for p in tracker_patterns.FINGERPRINT_COOKIE_PATTERNS
-        )
-    ]
+    fingerprint_cookies = [c for c in cookies if any(p.search(c.name) for p in tracker_patterns.FINGERPRINT_COOKIE_PATTERNS)]
 
-    log.debug("Fingerprinting detection", data={
-        "fingerprint_services": len(fingerprint_services),
-        "session_replay": len(session_replay_services),
-        "cross_device": len(cross_device_trackers),
-        "fingerprint_cookies": len(fingerprint_cookies),
-        "services": fingerprint_services[:10],
-    })
+    log.debug(
+        "Fingerprinting detection",
+        data={
+            "fingerprint_services": len(fingerprint_services),
+            "session_replay": len(session_replay_services),
+            "cross_device": len(cross_device_trackers),
+            "fingerprint_cookies": len(fingerprint_cookies),
+            "services": fingerprint_services[:10],
+        },
+    )
 
     # ── Session replay ──────────────────────────────────────
     if len(session_replay_services) > 1:
         points += 12
         names = ", ".join(session_replay_services)
-        issues.append(
-            f"Multiple session replay tools ({names})"
-            " - your interactions are recorded"
-        )
+        issues.append(f"Multiple session replay tools ({names}) - your interactions are recorded")
     elif len(session_replay_services) > 0:
         points += 10
-        issues.append(
-            f"Session replay active"
-            f" ({session_replay_services[0]})"
-            " - your mouse movements and clicks are recorded"
-        )
+        issues.append(f"Session replay active ({session_replay_services[0]}) - your mouse movements and clicks are recorded")
 
     # ── Cross-device ────────────────────────────────────────
     if len(cross_device_trackers) > 0:
         points += 8
-        issues.append(
-            "Cross-device identity tracking detected"
-            " - you are tracked across all your devices"
-        )
+        issues.append("Cross-device identity tracking detected - you are tracked across all your devices")
 
     # ── Other fingerprinters ────────────────────────────────
-    other_count = (
-        len(fingerprint_services) - len(session_replay_services)
-    )
+    other_count = len(fingerprint_services) - len(session_replay_services)
     if other_count > 3:
         points += 6
-        issues.append(
-            f"{other_count} fingerprinting services identified"
-        )
+        issues.append(f"{other_count} fingerprinting services identified")
     elif other_count > 0:
         points += 4
-        issues.append(
-            f"{other_count} fingerprinting/tracking services"
-        )
+        issues.append(f"{other_count} fingerprinting/tracking services")
 
     # ── Behavioural / engagement tracking ───────────────────
     behavioural_hits = _detect_behavioural_tracking(all_urls)
     if behavioural_hits:
         points += min(10, 3 * len(behavioural_hits))
-        log.debug("Behavioural tracking detected", data={
-            "categories": behavioural_hits,
-            "behaviour_points": min(10, 3 * len(behavioural_hits)),
-        })
+        log.debug(
+            "Behavioural tracking detected",
+            data={
+                "categories": behavioural_hits,
+                "behaviour_points": min(10, 3 * len(behavioural_hits)),
+            },
+        )
         for label in behavioural_hits[:3]:
             issues.append(label)
 
     # ── Fingerprint cookies ─────────────────────────────────
     if len(fingerprint_cookies) > 0:
         points += 3
-        issues.append(
-            f"{len(fingerprint_cookies)}"
-            " fingerprint-related cookies"
-        )
+        issues.append(f"{len(fingerprint_cookies)} fingerprint-related cookies")
 
-    log.info("Fingerprinting score", data={
-        "points": points,
-        "max_points": 39,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=39, issues=issues
+    log.info(
+        "Fingerprinting score",
+        data={
+            "points": points,
+            "max_points": 39,
+            "issue_count": len(issues),
+        },
     )
+
+    return analysis.CategoryScore(points=points, max_points=39, issues=issues)
 
 
 # ── Behavioural tracking helpers ────────────────────────────
@@ -166,9 +136,7 @@ def calculate(
 # label.  Grouped by behaviour category so the issues list
 # stays concise even for heavy sites.
 
-_BEHAVIOUR_CATEGORIES: list[
-    tuple[str, list[re.Pattern[str]]]
-] = [
+_BEHAVIOUR_CATEGORIES: list[tuple[str, list[re.Pattern[str]]]] = [
     (
         "Scroll depth / attention tracking detected",
         [
@@ -232,8 +200,7 @@ _BEHAVIOUR_CATEGORIES: list[
         ],
     ),
     (
-        "Eye / gaze tracking technology detected"
-        " - monitors where you look on the page",
+        "Eye / gaze tracking technology detected - monitors where you look on the page",
         [
             p
             for p in tracker_patterns.BEHAVIOURAL_TRACKING_PATTERNS

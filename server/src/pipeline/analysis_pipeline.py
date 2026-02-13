@@ -8,15 +8,14 @@ parallel, then scores results and generates summary findings.
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from src import agents
-from src.analysis import scripts, tracking
-from src.analysis import scoring as privacy_score_mod
+from src.analysis import scoring, scripts, tracking
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
-from src.models import report as report_models  # type: ignore[attr-defined]
+from src.models import report as report_models
 from src.pipeline import sse_helpers
 from src.utils import logger
 from src.utils import url as url_mod
@@ -131,20 +130,14 @@ def _launch_concurrent_tasks(
     """
     log.start_timer("script-analysis")
 
-    def _script_progress(
-        phase: str, current: int, total: int, detail: str
-    ) -> None:
-        log.info(
-            f"Script analysis progress: {phase}"
-            f" {current}/{total} - {detail}"
-        )
+    def _script_progress(phase: str, current: int, total: int, detail: str) -> None:
+        log.info(f"Script analysis progress: {phase} {current}/{total} - {detail}")
         if phase == "matching":
             if current == 0:
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-matching",
-                        detail
-                        or "Grouping and identifying scripts...",
+                        detail or "Grouping and identifying scripts...",
                         77,
                     )
                 )
@@ -153,8 +146,7 @@ def _launch_concurrent_tasks(
             progress_queue.put_nowait(
                 sse_helpers.format_progress_event(
                     "script-fetching",
-                    detail
-                    or f"Fetching script {current}/{total}...",
+                    detail or f"Fetching script {current}/{total}...",
                     pct,
                 )
             )
@@ -172,23 +164,17 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail
-                        or f"Analyzed {current}/{total}"
-                        f" scripts...",
+                        detail or f"Analyzed {current}/{total} scripts...",
                         pct,
                     )
                 )
 
     async def _run_scripts() -> scripts.ScriptAnalysisResult:
         try:
-            result = await scripts.analyze_scripts(
-                final_scripts, _script_progress
-            )
+            result = await scripts.analyze_scripts(final_scripts, _script_progress)
             log.end_timer(
                 "script-analysis",
-                f"Script analysis complete..."
-                f" ({len(result.scripts)} scripts,"
-                f" {len(result.groups)} groups)",
+                f"Script analysis complete... ({len(result.scripts)} scripts, {len(result.groups)} groups)",
             )
             return result
         finally:
@@ -208,11 +194,7 @@ def _launch_concurrent_tasks(
                 consent_details,
             ):
                 analysis_chunks.append(chunk)
-                progress_queue.put_nowait(
-                    sse_helpers.format_sse_event(
-                        "analysis-chunk", {"text": chunk}
-                    )
-                )
+                progress_queue.put_nowait(sse_helpers.format_sse_event("analysis-chunk", {"text": chunk}))
         finally:
             progress_queue.put_nowait(None)
 
@@ -266,11 +248,7 @@ def _render_report_text(
 
     # Tracking technologies
     tech = report.tracking_technologies
-    all_trackers = (
-        tech.analytics + tech.advertising
-        + tech.identity_resolution + tech.social_media
-        + tech.other
-    )
+    all_trackers = tech.analytics + tech.advertising + tech.identity_resolution + tech.social_media + tech.other
     if all_trackers:
         lines.append("─" * 40)
         lines.append("TRACKING TECHNOLOGIES")
@@ -355,9 +333,7 @@ def _render_report_text(
         lines.append("─" * 40)
         lines.append("CONSENT ANALYSIS")
         lines.append("─" * 40)
-        lines.append(
-            f"  Consent dialog: {'Yes' if consent_sec.has_consent_dialog else 'No'}"
-        )
+        lines.append(f"  Consent dialog: {'Yes' if consent_sec.has_consent_dialog else 'No'}")
         if consent_sec.categories_disclosed:
             lines.append(f"  Categories disclosed: {consent_sec.categories_disclosed}")
         if consent_sec.partners_disclosed:
@@ -410,9 +386,7 @@ async def _score_and_summarise(
     full_text = "".join(analysis_chunks)
     log.info("Analysis streamed", {"length": len(full_text)})
 
-    yield sse_helpers.format_progress_event(
-        "ai-scoring", "Calculating privacy score...", 94
-    )
+    yield sse_helpers.format_progress_event("ai-scoring", "Calculating privacy score...", 94)
 
     tracking_summary = tracking_summary_mod.build_tracking_summary(
         final_cookies,
@@ -423,7 +397,7 @@ async def _score_and_summarise(
         url,
     )
 
-    score_breakdown = privacy_score_mod.calculate_privacy_score(
+    score_breakdown = scoring.calculate_privacy_score(
         final_cookies,
         final_scripts,
         final_requests,
@@ -438,9 +412,7 @@ async def _score_and_summarise(
         {"score": score_breakdown.total_score},
     )
 
-    yield sse_helpers.format_progress_event(
-        "ai-summarizing", "Generating summary...", 96
-    )
+    yield sse_helpers.format_progress_event("ai-summarizing", "Generating summary...", 96)
     log.info("Starting summary and report generation")
 
     # Build structured report and summary findings concurrently
@@ -449,21 +421,17 @@ async def _score_and_summarise(
 
     structured_report_task = asyncio.create_task(
         report_agent.build_report(
-            tracking_summary, consent_details, pre_consent_stats,
+            tracking_summary,
+            consent_details,
+            pre_consent_stats,
             score_breakdown,
         )
     )
-    summary_task = asyncio.create_task(
-        summary_agent.summarise(full_text, score_breakdown)
-    )
+    summary_task = asyncio.create_task(summary_agent.summarise(full_text, score_breakdown))
 
-    yield sse_helpers.format_progress_event(
-        "ai-report", "Building report...", 97
-    )
+    yield sse_helpers.format_progress_event("ai-report", "Building report...", 97)
 
-    structured_report, summary_findings = await asyncio.gather(
-        structured_report_task, summary_task
-    )
+    structured_report, summary_findings = await asyncio.gather(structured_report_task, summary_task)
     log.info(
         "Structured report and summary generated",
         {"summaryCount": len(summary_findings)},
@@ -499,55 +467,22 @@ async def _score_and_summarise(
     else:
         log.error("Analysis produced no output")
 
-    consent_dict = (
-        sse_helpers.serialize_consent_details(consent_details)
-        if consent_details
-        else None
-    )
-    score_dict = (
-        sse_helpers.serialize_score_breakdown(score_breakdown)
-        if score_breakdown
-        else None
-    )
+    consent_dict = sse_helpers.serialize_consent_details(consent_details) if consent_details else None
+    score_dict = sse_helpers.serialize_score_breakdown(score_breakdown) if score_breakdown else None
 
-    yield sse_helpers.format_progress_event(
-        "complete", "Investigation complete!", 100
-    )
+    yield sse_helpers.format_progress_event("complete", "Investigation complete!", 100)
 
     yield sse_helpers.format_sse_event(
         "complete",
         {
             "success": True,
-            "message": (
-                "Tracking analyzed after dismissing overlays"
-                if overlay_count > 0
-                else "Tracking analyzed"
-            ),
+            "message": ("Tracking analyzed after dismissing overlays" if overlay_count > 0 else "Tracking analyzed"),
             "analysis": full_text if analysis_success else None,
-            "structuredReport": (
-                structured_report.model_dump(by_alias=True)
-                if analysis_success and structured_report
-                else None
-            ),
-            "summaryFindings": (
-                [
-                    {"type": f.type, "text": f.text}
-                    for f in summary_findings
-                ]
-                if analysis_success
-                else None
-            ),
-            "privacyScore": (
-                privacy_score if analysis_success else None
-            ),
-            "privacySummary": (
-                score_breakdown.summary
-                if analysis_success
-                else None
-            ),
-            "scoreBreakdown": (
-                score_dict if analysis_success else None
-            ),
+            "structuredReport": (structured_report.model_dump(by_alias=True) if analysis_success and structured_report else None),
+            "summaryFindings": ([{"type": f.type, "text": f.text} for f in summary_findings] if analysis_success else None),
+            "privacyScore": (privacy_score if analysis_success else None),
+            "privacySummary": (score_breakdown.summary if analysis_success else None),
+            "scoreBreakdown": (score_dict if analysis_success else None),
             "analysisSummary": (
                 {
                     "analyzedUrl": tracking_summary.analyzed_url,
@@ -557,30 +492,17 @@ async def _score_and_summarise(
                     "localStorageItems": tracking_summary.local_storage_items,
                     "sessionStorageItems": tracking_summary.session_storage_items,
                     "thirdPartyDomains": tracking_summary.third_party_domains,
-                    "domainBreakdown": [
-                        sse_helpers.to_camel_case_dict(d)
-                        for d in tracking_summary.domain_breakdown
-                    ],
+                    "domainBreakdown": [sse_helpers.to_camel_case_dict(d) for d in tracking_summary.domain_breakdown],
                     "localStorage": tracking_summary.local_storage,
                     "sessionStorage": tracking_summary.session_storage,
                 }
                 if tracking_summary
                 else None
             ),
-            "analysisError": (
-                None
-                if analysis_success
-                else "Analysis produced no output"
-            ),
+            "analysisError": (None if analysis_success else "Analysis produced no output"),
             "consentDetails": consent_dict,
-            "scripts": [
-                sse_helpers.to_camel_case_dict(s)
-                for s in script_result.scripts
-            ],
-            "scriptGroups": [
-                sse_helpers.to_camel_case_dict(g)
-                for g in script_result.groups
-            ],
+            "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts],
+            "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups],
             "debugLog": logger.get_log_buffer(),
         },
     )

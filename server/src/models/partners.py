@@ -7,9 +7,7 @@ from typing import Literal
 
 import pydantic
 
-PartnerRiskLevel = Literal[
-    "critical", "high", "medium", "low", "unknown"
-]
+PartnerRiskLevel = Literal["critical", "high", "medium", "low", "unknown"]
 
 PartnerCategoryType = Literal[
     "data-broker",

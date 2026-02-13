@@ -45,176 +45,130 @@ def calculate(
     issues: list[str] = []
     points = 0
 
-    log.debug("Consent scoring input", data={
-        "has_consent": consent_details is not None,
-        "cookies": len(cookies),
-        "scripts": len(scripts),
-    })
+    log.debug(
+        "Consent scoring input",
+        data={
+            "has_consent": consent_details is not None,
+            "cookies": len(cookies),
+            "scripts": len(scripts),
+        },
+    )
 
     tracking_patterns = loader.get_tracking_scripts()
-    tracking_scripts = [
-        s
-        for s in scripts
-        if any(
-            re.search(t.pattern, s.url, re.IGNORECASE)
-            for t in tracking_patterns
-        )
-    ]
+    tracking_scripts = [s for s in scripts if any(re.search(t.pattern, s.url, re.IGNORECASE) for t in tracking_patterns)]
 
-    log.debug("Pre-consent tracking", data={
-        "tracking_scripts": len(tracking_scripts),
-    })
+    log.debug(
+        "Pre-consent tracking",
+        data={
+            "tracking_scripts": len(tracking_scripts),
+        },
+    )
 
     # ── Pre-consent tracking ────────────────────────────────
     if len(tracking_scripts) > 10:
         points += 12
-        issues.append(
-            f"{len(tracking_scripts)} tracking scripts loaded"
-            " BEFORE consent given (serious violation)"
-        )
+        issues.append(f"{len(tracking_scripts)} tracking scripts loaded BEFORE consent given (serious violation)")
     elif len(tracking_scripts) > 5:
         points += 10
-        issues.append(
-            f"{len(tracking_scripts)} tracking scripts loaded"
-            " BEFORE consent given (violation)"
-        )
+        issues.append(f"{len(tracking_scripts)} tracking scripts loaded BEFORE consent given (violation)")
     elif len(tracking_scripts) > 2:
         points += 7
-        issues.append(
-            f"{len(tracking_scripts)} tracking scripts loaded"
-            " before consent"
-        )
+        issues.append(f"{len(tracking_scripts)} tracking scripts loaded before consent")
     elif len(tracking_scripts) > 0:
         points += 4
         issues.append("Tracking active before consent given")
 
     if not consent_details:
-        has_tracking = (
-            len(cookies) > 5 or len(tracking_scripts) > 0
-        )
+        has_tracking = len(cookies) > 5 or len(tracking_scripts) > 0
         if has_tracking:
             points += 8
-            issues.append(
-                "Tracking present without visible consent"
-                " dialog"
-            )
-        points += _score_pre_consent_volume(
-            pre_consent_stats, issues
+            issues.append("Tracking present without visible consent dialog")
+        points += _score_pre_consent_volume(pre_consent_stats, issues)
+
+        log.info(
+            "Consent score",
+            data={
+                "points": points,
+                "max_points": 71,
+                "issue_count": len(issues),
+            },
         )
 
-        log.info("Consent score", data={
-            "points": points,
-            "max_points": 71,
-            "issue_count": len(issues),
-        })
-
-        return analysis.CategoryScore(
-            points=points, max_points=71, issues=issues
-        )
+        return analysis.CategoryScore(points=points, max_points=71, issues=issues)
 
     # ── Partner count ───────────────────────────────────────
     extracted_count = len(consent_details.partners)
     claimed_count = consent_details.claimed_partner_count or 0
     partner_count = max(extracted_count, claimed_count)
 
-    log.debug("Consent details", data={
-        "extracted_partner_count": extracted_count,
-        "claimed_partner_count": claimed_count,
-        "effective_partner_count": partner_count,
-        "purposes": len(consent_details.purposes),
-        "categories": len(consent_details.categories),
-    })
+    log.debug(
+        "Consent details",
+        data={
+            "extracted_partner_count": extracted_count,
+            "claimed_partner_count": claimed_count,
+            "effective_partner_count": partner_count,
+            "purposes": len(consent_details.purposes),
+            "categories": len(consent_details.categories),
+        },
+    )
 
     if partner_count > 1000:
         points += 20
-        issues.append(
-            f"{partner_count} partners share your data"
-            " (extreme)"
-        )
+        issues.append(f"{partner_count} partners share your data (extreme)")
     elif partner_count > 750:
         points += 18
-        issues.append(
-            f"{partner_count} partners share your data"
-            " (extreme)"
-        )
+        issues.append(f"{partner_count} partners share your data (extreme)")
     elif partner_count > 500:
         points += 15
-        issues.append(
-            f"{partner_count} partners share your data"
-            " (extreme)"
-        )
+        issues.append(f"{partner_count} partners share your data (extreme)")
     elif partner_count > 300:
         points += 12
-        issues.append(
-            f"{partner_count} partners share your data"
-            " (massive)"
-        )
+        issues.append(f"{partner_count} partners share your data (massive)")
     elif partner_count > 150:
         points += 10
-        issues.append(
-            f"{partner_count} partners share your data"
-            " (excessive)"
-        )
+        issues.append(f"{partner_count} partners share your data (excessive)")
     elif partner_count > 75:
         points += 8
-        issues.append(
-            f"{partner_count} partners share your data"
-        )
+        issues.append(f"{partner_count} partners share your data")
     elif partner_count > 30:
         points += 6
-        issues.append(
-            f"{partner_count} data sharing partners"
-        )
+        issues.append(f"{partner_count} data sharing partners")
     elif partner_count > 10:
         points += 4
-        issues.append(
-            f"{partner_count} data sharing partners"
-        )
+        issues.append(f"{partner_count} data sharing partners")
     elif partner_count > 0:
         points += 2
 
     # ── Partner risk ────────────────────────────────────────
     if partner_count > 0:
-        risk_summary = (
-            partner_classification.get_partner_risk_summary(
-                consent_details.partners
-            )
-        )
+        risk_summary = partner_classification.get_partner_risk_summary(consent_details.partners)
         critical_count = risk_summary.critical_count
         high_count = risk_summary.high_count
         worst_partners = risk_summary.worst_partners
 
         if critical_count > 0 or high_count > 0:
-            log.debug("Partner risk", data={
-                "critical": critical_count,
-                "high": high_count,
-                "worst": worst_partners[:5],
-            })
+            log.debug(
+                "Partner risk",
+                data={
+                    "critical": critical_count,
+                    "high": high_count,
+                    "worst": worst_partners[:5],
+                },
+            )
 
         if critical_count > 5:
             points += 8
-            issues.append(
-                f"{critical_count} data brokers/identity"
-                " trackers identified"
-            )
+            issues.append(f"{critical_count} data brokers/identity trackers identified")
         elif critical_count > 2:
             points += 5
-            issues.append(
-                f"{critical_count} data brokers among"
-                " partners"
-            )
+            issues.append(f"{critical_count} data brokers among partners")
         elif critical_count > 0:
             points += 3
-            issues.append(
-                f"Data broker detected: {worst_partners[0]}"
-            )
+            issues.append(f"Data broker detected: {worst_partners[0]}")
 
         if high_count > 10:
             points += 5
-            issues.append(
-                f"{high_count} high-risk"
-                " advertising/tracking partners"
-            )
+            issues.append(f"{high_count} high-risk advertising/tracking partners")
         elif high_count > 5:
             points += 3
         elif high_count > 0:
@@ -226,33 +180,26 @@ def calculate(
         r"|basic|functional",
         re.I,
     )
-    vague_purposes = [
-        p
-        for p in consent_details.purposes
-        if vague_re.search(p)
-    ]
+    vague_purposes = [p for p in consent_details.purposes if vague_re.search(p)]
     if len(vague_purposes) > 2:
         points += 3
-        issues.append(
-            "Consent uses vague terms to justify tracking"
-        )
+        issues.append("Consent uses vague terms to justify tracking")
 
     # ── Pre-consent data volume ─────────────────────────────
     # Penalise the raw volume of tracking infrastructure that
     # fires before the user has accepted the consent dialog.
-    points += _score_pre_consent_volume(
-        pre_consent_stats, issues
+    points += _score_pre_consent_volume(pre_consent_stats, issues)
+
+    log.info(
+        "Consent score",
+        data={
+            "points": points,
+            "max_points": 71,
+            "issue_count": len(issues),
+        },
     )
 
-    log.info("Consent score", data={
-        "points": points,
-        "max_points": 71,
-        "issue_count": len(issues),
-    })
-
-    return analysis.CategoryScore(
-        points=points, max_points=71, issues=issues
-    )
+    return analysis.CategoryScore(points=points, max_points=71, issues=issues)
 
 
 # ── Pre-consent volume helpers ──────────────────────────────
@@ -289,23 +236,13 @@ def _score_pre_consent_volume(
     # consent is a clear GDPR violation.
     if stats.tracking_cookies > 10:
         pts += 5
-        issues.append(
-            f"{stats.tracking_cookies} tracking cookies set"
-            " before consent (serious violation)"
-        )
+        issues.append(f"{stats.tracking_cookies} tracking cookies set before consent (serious violation)")
     elif stats.tracking_cookies > 5:
         pts += 3
-        issues.append(
-            f"{stats.tracking_cookies} tracking cookies set"
-            " before consent"
-        )
+        issues.append(f"{stats.tracking_cookies} tracking cookies set before consent")
     elif stats.tracking_cookies > 0:
         pts += 1
-        issues.append(
-            f"{stats.tracking_cookies} tracking"
-            f" cookie{'s' if stats.tracking_cookies > 1 else ''}"
-            " set before consent"
-        )
+        issues.append(f"{stats.tracking_cookies} tracking cookie{'s' if stats.tracking_cookies > 1 else ''} set before consent")
 
     # ── Tracking scripts before consent ─────────────────────
     # Scripts matching known tracker databases (ad scripts,
@@ -313,16 +250,10 @@ def _score_pre_consent_volume(
     # like UI frameworks are not penalised.
     if stats.tracking_scripts > 10:
         pts += 5
-        issues.append(
-            f"{stats.tracking_scripts} tracking scripts"
-            " loaded before consent"
-        )
+        issues.append(f"{stats.tracking_scripts} tracking scripts loaded before consent")
     elif stats.tracking_scripts > 5:
         pts += 3
-        issues.append(
-            f"{stats.tracking_scripts} tracking scripts"
-            " loaded before consent"
-        )
+        issues.append(f"{stats.tracking_scripts} tracking scripts loaded before consent")
     elif stats.tracking_scripts > 0:
         pts += 1
 
@@ -331,28 +262,24 @@ def _score_pre_consent_volume(
     # (ad servers, analytics endpoints, pixels, etc.).
     if stats.tracker_requests > 20:
         pts += 5
-        issues.append(
-            f"{stats.tracker_requests} tracker requests"
-            " fired before consent (data sharing"
-            " without permission)"
-        )
+        issues.append(f"{stats.tracker_requests} tracker requests fired before consent (data sharing without permission)")
     elif stats.tracker_requests > 10:
         pts += 3
-        issues.append(
-            f"{stats.tracker_requests} tracker requests"
-            " fired before consent"
-        )
+        issues.append(f"{stats.tracker_requests} tracker requests fired before consent")
     elif stats.tracker_requests > 3:
         pts += 1
 
-    log.debug("Pre-consent classified", data={
-        "tracking_cookies": stats.tracking_cookies,
-        "tracking_scripts": stats.tracking_scripts,
-        "tracker_requests": stats.tracker_requests,
-        "total_cookies": stats.total_cookies,
-        "total_scripts": stats.total_scripts,
-        "total_requests": stats.total_requests,
-        "points": pts,
-    })
+    log.debug(
+        "Pre-consent classified",
+        data={
+            "tracking_cookies": stats.tracking_cookies,
+            "tracking_scripts": stats.tracking_scripts,
+            "tracker_requests": stats.tracker_requests,
+            "total_cookies": stats.total_cookies,
+            "total_scripts": stats.total_scripts,
+            "total_requests": stats.total_requests,
+            "points": pts,
+        },
+    )
 
     return pts

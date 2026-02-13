@@ -7,10 +7,19 @@ from __future__ import annotations
 import re
 from urllib import parse
 
-_TWO_PART_TLDS = frozenset([
-    "co.uk", "com.au", "co.nz", "co.jp", "com.br",
-    "co.in", "org.uk", "net.uk", "gov.uk",
-])
+_TWO_PART_TLDS = frozenset(
+    [
+        "co.uk",
+        "com.au",
+        "co.nz",
+        "co.jp",
+        "com.br",
+        "co.in",
+        "org.uk",
+        "net.uk",
+        "gov.uk",
+    ]
+)
 
 
 def extract_domain(url: str) -> str:

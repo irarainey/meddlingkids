@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pydantic
 import pydantic_settings
+
 from src.utils import logger
 
 log = logger.create_logger("Agent-Config")
@@ -39,19 +40,13 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
         deployment: Model deployment name.
     """
 
-    endpoint: str = pydantic.Field(
-        default="", validation_alias="AZURE_OPENAI_ENDPOINT"
-    )
-    api_key: str = pydantic.Field(
-        default="", validation_alias="AZURE_OPENAI_API_KEY"
-    )
+    endpoint: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
+    api_key: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_API_KEY")
     api_version: str = pydantic.Field(
         default="2024-12-01-preview",
         validation_alias="OPENAI_API_VERSION",
     )
-    deployment: str = pydantic.Field(
-        default="", validation_alias="AZURE_OPENAI_DEPLOYMENT"
-    )
+    deployment: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_DEPLOYMENT")
 
     def validate_config(self) -> bool:
         """Check if all required configuration is present.
@@ -73,15 +68,9 @@ class OpenAIConfig(pydantic_settings.BaseSettings):
         base_url: Optional custom base URL.
     """
 
-    api_key: str = pydantic.Field(
-        default="", validation_alias="OPENAI_API_KEY"
-    )
-    model: str = pydantic.Field(
-        default="", validation_alias="OPENAI_MODEL"
-    )
-    base_url: str | None = pydantic.Field(
-        default=None, validation_alias="OPENAI_BASE_URL"
-    )
+    api_key: str = pydantic.Field(default="", validation_alias="OPENAI_API_KEY")
+    model: str = pydantic.Field(default="", validation_alias="OPENAI_MODEL")
+    base_url: str | None = pydantic.Field(default=None, validation_alias="OPENAI_BASE_URL")
 
     def validate_config(self) -> bool:
         """Check if the API key is present.

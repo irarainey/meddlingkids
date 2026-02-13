@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import Literal
 
 import pydantic
+
 from src.agents import base, config
+from src.agents.prompts import summary_findings
 from src.models import analysis
 from src.utils import json_parsing, logger, risk
 
@@ -18,84 +20,22 @@ log = logger.create_logger("SummaryFindingsAgent")
 
 # ── Structured output models ───────────────────────────────────
 
+
 class _SummaryFinding(pydantic.BaseModel):
     """A single finding returned by the LLM."""
 
-    type: Literal[
-        "critical", "high", "moderate", "info", "positive"
-    ]
+    type: Literal["critical", "high", "moderate", "info", "positive"]
     text: str
 
 
 class _SummaryFindingsResponse(pydantic.BaseModel):
     """Schema pushed to the LLM via ``response_format``."""
 
-    findings: list[_SummaryFinding] = pydantic.Field(
-        default_factory=list
-    )
-
-
-# ── System prompt ───────────────────────────────────────────────
-
-_INSTRUCTIONS = """\
-You are a privacy expert. Analyse the tracking data and \
-create a structured summary of the key findings.
-
-Each finding should have:
-- "type": One of "critical", "high", "moderate", "info", \
-"positive"
-- "text": A single sentence describing the finding. Be \
-specific about company names.
-
-Severity decision criteria (apply strictly):
-- "critical": Deceptive practices, data broker involvement, \
-fingerprinting for cross-site identity, selling personal data, \
-or consent dialog actively hiding significant tracking.
-- "high": Persistent cross-session tracking via third-party \
-identifiers, undisclosed advertising networks, pre-consent \
-tracking scripts that bypass user choice.
-- "moderate": Standard analytics with pseudonymous IDs, \
-automated audience measurement, typical third-party media \
-analytics.
-- "info": Neutral observations about cookies, storage, or \
-consent mechanisms without clear privacy harm.
-- "positive": Privacy-respecting practices such as no \
-advertising, minimal tracking, or strong consent controls.
-
-You will also be given the site's deterministic privacy score \
-(0-100) and its risk classification. Calibrate your severity \
-labels to be consistent with this score. Do NOT use "critical" \
-or "high" severity for a site scored as Low or Very Low Risk \
-unless a specific practice genuinely warrants it — for example, \
-data broker involvement or deceptive dark patterns. Conversely, \
-do not understate findings for a high-scoring site.
-
-Return exactly 6 findings, ordered by severity \
-(most severe first, positive last).
-
-Example output for a site scoring 35/100 (Low Risk) with \
-analytics tracking and no advertising:
-{"findings": [
-  {"type": "high", "text": "Site loads Comscore and Chartbeat \
-analytics scripts before user consent, bypassing the consent \
-dialog."},
-  {"type": "moderate", "text": "DotMetrics sets persistent \
-cookies that enable cross-session audience measurement."},
-  {"type": "moderate", "text": "Audience data is shared with \
-three third-party analytics providers for media measurement."},
-  {"type": "moderate", "text": "Scroll depth and time-on-page \
-metrics are collected for behavioural engagement analytics."},
-  {"type": "info", "text": "Consent dialog groups all optional \
-tracking under a single vague category without listing \
-partners."},
-  {"type": "positive", "text": "No advertising networks, \
-retargeting, or data broker integrations are present."}
-]}
-
-Return ONLY a JSON object matching the required schema."""
+    findings: list[_SummaryFinding] = pydantic.Field(default_factory=list)
 
 
 # ── Agent class ─────────────────────────────────────────────────
+
 
 class SummaryFindingsAgent(base.BaseAgent):
     """Text agent that produces structured summary findings.
@@ -105,7 +45,7 @@ class SummaryFindingsAgent(base.BaseAgent):
     """
 
     agent_name = config.AGENT_SUMMARY_FINDINGS
-    instructions = _INSTRUCTIONS
+    instructions = summary_findings.INSTRUCTIONS
     max_tokens = 500
     max_retries = 5
     response_model = _SummaryFindingsResponse
@@ -131,9 +71,7 @@ class SummaryFindingsAgent(base.BaseAgent):
         score_ctx = ""
         if score_breakdown:
             label = risk.risk_label(score_breakdown.total_score)
-            top = ", ".join(
-                score_breakdown.factors[:5]
-            ) or "none"
+            top = ", ".join(score_breakdown.factors[:5]) or "none"
             score_ctx = (
                 f"\n\nDeterministic privacy score: "
                 f"{score_breakdown.total_score}/100 "
@@ -144,25 +82,13 @@ class SummaryFindingsAgent(base.BaseAgent):
 
         try:
             response = await self._complete(
-                f"Based on this full analysis, create a"
-                f" structured JSON object with key"
-                f" findings:\n\n{analysis_text}"
-                f"{score_ctx}"
+                f"Based on this full analysis, create a structured JSON object with key findings:\n\n{analysis_text}{score_ctx}"
             )
-            log.end_timer(
-                "summary-generation", "Summary generated"
-            )
+            log.end_timer("summary-generation", "Summary generated")
 
-            parsed = self._parse_response(
-                response, _SummaryFindingsResponse
-            )
+            parsed = self._parse_response(response, _SummaryFindingsResponse)
             if parsed:
-                findings = [
-                    analysis.SummaryFinding(
-                        type=f.type, text=f.text
-                    )
-                    for f in parsed.findings
-                ]
+                findings = [analysis.SummaryFinding(type=f.type, text=f.text) for f in parsed.findings]
                 log.success(
                     "Summary findings parsed",
                     {"count": len(findings)},
@@ -181,6 +107,7 @@ class SummaryFindingsAgent(base.BaseAgent):
 
 # ── Helpers ─────────────────────────────────────────────────────
 
+
 def _parse_text_fallback(
     text: str | None,
 ) -> list[analysis.SummaryFinding]:
@@ -198,11 +125,7 @@ def _parse_text_fallback(
     raw = json_parsing.load_json_from_text(text)
     if raw is not None:
         # Support both {"findings": [...]} and [...]
-        items = (
-            raw.get("findings", raw)
-            if isinstance(raw, dict)
-            else raw
-        )
+        items = raw.get("findings", raw) if isinstance(raw, dict) else raw
         findings = [
             analysis.SummaryFinding(
                 type=f.get("type", "info"),

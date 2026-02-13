@@ -15,7 +15,6 @@ import pydantic
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
 
-
 # ====================================================================
 # camelCase Serialization
 # ====================================================================
@@ -24,6 +23,7 @@ from src.models import analysis, consent, tracking_data
 def to_camel_case_dict(obj: pydantic.BaseModel) -> dict[str, Any]:
     """Convert a Pydantic model instance to a dict with camelCase keys."""
     from src.utils.serialization import snake_to_camel
+
     return {snake_to_camel(k): v for k, v in obj.model_dump().items()}
 
 
@@ -56,9 +56,7 @@ def format_sse_event(event_type: str, data: dict[str, Any]) -> str:
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
 
-def format_progress_event(
-    step: str, message: str, progress: int
-) -> str:
+def format_progress_event(step: str, message: str, progress: int) -> str:
     """Format a progress SSE event."""
     return format_sse_event(
         "progress",
@@ -96,26 +94,11 @@ def build_screenshot_event(
     """
     payload: dict[str, Any] = {
         "screenshot": optimized_screenshot,
-        "cookies": [
-            to_camel_case_dict(c)
-            for c in session.get_tracked_cookies()
-        ],
-        "scripts": [
-            to_camel_case_dict(s)
-            for s in session.get_tracked_scripts()
-        ],
-        "networkRequests": [
-            to_camel_case_dict(r)
-            for r in session.get_tracked_network_requests()
-        ],
-        "localStorage": [
-            to_camel_case_dict(i)
-            for i in storage.get("local_storage", [])
-        ],
-        "sessionStorage": [
-            to_camel_case_dict(i)
-            for i in storage.get("session_storage", [])
-        ],
+        "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
+        "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
+        "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
+        "localStorage": [to_camel_case_dict(i) for i in storage.get("local_storage", [])],
+        "sessionStorage": [to_camel_case_dict(i) for i in storage.get("session_storage", [])],
     }
     if extra:
         payload.update(extra)
@@ -160,14 +143,8 @@ async def take_screenshot_event(
         Tuple of (SSE event string, raw PNG bytes, storage dict).
     """
     screenshot_bytes = await session.take_screenshot(full_page=False)
-    optimized = (
-        browser_session.BrowserSession.optimize_screenshot_bytes(
-            screenshot_bytes
-        )
-    )
+    optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot_bytes)
     if storage is None:
         storage = await session.capture_storage()
-    event_str = build_screenshot_event(
-        session, optimized, storage, extra=extra
-    )
+    event_str = build_screenshot_event(session, optimized, storage, extra=extra)
     return event_str, screenshot_bytes, storage

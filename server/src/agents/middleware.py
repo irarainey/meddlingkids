@@ -41,9 +41,7 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
     async def process(
         self,
         context: agent_framework.ChatContext,
-        next: Callable[
-            [agent_framework.ChatContext], Awaitable[None]
-        ],
+        next: Callable[[agent_framework.ChatContext], Awaitable[None]],
     ) -> None:
         """Process a chat request and measure execution time.
 
@@ -53,19 +51,13 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
             next: Callable to invoke the next middleware or LLM.
         """
         message_count = len(context.messages)
-        log.debug(
-            f"Agent '{self.agent_name}' sending"
-            f" {message_count} message(s) to LLM"
-        )
+        log.debug(f"Agent '{self.agent_name}' sending {message_count} message(s) to LLM")
 
         start_time = time.perf_counter()
         await next(context)
         duration = time.perf_counter() - start_time
 
-        log.info(
-            f"Agent '{self.agent_name}' completed in"
-            f" {duration:.2f}s"
-        )
+        log.info(f"Agent '{self.agent_name}' completed in {duration:.2f}s")
 
         context.metadata["timing"] = {
             "duration_seconds": round(duration, 3),
@@ -106,9 +98,8 @@ def _is_retryable(error: BaseException) -> bool:
         return True
     for attr in ("status", "status_code"):
         code = getattr(error, attr, None)
-        if isinstance(code, int):
-            if code == 429 or 500 <= code < 600:
-                return True
+        if isinstance(code, int) and (code == 429 or 500 <= code < 600):
+            return True
     return isinstance(
         error,
         (
@@ -158,9 +149,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
     async def process(
         self,
         context: agent_framework.ChatContext,
-        next: Callable[
-            [agent_framework.ChatContext], Awaitable[None]
-        ],
+        next: Callable[[agent_framework.ChatContext], Awaitable[None]],
     ) -> None:
         """Invoke the LLM with automatic retry on failure.
 
@@ -182,24 +171,16 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                 return
             except Exception as exc:
                 last_error = exc
-                if (
-                    attempt >= self.max_retries
-                    or not _is_retryable(exc)
-                ):
+                if attempt >= self.max_retries or not _is_retryable(exc):
                     if attempt >= self.max_retries:
-                        log.error(
-                            f"Agent '{self.agent_name}' exhausted all"
-                            f" {self.max_retries + 1} attempts: {exc}"
-                        )
+                        log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {exc}")
                     raise
 
                 # Respect Retry-After header when available.
                 retry_after = self._get_retry_after(exc)
                 wait_ms = retry_after or delay_ms
                 jitter = random.uniform(0, wait_ms * 0.1)
-                total_ms = min(
-                    wait_ms + jitter, self.max_delay_ms
-                )
+                total_ms = min(wait_ms + jitter, self.max_delay_ms)
 
                 log.warn(
                     f"Agent '{self.agent_name}' attempt"
@@ -208,16 +189,12 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                     f" {total_ms / 1000:.1f}s: {exc}"
                 )
                 await asyncio.sleep(total_ms / 1000)
-                delay_ms = int(
-                    delay_ms * _BACKOFF_MULTIPLIER
-                )
+                delay_ms = int(delay_ms * _BACKOFF_MULTIPLIER)
 
         if last_error:  # pragma: no cover — defensive
             raise last_error
 
-    def _check_empty_response(
-        self, context: agent_framework.ChatContext
-    ) -> None:
+    def _check_empty_response(self, context: agent_framework.ChatContext) -> None:
         """Raise ``EmptyResponseError`` when the LLM returns no text.
 
         An empty response is almost certainly a transient
@@ -235,14 +212,8 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         except Exception:
             return
         if not text:
-            log.warn(
-                f"Agent '{self.agent_name}' received an"
-                " empty response from the LLM, retrying"
-            )
-            raise EmptyResponseError(
-                f"Agent '{self.agent_name}' received an"
-                " empty (0-character) response"
-            )
+            log.warn(f"Agent '{self.agent_name}' received an empty response from the LLM, retrying")
+            raise EmptyResponseError(f"Agent '{self.agent_name}' received an empty (0-character) response")
 
     @staticmethod
     def _get_retry_after(
@@ -258,9 +229,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         """
         headers = getattr(error, "headers", None)
         if isinstance(headers, dict):
-            raw = headers.get("retry-after") or headers.get(
-                "Retry-After"
-            )
+            raw = headers.get("retry-after") or headers.get("Retry-After")
             if raw:
                 try:
                     return int(raw) * 1000

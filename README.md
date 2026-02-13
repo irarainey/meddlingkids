@@ -97,6 +97,7 @@ meddlingkids/
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
+│       │   └── prompts/       # System prompts (one module per agent)
 │       ├── browser/           # Browser automation (Playwright session, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring
@@ -108,7 +109,8 @@ meddlingkids/
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images)
-├── logs/                      # Server logs (auto-created when WRITE_LOG_TO_FILE=true)
+├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
+├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
 ```
@@ -144,6 +146,7 @@ Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat
+# OPENAI_API_VERSION=2024-12-01-preview  # Optional, shown is the default
 ```
 
 **Option B: Standard OpenAI**
@@ -152,19 +155,27 @@ OPENAI_API_KEY=your-api-key
 OPENAI_MODEL=gpt-5.2-chat
 ```
 
-**Optional: File Logging**
+**Optional: File Output**
 ```env
-# Write server logs to timestamped files in /logs folder
-WRITE_LOG_TO_FILE=true
+# Write server logs and analysis reports to files
+WRITE_TO_FILE=true
 ```
 
 ### 3. Run Development Server
 
+Start the client and server in separate terminals:
+
 ```bash
+# Terminal 1: Start the Vite client dev server
 npm run dev
 ```
 
-This starts both:
+```bash
+# Terminal 2: Start the FastAPI/uvicorn server
+cd server
+uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
+```
+
 - **Client**: http://localhost:5173 (Vite dev server)
 - **Server**: http://localhost:3001 (FastAPI with uvicorn)
 
@@ -224,15 +235,24 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 
 ## Available Scripts
 
+### npm (from project root)
+
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start both client and server in development mode |
-| `npm run dev:client` | Start only the Vite client dev server |
-| `npm run dev:server` | Start only the FastAPI/uvicorn server |
+| `npm run dev` | Start the Vite client dev server |
 | `npm run build` | Build the client for production |
 | `npm run preview` | Preview the production build |
-| `npm run lint:ts` | Check for TypeScript/Vue lint errors |
-| `npm run lint:ts:fix` | Auto-fix TypeScript/Vue lint errors |
+| `npm run lint` | Check for TypeScript/Vue lint errors |
+| `npm run lint:fix` | Auto-fix TypeScript/Vue lint errors |
+
+### poe (from `server/` directory)
+
+| Command | Description |
+|---------|-------------|
+| `poe lint` | Run all Python linting (ruff check + format check + mypy) |
+| `poe lint:ruff` | Run ruff linter and format check only |
+| `poe lint:mypy` | Run mypy type checking only |
+| `poe format` | Auto-fix ruff lint issues and format code |
 
 ## Project Documentation
 

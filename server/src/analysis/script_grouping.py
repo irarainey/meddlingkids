@@ -107,12 +107,11 @@ GROUPABLE_PATTERNS: list[GroupPattern] = [
 # Result type
 # ---------------------------------------------------------------------------
 
+
 class GroupedScriptsResult(pydantic.BaseModel):
     """Result of grouping similar scripts together."""
 
-    individual_scripts: list[tracking_data.TrackedScript] = pydantic.Field(
-        default_factory=list
-    )
+    individual_scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
     groups: list[tracking_data.ScriptGroup] = pydantic.Field(default_factory=list)
     all_scripts: list[tracking_data.TrackedScript] = pydantic.Field(default_factory=list)
 
@@ -149,34 +148,41 @@ def group_similar_scripts(scripts: list[tracking_data.TrackedScript]) -> Grouped
         for _, scripts_in_group in pattern_map.items():
             if len(scripts_in_group) >= MIN_GROUP_SIZE and pattern_info:
                 group_id = f"{domain}-{pattern_id}"
-                groups.append(tracking_data.ScriptGroup(
-                    id=group_id,
-                    name=pattern_info.name,
-                    description=f"{len(scripts_in_group)} {pattern_info.description.lower()}",
-                    count=len(scripts_in_group),
-                    example_urls=[s.url for s in scripts_in_group[:3]],
-                    domain=domain,
-                ))
+                groups.append(
+                    tracking_data.ScriptGroup(
+                        id=group_id,
+                        name=pattern_info.name,
+                        description=f"{len(scripts_in_group)} {pattern_info.description.lower()}",
+                        count=len(scripts_in_group),
+                        example_urls=[s.url for s in scripts_in_group[:3]],
+                        domain=domain,
+                    )
+                )
                 for s in scripts_in_group:
-                    all_scripts.append(tracking_data.TrackedScript(
-                        url=s.url,
-                        domain=s.domain,
-                        description=pattern_info.description,
-                        group_id=group_id,
-                        is_grouped=True,
-                        resource_type=s.resource_type,
-                    ))
+                    all_scripts.append(
+                        tracking_data.TrackedScript(
+                            url=s.url,
+                            domain=s.domain,
+                            description=pattern_info.description,
+                            group_id=group_id,
+                            is_grouped=True,
+                            resource_type=s.resource_type,
+                        )
+                    )
             else:
                 for s in scripts_in_group:
                     individual_scripts.append(s)
                     all_scripts.append(s)
 
-    log.info("Script grouping complete", {
-        "total": len(scripts),
-        "individual": len(individual_scripts),
-        "groups": len(groups),
-        "grouped": sum(1 for s in all_scripts if s.is_grouped),
-    })
+    log.info(
+        "Script grouping complete",
+        {
+            "total": len(scripts),
+            "individual": len(individual_scripts),
+            "groups": len(groups),
+            "grouped": sum(1 for s in all_scripts if s.is_grouped),
+        },
+    )
 
     return GroupedScriptsResult(
         individual_scripts=individual_scripts,

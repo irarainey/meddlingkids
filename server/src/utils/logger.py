@@ -1,7 +1,7 @@
 """
 Logging utility with timestamps and timing support.
 Provides structured, colourful console output for tracking analysis stages.
-Optionally writes logs to a timestamped file when WRITE_LOG_TO_FILE is set.
+Optionally writes logs to a timestamped file when WRITE_TO_FILE is set.
 
 All mutable per-session state (timers, log buffer, log-file handle)
 is stored in ``contextvars.ContextVar`` so that concurrent async
@@ -17,25 +17,16 @@ import pathlib
 import re
 import sys
 import time
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 # ============================================================================
 # Per-session state (isolated via contextvars)
 # ============================================================================
 
-_timers_var: contextvars.ContextVar[dict[str, tuple[float, str]]] = (
-    contextvars.ContextVar("_timers_var")
-)
-_log_buffer_var: contextvars.ContextVar[list[str]] = (
-    contextvars.ContextVar("_log_buffer_var")
-)
-_log_file_stream_var: contextvars.ContextVar[io.TextIOWrapper | None] = (
-    contextvars.ContextVar("_log_file_stream_var", default=None)
-)
-_log_file_path_var: contextvars.ContextVar[str | None] = (
-    contextvars.ContextVar("_log_file_path_var", default=None)
-)
+_timers_var: contextvars.ContextVar[dict[str, tuple[float, str]]] = contextvars.ContextVar("_timers_var")
+_log_buffer_var: contextvars.ContextVar[list[str]] = contextvars.ContextVar("_log_buffer_var")
+_log_file_stream_var: contextvars.ContextVar[io.TextIOWrapper | None] = contextvars.ContextVar("_log_file_stream_var", default=None)
+_log_file_path_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("_log_file_path_var", default=None)
 
 
 def _get_timers() -> dict[str, tuple[float, str]]:
@@ -67,11 +58,12 @@ def clear_log_buffer() -> None:
     """Clear the in-memory log buffer for the next analysis run."""
     _get_log_buffer().clear()
 
+
 # ============================================================================
 # File Logging
 # ============================================================================
 
-_write_to_file = os.environ.get("WRITE_LOG_TO_FILE", "").lower() == "true"
+_write_to_file = os.environ.get("WRITE_TO_FILE", "").lower() == "true"
 
 
 def start_log_file(domain: str) -> None:
@@ -84,10 +76,10 @@ def start_log_file(domain: str) -> None:
     logs_dir = pathlib.Path.cwd() / ".logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_domain = domain.lstrip("www.")
+    safe_domain = domain.removeprefix("www.")
     safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     log_file_path = str(logs_dir / f"{safe_domain}_{timestamp}.log")
 
@@ -100,12 +92,7 @@ def start_log_file(domain: str) -> None:
     _log_file_stream_var.set(stream)
     _log_file_path_var.set(log_file_path)
 
-    header = (
-        f"\n{'=' * 80}\n"
-        f"  Analysis Log - {domain}\n"
-        f"  Started: {now.isoformat()}\n"
-        f"{'=' * 80}\n"
-    )
+    header = f"\n{'=' * 80}\n  Analysis Log - {domain}\n  Started: {now.isoformat()}\n{'=' * 80}\n"
     stream.write(header)
     print(f"\033[36mℹ [Logger] Writing logs to: {log_file_path}\033[0m")
 
@@ -129,7 +116,7 @@ def save_report_file(
 ) -> str | None:
     """Save the final structured report as a text file.
 
-    Only writes when ``WRITE_LOG_TO_FILE`` is enabled.
+    Only writes when ``WRITE_TO_FILE`` is enabled.
 
     Args:
         domain: The analysed domain (used in filename).
@@ -144,12 +131,10 @@ def save_report_file(
     reports_dir = pathlib.Path.cwd() / ".reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_domain = domain.lstrip("www.")
-    safe_domain = "".join(
-        c if c.isalnum() or c in ".-" else "_" for c in safe_domain
-    )[:50]
+    safe_domain = domain.removeprefix("www.")
+    safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     path = reports_dir / f"{safe_domain}_{timestamp}.txt"
 
@@ -211,7 +196,7 @@ _level_symbol = {
 
 def _get_timestamp() -> str:
     """Return the current UTC time as HH:MM:SS.mmm."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%H:%M:%S.") + f"{now.microsecond // 1000:03d}"
 
 
@@ -264,16 +249,10 @@ class Logger:
         symbol = _level_symbol.get(level, "ℹ")
         c = _colours
 
-        prefix = (
-            f"{c['gray']}[{ts}]{c['reset']} "
-            f"{colour}{symbol}{c['reset']} "
-            f"{c['bright']}[{self._context}]{c['reset']}"
-        )
+        prefix = f"{c['gray']}[{ts}]{c['reset']} {colour}{symbol}{c['reset']} {c['bright']}[{self._context}]{c['reset']}"
 
         if data:
-            data_str = " ".join(
-                f"{c['dim']}{k}={c['reset']}{_format_value(v)}" for k, v in data.items()
-            )
+            data_str = " ".join(f"{c['dim']}{k}={c['reset']}{_format_value(v)}" for k, v in data.items())
             log_line = f"{prefix} {message} {data_str}"
         else:
             log_line = f"{prefix} {message}"
@@ -324,8 +303,7 @@ class Logger:
         display_message = message or f"Completed: {label}"
         self._log(
             "timing",
-            f"{display_message} {c['dim']}took{c['reset']} {duration_str}"
-            f" {c['dim']}(started {start_ts}){c['reset']}",
+            f"{display_message} {c['dim']}took{c['reset']} {duration_str} {c['dim']}(started {start_ts}){c['reset']}",
         )
         return duration
 

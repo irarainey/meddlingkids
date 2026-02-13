@@ -51,5 +51,3 @@ DEVICE_CONFIGS: dict[str, browser.DeviceConfig] = {
         has_touch=False,
     ),
 }
-
-

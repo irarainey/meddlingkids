@@ -5,7 +5,7 @@ import pluginVue from 'eslint-plugin-vue'
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['dist/**', '**/dist/**', 'node_modules/**', '*.config.js', '*.config.ts'],
+    ignores: ['dist/**', '**/dist/**', 'node_modules/**', 'server/**', '*.config.js', '*.config.ts'],
   },
 
   // Base JavaScript rules
@@ -27,12 +27,25 @@ export default tseslint.config(
       globals: {
         // Browser globals for Vue components
         Event: 'readonly',
+        EventSource: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLElement: 'readonly',
         MouseEvent: 'readonly',
         KeyboardEvent: 'readonly',
         Document: 'readonly',
         Window: 'readonly',
+        URLSearchParams: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        navigator: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        AbortController: 'readonly',
       },
     },
   },

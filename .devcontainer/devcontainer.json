@@ -12,7 +12,8 @@
   ],
   "remoteUser": "node",
   "containerEnv": {
-    "DISPLAY": ":99"
+    "DISPLAY": ":99",
+    "UV_LINK_MODE": "copy"
   },
   "customizations": {
     "vscode": {

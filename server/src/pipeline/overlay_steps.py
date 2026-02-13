@@ -10,18 +10,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import TYPE_CHECKING, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from playwright import async_api
+
 from src.agents import consent_extraction_agent
 from src.browser import session as browser_session
-from src.consent import (
-    click,
-    constants,
-    extraction,
-    overlay_cache,
-    partner_classification,
-)
+from src.consent import click, constants, extraction, overlay_cache, partner_classification
 from src.consent import detection as consent_detection_mod
 from src.models import consent
 from src.pipeline import sse_helpers
@@ -73,15 +69,16 @@ async def detect_overlay(
     # Use a viewport-only screenshot for faster detection.
     # Overlays always cover the viewport, so full-page is unnecessary.
     viewport_screenshot = await session.take_screenshot(full_page=False)
-    log.debug("Running overlay detection", {
-        "iteration": iteration + 1,
-        "screenshotBytes": len(viewport_screenshot),
-    })
+    log.debug(
+        "Running overlay detection",
+        {
+            "iteration": iteration + 1,
+            "screenshotBytes": len(viewport_screenshot),
+        },
+    )
 
     log.info("Sending screenshot to consent detection model...")
-    detection = await consent_detection_mod.detect_cookie_consent(
-        viewport_screenshot
-    )
+    detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
         "Overlay detection complete",
@@ -101,13 +98,10 @@ async def validate_overlay_in_dom(
     Returns the frame where the element was found, or ``None``
     if it wasn't found anywhere.
     """
-    found_frame = await click.validate_element_exists(
-        page, detection.selector, detection.button_text
-    )
+    found_frame = await click.validate_element_exists(page, detection.selector, detection.button_text)
     if not found_frame:
         log.warn(
-            "Overlay detected by LLM but element not found in"
-            " DOM — treating as false positive",
+            "Overlay detected by LLM but element not found in DOM — treating as false positive",
             {
                 "selector": detection.selector,
                 "buttonText": detection.button_text,
@@ -140,7 +134,9 @@ async def click_and_capture(
     log.start_timer(f"overlay-click-{overlay_number}")
 
     clicked = await click.try_click_consent_button(
-        page, detection.selector, detection.button_text,
+        page,
+        detection.selector,
+        detection.button_text,
         found_in_frame=found_in_frame,
     )
     log.end_timer(
@@ -160,9 +156,7 @@ async def click_and_capture(
     # Wait for DOM to settle (up to 800ms).
     with contextlib.suppress(TimeoutError):
         async with asyncio.timeout(0.8):
-            await session.wait_for_load_state(
-                "domcontentloaded"
-            )
+            await session.wait_for_load_state("domcontentloaded")
 
     yield sse_helpers.format_progress_event(
         f"overlay-{overlay_number}-capture",
@@ -177,10 +171,7 @@ async def click_and_capture(
     )
     yield event_str
 
-    log.success(
-        f"Overlay {overlay_number} ({detection.overlay_type})"
-        " dismissed successfully"
-    )
+    log.success(f"Overlay {overlay_number} ({detection.overlay_type}) dismissed successfully")
 
     yield sse_helpers.format_sse_event(
         "consent",
@@ -257,10 +248,7 @@ async def expand_consent_dialog(
         if frame == page.main_frame:
             continue
         frame_url = frame.url.lower()
-        if any(
-            kw in frame_url
-            for kw in constants.CONSENT_HOST_KEYWORDS
-        ):
+        if any(kw in frame_url for kw in constants.CONSENT_HOST_KEYWORDS):
             frames.append(frame)
 
     for label in _EXPAND_LABELS:
@@ -299,9 +287,7 @@ async def expand_consent_dialog(
         # Wait for the DOM to settle after the expand click
         with contextlib.suppress(TimeoutError):
             async with asyncio.timeout(1.5):
-                await page.wait_for_load_state(
-                    "domcontentloaded"
-                )
+                await page.wait_for_load_state("domcontentloaded")
         # Extra short wait for dynamic content to render
         await asyncio.sleep(0.5)
     else:
@@ -316,26 +302,23 @@ async def expand_consent_dialog(
     # patterns used by CMP dialogs.
     if expanded:
         navigated_back = False
-        _BACK_LABELS = [
+        back_labels = [
             "Back",
             "Back to main",
             "Go back",
             "← Back",
             "Save and exit",
         ]
-        for label in _BACK_LABELS:
+        for label in back_labels:
             if navigated_back:
                 break
             for frame in frames:
                 try:
-                    btn = frame.get_by_role(
-                        "button", name=label
-                    )
+                    btn = frame.get_by_role("button", name=label)
                     if await btn.count() > 0:
                         await btn.first.click(timeout=3000)
                         log.info(
-                            "Navigated back to main"
-                            " consent view",
+                            "Navigated back to main consent view",
                             {"label": label},
                         )
                         navigated_back = True
@@ -345,9 +328,7 @@ async def expand_consent_dialog(
         if navigated_back:
             with contextlib.suppress(TimeoutError):
                 async with asyncio.timeout(1.0):
-                    await page.wait_for_load_state(
-                        "domcontentloaded"
-                    )
+                    await page.wait_for_load_state("domcontentloaded")
             await asyncio.sleep(0.3)
 
     log.info(
@@ -394,11 +375,10 @@ async def extract_and_classify_consent(
         "Extracting consent information...",
         71,
     )
-    result.consent_details = (
-        await extraction.extract_consent_details(
-            page, pre_click_screenshot,
-            pre_captured_text=pre_click_consent_text,
-        )
+    result.consent_details = await extraction.extract_consent_details(
+        page,
+        pre_click_screenshot,
+        pre_captured_text=pre_click_consent_text,
     )
     log.end_timer("consent-extraction", "Consent details extracted")
     log.info(
@@ -419,9 +399,7 @@ async def extract_and_classify_consent(
             72,
         )
 
-        risk_summary = partner_classification.get_partner_risk_summary(
-            result.consent_details.partners
-        )
+        risk_summary = partner_classification.get_partner_risk_summary(result.consent_details.partners)
         log.info(
             "Partner risk summary",
             {
@@ -432,11 +410,7 @@ async def extract_and_classify_consent(
         )
 
         for partner in result.consent_details.partners:
-            classification = (
-                partner_classification.classify_partner_by_pattern_sync(
-                    partner
-                )
-            )
+            classification = partner_classification.classify_partner_by_pattern_sync(partner)
             if classification:
                 partner.risk_level = classification.risk_level
                 partner.risk_category = classification.category
@@ -470,7 +444,9 @@ async def collect_extraction_events(
     """
     events: list[str] = []
     async for event in extract_and_classify_consent(
-        page, pre_click_screenshot, result,
+        page,
+        pre_click_screenshot,
+        result,
         pre_click_consent_text=pre_click_consent_text,
     ):
         events.append(event)
@@ -490,9 +466,7 @@ def build_no_overlay_events(
     if overlay_count == 0:
         log.info("No overlay detected", {"reason": reason})
         return [
-            sse_helpers.format_progress_event(
-                "consent-none", "No consent dialog detected...", 70
-            ),
+            sse_helpers.format_progress_event("consent-none", "No consent dialog detected...", 70),
             sse_helpers.format_sse_event(
                 "consent",
                 {
@@ -504,14 +478,8 @@ def build_no_overlay_events(
             ),
         ]
     dismissed_label = "overlay" if overlay_count == 1 else "overlays"
-    log.success(
-        f"Dismissed {overlay_count} {dismissed_label}, no more found"
-    )
-    dismissed_text = (
-        "Dismissed 1 overlay..."
-        if overlay_count == 1
-        else f"Dismissed {overlay_count} overlays..."
-    )
+    log.success(f"Dismissed {overlay_count} {dismissed_label}, no more found")
+    dismissed_text = "Dismissed 1 overlay..." if overlay_count == 1 else f"Dismissed {overlay_count} overlays..."
     return [
         sse_helpers.format_progress_event(
             "overlays-done",
@@ -528,18 +496,9 @@ def build_click_failure(
 ) -> tuple[str, str]:
     """Build click failure SSE event and message."""
     if error_detail:
-        msg = (
-            f"Failed to dismiss"
-            f" {detection.overlay_type or 'overlay'}:"
-            f" {error_detail}"
-        )
+        msg = f"Failed to dismiss {detection.overlay_type or 'overlay'}: {error_detail}"
     else:
-        msg = (
-            f"Failed to dismiss"
-            f" {detection.overlay_type or 'overlay'}"
-            f" (button:"
-            f" '{detection.button_text or detection.selector}')"
-        )
+        msg = f"Failed to dismiss {detection.overlay_type or 'overlay'} (button: '{detection.button_text or detection.selector}')"
 
     event = sse_helpers.format_sse_event(
         "consent",
@@ -586,7 +545,4 @@ def detection_signature(
     detection: consent.CookieConsentDetection,
 ) -> str:
     """Build a hashable key for a detection to track repeats."""
-    return (
-        f"{detection.selector or ''}|"
-        f"{detection.button_text or ''}"
-    )
+    return f"{detection.selector or ''}|{detection.button_text or ''}"
