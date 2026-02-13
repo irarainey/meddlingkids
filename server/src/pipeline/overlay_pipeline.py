@@ -126,7 +126,7 @@ class OverlayPipeline:
         self._failed_cache_types: set[str] = set()
         self._deferred_extraction: tuple[bytes, str | None] | None = None
 
-    async def run(self) -> AsyncGenerator[str, None]:
+    async def run(self) -> AsyncGenerator[str]:
         """Handle overlays, yielding SSE events.
 
         Populates ``self.result`` as side-state so the caller
@@ -452,7 +452,7 @@ class OverlayPipeline:
         result: OverlayHandlingResult,
         session: browser_session.BrowserSession,
         page: async_api.Page,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[str]:
         """Attempt to dismiss overlays using cached info.
 
         Each cached overlay is tried independently:

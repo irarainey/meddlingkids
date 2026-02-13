@@ -4,7 +4,7 @@ Python FastAPI backend that orchestrates browser automation and AI-powered track
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.13+
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Playwright (with Chrome browser; falls back to bundled Chromium)
 

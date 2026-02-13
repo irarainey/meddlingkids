@@ -123,7 +123,7 @@ async def click_and_capture(
     progress_base: int,
     *,
     found_in_frame: async_api.Frame | None = None,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Click the overlay dismiss button and capture resulting state.
 
     Yields SSE events for progress, the post-click screenshot,
@@ -352,7 +352,7 @@ async def extract_and_classify_consent(
     pre_click_screenshot: bytes,
     result: OverlayHandlingResult,
     pre_click_consent_text: str | None = None,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Extract consent details and classify partner risk levels.
 
     Only called for the first cookie-consent overlay after a

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TypeVar
 
 import pydantic
 
@@ -320,13 +319,10 @@ async def _noop_section(
     return default
 
 
-_ST = TypeVar("_ST", bound=pydantic.BaseModel)
-
-
-def _extract(
+def _extract[S: pydantic.BaseModel](
     result: pydantic.BaseModel | None,
-    section_cls: type[_ST],
-) -> _ST:
+    section_cls: type[S],
+) -> S:
     """Extract the section field from a response wrapper.
 
     Falls back to a default empty instance if parsing failed.

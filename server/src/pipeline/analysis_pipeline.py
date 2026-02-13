@@ -30,7 +30,7 @@ async def run_ai_analysis(
     consent_details: consent.ConsentDetails | None,
     overlay_count: int = 0,
     pre_consent_stats: analysis.PreConsentStats | None = None,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Run script and tracking analysis concurrently.
 
     Streams SSE events (progress + analysis chunks) as they
@@ -381,7 +381,7 @@ async def _score_and_summarise(
     analysis_chunks: list[str],
     script_result: scripts.ScriptAnalysisResult,
     pre_consent_stats: analysis.PreConsentStats | None = None,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Score, summarise, and yield the complete event."""
     full_text = "".join(analysis_chunks)
     log.info("Analysis streamed", {"length": len(full_text)})

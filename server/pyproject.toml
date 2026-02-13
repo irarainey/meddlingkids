@@ -3,7 +3,7 @@ name = "meddlingkids-server"
 version = "0.1.0"
 description = "Python server for Meddling Kids"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.128.0",
     "uvicorn>=0.40.0",
@@ -64,7 +64,7 @@ sequence = [
 # ── Ruff ────────────────────────────────────────────────────────
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 140
 src = ["src"]
 
@@ -97,7 +97,7 @@ known-first-party = ["src"]
 # ── Mypy ────────────────────────────────────────────────────────
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 mypy_path = "src"
 packages = ["src"]
 ignore_missing_imports = true

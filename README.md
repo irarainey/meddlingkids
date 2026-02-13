@@ -5,7 +5,7 @@
 Zoinks! There's something spooky going on with these websites... but don't worry, gang! This mystery-solving machine pulls the mask off sneaky trackers and exposes the villain underneath. Feed it any URL and watch as we unmask those cookies, scripts, network requests, and shady consent dialogs. And we would have never figured it out if it wasn't for those meddling kids!
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)
+![Python](https://img.shields.io/badge/python-3.13%2B-blue.svg)
 ![Vue](https://img.shields.io/badge/vue-3.x-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
 
@@ -119,7 +119,7 @@ meddlingkids/
 
 ### Prerequisites
 
-- **Python 3.11+** with [uv](https://docs.astral.sh/uv/) package manager (for the server)
+- **Python 3.13+** with [uv](https://docs.astral.sh/uv/) package manager (for the server)
 - **Node.js 22+** (for building the Vue client)
 - **Azure OpenAI** or **OpenAI** account with API access to a model with **vision capabilities** (e.g., `gpt-5.2-chat`). Vision is required for consent dialog detection via screenshot analysis.
 

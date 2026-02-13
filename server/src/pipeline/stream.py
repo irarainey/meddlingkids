@@ -115,7 +115,7 @@ def _drain_queue(queue: asyncio.Queue[str]) -> list[str]:
     return events
 
 
-async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[str, None]:
+async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[str]:
     """Analyze tracking on a URL with streaming progress via SSE.
 
     Opens a browser, navigates to the URL, detects and handles

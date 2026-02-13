@@ -12,7 +12,6 @@ thread-safely, and reused.
 from __future__ import annotations
 
 import functools
-from typing import TypeVar
 
 from src.agents import (
     base,
@@ -27,13 +26,11 @@ from src.utils import logger
 
 log = logger.create_logger("Agents")
 
-_T = TypeVar("_T", bound=base.BaseAgent)
-
 
 # ── Singletons ─────────────────────────────────────────────────
 
 
-def _init_agent(agent_cls: type[_T]) -> _T:
+def _init_agent[T: base.BaseAgent](agent_cls: type[T]) -> T:
     """Instantiate and initialise an agent, logging on failure.
 
     Args:
