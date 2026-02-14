@@ -86,7 +86,8 @@ src/
 │   └── partner_classification.py    # Consent partner risk classification
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
-│   ├── scripts.py                   # Script identification (patterns + LLM)
+│   ├── scripts.py                   # Script identification (patterns + LLM + cache)
+│   ├── script_cache.py              # Script analysis cache (URL + MD5 content hash, JSON)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
 │   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
@@ -120,6 +121,7 @@ src/
 │   ├── partners/                    # Partner risk databases (8 JSON files)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
+    ├── cache.py                     # Cross-cache management (clear all caches)
     ├── errors.py                    # Error message extraction
     ├── image.py                     # Screenshot optimisation & JPEG conversion
     ├── json_parsing.py              # LLM response JSON parsing

@@ -171,7 +171,8 @@ def _launch_concurrent_tasks(
 
     async def _run_scripts() -> scripts.ScriptAnalysisResult:
         try:
-            result = await scripts.analyze_scripts(final_scripts, _script_progress)
+            domain = url_mod.extract_domain(url)
+            result = await scripts.analyze_scripts(final_scripts, _script_progress, domain=domain)
             log.end_timer(
                 "script-analysis",
                 f"Script analysis complete... ({len(result.scripts)} scripts, {len(result.groups)} groups)",
@@ -422,6 +423,19 @@ async def _score_and_summarise(
     # Load cached domain knowledge for consistency anchoring.
     domain = url_mod.extract_domain(url)
     domain_knowledge = domain_cache.load(domain)
+
+    if domain_knowledge:
+        log.info(
+            "Domain cache hit — anchoring classifications",
+            {
+                "domain": domain,
+                "scanCount": domain_knowledge.scan_count,
+                "trackers": len(domain_knowledge.trackers),
+                "vendors": len(domain_knowledge.vendors),
+            },
+        )
+    else:
+        log.info("Domain cache miss — no prior knowledge", {"domain": domain})
 
     structured_report_task = asyncio.create_task(
         report_agent.build_report(

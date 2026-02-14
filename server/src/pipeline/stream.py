@@ -27,6 +27,7 @@ from src.browser import device_configs
 from src.browser import session as browser_session
 from src.models import browser
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
+from src.utils import cache as cache_util
 from src.utils import errors, logger
 from src.utils import url as url_mod
 
@@ -115,7 +116,12 @@ def _drain_queue(queue: asyncio.Queue[str]) -> list[str]:
     return events
 
 
-async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[str]:
+async def analyze_url_stream(
+    url: str,
+    device: str = "ipad",
+    *,
+    clear_cache: bool = False,
+) -> AsyncGenerator[str]:
     """Analyze tracking on a URL with streaming progress via SSE.
 
     Opens a browser, navigates to the URL, detects and handles
@@ -124,7 +130,15 @@ async def analyze_url_stream(url: str, device: str = "ipad") -> AsyncGenerator[s
 
     Each call creates its own isolated ``BrowserSession``,
     enabling concurrent analyses without interference.
+
+    Args:
+        url: The URL to analyze.
+        device: Device type to emulate.
+        clear_cache: When ``True``, delete all cache files
+            (domain, overlay, scripts) before starting.
     """
+    if clear_cache:
+        cache_util.clear_all()
     # ── Pre-flight validation ───────────────────────────────
     config_error = config.validate_llm_config()
     if config_error:

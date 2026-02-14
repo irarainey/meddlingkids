@@ -12,7 +12,8 @@ This guide explains the architecture, workflow, and data flow of the Meddling Ki
 6. [Data Flow](#data-flow)
 7. [Key Data Types](#key-data-types)
 8. [SSE Events Reference](#sse-events-reference)
-9. [Adding New Features](#adding-new-features)
+9. [Caching](#caching)
+10. [Adding New Features](#adding-new-features)
 
 ---
 
@@ -55,7 +56,7 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 └─────────────────────────────────────────────────────────────────────────────┘
                                      │
                                      │ EventSource (SSE)
-                                     │ GET /api/open-browser-stream?url=...&device=...
+                                     │ GET /api/open-browser-stream?url=...&device=...&clear-cache=...
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                                  SERVER                                    │
@@ -103,6 +104,7 @@ analyzeUrl() in useTrackingAnalysis.ts
    ▼
 analyze_url_stream() in pipeline/stream.py
    │
+   ├── If clear_cache=True → cache_util.clear_all()
    ├── validate_openai_config() → Check env vars
    ├── BrowserSession() → Create isolated session
    ├── session.clear_tracking_data() → Reset tracking arrays
@@ -193,11 +195,12 @@ All data captured
    │
    ├── ┌─────────────────── Run concurrently ──────────────────┐
    │   │                                                       │
-   │   │  analyze_scripts(scripts)                             │
+   │   │  analyze_scripts(scripts, domain)                    │
    │   │   ├── Group similar scripts (chunks, vendor bundles)  │
    │   │   ├── Match against tracking patterns (JSON)          │
    │   │   ├── Match against benign patterns (JSON)            │
-   │   │   └── LLM analysis for unknown scripts                │
+   │   │   ├── Check script cache (URL + MD5 content hash)     │
+   │   │   └── LLM analysis for uncached unknown scripts       │
    │   │       (concurrent with semaphore, max 10 at a time)   │
    │   │                                                       │
    │   │  stream_tracking_analysis(summary, consent_details)   │
@@ -248,6 +251,7 @@ All state lives in `useTrackingAnalysis.ts` composable:
 // Input state
 inputValue           // URL text field
 deviceType           // Selected device emulation
+clearCache           // Clear all server caches before analysis
 
 // Loading state
 isLoading            // Analysis in progress
@@ -286,7 +290,7 @@ selectedScreenshot   // Currently selected screenshot index
 
 ```typescript
 // In analyzeUrl():
-const eventSource = new EventSource(`/api/open-browser-stream?url=...&device=...`)
+const eventSource = new EventSource(`/api/open-browser-stream?url=...&device=...&clear-cache=...`)
 
 eventSource.addEventListener('progress', (e) => {
   // Update loading indicators
@@ -393,7 +397,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Responsibility |
 |--------|---------------|
 | `tracking.py` | Main tracking analysis orchestration (streaming LLM) |
-| `scripts.py` | Script identification (patterns + LLM via agent) |
+| `scripts.py` | Script identification (patterns + LLM via agent + script cache) |
+| `script_cache.py` | Script analysis cache — caches LLM-generated descriptions by URL + MD5 content hash. Invalidates on hash mismatch |
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
@@ -413,7 +418,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `stream.py` | Top-level SSE endpoint orchestrator (6-phase workflow) |
+| `stream.py` | Top-level SSE endpoint orchestrator (6-phase workflow, cache clearing) |
 | `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
 | `overlay_pipeline.py` | Phase 4: overlay detect → click → extract (orchestrator) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, extract) |
@@ -425,6 +430,19 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Content |
 |--------|--------|
 | `data/loader.py` | JSON data loader with lazy loading and caching |
+
+**`utils/`** — Cross-cutting utilities
+
+| Module | Responsibility |
+|--------|---------------|
+| `cache.py` | Cross-cache management — `clear_all()` deletes every file in all cache sub-directories |
+| `errors.py` | Error message extraction |
+| `image.py` | Screenshot optimisation and JPEG conversion |
+| `json_parsing.py` | LLM response JSON parsing |
+| `logger.py` | Structured logger with colour output (`contextvars` isolation) |
+| `risk.py` | Shared risk-scoring helpers (`risk_label`) |
+| `serialization.py` | Pydantic model serialization helpers |
+| `url.py` | URL and domain utilities |
 | `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 504 partner entries across 8 risk categories |
@@ -566,6 +584,97 @@ class ConsentDetails(BaseModel):
 | `analysis-chunk` | Server → Client | `{ text }` | Streamed token from tracking analysis (real-time LLM output) |
 | `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
+
+---
+
+## Caching
+
+Three per-domain caches live under `server/.cache/` (gitignored).
+They reduce LLM calls and improve analysis speed on repeat visits
+to the same domain.
+
+### Script Analysis Cache (`script_cache.py`)
+
+Caches the LLM-generated description for each unknown script.
+
+- **Key:** Script URL + MD5 hex digest of its fetched content.
+- **Hit:** URL and hash both match → cached description is used,
+  no LLM call.
+- **Miss:** URL is not in the cache → script is sent to the LLM.
+- **Invalidation:** URL is found but the hash differs (content
+  changed) → the stale entry is removed and the script is
+  re-analysed.
+- **Merge:** On save, newly analysed entries are merged with
+  existing entries whose URLs were not re-analysed this run
+  (carried forward).
+
+```
+Cold run:  72 LLM script calls,  24.6s script analysis
+Warm run:   0 LLM script calls,   1.4s script analysis
+Overall:  ~14% faster (111.8s → 95.9s)
+```
+
+### Domain Knowledge Cache (`domain_cache.py`)
+
+Caches LLM-generated classifications so subsequent analyses of
+the same domain produce consistent labels.
+
+- **Stored:** Tracker categories, cookie groupings, vendor roles,
+  data collection categories, severity levels.
+- **Anchoring:** Cached knowledge is formatted as a context block
+  and injected into the LLM prompt. The model is instructed to
+  reuse established names and classifications.
+- **Merge-on-save:** New findings are merged with the existing
+  cache rather than overwriting it. Items present in the latest
+  report update their `last_seen_scan` timestamp.
+- **Staleness pruning:** Items not seen for 3 consecutive scans
+  are automatically removed.
+- **Fuzzy deduplication:** Near-duplicate names like "Comscore"
+  and "Scorecard Research (Comscore)" are matched via normalised
+  tokens and parenthetical cross-matching.
+
+### Overlay Dismissal Cache (`overlay_cache.py`)
+
+Caches successful consent-dismiss strategies per domain so
+repeat visits skip the LLM vision detection step.
+
+- **Stored:** Overlay type, button text, CSS selector, Playwright
+  locator strategy (`role-button`, `text-exact`, `css`, etc.),
+  frame type (`main` or `consent-iframe`).
+- **Hit:** Cached overlay is found in the DOM → click it directly.
+- **Miss:** Not found in DOM → skipped but kept in cache for other
+  pages on the domain.
+- **Invalidation:** Cached click fails → overlay type is added to
+  `_failed_cache_types` and dropped on merge.
+- **Reject → Accept override:** Cached reject-style entries are
+  replaced when an accept alternative is found.
+
+### Cache Management
+
+All caches can be cleared before analysis:
+
+- **UI:** Tick the **Clear cache** checkbox next to the Unmask
+  button.
+- **API:** Pass `?clear-cache=true` in the query string.
+- **Code:** Call `src.utils.cache.clear_all()`.
+
+The `clear_all()` function removes every JSON file in all three
+sub-directories and logs the count of files removed per directory.
+
+### Logging
+
+Every cache operation is logged:
+
+| Operation | Log Level | Where |
+|-----------|-----------|-------|
+| Load (read) | `info` | Each cache module's `load()` |
+| Save (write) | `info` | Each cache module's `save()` or `save_from_report()` |
+| Hit | `info` | `scripts.py` (aggregate), `overlay_pipeline.py` (per-overlay) |
+| Miss | `info` / `debug` | `scripts.py` (aggregate), `script_cache.py` (per-URL debug) |
+| Invalidation | `info` | `script_cache.py` (hash mismatch), `domain_cache.py` (stale prune), `overlay_pipeline.py` (click fail) |
+| Clear | `info` / `success` | `utils/cache.py` |
+| Merge | `info` | `overlay_cache.py` (carried/new/dropped counts), `script_cache.py` (new/carried/total) |
+| Error | `warn` | Each cache module (read/write failures) |
 
 ---
 
@@ -730,6 +839,7 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Script patterns are pre-compiled to regex at load time (no re-compilation per match)
 - Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
 - Unknown scripts are analyzed individually with bounded concurrency (semaphore, max 10 at a time)
+- Script analysis results are cached per domain by URL + MD5 content hash; warm runs skip LLM calls entirely for unchanged scripts
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)

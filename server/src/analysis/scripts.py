@@ -17,7 +17,7 @@ import aiohttp
 import pydantic
 
 from src import agents
-from src.analysis import script_grouping
+from src.analysis import script_cache, script_grouping
 from src.data import loader
 from src.models import tracking_data
 from src.utils import logger
@@ -156,6 +156,8 @@ class ScriptAnalysisResult(pydantic.BaseModel):
 async def analyze_scripts(
     scripts: list[tracking_data.TrackedScript],
     on_progress: ScriptAnalysisProgressCallback | None = None,
+    *,
+    domain: str = "",
 ) -> ScriptAnalysisResult:
     """
     Analyze multiple scripts to determine their purposes.
@@ -163,7 +165,9 @@ async def analyze_scripts(
     Process:
     1. Group similar scripts (chunks, vendor bundles) — skip LLM analysis
     2. Match remaining against known patterns (tracking + benign)
-    3. Send truly unknown scripts to the LLM agent concurrently
+    3. Check the per-domain script cache for previously analysed scripts
+    4. Send only uncached unknown scripts to the LLM agent concurrently
+    5. Save newly analysed scripts to the cache
     """
     grouped = script_grouping.group_similar_scripts(scripts)
     results: list[tracking_data.TrackedScript] = list(grouped.all_scripts)
@@ -265,14 +269,55 @@ async def analyze_scripts(
             url, content = script_contents[i]
             url_to_info[url] = (content, result_index)
 
+        # ── Script cache lookup ────────────────────────────────
+        # Check cached descriptions before hitting the LLM.
+        cache_entry = script_cache.load(domain) if domain else None
+        cache_hits: int = 0
+        newly_analyzed: list[script_cache.CachedScript] = []
+        urls_needing_llm: dict[str, tuple[str | None, int]] = {}
+
+        for url, (content, result_index) in url_to_info.items():
+            if cache_entry and content:
+                content_hash = script_cache.compute_hash(content)
+                cached_desc = script_cache.lookup(cache_entry, url, content_hash)
+                if cached_desc:
+                    cache_hits += 1
+                    results[result_index] = tracking_data.TrackedScript(
+                        url=results[result_index].url,
+                        domain=results[result_index].domain,
+                        description=cached_desc,
+                        resource_type=results[result_index].resource_type,
+                    )
+                    # Carry the hit forward so it's preserved on save.
+                    newly_analyzed.append(script_cache.CachedScript(url=url, content_hash=content_hash, description=cached_desc))
+                    continue
+            urls_needing_llm[url] = (content, result_index)
+
+        if cache_hits or urls_needing_llm:
+            log.info(
+                "Script cache lookup complete",
+                {"hits": cache_hits, "misses": len(urls_needing_llm), "domain": domain},
+            )
+
+        llm_to_analyze = len(urls_needing_llm)
+
+        # ── LLM analysis for cache misses ──────────────────────
         # Analyse each script concurrently with a semaphore to
         # avoid overwhelming the LLM endpoint with too many
         # parallel requests.
         semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
-        completed_count = 0
+        completed_count = cache_hits
 
         if on_progress:
-            on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts...")
+            if cache_hits:
+                on_progress(
+                    "analyzing",
+                    cache_hits,
+                    total_to_analyze,
+                    f"{cache_hits} cached, analyzing {llm_to_analyze} unknown scripts...",
+                )
+            else:
+                on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts...")
 
         async def analyze_with_progress(url: str, content: str | None) -> tuple[str, str]:
             nonlocal completed_count
@@ -288,18 +333,32 @@ async def analyze_scripts(
                 )
             return result
 
-        llm_results = await asyncio.gather(*(analyze_with_progress(url, content) for url, (content, _) in url_to_info.items()))
+        if urls_needing_llm:
+            llm_results = await asyncio.gather(*(analyze_with_progress(url, content) for url, (content, _) in urls_needing_llm.items()))
 
-        # Write descriptions back into the results list.
-        for url, description in llm_results:
-            _, result_index = url_to_info[url]
-            old = results[result_index]
-            results[result_index] = tracking_data.TrackedScript(
-                url=old.url,
-                domain=old.domain,
-                description=description,
-                resource_type=old.resource_type,
-            )
+            # Write descriptions back into the results list and
+            # collect entries for the script cache.
+            for url, description in llm_results:
+                content, result_index = urls_needing_llm[url]
+                old = results[result_index]
+                results[result_index] = tracking_data.TrackedScript(
+                    url=old.url,
+                    domain=old.domain,
+                    description=description,
+                    resource_type=old.resource_type,
+                )
+                if content:
+                    newly_analyzed.append(
+                        script_cache.CachedScript(
+                            url=url,
+                            content_hash=script_cache.compute_hash(content),
+                            description=description,
+                        )
+                    )
+
+        # ── Save script cache ──────────────────────────────────
+        if domain and newly_analyzed:
+            script_cache.save(domain, newly_analyzed, existing=cache_entry)
 
         if on_progress:
             on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete...")
@@ -307,7 +366,8 @@ async def analyze_scripts(
         log.success(
             "Script analysis complete",
             {
-                "analyzed": total_to_analyze,
+                "analyzed": llm_to_analyze,
+                "cacheHits": cache_hits,
                 "concurrency": MAX_CONCURRENCY,
                 "grouped": grouped_count,
                 "total": len(results),

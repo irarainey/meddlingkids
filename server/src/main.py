@@ -65,14 +65,15 @@ app.add_middleware(
 async def analyze_endpoint(
     url: str = fastapi.Query(..., description="The URL to analyze"),
     device: str = fastapi.Query("ipad", description="Device type to emulate"),
+    clear_cache: bool = fastapi.Query(False, alias="clear-cache", description="Clear all caches before analysis"),
 ) -> responses.StreamingResponse:
     """
     Analyze tracking on a URL with streaming progress via SSE.
     """
-    log.info("Incoming analysis request", {"url": url, "device": device})
+    log.info("Incoming analysis request", {"url": url, "device": device, "clearCache": clear_cache})
 
     async def event_generator():
-        async for event_str in stream.analyze_url_stream(url, device):
+        async for event_str in stream.analyze_url_stream(url, device, clear_cache=clear_cache):
             yield event_str
 
     return responses.StreamingResponse(

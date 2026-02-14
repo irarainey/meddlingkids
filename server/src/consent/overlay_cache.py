@@ -255,21 +255,27 @@ def merge_and_save(
     overlays: list[CachedOverlay] = []
 
     # Carry forward previous entries that didn't fail.
+    carried_forward = 0
+    dropped = 0
     if previous_entry:
         for cached in previous_entry.overlays:
             if cached.overlay_type in failed_types:
+                dropped += 1
                 continue
             key = f"{cached.locator_strategy}|{cached.button_text or ''}|{cached.css_selector or ''}"
             if key not in seen_keys:
                 seen_keys.add(key)
                 overlays.append(cached)
+                carried_forward += 1
 
     # Add new overlays.
+    added_new = 0
     for overlay in new_overlays:
         key = f"{overlay.locator_strategy}|{overlay.button_text or ''}|{overlay.css_selector or ''}"
         if key not in seen_keys:
             seen_keys.add(key)
             overlays.append(overlay)
+            added_new += 1
 
     # Drop reject-style cookie-consent entries when an
     # accept alternative for the same overlay type exists.
@@ -286,6 +292,17 @@ def merge_and_save(
     if not overlays:
         remove(domain)
         return
+
+    log.info(
+        "Overlay cache merge",
+        {
+            "domain": domain,
+            "carriedForward": carried_forward,
+            "newOverlays": added_new,
+            "dropped": dropped,
+            "total": len(overlays),
+        },
+    )
 
     entry = OverlayCacheEntry(
         domain=domain,

@@ -21,6 +21,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
 - 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
+- ⚡ **Smart Caching** — Caches script analysis, domain knowledge, and overlay strategies to reduce LLM calls and speed up repeat analyses
 
 ## How It Works
 
@@ -100,7 +101,7 @@ meddlingkids/
 │       │   └── prompts/       # System prompts (one module per agent)
 │       ├── browser/           # Browser automation (Playwright session, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache)
-│       ├── analysis/          # Tracking analysis, script ID, privacy scoring
+│       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
 │       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
@@ -108,14 +109,52 @@ meddlingkids/
 │       ├── data/              # Static pattern databases (JSON)
 │       │   ├── partners/      # Partner risk databases (8 JSON files)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
-│       └── utils/             # Cross-cutting utilities (logging, errors, URL, images)
+│       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache mgmt)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
 ├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)
 ├── .cache/                    # Analysis caches (auto-created)
 │   ├── domain/                # Domain knowledge cache for cross-run consistency
-│   └── overlay/               # Overlay dismissal cache per domain
+│   ├── overlay/               # Overlay dismissal cache per domain
+│   └── scripts/               # Script analysis cache (URL + content hash)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
+```
+
+## Caching
+
+Meddling Kids uses three per-domain caches stored in `server/.cache/`
+to speed up repeat analyses and reduce LLM calls. Cache files are
+JSON, created automatically, and gitignored.
+
+| Cache | Directory | What It Stores | Saves |
+|-------|-----------|---------------|-------|
+| **Script analysis** | `.cache/scripts/` | LLM-generated descriptions of unknown scripts, keyed by URL and MD5 content hash | LLM calls for every previously analysed script whose content has not changed |
+| **Domain knowledge** | `.cache/domain/` | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
+| **Overlay dismissal** | `.cache/overlay/` | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type) | LLM vision calls for overlay detection on repeat visits |
+
+### How It Helps
+
+- **Fewer LLM calls** — On a warm run the script analysis cache
+  serves all previously seen scripts from disk. In testing against
+  a large news site, a cold run made 72 LLM script calls while
+  subsequent warm runs made zero.
+- **Faster analysis** — Skipping those LLM calls reduced total
+  analysis time by approximately 14%.
+- **Consistent results** — The domain knowledge cache injects prior
+  classifications into the LLM context, keeping tracker names,
+  cookie categories, and vendor roles stable across runs.
+- **Automatic invalidation** — Script cache entries are invalidated
+  when the content hash changes. Domain cache entries not seen for 3
+  consecutive scans are pruned. Overlay entries whose clicks fail
+  are dropped on merge.
+
+### Clearing the Cache
+
+To clear all caches before a run, tick the **Clear cache** checkbox
+in the UI or pass `?clear-cache=true` in the API URL:
+
+```
+/api/open-browser-stream?url=https://example.com&device=ipad&clear-cache=true
 ```
 
 ## How to Run Locally
