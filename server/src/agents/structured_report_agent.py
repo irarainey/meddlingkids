@@ -413,10 +413,14 @@ def _build_data_context(
         sections.extend(
             [
                 "",
-                "## Pre-Consent Activity (before user granted consent)",
-                f"- Cookies (before consent): {pre_consent_stats.total_cookies} ({pre_consent_stats.tracking_cookies} tracking)",
-                f"- Scripts (before consent): {pre_consent_stats.total_scripts} ({pre_consent_stats.tracking_scripts} tracking)",
-                f"- Requests (before consent): {pre_consent_stats.total_requests} ({pre_consent_stats.tracker_requests} tracking)",
+                "## Activity on Initial Page Load (before any dialogs were dismissed)",
+                "NOTE: This is what was present when the page first loaded.",
+                "We cannot confirm whether these scripts use the cookies listed,",
+                "whether any dialog is a consent dialog, or whether this activity",
+                "falls within the scope of what the user is asked to consent to.",
+                f"- Cookies on load: {pre_consent_stats.total_cookies} ({pre_consent_stats.tracking_cookies} matched tracking patterns)",
+                f"- Scripts on load: {pre_consent_stats.total_scripts} ({pre_consent_stats.tracking_scripts} matched tracking patterns)",
+                f"- Requests on load: {pre_consent_stats.total_requests} ({pre_consent_stats.tracker_requests} matched tracking patterns)",
             ]
         )
 

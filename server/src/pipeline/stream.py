@@ -230,8 +230,14 @@ async def analyze_url_stream(
                 yield refresh_event
             log.debug("Stage 1 screenshot refresher ended")
 
-            # Snapshot pre-consent data and classify what is
+            # Snapshot page-load data and classify what is
             # actually tracking vs legitimate infrastructure.
+            # This runs before any overlay is dismissed —
+            # some overlays (e.g. sign-in prompts) may not
+            # be consent-related.  We cannot determine from
+            # this snapshot whether scripts use the cookies
+            # present, whether a dialog is a consent dialog,
+            # or whether the activity is covered by consent.
             pre_consent_stats = tracking_summary.build_pre_consent_stats(
                 session.get_tracked_cookies(),
                 session.get_tracked_scripts(),

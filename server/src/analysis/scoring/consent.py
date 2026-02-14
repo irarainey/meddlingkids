@@ -1,9 +1,10 @@
-"""Consent, partner, and pre-consent tracking scoring.
+"""Consent, partner, and page-load tracking scoring.
 
-Evaluates pre-consent tracking violations, data-sharing
-partner counts, partner risk classifications, the quality
-of consent disclosures, and the volume of data collection
-that occurs before the user has given consent.
+Evaluates the volume of tracking infrastructure on the page,
+data-sharing partner counts, partner risk classifications,
+the quality of consent disclosures, and the amount of
+tracking-related activity present on initial page load
+before any dialogs were dismissed.
 """
 
 from __future__ import annotations
@@ -26,18 +27,19 @@ def calculate(
 ) -> analysis.CategoryScore:
     """Score consent-related privacy issues.
 
-    Assesses tracking scripts loaded before consent, the
-    number and risk of data-sharing partners, the quality
-    of consent language, and the raw volume of data
-    collection that occurs before consent is given.
+    Assesses the volume of tracking scripts on the page,
+    the number and risk of data-sharing partners, the quality
+    of consent language, and the amount of tracking-related
+    activity present on initial page load before any dialogs
+    were dismissed.
 
     Args:
         consent_details: Extracted consent dialog info, if any.
         cookies: All captured cookies.
         scripts: All captured scripts.
-        pre_consent_stats: Data volumes before consent was
-            given.  Used to penalise aggressive pre-consent
-            tracking and data collection.
+        pre_consent_stats: Classified tracking volumes captured
+            on initial page load before any dialogs were
+            dismissed.
 
     Returns:
         CategoryScore with uncapped raw points.
@@ -58,25 +60,28 @@ def calculate(
     tracking_scripts = [s for s in scripts if any(re.search(t.pattern, s.url, re.IGNORECASE) for t in tracking_patterns)]
 
     log.debug(
-        "Pre-consent tracking",
+        "Tracking script detection",
         data={
             "tracking_scripts": len(tracking_scripts),
         },
     )
 
-    # ── Pre-consent tracking ────────────────────────────────
+    # ── Tracking script volume ───────────────────────────────
+    # Penalise the total number of known tracking scripts
+    # present on the page.  Whether they loaded before or
+    # after consent is scored separately via pre_consent_stats.
     if len(tracking_scripts) > 10:
         points += 12
-        issues.append(f"{len(tracking_scripts)} tracking scripts loaded BEFORE consent given (serious violation)")
+        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
     elif len(tracking_scripts) > 5:
         points += 10
-        issues.append(f"{len(tracking_scripts)} tracking scripts loaded BEFORE consent given (violation)")
+        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
     elif len(tracking_scripts) > 2:
         points += 7
-        issues.append(f"{len(tracking_scripts)} tracking scripts loaded before consent")
+        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
     elif len(tracking_scripts) > 0:
         points += 4
-        issues.append("Tracking active before consent given")
+        issues.append("Tracking scripts detected on page")
 
     if not consent_details:
         has_tracking = len(cookies) > 5 or len(tracking_scripts) > 0
@@ -185,9 +190,9 @@ def calculate(
         points += 3
         issues.append("Consent uses vague terms to justify tracking")
 
-    # ── Pre-consent data volume ─────────────────────────────
-    # Penalise the raw volume of tracking infrastructure that
-    # fires before the user has accepted the consent dialog.
+    # ── Page-load tracking volume ───────────────────────────
+    # Penalise known tracking activity present on initial
+    # page load before any dialog was dismissed.
     points += _score_pre_consent_volume(pre_consent_stats, issues)
 
     log.info(
@@ -209,7 +214,7 @@ def _score_pre_consent_volume(
     stats: analysis.PreConsentStats | None,
     issues: list[str],
 ) -> int:
-    """Score *classified* pre-consent tracking activity.
+    """Score tracking activity present on initial page load.
 
     Only penalises items that matched known tracker patterns
     (tracking cookies, tracking scripts, tracker network
@@ -218,8 +223,15 @@ def _score_pre_consent_volume(
     load 30–100+ scripts and make 50–200 requests just to
     render the page.
 
+    The snapshot is taken before any overlay or dialog is
+    dismissed.  We cannot determine whether observed scripts
+    actually use the cookies present, whether the dialog is
+    a consent dialog (vs sign-in), or whether the tracked
+    activity is something the user could consent to.  Issue
+    language is therefore purely observational.
+
     Args:
-        stats: Categorised pre-consent snapshot.
+        stats: Categorised page-load snapshot.
         issues: Mutable issue list to append to.
 
     Returns:
@@ -230,42 +242,42 @@ def _score_pre_consent_volume(
 
     pts = 0
 
-    # ── Tracking cookies before consent ─────────────────────
-    # These are cookies whose names match known tracker
-    # patterns (_ga, _fbp, IDE, etc.).  Setting them before
-    # consent is a clear GDPR violation.
+    # ── Tracking cookies on page load ───────────────────────
+    # Cookies whose names match known tracker patterns
+    # (_ga, _fbp, IDE, etc.) present on initial page load
+    # before any dialog was dismissed.
     if stats.tracking_cookies > 10:
         pts += 5
-        issues.append(f"{stats.tracking_cookies} tracking cookies set before consent (serious violation)")
+        issues.append(f"{stats.tracking_cookies} tracking cookies present on initial page load")
     elif stats.tracking_cookies > 5:
         pts += 3
-        issues.append(f"{stats.tracking_cookies} tracking cookies set before consent")
+        issues.append(f"{stats.tracking_cookies} tracking cookies present on initial page load")
     elif stats.tracking_cookies > 0:
         pts += 1
-        issues.append(f"{stats.tracking_cookies} tracking cookie{'s' if stats.tracking_cookies > 1 else ''} set before consent")
+        issues.append(f"{stats.tracking_cookies} tracking cookie{'s' if stats.tracking_cookies > 1 else ''} present on initial page load")
 
-    # ── Tracking scripts before consent ─────────────────────
+    # ── Tracking scripts on page load ───────────────────────
     # Scripts matching known tracker databases (ad scripts,
     # analytics, session replay, etc.).  Non-tracking scripts
     # like UI frameworks are not penalised.
     if stats.tracking_scripts > 10:
         pts += 5
-        issues.append(f"{stats.tracking_scripts} tracking scripts loaded before consent")
+        issues.append(f"{stats.tracking_scripts} tracking scripts loaded on initial page load")
     elif stats.tracking_scripts > 5:
         pts += 3
-        issues.append(f"{stats.tracking_scripts} tracking scripts loaded before consent")
+        issues.append(f"{stats.tracking_scripts} tracking scripts loaded on initial page load")
     elif stats.tracking_scripts > 0:
         pts += 1
 
-    # ── Tracker network requests before consent ─────────────
+    # ── Tracker network requests on page load ───────────────
     # Third-party requests to known tracker domains
     # (ad servers, analytics endpoints, pixels, etc.).
     if stats.tracker_requests > 20:
         pts += 5
-        issues.append(f"{stats.tracker_requests} tracker requests fired before consent (data sharing without permission)")
+        issues.append(f"{stats.tracker_requests} tracker requests observed on initial page load")
     elif stats.tracker_requests > 10:
         pts += 3
-        issues.append(f"{stats.tracker_requests} tracker requests fired before consent")
+        issues.append(f"{stats.tracker_requests} tracker requests observed on initial page load")
     elif stats.tracker_requests > 3:
         pts += 1
 

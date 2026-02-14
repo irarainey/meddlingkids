@@ -112,11 +112,19 @@ def build_pre_consent_stats(
     requests: list[tracking_data.NetworkRequest],
     storage: dict[str, list[tracking_data.StorageItem]],
 ) -> analysis.PreConsentStats:
-    """Snapshot tracking data before consent is given.
+    """Snapshot tracking data on initial page load.
 
     Classifies cookies, scripts, and requests as tracking
     vs. legitimate infrastructure using compiled pattern
-    databases.
+    databases.  This snapshot is taken before any overlay
+    or dialog (including non-consent overlays like sign-in
+    prompts) is dismissed.
+
+    We cannot determine from this snapshot alone whether:
+    - the observed scripts actually use the cookies present,
+    - any dialog is a consent dialog (vs sign-in / paywall),
+    - the tracked activity is covered by what the user is
+      asked to consent to.
 
     Args:
         cookies: Currently tracked cookies.
@@ -126,7 +134,7 @@ def build_pre_consent_stats(
             ``session_storage`` lists.
 
     Returns:
-        Pre-consent statistics for scoring calibration.
+        Page-load statistics for scoring calibration.
     """
     tracking_patterns_db = loader.get_tracking_scripts()
     url_combined = tracker_patterns.ALL_URL_TRACKERS_COMBINED

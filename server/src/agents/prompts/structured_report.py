@@ -124,12 +124,24 @@ List EXACTLY 5 specific factors that contribute to this risk level, each with:
   "medium" — pseudonymous analytics, audience measurement, \
 moderate third-party presence, persistent identifiers without \
 cross-site capability.
-  "high" — pre-consent tracking that bypasses user choice, \
-undisclosed data sharing with third parties, cross-site \
-identity resolution, or advertising/retargeting networks.
+  "high" — undisclosed data sharing with third parties, \
+cross-site identity resolution, advertising/retargeting \
+networks, or data broker integrations not mentioned in \
+the consent dialog.
   "critical" — data broker involvement, fingerprinting for \
 cross-site identity, deceptive consent practices, or \
 sensitive data exfiltration.
+
+IMPORTANT — language around page-load tracking activity:
+Scripts and cookies present on initial page load (before any \
+dialogs are dismissed) are an observation, NOT proof of a \
+consent breach. We cannot determine whether a dismissed dialog \
+is a consent dialog, whether the scripts actually use those \
+cookies, or whether the activity falls within the scope of what \
+the user is asked to consent to. Do NOT use "high" or "critical" \
+severity for page-load tracking activity alone. Describe it \
+factually (e.g. "tracking scripts present on initial page load") \
+without claiming it bypasses or violates consent.
 
 Individual factors can have higher severity than the overall risk \
 when a specific practice is genuinely concerning, but the overall_risk \
@@ -216,10 +228,12 @@ that violates regulation (e.g. no dialog at all while tracking heavily, \
 or dark patterns designed to trick users into accepting).
 - "high": Material gap between disclosure and reality, such as \
 claiming no third-party sharing while dozens of third-party trackers \
-fire, or pre-consent tracking that bypasses user choice entirely.
+fire, or undisclosed data broker integrations.
 - "medium": Vague or incomplete disclosure — e.g. consent categories \
-are too broad, partner count understated, or cookie descriptions \
-are misleading but not deceptive.
+are too broad, partner count understated, cookie descriptions \
+are misleading but not deceptive, or tracking-related scripts and \
+cookies present on initial page load (which may or may not be \
+covered by the consent dialog).
 - "low": Minor omission or cosmetic mismatch with no material \
 privacy impact, such as a slightly outdated partner count.
 
@@ -228,8 +242,10 @@ Highlight practices where the actual data collection significantly \
 exceeds what is disclosed to users.
 
 Produce the SAME severity for the SAME type of discrepancy across \
-every analysis run. For example, pre-consent tracking should \
-always be rated "high", not sometimes "high" and sometimes "medium"."""
+every analysis run. Do NOT claim that page-load tracking activity \
+violates consent or bypasses user choice — we cannot confirm \
+whether the scripts use those cookies or whether the activity is \
+covered by the consent dialog."""
 
 VENDOR = """\
 You are a privacy expert. Identify the most significant vendors/partners \

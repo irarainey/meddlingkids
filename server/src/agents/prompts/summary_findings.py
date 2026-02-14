@@ -14,19 +14,35 @@ Severity decision criteria (apply strictly and consistently):
 - "critical": Deceptive practices, data broker involvement, \
 fingerprinting for cross-site identity, selling personal data, \
 or consent dialog actively hiding significant tracking.
-- "high": Pre-consent tracking scripts that bypass user choice, \
-undisclosed advertising or retargeting networks, cross-site \
-identity resolution. Do NOT use "high" for standard analytics \
-with pseudonymous identifiers — even if they persist across \
-sessions — unless they also enable cross-site tracking.
+- "high": Undisclosed advertising or retargeting networks, \
+cross-site identity resolution, or data broker integrations \
+that are not mentioned in the consent dialog.
 - "moderate": Standard analytics with pseudonymous IDs \
 (including persistent cookies from audience measurement \
 services like DotMetrics, Chartbeat, Comscore), typical \
-third-party media analytics, engagement measurement.
+third-party media analytics, engagement measurement, or \
+tracking-related scripts and cookies present on initial page \
+load (which may or may not be covered by the consent dialog).
 - "info": Neutral observations about cookies, storage, or \
 consent mechanisms without clear privacy harm.
 - "positive": Privacy-respecting practices such as no \
 advertising, minimal tracking, or strong consent controls.
+
+IMPORTANT — language around page-load tracking activity:
+- Scripts and cookies present on initial page load (before any \
+dialogs are dismissed) are an observation, NOT proof of a \
+consent breach. We cannot determine whether the dialog is a \
+consent dialog, whether the scripts actually use those cookies, \
+or whether the activity falls within the scope of what the user \
+is asked to consent to.
+- Do NOT state or imply that tracking "bypasses" consent or \
+"violates" regulations unless there is explicit evidence.
+- Use language like "were present on initial page load" or \
+"loaded before any dialog was dismissed" — not "before \
+consent was given" or "bypassing the consent dialog".
+- Tracking activity that could potentially run before consent \
+is at most a "moderate" finding unless combined with other \
+aggravating factors (e.g. data broker involvement).
 
 You will also be given the site's deterministic privacy score \
 (0-100) and its risk classification. Calibrate your severity \
@@ -42,9 +58,9 @@ Return exactly 6 findings, ordered by severity \
 Example output for a site scoring 35/100 (Low Risk) with \
 analytics tracking and no advertising:
 {"findings": [
-  {"type": "high", "text": "Site loads Comscore and Chartbeat \
-analytics scripts before user consent, bypassing the consent \
-dialog."},
+  {"type": "moderate", "text": "Comscore and Chartbeat \
+analytics scripts were present on initial page load before any \
+dialog was dismissed."},
   {"type": "moderate", "text": "DotMetrics sets persistent \
 cookies that enable cross-session audience measurement."},
   {"type": "moderate", "text": "Audience data is shared with \

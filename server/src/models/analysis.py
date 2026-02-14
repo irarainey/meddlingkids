@@ -65,14 +65,21 @@ class CategoryScore(pydantic.BaseModel):
 
 
 class PreConsentStats(pydantic.BaseModel):
-    """Categorised pre-consent data snapshot.
+    """Categorised page-load data snapshot.
 
     Captures both raw totals and *classified* counts so the
-    consent scorer can penalise actual tracking activity
+    consent scorer can assess actual tracking activity
     rather than raw infrastructure volume.  Modern sites
     legitimately load dozens of scripts and make hundreds of
     requests just to render — only items that match known
-    tracker patterns count as violations.
+    tracker patterns are flagged as tracking activity.
+
+    This snapshot is taken before any overlay or dialog is
+    dismissed.  We cannot determine from this data whether
+    observed scripts actually use the cookies present,
+    whether a dialog is a consent dialog, or whether the
+    tracked activity falls within the scope of what the
+    user is asked to consent to.
     """
 
     # Raw totals (for logging / context only)
