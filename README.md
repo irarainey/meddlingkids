@@ -150,8 +150,14 @@ JSON, created automatically, and gitignored.
 
 ### Clearing the Cache
 
-To clear all caches before a run, tick the **Clear cache** checkbox
-in the UI or pass `?clear-cache=true` in the API URL:
+To clear all caches before a run, add `?clear-cache=true` to the
+page URL in the browser:
+
+```
+http://localhost:5173/?clear-cache=true
+```
+
+Or pass it directly in the API URL:
 
 ```
 /api/open-browser-stream?url=https://example.com&device=ipad&clear-cache=true

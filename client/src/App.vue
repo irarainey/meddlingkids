@@ -21,7 +21,6 @@ const {
   // State
   inputValue,
   deviceType,
-  clearCache,
   isLoading,
   isComplete,
   screenshots,
@@ -120,10 +119,6 @@ function handleViewReport(): void {
       <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
         {{ isLoading ? 'Investigating...' : 'Unmask' }}
       </button>
-      <label class="clear-cache-label" title="Clear all server caches before analysis">
-        <input v-model="clearCache" type="checkbox" :disabled="isLoading" />
-        Clear cache
-      </label>
     </div>
 
     <!-- Loading Banner with Progress -->
@@ -336,26 +331,6 @@ function handleViewReport(): void {
 
 .go-button:disabled {
   background-color: #4a5568;
-  cursor: not-allowed;
-}
-
-.clear-cache-label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  color: #a0aec0;
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-}
-
-.clear-cache-label input[type="checkbox"] {
-  accent-color: #0c67ac;
-  cursor: pointer;
-}
-
-.clear-cache-label input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 

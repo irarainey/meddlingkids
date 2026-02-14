@@ -251,7 +251,6 @@ All state lives in `useTrackingAnalysis.ts` composable:
 // Input state
 inputValue           // URL text field
 deviceType           // Selected device emulation
-clearCache           // Clear all server caches before analysis
 
 // Loading state
 isLoading            // Analysis in progress
@@ -653,9 +652,10 @@ repeat visits skip the LLM vision detection step.
 
 All caches can be cleared before analysis:
 
-- **UI:** Tick the **Clear cache** checkbox next to the Unmask
-  button.
-- **API:** Pass `?clear-cache=true` in the query string.
+- **Page URL:** Add `?clear-cache=true` to the browser URL
+  (e.g. `http://localhost:5173/?clear-cache=true`). The client
+  reads this query parameter on load and forwards it to the API.
+- **API:** Pass `?clear-cache=true` in the API query string.
 - **Code:** Call `src.utils.cache.clear_all()`.
 
 The `clear_all()` function removes every JSON file in all three

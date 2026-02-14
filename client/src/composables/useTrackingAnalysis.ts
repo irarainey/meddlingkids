@@ -32,8 +32,8 @@ export function useTrackingAnalysis() {
   const inputValue = ref('')
   /** Selected device/browser type */
   const deviceType = ref('ipad')
-  /** Whether to clear all server caches before analysis */
-  const clearCache = ref(false)
+  /** Whether to clear all server caches before analysis (read from ?clear-cache=true in the page URL) */
+  const clearCache = new URLSearchParams(window.location.search).get('clear-cache') === 'true'
   /** Whether analysis is in progress */
   const isLoading = ref(false)
   /** Whether analysis has completed */
@@ -281,7 +281,7 @@ export function useTrackingAnalysis() {
       // Use relative URL in production (same origin), absolute in development
       const apiBase = import.meta.env.VITE_API_URL || ''
       const eventSource = new EventSource(
-        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}${clearCache.value ? '&clear-cache=true' : ''}`
+        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}${clearCache ? '&clear-cache=true' : ''}`
       )
       activeEventSource = eventSource
 
@@ -480,7 +480,6 @@ export function useTrackingAnalysis() {
     // State
     inputValue,
     deviceType,
-    clearCache,
     isLoading,
     isComplete,
     screenshots,
