@@ -52,6 +52,9 @@ identity resolution or data broker services
 by tracking scripts
 - Any POST request payloads containing personal data
 
+Do not fabricate data types or sharing relationships. Only describe what can be \
+reasonably inferred from the cookies, scripts, storage, and network requests provided.
+
 Focus on factual observations from the cookies, scripts, storage, and network \
 requests provided. Be specific about which cookies, storage keys, or network \
 requests indicate each type of data collection and sharing."""
@@ -66,6 +69,9 @@ Provide:
   - services: List of company or service names in this group
   - privacy_impact: One-sentence impact statement
 - summary: One-sentence overall summary
+
+Be specific and factual. Do not fabricate domain names or company associations. \
+Only categorise domains you can confirm from the data provided.
 
 Focus on the most significant domains. Group similar services together."""
 
@@ -91,6 +97,9 @@ must align with the deterministic score above.
 
 Provide a concise summary explaining the overall risk assessment.
 
+Do not fabricate factors or severity levels. Only list those supported \
+by the data provided.
+
 Base your assessment strictly on the data provided — number of trackers, \
 third-party domains, cookie persistence, identity systems, data broker \
 involvement, network request volume, and pre-consent tracking activity."""
@@ -107,6 +116,8 @@ Provide:
   - concern_level: "none", "low", "medium", or "high"
 - concerning_cookies: List of the most concerning individual cookies with brief reasons
 
+Be specific and factual. Do not fabricate cookie names or purposes.
+
 Only classify cookies you can identify from their names and domains."""
 
 STORAGE_ANALYSIS = """\
@@ -118,6 +129,10 @@ Provide:
 - local_storage_concerns: List of concerning localStorage observations
 - session_storage_concerns: List of concerning sessionStorage observations
 - summary: One-sentence overall assessment
+
+Be specific and factual. Do not fabricate information. \
+Only describe what can be reasonably inferred from the storage keys \
+and values provided.
 
 Focus on items that indicate tracking, identity persistence, or \
 behavioural profiling. Mention specific key names where relevant."""
@@ -153,8 +168,9 @@ are misleading but not deceptive.
 - "low": Minor omission or cosmetic mismatch with no material \
 privacy impact, such as a slightly outdated partner count.
 
-Be specific and factual. Highlight practices where the actual data \
-collection significantly exceeds what is disclosed to users."""
+Be specific and factual. Do not fabricate numbers. \
+Highlight practices where the actual data collection significantly \
+exceeds what is disclosed to users."""
 
 VENDOR = """\
 You are a privacy expert. Identify the most significant vendors/partners \
@@ -165,6 +181,10 @@ Always return 32 entries unless fewer than 32 distinct vendors exist in the data
 - name: Company name
 - role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
 - privacy_impact: One-sentence privacy impact description
+
+Be specific and factual. Do not fabricate vendors not evidenced by the data. \
+Focus on those involved in cross-site tracking, identity resolution, \
+data brokerage, retargeting, and extensive data collection.
 
 Focus on vendors involved in cross-site tracking, identity resolution, \
 data brokerage, retargeting, and extensive data collection. You MUST \

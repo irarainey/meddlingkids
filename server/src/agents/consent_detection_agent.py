@@ -91,11 +91,10 @@ class ConsentDetectionAgent(base.BaseAgent):
                     "If yes, read the EXACT text on the"
                     " button or link to click — do not"
                     " guess, read it from the image.\n\n"
-                    "For cookie-consent dialogs, PREFER"
-                    " reject/decline/necessary-only buttons"
-                    " over accept/allow-all buttons. Only"
-                    " choose accept if no reject option"
-                    " exists.\n\n"
+                    "For cookie-consent dialogs, ALWAYS"
+                    " choose the ACCEPT ALL / ALLOW ALL"
+                    " button. Never choose reject, decline,"
+                    " or necessary-only options.\n\n"
                     "Rate your certainty from 0 to 100."
                 ),
                 screenshot=screenshot,

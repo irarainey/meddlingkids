@@ -297,6 +297,45 @@ class OverlayPipeline:
                         yield event
                     break
 
+            # ── Prefer accept over LLM-detected reject ─────
+            # The LLM may return a reject button despite the
+            # prompt asking for accept.  Search the DOM for
+            # an accept alternative before proceeding.
+            if detection.overlay_type == "cookie-consent" and detection.button_text and _REJECT_BUTTON_RE.search(detection.button_text):
+                accept_alt = await _find_accept_button(found_in_frame)
+                if accept_alt:
+                    log.info(
+                        "Found accept button — overriding LLM-detected reject",
+                        {
+                            "llmButton": detection.button_text,
+                            "acceptButton": accept_alt,
+                        },
+                    )
+                    detection = consent.CookieConsentDetection(
+                        found=True,
+                        overlay_type="cookie-consent",
+                        selector=None,
+                        button_text=accept_alt,
+                        confidence=detection.confidence,
+                        reason="accept preferred over LLM-detected reject",
+                    )
+                    alt_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
+                    if alt_frame:
+                        found_in_frame = alt_frame
+                    else:
+                        log.warn(
+                            "Accept button not found on re-validation — using LLM detection",
+                        )
+                        detection = await overlay_steps.detect_overlay(session, overlay_count)
+                        found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
+                        if not found_in_frame:
+                            for event in overlay_steps.build_no_overlay_events(
+                                overlay_count,
+                                "Accept override failed and re-detection lost the element",
+                            ):
+                                yield event
+                            break
+
             overlay_count += 1
             progress_base = self._next_progress_base(overlay_count)
 

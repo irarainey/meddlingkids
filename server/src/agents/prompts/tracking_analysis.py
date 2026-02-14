@@ -44,6 +44,9 @@ headings. Be specific about which domains and cookies you \
 are referring to. If you recognise specific tracking \
 technologies, name them explicitly.
 
+Do not fabricate information. Only describe what can be \
+reasonably inferred from the data provided.
+
 IMPORTANT: Pay special attention to the consent dialog \
 information if provided — this is what users typically \
 do not read but agree to. Highlight the most concerning \

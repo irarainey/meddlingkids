@@ -207,6 +207,15 @@ def merge_and_save(
         new_overlays: Overlays dismissed in this run.
         failed_types: Overlay types whose clicks failed.
     """
+    # Regex for reject-style button text that should be
+    # dropped from cache when an accept alternative exists.
+    import re
+
+    _reject_re = re.compile(
+        r"reject|decline|deny|refuse|necessary only|essential only",
+        re.IGNORECASE,
+    )
+
     seen_keys: set[str] = set()
     overlays: list[CachedOverlay] = []
 
@@ -226,6 +235,18 @@ def merge_and_save(
         if key not in seen_keys:
             seen_keys.add(key)
             overlays.append(overlay)
+
+    # Drop reject-style cookie-consent entries when an
+    # accept alternative for the same overlay type exists.
+    # This prevents stale reject entries from accumulating
+    # in the cache after an accept override.
+    consent_types = {o.overlay_type for o in overlays if o.overlay_type == "cookie-consent"}
+    if "cookie-consent" in consent_types:
+        has_accept = any(o.overlay_type == "cookie-consent" and o.button_text and not _reject_re.search(o.button_text) for o in overlays)
+        if has_accept:
+            overlays = [
+                o for o in overlays if not (o.overlay_type == "cookie-consent" and o.button_text and _reject_re.search(o.button_text))
+            ]
 
     if not overlays:
         remove(domain)

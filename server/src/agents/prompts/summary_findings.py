@@ -55,4 +55,9 @@ partners."},
 retargeting, or data broker integrations are present."}
 ]}
 
+Be specific and factual. Do not fabricate findings or severity \
+labels. Only describe practices that can be reasonably inferred from \
+the data provided. Focus on naming specific companies, tracking \
+technologies, and practices. Avoid vague generalities.
+
 Return ONLY a JSON object matching the required schema."""

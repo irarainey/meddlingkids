@@ -176,4 +176,43 @@ the primary way the button will be found and clicked.
 - Banners that have already been dismissed
 - Navigation menus, footers, or page chrome
 
+# Few-shot examples
+
+Below are examples showing the CORRECT button to choose. \
+Study these carefully.
+
+**Example 1** -- A banner shows two buttons: \
+"Reject additional cookies" and \
+"Accept additional cookies". \
+→ CORRECT: buttonText = "Accept additional cookies" \
+→ WRONG: "Reject additional cookies"
+
+**Example 2** -- A dialog shows: \
+"Reject all and subscribe" and \
+"Accept all". \
+→ CORRECT: buttonText = "Accept all" \
+→ WRONG: "Reject all and subscribe"
+
+**Example 3** -- A consent banner shows: \
+"Necessary only", "Manage preferences", and \
+"Allow all cookies". \
+→ CORRECT: buttonText = "Allow all cookies" \
+→ WRONG: "Necessary only" or "Manage preferences"
+
+**Example 4** -- A cookie dialog shows: \
+"Decline", "Cookie settings", and "Accept & close". \
+→ CORRECT: buttonText = "Accept & close" \
+→ WRONG: "Decline" or "Cookie settings"
+
+**Example 5** -- A full-page consent dialog shows: \
+"Continue without accepting" and "Accept all cookies". \
+→ CORRECT: buttonText = "Accept all cookies" \
+→ WRONG: "Continue without accepting"
+
+**Example 6** -- A sign-in prompt with no consent buttons. \
+The only options are "Sign in" and "Maybe later". \
+→ CORRECT: buttonText = "Maybe later" \
+(This is a sign-in overlay, not cookie-consent. \
+Choose the dismiss/skip option.)
+
 Return ONLY a JSON object matching the required schema."""
