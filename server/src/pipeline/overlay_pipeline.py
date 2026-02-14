@@ -18,7 +18,7 @@ import pydantic
 from playwright import async_api
 
 from src.browser import session as browser_session
-from src.consent import overlay_cache
+from src.consent import click, overlay_cache
 from src.models import consent, tracking_data
 from src.pipeline import overlay_steps, sse_helpers
 from src.utils import logger
@@ -129,6 +129,7 @@ class OverlayPipeline:
         self.result = OverlayHandlingResult()
         self._cache_dismissed = 0
         self._failed_cache_types: set[str] = set()
+        self._new_overlays: list[overlay_cache.CachedOverlay] = []
         self._deferred_extraction: tuple[bytes, str | None] | None = None
         # High-water mark for progress values.  Ensures that
         # progress events emitted by the overlay pipeline are
@@ -386,19 +387,14 @@ class OverlayPipeline:
             )
 
             try:
-                clicked = False
-                async for event in overlay_steps.click_and_capture(
-                    session,
+                click_result = await overlay_steps.try_overlay_click(
                     page,
                     detection,
                     overlay_count,
-                    progress_base,
                     found_in_frame=found_in_frame,
-                ):
-                    clicked = True
-                    yield event
+                )
 
-                if not clicked:
+                if not click_result.success:
                     # Record this detection so we don't
                     # waste time re-detecting it.
                     failed_signatures.add(sig)
@@ -437,6 +433,26 @@ class OverlayPipeline:
                             },
                         )
                     break
+
+                # Click succeeded — capture post-click state
+                async for event in overlay_steps.capture_after_click(
+                    session,
+                    page,
+                    detection,
+                    overlay_count,
+                    progress_base,
+                ):
+                    yield event
+
+                self._new_overlays.append(
+                    overlay_cache.CachedOverlay(
+                        overlay_type=detection.overlay_type or "other",
+                        button_text=detection.button_text,
+                        css_selector=detection.selector,
+                        locator_strategy=click_result.strategy or "role-button",
+                        frame_type=click_result.frame_type or "main",
+                    )
+                )
 
                 # Update screenshot for next iteration
                 screenshot = await session.take_screenshot(full_page=False)
@@ -514,7 +530,7 @@ class OverlayPipeline:
 
         # ── Persist / merge cache ───────────────────────
         if result.overlay_count > 0 and not result.failed and self._domain:
-            self._save_cache(result, cached_entry)
+            self._save_cache(cached_entry)
 
     # ── Cached overlay helpers ──────────────────────────────
 
@@ -559,7 +575,7 @@ class OverlayPipeline:
                 overlay_type=(
                     cached.overlay_type  # type: ignore[arg-type]
                 ),
-                selector=cached.selector,
+                selector=cached.css_selector,
                 button_text=cached.button_text,
                 confidence="high",
                 reason="from overlay cache",
@@ -634,7 +650,7 @@ class OverlayPipeline:
                             overlay_type=(
                                 cached.overlay_type  # type: ignore[arg-type]
                             ),
-                            selector=cached.selector,
+                            selector=cached.css_selector,
                             button_text=(cached.button_text),
                             confidence="high",
                             reason=("from overlay cache"),
@@ -648,7 +664,8 @@ class OverlayPipeline:
                 {
                     "type": cached.overlay_type,
                     "buttonText": detection.button_text,
-                    "accessorType": cached.accessor_type,
+                    "locatorStrategy": cached.locator_strategy,
+                    "frameType": cached.frame_type,
                 },
             )
 
@@ -683,19 +700,14 @@ class OverlayPipeline:
                 progress_base + 1,
             )
 
-            # Attempt click — stream events in real-time
-            click_ok = False
+            # Attempt click
             try:
-                async for event in overlay_steps.click_and_capture(
-                    session,
+                click_result = await overlay_steps.try_overlay_click(
                     page,
                     detection,
                     overlay_number,
-                    progress_base,
                     found_in_frame=found_in_frame,
-                ):
-                    click_ok = True
-                    yield event
+                )
             except Exception as exc:
                 log.warn(
                     "Cached overlay click error",
@@ -704,10 +716,31 @@ class OverlayPipeline:
                         "error": str(exc),
                     },
                 )
+                click_result = click.ClickResult(success=False)
 
-            if click_ok:
+            if click_result.success:
+                async for event in overlay_steps.capture_after_click(
+                    session,
+                    page,
+                    detection,
+                    overlay_number,
+                    progress_base,
+                ):
+                    yield event
+
                 dismissed += 1
                 result.dismissed_overlays.append(detection)
+
+                self._new_overlays.append(
+                    overlay_cache.CachedOverlay(
+                        overlay_type=detection.overlay_type or "other",
+                        button_text=detection.button_text,
+                        css_selector=detection.selector,
+                        locator_strategy=click_result.strategy or "role-button",
+                        frame_type=click_result.frame_type or "main",
+                    )
+                )
+
                 # Update latest screenshot so subsequent
                 # overlays (and consent extraction) get the
                 # correct page state.
@@ -762,22 +795,18 @@ class OverlayPipeline:
 
     def _save_cache(
         self,
-        result: OverlayHandlingResult,
         previous_entry: (overlay_cache.OverlayCacheEntry | None) = None,
     ) -> None:
-        """Merge and persist a cache entry."""
-        new_overlays = [
-            overlay_cache.CachedOverlay(
-                overlay_type=(d.overlay_type or "other"),
-                button_text=d.button_text,
-                selector=d.selector,
-                accessor_type=overlay_steps.infer_accessor_type(d),
-            )
-            for d in result.dismissed_overlays
-        ]
+        """Merge and persist a cache entry.
+
+        Uses the ``_new_overlays`` list built during the click
+        pipeline, which already contains the correct Playwright
+        locator strategy and frame type for each successfully
+        dismissed overlay.
+        """
         overlay_cache.merge_and_save(
             self._domain,
             previous_entry,
-            new_overlays,
+            self._new_overlays,
             self._failed_cache_types,
         )

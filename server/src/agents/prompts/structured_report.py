@@ -16,7 +16,12 @@ Categorise each tracker into one of these groups:
 - other: Any other tracking technology
 
 For each tracker provide:
-- name: The company or service name
+- name: The company or service name. Use the SHORT canonical company \
+name only — do NOT add parenthetical aliases, qualifiers, or \
+alternate product names. For example use "Comscore" not \
+"Scorecard Research (Comscore)" or "Comscore (Scorecard Research)". \
+Use "Dotmetrics" not "Dotmetrics Identity Components". \
+If two trackers belong to the same company, list them as one entry.
 - domains: List of domains associated with this tracker
 - cookies: List of cookie names set by this tracker (if any)
 - storage_keys: List of localStorage/sessionStorage keys used (if any)
@@ -30,15 +35,30 @@ You are a privacy expert. Based on the tracking data, identify what types of dat
 are being collected from users.
 
 For each data type provide:
-- category: Short label (e.g. "Browsing Behaviour", "Device Information", \
-"Location Data", "User Identity", "Financial / Payment", "Health & Wellness")
+- category: MUST be one of the following standard labels \
+(use exactly these names for consistency across runs):
+  "Browsing Behaviour", "User Identifiers", "Device Information", \
+"Location Data", "Usage Analytics", "Account & Consent State", \
+"Experimentation & Optimisation", "Advertising & Retargeting", \
+"Financial / Payment", "Health & Wellness", "Social Media Signals"
+  Only create a new category if the data does not fit any of the above.
 - details: List of specific data points collected
-- risk: Risk level — "low", "medium", "high", or "critical"
-- sensitive: true if the data is personal or sensitive (e.g. precise location, \
-health information, financial data, biometric identifiers, racial/ethnic origin, \
-political opinions, religious beliefs, sexual orientation, or any data that \
-could directly identify an individual such as email, name, phone number, \
-government ID). Otherwise false.
+- risk: Risk level — apply these rules strictly:
+  "low" — functional data, device metadata, or aggregated analytics \
+that do not identify individuals.
+  "medium" — pseudonymous identifiers, IP-based location, \
+cross-session analytics, or behavioural profiling.
+  "high" — directly identifiable personal data (email, name, phone), \
+precise geolocation, or data shared with data brokers.
+  "critical" — sensitive personal data (health, biometrics, financial, \
+political, sexual orientation) or data sold to third parties.
+- sensitive: true ONLY for data that is personal or sensitive (e.g. \
+precise location, health information, financial data, biometric \
+identifiers, racial/ethnic origin, political opinions, religious \
+beliefs, sexual orientation, or any data that could directly \
+identify an individual such as email, name, phone number, \
+government ID). Pseudonymous analytics identifiers are NOT \
+sensitive. IP-derived approximate location is NOT sensitive.
 - shared_with: List of third-party company or service names this data \
 is sent to or shared with, based on the network requests and domains observed. \
 Leave empty if the data stays first-party only.
@@ -62,8 +82,17 @@ requests indicate each type of data collection and sharing."""
 THIRD_PARTY = """\
 You are a privacy expert. Categorise the third-party domains contacted by this page.
 
+IMPORTANT: Only count domains that belong to organisations OTHER \
+than the site being analysed. Subdomains of the analysed site \
+(e.g. static.files.bbci.co.uk for bbc.co.uk, or cdn.example.com \
+for example.com) are first-party infrastructure and MUST be \
+excluded from the third-party count. You may still describe \
+first-party infrastructure in a separate group, but do NOT \
+include them in total_domains.
+
 Provide:
-- total_domains: Total number of third-party domains
+- total_domains: Total number of genuinely third-party domains \
+(excluding any first-party subdomains)
 - groups: Categorised groups, each with:
   - category: Group label (e.g. "Ad Exchanges / SSPs", "Identity & Data Brokers", "Measurement")
   - services: List of company or service names in this group
@@ -87,9 +116,20 @@ with this score:
 - Score 60–79 (High Risk)      → overall_risk = "high"
 - Score 80–100 (Critical Risk) → overall_risk = "very-high"
 
-List the specific factors that contribute to this risk level, each with:
+List EXACTLY 5 specific factors that contribute to this risk level, each with:
 - description: What the factor is
-- severity: "low", "medium", "high", or "critical"
+- severity: Apply these rules strictly:
+  "low" — minor observations with no material privacy impact \
+(e.g. functional cookies, standard CDN usage).
+  "medium" — pseudonymous analytics, audience measurement, \
+moderate third-party presence, persistent identifiers without \
+cross-site capability.
+  "high" — pre-consent tracking that bypasses user choice, \
+undisclosed data sharing with third parties, cross-site \
+identity resolution, or advertising/retargeting networks.
+  "critical" — data broker involvement, fingerprinting for \
+cross-site identity, deceptive consent practices, or \
+sensitive data exfiltration.
 
 Individual factors can have higher severity than the overall risk \
 when a specific practice is genuinely concerning, but the overall_risk \
@@ -110,15 +150,28 @@ You are a privacy expert. Analyse the cookies found on this page.
 Provide:
 - total: Total number of cookies
 - groups: Grouped by purpose, each with:
-  - category: Purpose label (e.g. "Functional / Necessary", "Analytics", "Advertising & Tracking")
+  - category: MUST be one of these standard labels for consistency:
+    "Functional / Necessary", "Analytics / Audience Measurement", \
+"Advertising & Tracking", "Social Media", \
+"Personalisation / User Preferences", "Identity Resolution"
+    Only create a new category if a cookie does not fit any of the above.
   - cookies: List of cookie names in this group
   - lifespan: Typical lifespan description
-  - concern_level: "none", "low", "medium", or "high"
+  - concern_level: Apply these rules strictly:
+    "none" — strictly necessary cookies (session management, \
+consent state, CSRF tokens).
+    "low" — functional cookies for user preferences, A/B testing, \
+or first-party analytics with no cross-site capability.
+    "medium" — analytics cookies with pseudonymous identifiers that \
+persist across sessions, or audience measurement cookies.
+    "high" — advertising, retargeting, cross-site tracking, \
+or identity resolution cookies.
 - concerning_cookies: List of the most concerning individual cookies with brief reasons
 
 Be specific and factual. Do not fabricate cookie names or purposes.
 
-Only classify cookies you can identify from their names and domains."""
+Assign the SAME category and concern_level to the same cookie name \
+across every analysis run. Be consistent."""
 
 STORAGE_ANALYSIS = """\
 You are a privacy expert. Analyse the localStorage and sessionStorage usage.
@@ -149,13 +202,15 @@ claimed partner count from the consent dialog text if available \
 (e.g. "We and our 1467 partners"), as this is the number the site \
 claims to share data with, even if individual partner names were \
 not extracted.
-- discrepancies: List of discrepancies between claims and reality, each with:
+- discrepancies: List EXACTLY 3 discrepancies between claims \
+and reality (no more, no fewer), each with:
   - claimed: What the consent dialog says
   - actual: What was actually detected
   - severity: "low", "medium", "high", or "critical"
 - summary: Overall assessment of consent transparency
 
-Severity decision criteria for discrepancies (apply strictly):
+Severity decision criteria for discrepancies (apply strictly \
+and consistently across runs):
 - "critical": Consent dialog actively hides or misrepresents tracking \
 that violates regulation (e.g. no dialog at all while tracking heavily, \
 or dark patterns designed to trick users into accepting).
@@ -170,7 +225,11 @@ privacy impact, such as a slightly outdated partner count.
 
 Be specific and factual. Do not fabricate numbers. \
 Highlight practices where the actual data collection significantly \
-exceeds what is disclosed to users."""
+exceeds what is disclosed to users.
+
+Produce the SAME severity for the SAME type of discrepancy across \
+every analysis run. For example, pre-consent tracking should \
+always be rated "high", not sometimes "high" and sometimes "medium"."""
 
 VENDOR = """\
 You are a privacy expert. Identify the most significant vendors/partners \
@@ -178,7 +237,12 @@ from a privacy perspective.
 
 List exactly 32 vendors/partners with the highest privacy impact. \
 Always return 32 entries unless fewer than 32 distinct vendors exist in the data.
-- name: Company name
+- name: Company name. Use the SHORT canonical company name only — \
+do NOT add parenthetical aliases, qualifiers, product sub-names, \
+or role descriptions. For example use "Comscore" not \
+"Scorecard Research (Comscore)". Use "BBC" not \
+"BBC Account & Identity Services". If two entries refer to the \
+same company, merge them into one entry.
 - role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
 - privacy_impact: One-sentence privacy impact description
 

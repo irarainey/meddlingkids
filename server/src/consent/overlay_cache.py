@@ -3,7 +3,7 @@
 Stores successful overlay detection and click information
 per domain so subsequent analyses can skip expensive LLM
 vision detection.  Cache files are JSON stored under
-``server/.overlay_cache/``.
+``server/.cache/overlay/``.
 
 Cache entries are an **unordered** collection of strategies.
 Different pages on the same domain may show different
@@ -14,15 +14,16 @@ skipped.
 Each cached overlay records:
 - The overlay type (cookie-consent, paywall, etc.)
 - The button text used to dismiss it
-- The CSS selector (if any)
-- How the element was located (accessor type)
+- How Playwright located the element (locator strategy)
+- Whether the element was on the main page or in a
+  consent-manager iframe (frame type)
 """
 
 from __future__ import annotations
 
 import json
 import pathlib
-from typing import Literal
+from typing import Any, Literal
 
 import pydantic
 
@@ -30,24 +31,58 @@ from src.utils import logger
 
 log = logger.create_logger("OverlayCache")
 
-AccessorType = Literal[
-    "button-role",
-    "css-selector",
-    "text-search",
+LocatorStrategy = Literal[
+    "role-button",
+    "role-link",
+    "text-exact",
+    "text-fuzzy",
+    "css",
     "generic-close",
 ]
 
+FrameType = Literal["main", "consent-iframe"]
+
 # Cache directory — lives alongside server source, gitignored.
-_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".overlay_cache"
+_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".cache" / "overlay"
 
 
 class CachedOverlay(pydantic.BaseModel):
-    """A single cached overlay dismissal strategy."""
+    """A single cached overlay dismissal strategy.
+
+    Stores exactly the information Playwright needs to
+    locate and click the dismiss button on a repeat visit:
+    the locator strategy, button text (or CSS selector),
+    and whether the element lives in the main frame or a
+    consent-manager iframe.
+    """
 
     overlay_type: str
     button_text: str | None = None
-    selector: str | None = None
-    accessor_type: AccessorType
+    css_selector: str | None = None
+    locator_strategy: LocatorStrategy = "role-button"
+    frame_type: FrameType = "main"
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy(cls, data: Any) -> Any:
+        """Migrate old cache format (selector/accessor_type)."""
+        if isinstance(data, dict):
+            if "selector" in data and "css_selector" not in data:
+                data["css_selector"] = data.pop("selector")
+            elif "selector" in data:
+                data.pop("selector")
+            if "accessor_type" in data and "locator_strategy" not in data:
+                _migration_map = {
+                    "button-role": "role-button",
+                    "css-selector": "css",
+                    "text-search": "text-fuzzy",
+                    "generic-close": "generic-close",
+                }
+                old = data.pop("accessor_type")
+                data["locator_strategy"] = _migration_map.get(old, "role-button")
+            elif "accessor_type" in data:
+                data.pop("accessor_type")
+        return data
 
 
 class OverlayCacheEntry(pydantic.BaseModel):
@@ -65,11 +100,11 @@ class OverlayCacheEntry(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def _deduplicate_overlays(self) -> OverlayCacheEntry:
-        """Remove duplicate overlays based on selector + button text."""
+        """Remove duplicate overlays based on strategy + button text."""
         seen: set[str] = set()
         unique: list[CachedOverlay] = []
         for overlay in self.overlays:
-            key = f"{overlay.selector or ''}|{overlay.button_text or ''}"
+            key = f"{overlay.locator_strategy}|{overlay.button_text or ''}|{overlay.css_selector or ''}"
             if key not in seen:
                 seen.add(key)
                 unique.append(overlay)
@@ -224,14 +259,14 @@ def merge_and_save(
         for cached in previous_entry.overlays:
             if cached.overlay_type in failed_types:
                 continue
-            key = f"{cached.selector or ''}|{cached.button_text or ''}"
+            key = f"{cached.locator_strategy}|{cached.button_text or ''}|{cached.css_selector or ''}"
             if key not in seen_keys:
                 seen_keys.add(key)
                 overlays.append(cached)
 
     # Add new overlays.
     for overlay in new_overlays:
-        key = f"{overlay.selector or ''}|{overlay.button_text or ''}"
+        key = f"{overlay.locator_strategy}|{overlay.button_text or ''}|{overlay.css_selector or ''}"
         if key not in seen_keys:
             seen_keys.add(key)
             overlays.append(overlay)

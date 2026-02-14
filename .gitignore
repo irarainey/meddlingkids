@@ -5,8 +5,9 @@
 # Reports
 .reports/
 
-# Overlay cache
-.overlay_cache/
+# Analysis caches (overlay dismissal + domain knowledge)
+.cache/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

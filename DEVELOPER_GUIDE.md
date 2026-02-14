@@ -164,12 +164,16 @@ OverlayPipeline.run() loop (up to 5 iterations)
    │   └── Confirms button exists, returns Frame where found
    │   └── Tracks failed signatures to avoid re-detecting unclickable elements
    │
-   ├── steps.click_and_capture(session, page, detection, found_in_frame)
+   ├── steps.try_overlay_click(page, detection, found_in_frame)
    │   └── Phase 0: Try validated frame first (skip main-frame scan)
    │   └── Phase 1: Main frame button role match
    │   └── Phase 2: Consent iframes
    │   └── Phase 3: Generic heuristics
    │   └── Tri-state safety check (is_safe_to_click)
+   │   └── Returns ClickResult (success, locator_strategy, frame_type)
+   │
+   ├── steps.capture_after_click(session, page, detection)
+   │   └── Waits for DOM, captures cookies, takes screenshot
    │
    ├── If first cookie-consent overlay:
    │   └── Start extraction as asyncio.create_task (concurrent)
@@ -381,7 +385,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons |
 | `constants.py` | Shared consent-manager host keywords and exclusion lists |
-| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies (JSON) |
+| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, and frame type per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level |
 
 **`analysis/`** — Tracking analysis and scoring
@@ -393,6 +397,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
+| `domain_cache.py` | Domain-level knowledge cache — persists LLM classifications (tracker categories, cookie groupings, vendor roles, severity levels) for consistency across repeat analyses of the same domain. Uses merge-on-save with scan-count-based staleness pruning |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
@@ -730,7 +735,8 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
 - Vision API calls (detection, extraction) convert PNG to JPEG and downscale to max 1280px wide
 - Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads
-- Overlay cache stores successful dismiss strategies per domain, skipping LLM vision detection on repeat visits
+- Overlay cache stores successful dismiss strategies per domain (Playwright locator strategy, button text, frame type), skipping LLM vision detection on repeat visits
+- Domain knowledge cache stores LLM-generated classifications (tracker categories, cookie groupings, vendor roles) per domain, anchoring subsequent analyses to established labels for consistency. New findings are **merged** with the existing cache rather than overwriting it; items not seen for 3 consecutive scans are automatically pruned
 - Consent extraction runs concurrently with the next detection call via `asyncio.create_task`
 - Cookie capture uses O(1) dict index for upserts instead of linear scan
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)

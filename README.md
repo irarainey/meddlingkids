@@ -111,6 +111,9 @@ meddlingkids/
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
 ├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)
+├── .cache/                    # Analysis caches (auto-created)
+│   ├── domain/                # Domain knowledge cache for cross-run consistency
+│   └── overlay/               # Overlay dismissal cache per domain
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
 ```

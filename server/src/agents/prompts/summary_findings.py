@@ -10,16 +10,19 @@ Each finding should have:
 - "text": A single sentence describing the finding. Be \
 specific about company names.
 
-Severity decision criteria (apply strictly):
+Severity decision criteria (apply strictly and consistently):
 - "critical": Deceptive practices, data broker involvement, \
 fingerprinting for cross-site identity, selling personal data, \
 or consent dialog actively hiding significant tracking.
-- "high": Persistent cross-session tracking via third-party \
-identifiers, undisclosed advertising networks, pre-consent \
-tracking scripts that bypass user choice.
-- "moderate": Standard analytics with pseudonymous IDs, \
-automated audience measurement, typical third-party media \
-analytics.
+- "high": Pre-consent tracking scripts that bypass user choice, \
+undisclosed advertising or retargeting networks, cross-site \
+identity resolution. Do NOT use "high" for standard analytics \
+with pseudonymous identifiers — even if they persist across \
+sessions — unless they also enable cross-site tracking.
+- "moderate": Standard analytics with pseudonymous IDs \
+(including persistent cookies from audience measurement \
+services like DotMetrics, Chartbeat, Comscore), typical \
+third-party media analytics, engagement measurement.
 - "info": Neutral observations about cookies, storage, or \
 consent mechanisms without clear privacy harm.
 - "positive": Privacy-respecting practices such as no \

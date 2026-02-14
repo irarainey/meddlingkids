@@ -15,6 +15,7 @@ import pydantic
 
 from src.agents import base
 from src.agents.prompts import structured_report
+from src.analysis import domain_cache
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
 
@@ -91,6 +92,7 @@ class StructuredReportAgent(base.BaseAgent):
         consent_details: consent.ConsentDetails | None = None,
         pre_consent_stats: analysis.PreConsentStats | None = None,
         score_breakdown: analysis.ScoreBreakdown | None = None,
+        domain_knowledge: domain_cache.DomainKnowledge | None = None,
     ) -> report.StructuredReport:
         """Build a complete structured report.
 
@@ -106,6 +108,8 @@ class StructuredReportAgent(base.BaseAgent):
             pre_consent_stats: Optional pre-consent statistics.
             score_breakdown: Deterministic privacy score, if
                 available, so the LLM can calibrate risk levels.
+            domain_knowledge: Optional cached classifications
+                from a prior analysis of the same domain.
 
         Returns:
             Complete ``StructuredReport``.
@@ -116,6 +120,7 @@ class StructuredReportAgent(base.BaseAgent):
             consent_details,
             pre_consent_stats,
             score_breakdown,
+            domain_knowledge,
         )
 
         # Wave 1: Core independent sections
@@ -216,6 +221,33 @@ class StructuredReportAgent(base.BaseAgent):
             elif consent_details.partners:
                 consent_sec.partners_disclosed = len(consent_details.partners)
 
+        # ── Deterministic third-party domain count ─────────
+        # The LLM inconsistently counts whether to include
+        # first-party subdomains.  Override with the
+        # pre-computed third-party domain list length.
+        third_party_sec = _extract(
+            third_party,
+            report.ThirdPartySection,
+        )
+        third_party_sec.total_domains = len(
+            tracking_summary.third_party_domains,
+        )
+
+        # ── Deterministic cookie count ──────────────────────
+        cookie_sec = _extract(
+            cookie_analysis,
+            report.CookieAnalysisSection,
+        )
+        cookie_sec.total = tracking_summary.total_cookies
+
+        # ── Deterministic storage counts ────────────────────
+        storage_sec = _extract(
+            storage_analysis,
+            report.StorageAnalysisSection,
+        )
+        storage_sec.local_storage_count = tracking_summary.local_storage_items
+        storage_sec.session_storage_count = tracking_summary.session_storage_items
+
         result = report.StructuredReport(
             tracking_technologies=_extract(
                 tracking_tech,
@@ -225,22 +257,13 @@ class StructuredReportAgent(base.BaseAgent):
                 data_collection,
                 report.DataCollectionSection,
             ),
-            third_party_services=_extract(
-                third_party,
-                report.ThirdPartySection,
-            ),
+            third_party_services=third_party_sec,
             privacy_risk=_extract(
                 privacy_risk,
                 report.PrivacyRiskSection,
             ),
-            cookie_analysis=_extract(
-                cookie_analysis,
-                report.CookieAnalysisSection,
-            ),
-            storage_analysis=_extract(
-                storage_analysis,
-                report.StorageAnalysisSection,
-            ),
+            cookie_analysis=cookie_sec,
+            storage_analysis=storage_sec,
             consent_analysis=consent_sec,
             key_vendors=_extract(
                 vendors,
@@ -351,6 +374,7 @@ def _build_data_context(
     consent_details: consent.ConsentDetails | None = None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
+    domain_knowledge: domain_cache.DomainKnowledge | None = None,
 ) -> str:
     """Build the data context string sent to each section LLM call.
 
@@ -360,6 +384,8 @@ def _build_data_context(
         pre_consent_stats: Optional pre-consent statistics.
         score_breakdown: Deterministic privacy score, if
             available.
+        domain_knowledge: Optional prior-run classifications
+            for consistency anchoring.
 
     Returns:
         Formatted data context string.
@@ -453,5 +479,9 @@ def _build_data_context(
                 "Your risk assessments MUST be consistent with this score.",
             ]
         )
+
+    # Append prior-run classifications for consistency.
+    if domain_knowledge:
+        sections.append(domain_cache.build_context_hint(domain_knowledge))
 
     return "\n".join(sections)

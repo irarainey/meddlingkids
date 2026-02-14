@@ -17,7 +17,7 @@ from playwright import async_api
 
 from src.agents import consent_extraction_agent
 from src.browser import session as browser_session
-from src.consent import click, constants, extraction, overlay_cache, partner_classification
+from src.consent import click, constants, extraction, partner_classification
 from src.consent import detection as consent_detection_mod
 from src.models import consent
 from src.pipeline import sse_helpers
@@ -115,25 +115,21 @@ async def validate_overlay_in_dom(
 # ====================================================================
 
 
-async def click_and_capture(
-    session: browser_session.BrowserSession,
+async def try_overlay_click(
     page: async_api.Page,
     detection: consent.CookieConsentDetection,
     overlay_number: int,
-    progress_base: int,
     *,
     found_in_frame: async_api.Frame | None = None,
-) -> AsyncGenerator[str]:
-    """Click the overlay dismiss button and capture resulting state.
+) -> click.ClickResult:
+    """Attempt to click the overlay dismiss button.
 
-    Yields SSE events for progress, the post-click screenshot,
-    and the consent detection event.  The first value yielded
-    is always a ``bool`` indicating whether the click succeeded,
-    followed by SSE event strings on success.
+    Returns a :class:`~click.ClickResult` with the Playwright
+    strategy and frame type that succeeded, or a failed result.
     """
     log.start_timer(f"overlay-click-{overlay_number}")
 
-    clicked = await click.try_click_consent_button(
+    result = await click.try_click_consent_button(
         page,
         detection.selector,
         detection.button_text,
@@ -141,12 +137,24 @@ async def click_and_capture(
     )
     log.end_timer(
         f"overlay-click-{overlay_number}",
-        "Click succeeded" if clicked else "Click failed",
+        "Click succeeded" if result.success else "Click failed",
     )
+    return result
 
-    if not clicked:
-        return
 
+async def capture_after_click(
+    session: browser_session.BrowserSession,
+    page: async_api.Page,
+    detection: consent.CookieConsentDetection,
+    overlay_number: int,
+    progress_base: int,
+) -> AsyncGenerator[str]:
+    """Capture page state after a successful overlay click.
+
+    Yields SSE events for progress, the post-click screenshot,
+    and the consent detection event.  Must only be called after
+    :func:`try_overlay_click` returns a successful result.
+    """
     yield sse_helpers.format_progress_event(
         f"overlay-{overlay_number}-wait",
         "Waiting for page to update...",
@@ -523,22 +531,6 @@ def build_click_failure(
 # ====================================================================
 # Detection Key Helpers
 # ====================================================================
-
-
-def infer_accessor_type(
-    detection: consent.CookieConsentDetection,
-) -> overlay_cache.AccessorType:
-    """Infer how the overlay element was located.
-
-    Uses the detection fields to determine whether the
-    element was found via CSS selector, button role, or
-    text search.
-    """
-    if detection.selector:
-        return "css-selector"
-    if detection.button_text:
-        return "button-role"
-    return "text-search"
 
 
 def detection_signature(

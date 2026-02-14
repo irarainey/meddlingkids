@@ -6,13 +6,14 @@ Prioritizes LLM-suggested selectors, checking main page and consent iframes.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import re
 import time
 from urllib import parse
 
 from playwright import async_api
 
-from src.consent import constants
+from src.consent import constants, overlay_cache
 from src.utils import logger
 
 log = logger.create_logger("Consent-Click")
@@ -21,6 +22,21 @@ log = logger.create_logger("Consent-Click")
 # Prevents runaway retry cascades on heavy pages where every safety
 # evaluation times out (~2s each × 16+ selectors = 40s+ wasted).
 _MAX_CLICK_TIME_SECONDS = 15.0
+
+
+@dataclasses.dataclass(frozen=True)
+class ClickResult:
+    """Outcome of a consent-button click attempt.
+
+    Captures *how* the element was located (Playwright
+    strategy) and *where* it was found (main frame vs
+    consent iframe) so the overlay cache can store
+    actionable replay information.
+    """
+
+    success: bool
+    strategy: overlay_cache.LocatorStrategy | None = None
+    frame_type: overlay_cache.FrameType | None = None
 
 
 def _is_consent_frame(frame: async_api.Frame, main_frame: async_api.Frame) -> bool:
@@ -104,8 +120,13 @@ async def try_click_consent_button(
     button_text: str | None,
     *,
     found_in_frame: async_api.Frame | None = None,
-) -> bool:
+) -> ClickResult:
     """Click the consent/overlay dismiss button identified by the LLM.
+
+    Returns a :class:`ClickResult` capturing whether the click
+    succeeded, which Playwright locator strategy matched, and
+    whether the element was on the main page or in a consent
+    iframe.
 
     Strategy order
     ~~~~~~~~~~~~~~
@@ -129,6 +150,7 @@ async def try_click_consent_button(
     log.info("Attempting click", {"selector": selector, "buttonText": button_text})
     original_url = page.url
     deadline = time.monotonic() + _MAX_CLICK_TIME_SECONDS
+    _fail = ClickResult(success=False)
 
     def _time_remaining() -> bool:
         return time.monotonic() < deadline
@@ -136,24 +158,26 @@ async def try_click_consent_button(
     # Phase 0: Try the frame where validation already found the element
     if found_in_frame and found_in_frame != page.main_frame:
         log.debug("Trying validated frame first", {"url": found_in_frame.url[:80]})
-        if await _try_click_in_frame(found_in_frame, selector, button_text, 3000):
+        strategy = await _try_click_in_frame(found_in_frame, selector, button_text, 3000)
+        if strategy:
             if await _did_navigate_away(page, original_url):
-                return False
+                return _fail
             log.success("Click succeeded in validated frame", {"url": found_in_frame.url[:50]})
-            return True
+            return ClickResult(success=True, strategy=strategy, frame_type="consent-iframe")
         if not _time_remaining():
             log.warn("Click attempt time limit reached")
-            return False
+            return _fail
 
     # Phase 1: LLM suggestion on main page
-    if await _try_click_in_frame(page.main_frame, selector, button_text, 3000):
+    strategy = await _try_click_in_frame(page.main_frame, selector, button_text, 3000)
+    if strategy:
         if await _did_navigate_away(page, original_url):
-            return False
+            return _fail
         log.success("Click succeeded on main page")
-        return True
+        return ClickResult(success=True, strategy=strategy, frame_type="main")
     if not _time_remaining():
         log.warn("Click attempt time limit reached")
-        return False
+        return _fail
 
     # Phase 2: LLM suggestion on consent-manager iframes
     consent_frames = [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
@@ -162,26 +186,30 @@ async def try_click_consent_button(
         for frame in consent_frames:
             if not _time_remaining():
                 log.warn("Click attempt time limit reached")
-                return False
+                return _fail
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
-            if await _try_click_in_frame(frame, selector, button_text, 3000):
+            strategy = await _try_click_in_frame(frame, selector, button_text, 3000)
+            if strategy:
                 if await _did_navigate_away(page, original_url):
-                    return False
+                    return _fail
                 log.success("Click succeeded in consent iframe", {"url": frame_url[:50]})
-                return True
+                return ClickResult(success=True, strategy=strategy, frame_type="consent-iframe")
 
     if not _time_remaining():
         log.warn("Click attempt time limit reached")
-        return False
+        return _fail
 
     # Phase 3: Generic close-button heuristics (main frame only)
     log.debug("Trying generic close buttons on main frame...")
-    if await _try_close_buttons(page.main_frame, deadline=deadline):
-        return not await _did_navigate_away(page, original_url)
+    strategy = await _try_close_buttons(page.main_frame, deadline=deadline)
+    if strategy:
+        if await _did_navigate_away(page, original_url):
+            return _fail
+        return ClickResult(success=True, strategy=strategy, frame_type="main")
 
     log.warn("All click strategies failed")
-    return False
+    return _fail
 
 
 async def _did_navigate_away(page: async_api.Page, original_url: str) -> bool:
@@ -358,8 +386,11 @@ async def _try_click_in_frame(
     selector: str | None,
     button_text: str | None,
     timeout: int,
-) -> bool:
+) -> overlay_cache.LocatorStrategy | None:
     """Try clicking in a specific frame using LLM-provided selector and text.
+
+    Returns the :data:`~overlay_cache.LocatorStrategy` that
+    succeeded, or ``None`` if all strategies failed.
 
     Every candidate element is checked with ``_safe_click`` before it
     is clicked.  Uses ``force_on_timeout=True`` because these are
@@ -376,45 +407,45 @@ async def _try_click_in_frame(
             timeout,
             force_on_timeout=True,
         ):
-            return True
+            return "css"
 
         # If the LLM gave :has-text() / :contains(), use the inner
         # text with Playwright's role and text locators.
         if text_from_selector:
-            for locator in [
-                frame.get_by_role("button", name=text_from_selector),
-                frame.get_by_text(text_from_selector, exact=False),
+            for strategy, locator in [
+                ("role-button", frame.get_by_role("button", name=text_from_selector)),
+                ("text-fuzzy", frame.get_by_text(text_from_selector, exact=False)),
             ]:
                 if await _safe_click(
                     locator,
                     timeout,
                     force_on_timeout=True,
                 ):
-                    return True
+                    return strategy  # type: ignore[return-value]
 
     # Strategy 2: Button/link/text with buttonText
     if button_text:
-        for locator in [
-            frame.get_by_role("button", name=button_text),
-            frame.get_by_role("link", name=button_text),
-            frame.get_by_text(button_text, exact=True),
-            frame.get_by_text(button_text, exact=False),
+        for strategy, locator in [
+            ("role-button", frame.get_by_role("button", name=button_text)),
+            ("role-link", frame.get_by_role("link", name=button_text)),
+            ("text-exact", frame.get_by_text(button_text, exact=True)),
+            ("text-fuzzy", frame.get_by_text(button_text, exact=False)),
         ]:
             if await _safe_click(
                 locator,
                 timeout,
                 force_on_timeout=True,
             ):
-                return True
+                return strategy  # type: ignore[return-value]
 
-    return False
+    return None
 
 
 async def _try_close_buttons(
     frame: async_api.Frame,
     *,
     deadline: float = 0.0,
-) -> bool:
+) -> overlay_cache.LocatorStrategy | None:
     """Try common close button patterns as a last resort.
 
     Searches **only** within the given frame (typically the main
@@ -432,6 +463,8 @@ async def _try_close_buttons(
 
     Respects the *deadline* (monotonic clock) to avoid exhausting
     the total click time budget on generic fallbacks.
+
+    Returns ``"generic-close"`` on success, ``None`` on failure.
     """
 
     def _time_ok() -> bool:
@@ -463,11 +496,11 @@ async def _try_close_buttons(
     ]
     for label, locator in role_patterns:
         if not _time_ok():
-            return False
+            return None
         log.debug("Trying close button", {"selector": label})
         if await _safe_click(locator, 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": label})
-            return True
+            return "generic-close"
 
     # CSS fallback selectors
     css_selectors = [
@@ -488,9 +521,9 @@ async def _try_close_buttons(
     ]
     for sel in css_selectors:
         if not _time_ok():
-            return False
+            return None
         log.debug("Trying close button", {"selector": sel})
         if await _safe_click(frame.locator(sel), 400, force_on_timeout=False):
             log.success("Close button clicked", {"selector": sel})
-            return True
-    return False
+            return "generic-close"
+    return None

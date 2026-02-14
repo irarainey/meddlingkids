@@ -12,6 +12,7 @@ import pydantic
 
 from src.agents import base, config
 from src.agents.prompts import summary_findings
+from src.analysis import domain_cache
 from src.models import analysis
 from src.utils import json_parsing, logger, risk
 
@@ -54,6 +55,7 @@ class SummaryFindingsAgent(base.BaseAgent):
         self,
         analysis_text: str,
         score_breakdown: analysis.ScoreBreakdown | None = None,
+        domain_knowledge: domain_cache.DomainKnowledge | None = None,
     ) -> list[analysis.SummaryFinding]:
         """Generate summary findings from analysis text.
 
@@ -61,6 +63,8 @@ class SummaryFindingsAgent(base.BaseAgent):
             analysis_text: Full markdown privacy analysis.
             score_breakdown: Deterministic privacy score, if
                 available, so the LLM can calibrate severity.
+            domain_knowledge: Optional cached knowledge from
+                a prior analysis of the same domain.
 
         Returns:
             List of typed ``SummaryFinding`` objects.
@@ -80,9 +84,15 @@ class SummaryFindingsAgent(base.BaseAgent):
                 f"consistent with this score."
             )
 
+        knowledge_ctx = ""
+        if domain_knowledge:
+            knowledge_ctx = domain_cache.build_context_hint(
+                domain_knowledge,
+            )
+
         try:
             response = await self._complete(
-                f"Based on this full analysis, create a structured JSON object with key findings:\n\n{analysis_text}{score_ctx}"
+                f"Based on this full analysis, create a structured JSON object with key findings:\n\n{analysis_text}{score_ctx}{knowledge_ctx}"
             )
             log.end_timer("summary-generation", "Summary generated")
 

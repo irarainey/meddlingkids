@@ -82,7 +82,7 @@ src/
 │   ├── constants.py                 # Shared consent-manager detection constants
 │   ├── detection.py                 # Consent dialog detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
-│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (JSON)
+│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, JSON)
 │   └── partner_classification.py    # Consent partner risk classification
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
@@ -90,6 +90,7 @@ src/
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
 │   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
+│   ├── domain_cache.py              # Domain knowledge cache for cross-run consistency (merge-on-save, JSON)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure

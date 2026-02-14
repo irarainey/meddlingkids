@@ -11,7 +11,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 
 from src import agents
-from src.analysis import scoring, scripts, tracking
+from src.analysis import domain_cache, scoring, scripts, tracking
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
@@ -419,15 +419,26 @@ async def _score_and_summarise(
     report_agent = agents.get_structured_report_agent()
     summary_agent = agents.get_summary_findings_agent()
 
+    # Load cached domain knowledge for consistency anchoring.
+    domain = url_mod.extract_domain(url)
+    domain_knowledge = domain_cache.load(domain)
+
     structured_report_task = asyncio.create_task(
         report_agent.build_report(
             tracking_summary,
             consent_details,
             pre_consent_stats,
             score_breakdown,
+            domain_knowledge,
         )
     )
-    summary_task = asyncio.create_task(summary_agent.summarise(full_text, score_breakdown))
+    summary_task = asyncio.create_task(
+        summary_agent.summarise(
+            full_text,
+            score_breakdown,
+            domain_knowledge,
+        )
+    )
 
     yield sse_helpers.format_progress_event("ai-report", "Building report...", 97)
 
@@ -451,8 +462,10 @@ async def _score_and_summarise(
             summary_findings,
             structured_report,
         )
-        domain = url_mod.extract_domain(url)
         logger.save_report_file(domain, report_text)
+
+        # Persist domain knowledge for future consistency.
+        domain_cache.save_from_report(domain, structured_report)
 
     # ── Build final payload ─────────────────────────────────
 
