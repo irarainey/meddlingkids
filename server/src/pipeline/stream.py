@@ -176,16 +176,20 @@ async def analyze_url_stream(
             log.info("Initializing browser", {"url": url, "device": device_type})
             yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
 
-            nav_events, nav_result = await browser_phases.setup_and_navigate(session, url, device_type)
-            for event in nav_events:
-                yield event
+            browser_phases.prepare_session(session, url)
+
+            yield sse_helpers.format_progress_event("browser", "Launching browser...", 8)
+            await browser_phases.launch_browser(session, device_type)
+
+            hostname = parse.urlparse(url).hostname or url
+
+            yield sse_helpers.format_progress_event("navigate", f"Loading {hostname}...", 12)
+            nav_result = await browser_phases.navigate(session, url)
 
             if not nav_result.success:
                 for event in _emit_nav_failure(nav_result):
                     yield event
                 return
-
-            hostname = parse.urlparse(url).hostname or url
 
             # Start Stage 1 screenshot refresher — captures
             # visual changes while the page loads (fonts,
@@ -202,8 +206,13 @@ async def analyze_url_stream(
 
             # ── Phase 2: Page Load & Access Check ───────────────
             log.subsection("Phase 2: Page Load & Access Check")
-            for event in await browser_phases.wait_for_page_load(session, hostname):
-                yield event
+
+            yield sse_helpers.format_progress_event("wait-network", f"Waiting for {hostname} to settle...", 18)
+            await browser_phases.wait_for_network_settle(session)
+
+            yield sse_helpers.format_progress_event("wait-content", "Waiting for page content to render...", 25)
+            await browser_phases.wait_for_content_render(session)
+
             for refresh_event in _drain_queue(refresh_queue):
                 yield refresh_event
 
@@ -217,9 +226,17 @@ async def analyze_url_stream(
 
             # ── Phase 3: Initial Data Capture ───────────────────
             log.subsection("Phase 3: Initial Data Capture")
-            capture_events, screenshot, storage = await browser_phases.capture_initial_data(session)
-            for event in capture_events:
-                yield event
+
+            yield sse_helpers.format_progress_event("capture", "Capturing page data...", 32)
+            storage = await browser_phases.capture_page_data(session)
+
+            yield sse_helpers.format_progress_event("screenshot", "Capturing page screenshot...", 38)
+            screenshot_event, screenshot, storage = await browser_phases.take_initial_screenshot(session, storage)
+            yield screenshot_event
+
+            browser_phases.log_capture_stats(session, storage)
+
+            yield sse_helpers.format_progress_event("overlay-detect", "Detecting page overlays...", 42)
 
             # Cancel Stage 1 refresher — the initial capture
             # provides the authoritative page state from here.

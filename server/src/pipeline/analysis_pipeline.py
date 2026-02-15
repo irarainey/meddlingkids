@@ -155,7 +155,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail or "All scripts identified...",
+                        detail or "Analyzing scripts...",
                         82,
                     )
                 )
@@ -164,7 +164,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail or f"Analyzed {current}/{total} scripts...",
+                        detail or f"Analyzing script {current}/{total}...",
                         pct,
                     )
                 )

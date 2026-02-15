@@ -1,6 +1,11 @@
 """
 Browser setup, navigation, page-load, access-check, and initial
 data capture phases (Phases 1-3 of the analysis pipeline).
+
+Each public function performs a single focused step and returns
+its result without emitting SSE progress events.  The caller
+(``stream.py``) yields progress events inline between calls so
+they reach the client in real-time rather than being batched.
 """
 
 from __future__ import annotations
@@ -24,31 +29,34 @@ log = logger.create_logger("Browser")
 # ====================================================================
 
 
-async def setup_and_navigate(
+def prepare_session(
     session: browser_session.BrowserSession,
     url: str,
-    device_type: browser.DeviceType,
-) -> tuple[list[str], browser.NavigationResult]:
-    """Launch browser and navigate to *url*.
-
-    Returns:
-        Tuple of (list of SSE event strings, NavigationResult).
-    """
-    events: list[str] = []
-    hostname = parse.urlparse(url).hostname or url
-
+) -> None:
+    """Clear previous tracking data and register the target URL."""
     session.clear_tracking_data()
     session.set_current_page_url(url)
 
+
+async def launch_browser(
+    session: browser_session.BrowserSession,
+    device_type: browser.DeviceType,
+) -> None:
+    """Launch the browser with *device_type* emulation."""
     log.start_timer("browser-launch")
     log.info("Launching browser", {"deviceType": device_type})
-    events.append(sse_helpers.format_progress_event("browser", "Launching browser...", 8))
     await session.launch_browser(device_type)
     log.end_timer("browser-launch", "Browser launched")
 
+
+async def navigate(
+    session: browser_session.BrowserSession,
+    url: str,
+) -> browser.NavigationResult:
+    """Navigate to *url* and return the navigation result."""
+    hostname = parse.urlparse(url).hostname or url
     log.start_timer("navigation")
     log.info("Navigating to page", {"hostname": hostname})
-    events.append(sse_helpers.format_progress_event("navigate", f"Loading {hostname}...", 12))
 
     nav_result = await session.navigate_to(url, "domcontentloaded", 30000)
     log.end_timer("navigation", "Initial navigation complete")
@@ -59,7 +67,7 @@ async def setup_and_navigate(
             "statusCode": nav_result.status_code,
         },
     )
-    return events, nav_result
+    return nav_result
 
 
 # ====================================================================
@@ -206,58 +214,43 @@ async def _wait_for_consent_dialog_ready(
 # ====================================================================
 
 
-async def wait_for_page_load(
+async def wait_for_network_settle(
     session: browser_session.BrowserSession,
-    hostname: str,
-) -> list[str]:
-    """Wait for page to be visually ready after DOM content loaded.
+) -> None:
+    """Wait up to 3 s for network activity to settle.
 
-    Uses a short network-idle race (3 s) rather than a long timeout.
     Ad-heavy sites have continuous background traffic that never
-    settles, so blocking on full network idle wastes tens of seconds
-    without benefit.  The DOM and critical resources are already
-    available after ``domcontentloaded``; a brief grace period is
-    enough for consent banners, overlays, and initial ads to render.
-
-    Returns:
-        List of SSE progress event strings.
+    settles, so blocking on full network idle wastes tens of
+    seconds without benefit.  The DOM and critical resources are
+    already available after ``domcontentloaded``; a brief race is
+    enough for the initial burst of requests to land.
     """
-    events: list[str] = []
-
     log.start_timer("network-idle")
-    events.append(sse_helpers.format_progress_event("wait-network", f"Waiting for {hostname} to settle...", 18))
-
-    # Short race: give the page 3 s to reach network idle.
-    # If it doesn't (ad-heavy sites), that's fine — proceed anyway.
     network_idle = await session.wait_for_network_idle(3000)
     log.end_timer("network-idle", "Network idle wait complete")
 
     if network_idle:
         log.success("Network became idle")
-        events.append(sse_helpers.format_progress_event("wait-done", "Page loaded...", 25))
     else:
         log.info("Network still active (normal for ad-heavy sites), proceeding with loaded DOM")
-        events.append(
-            sse_helpers.format_progress_event(
-                "wait-continue",
-                "Page loaded...",
-                25,
-            )
-        )
 
-    # Brief grace period for consent banners and overlays to render.
-    events.append(sse_helpers.format_progress_event("wait-overlays", "Waiting for page content to render...", 28))
+
+async def wait_for_content_render(
+    session: browser_session.BrowserSession,
+) -> None:
+    """Brief grace period for consent banners and overlays to render.
+
+    Waits 2 s for late-loading content, then checks whether a
+    consent dialog container is present and waits for its buttons
+    to become interactive.
+    """
     await session.wait_for_timeout(2000)
 
-    # If a consent dialog container/iframe is present but its
-    # buttons haven't loaded yet (dynamic iframe content), wait
-    # a bit longer for the dialog to become interactive.
     page = session.get_page()
     if page:
         await _wait_for_consent_dialog_ready(page)
 
     log.info("Page content rendering complete")
-    return events
 
 
 async def check_access(
@@ -311,47 +304,44 @@ async def check_access(
 # ====================================================================
 
 
-async def capture_initial_data(
+async def capture_page_data(
     session: browser_session.BrowserSession,
-) -> tuple[list[str], bytes, dict]:
-    """Capture cookies, storage, and take the first screenshot.
+) -> dict:
+    """Capture cookies and storage.
 
     Returns:
-        Tuple of (SSE events, screenshot PNG bytes, storage dict).
+        Storage dict with ``local_storage`` and ``session_storage``.
     """
-    events: list[str] = []
     log.start_timer("initial-capture")
-
-    events.append(sse_helpers.format_progress_event("capture", "Capturing page data...", 32))
     await session.capture_current_cookies()
-    storage = await session.capture_storage()
+    return await session.capture_storage()
 
-    events.append(sse_helpers.format_progress_event("screenshot", "Recording page state...", 38))
 
-    event_str, screenshot_bytes, storage = await sse_helpers.take_screenshot_event(session, storage)
-    events.append(event_str)
+async def take_initial_screenshot(
+    session: browser_session.BrowserSession,
+    storage: dict,
+) -> tuple[str, bytes, dict]:
+    """Take the first page screenshot.
 
-    cookie_count = len(session.get_tracked_cookies())
-    script_count = len(session.get_tracked_scripts())
-    request_count = len(session.get_tracked_network_requests())
+    Returns:
+        Tuple of (SSE screenshot event, PNG bytes, storage dict).
+    """
+    return await sse_helpers.take_screenshot_event(session, storage)
 
+
+def log_capture_stats(
+    session: browser_session.BrowserSession,
+    storage: dict,
+) -> None:
+    """Log initial capture statistics."""
     log.end_timer("initial-capture", "Initial data captured")
     log.info(
         "Initial capture stats",
         {
-            "cookies": cookie_count,
-            "scripts": script_count,
-            "requests": request_count,
+            "cookies": len(session.get_tracked_cookies()),
+            "scripts": len(session.get_tracked_scripts()),
+            "requests": len(session.get_tracked_network_requests()),
             "localStorage": len(storage["local_storage"]),
             "sessionStorage": len(storage["session_storage"]),
         },
     )
-
-    events.append(
-        sse_helpers.format_progress_event(
-            "captured",
-            "Checking for overlays...",
-            42,
-        )
-    )
-    return events, screenshot_bytes, storage
