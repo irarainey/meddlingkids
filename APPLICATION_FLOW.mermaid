@@ -1,0 +1,120 @@
+flowchart TD
+    subgraph CLIENT["🖥️ Client — Vue 3 SPA"]
+        A["User enters URL &\nclicks Unmask"] --> B["useTrackingAnalysis.ts\ncreates EventSource"]
+    end
+
+    B -->|"GET /api/open-browser-stream\n?url=...&device=...&clear-cache=..."| C
+
+    subgraph SERVER["⚙️ Server — FastAPI + Playwright"]
+
+        C["main.py endpoint"] --> D["stream.py\nanalyze_url_stream()"]
+
+        D --> PREFLIGHT
+
+        subgraph PREFLIGHT["Pre-flight"]
+            P1["Clear cache?\ncache_util.clear_all()"] --> P2["Validate LLM config"]
+            P2 --> P3["Reset LLM usage tracker"]
+            P3 --> P4["Create BrowserSession\n+ start log file"]
+        end
+
+        PREFLIGHT --> PHASE1
+
+        subgraph PHASE1["Phase 1 — Browser Setup & Navigation"]
+            S1["Launch real Chrome\n(headed on Xvfb)"] --> S2["Apply anti-bot hardening\n(webdriver removal, plugins,\nWebGL, AudioContext)"]
+            S2 --> S3["Navigate to URL"]
+        end
+
+        PHASE1 --> PHASE2
+
+        subgraph PHASE2["Phase 2 — Page Load & Access Check"]
+            L1["Check HTTP status"] --> L2["Wait for network idle\n(3s race)"]
+            L2 --> L3["Grace period for\noverlays to render"]
+            L3 --> L4{"Access\ndenied?"}
+        end
+
+        L4 -->|Yes| ERR1["SSE: pageError\n→ abort"]
+        L4 -->|No| PHASE3
+
+        subgraph PHASE3["Phase 3 — Initial Data Capture"]
+            C1["Capture cookies"] --> C2["Capture localStorage\n& sessionStorage"]
+            C2 --> C3["Take screenshot\n(PNG → JPEG)"]
+            C3 --> C4["Build pre-consent\ntracking stats"]
+            C4 --> C5["Tag all requests\nas pre-consent"]
+        end
+
+        PHASE3 --> PHASE4
+
+        subgraph PHASE4["Phase 4 — Overlay Detection & Handling"]
+            O1["Take viewport\nscreenshot"] --> O2{"AI vision:\noverlay\ndetected?"}
+            O2 -->|No| O7["Capture final\npage state"]
+            O2 -->|Yes| O3["Validate button\nin DOM"]
+            O3 --> O4["Try click strategies\n(role match → iframes\n→ heuristics)"]
+            O4 --> O5["Capture post-click\ncookies & screenshot"]
+            O5 --> O6["Cache overlay strategy\nfor domain"]
+            O6 --> EXT{"First consent\noverlay?"}
+            EXT -->|Yes| EXTRACT["AI extraction\n(partners, categories,\npurposes) — concurrent"]
+            EXT -->|No| O2
+            EXTRACT --> O2
+        end
+
+        PHASE4 --> SETTLE{"Overlays\ndismissed?"}
+        SETTLE -->|Yes| WAIT["Wait for\nnetwork idle\n(post-consent settle)"]
+        SETTLE -->|No| PHASE5
+        WAIT --> PHASE5
+
+        subgraph PHASE5["Phase 5 — AI Analysis"]
+            direction TB
+            subgraph CONCURRENT["Concurrent Tasks"]
+                direction LR
+                SA["Script Analysis\n• Pattern matching\n• Script cache lookup\n• LLM for unknowns"]
+                TA["Tracking Analysis\n• Build summary\n• Stream LLM report"]
+            end
+            CONCURRENT --> SC["Privacy Scoring\n(deterministic, 8 categories)"]
+            SC --> SR["Structured Report\n(LLM per section)"]
+            SC --> SF["Summary Findings\n(LLM)"]
+            SR --> DC["Save domain cache\nfor future consistency"]
+        end
+
+        PHASE5 --> PHASE6
+
+        subgraph PHASE6["Phase 6 — Complete"]
+            F1["Log LLM usage summary\n(calls + tokens)"]
+            F1 --> F2["Log total analysis time"]
+            F2 --> F3["Save report file\n(if WRITE_TO_FILE)"]
+            F3 --> F4["SSE: complete event\nwith all results"]
+            F4 --> F5["Close browser session"]
+        end
+    end
+
+    PHASE6 -->|SSE stream| RESULTS
+
+    subgraph RESULTS["📊 Client — Results"]
+        R1["Display privacy\nscore dialog"]
+        R2["Render analysis tabs\n(Analysis, Network,\nCookies, Scripts, Debug)"]
+        R3["Show screenshot\ngallery"]
+    end
+
+    ERR1 -->|SSE| ERRCLIENT["Client shows\nerror dialog"]
+
+    subgraph LLM["🤖 LLM Backend"]
+        direction TB
+        AZ["Azure OpenAI\nor OpenAI API"]
+        MW["Middleware pipeline:\n• TimingChatMiddleware\n  (duration + token tracking)\n• RetryChatMiddleware\n  (429/5xx backoff)"]
+    end
+
+    O2 -.->|Vision API| LLM
+    EXTRACT -.->|Vision API| LLM
+    SA -.->|Chat API| LLM
+    TA -.->|Chat API| LLM
+    SR -.->|Chat API| LLM
+    SF -.->|Chat API| LLM
+
+    classDef phase fill:#1a1a2e,stroke:#e94560,color:#fff
+    classDef client fill:#0f3460,stroke:#16213e,color:#fff
+    classDef llm fill:#533483,stroke:#e94560,color:#fff
+    classDef error fill:#e94560,stroke:#fff,color:#fff
+
+    class PHASE1,PHASE2,PHASE3,PHASE4,PHASE5,PHASE6,PREFLIGHT phase
+    class CLIENT,RESULTS client
+    class LLM llm
+    class ERR1,ERRCLIENT error

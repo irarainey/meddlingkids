@@ -28,7 +28,8 @@
         "ms-python.mypy-type-checker",
         "github.copilot",
         "github.copilot-chat",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "mermaidchart.vscode-mermaid-chart"
       ]
     }
   },

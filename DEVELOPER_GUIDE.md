@@ -364,7 +364,7 @@ Key framework types used:
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
-| `Middleware` | `middleware.py` | `TimingChatMiddleware` + `RetryChatMiddleware` with exponential backoff |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
 
@@ -436,6 +436,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|---------------|
 | `cache.py` | Cross-cache management — `clear_all()` deletes every file in all cache sub-directories |
 | `errors.py` | Error message extraction |
+| `usage_tracking.py` | Per-session LLM call count and token usage tracking (`contextvars` isolation) |
 | `image.py` | Screenshot optimisation and JPEG conversion |
 | `json_parsing.py` | LLM response JSON parsing |
 | `logger.py` | Structured logger with colour output (`contextvars` isolation) |
@@ -488,7 +489,7 @@ build_tracking_summary() → Formatted text for LLM
 BaseAgent._build_agent() → Creates ChatAgent (agent_framework.ChatAgent)
     │                         with ChatClientProtocol + middleware
     │
-    ├── TimingChatMiddleware → Logs duration
+    ├── TimingChatMiddleware → Logs duration + records token usage
     ├── RetryChatMiddleware → Handles 429/5xx with backoff
     └── ChatAgent.run() or run_stream() → LLM chat completion
     │
@@ -854,6 +855,21 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Privacy score is calculated deterministically (no LLM variance) via 8 decomposed category scorers
 - Tracker classification patterns (~80+) are merged into combined alternation regexes for single-pass matching per URL/cookie
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
+
+### LLM Usage Tracking
+
+Every LLM call is automatically tracked for call count and token usage via `usage_tracking.py`. The counters are session-scoped (using `contextvars`) so concurrent analyses don't interfere.
+
+- **Per-call logging:** After each LLM call, `TimingChatMiddleware` extracts `usage_details` from the response and logs a running tally:
+  ```
+  [12:35:02.456] ℹ [LLM-Usage] LLM call #3 (ScriptAnalysis) callTokens=1842 callInput=1200 callOutput=642 runningCalls=3 runningTokens=6218
+  ```
+- **End-of-scan summary:** At the end of each analysis run, a final summary is logged:
+  ```
+  [12:36:14.789] ℹ [LLM-Usage] LLM usage summary totalCalls=7 totalInputTokens=18400 totalOutputTokens=9200 totalTokens=27600
+  ```
+- **Reset:** Counters are reset at the start of every `analyze_url_stream()` call.
+- **Log only:** Usage data appears in the console, debug tab, and log files. It is not included in the analysis report.
 
 ### Rate Limit Handling
 
