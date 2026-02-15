@@ -113,6 +113,8 @@ export interface ConsentPartner {
   riskScore?: number
   /** Specific privacy concerns */
   concerns?: string[]
+  /** Partner privacy policy or homepage URL */
+  url?: string
 }
 
 /**

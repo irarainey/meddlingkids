@@ -356,7 +356,10 @@ def _render_report_text(
         lines.append("TOP VENDORS AND PARTNERS")
         lines.append("─" * 40)
         for v in report.key_vendors.vendors:
-            lines.append(f"  • {v.name} ({v.role})")
+            if v.url:
+                lines.append(f"  • {v.name} ({v.role}) — {v.url}")
+            else:
+                lines.append(f"  • {v.name} ({v.role})")
             lines.append(f"    {v.privacy_impact}")
         lines.append("")
 

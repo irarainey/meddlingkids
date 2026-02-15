@@ -25,6 +25,9 @@ def _classify_against_database(
     """Classify a partner against a specific database."""
     for key, data in database.items():
         if _matches_partner(name_lower, key, data.aliases):
+            # Enrich partner URL from the database entry.
+            if data.url and not partner.url:
+                partner.url = data.url
             return partners_mod.PartnerClassification(
                 name=partner.name,
                 risk_level=config.risk_level,
