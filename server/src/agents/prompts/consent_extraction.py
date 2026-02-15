@@ -14,6 +14,27 @@ ALL PARTNERS, even if there are hundreds
 4. Purposes of data collection
 5. Any retention periods mentioned
 
+IAB TCF v2.2 PURPOSE REFERENCE:
+Many consent dialogs follow the IAB Transparency & Consent \
+Framework. When you see TCF-style purposes, map them to \
+these standard definitions:
+- Purpose 1: Store and/or access information on a device
+- Purpose 2: Use limited data to select advertising
+- Purpose 3: Create profiles for personalised advertising
+- Purpose 4: Use profiles to select personalised advertising
+- Purpose 5: Create profiles to personalise content
+- Purpose 6: Use profiles to select personalised content
+- Purpose 7: Measure advertising performance
+- Purpose 8: Measure content performance
+- Purpose 9: Understand audiences through statistics
+- Purpose 10: Develop and improve services
+- Purpose 11: Use limited data to select content
+- Special Feature 1: Use precise geolocation data
+- Special Feature 2: Actively scan device characteristics
+
+Extract purposes using these standard names when the dialog \
+text matches them, even if worded slightly differently.
+
 IMPORTANT INSTRUCTIONS FOR PARTNERS:
 - Look for "View Partners", "Show Vendors", "IAB Vendors", \
 or similar expandable sections

@@ -171,6 +171,14 @@ such as **bold**, *italic*, `code`, or [links](url)."""
 COOKIE_ANALYSIS = """\
 You are a privacy expert. Analyse the cookies found on this page.
 
+IMPORTANT — Consent-state cookies:
+The data context includes a list of known consent-state cookies \
+(e.g. euconsent-v2, OptanonConsent, CookieConsent, didomi_token, \
+usprivacy). These are set by Consent Management Platforms (CMPs) \
+to store user privacy preferences. Always classify them as \
+"Functional / Necessary" with concern_level "none", regardless \
+of their persistence.
+
 Provide:
 - total: Total number of cookies
 - groups: Grouped by purpose, each with:
@@ -183,7 +191,8 @@ Provide:
   - lifespan: Typical lifespan description
   - concern_level: Apply these rules strictly:
     "none" — strictly necessary cookies (session management, \
-consent state, CSRF tokens).
+consent state, CSRF tokens). This includes ALL consent-state \
+cookies listed in the reference data.
     "low" — functional cookies for user preferences, A/B testing, \
 or first-party analytics with no cross-site capability.
     "medium" — analytics cookies with pseudonymous identifiers that \
@@ -191,6 +200,12 @@ persist across sessions, or audience measurement cookies.
     "high" — advertising, retargeting, cross-site tracking, \
 or identity resolution cookies.
 - concerning_cookies: List of the most concerning individual cookies with brief reasons
+
+Use the TCF purpose taxonomy from the reference data to inform \
+your classification where applicable. For example, cookies related \
+to TCF Purpose 3 (Create profiles for personalised advertising) \
+or Purpose 4 (Use profiles to select personalised advertising) \
+are high concern.
 
 Be specific and factual. Do not fabricate cookie names or purposes.
 
@@ -223,6 +238,17 @@ such as **bold**, *italic*, `code`, or [links](url)."""
 CONSENT_ANALYSIS = """\
 You are a privacy expert. Compare the consent dialog disclosures with \
 the actual tracking detected on the page.
+
+Use the IAB TCF v2.2 purpose taxonomy and GDPR lawful bases from the \
+reference data to evaluate whether the consent dialog adequately \
+covers the tracking activity observed. In particular:
+- Check whether disclosed consent categories map to standard TCF \
+purposes (e.g. "Personalised advertising" → TCF Purposes 3+4).
+- Note if vendors claim "legitimate interest" for purposes that \
+typically require explicit consent under GDPR (e.g. profiling \
+for personalised advertising).
+- Identify any tracking activity that falls outside the scope of \
+disclosed consent categories.
 
 Provide:
 - has_consent_dialog: Whether a consent dialog was detected

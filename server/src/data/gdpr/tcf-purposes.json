@@ -1,0 +1,173 @@
+{
+  "_description": "IAB Transparency & Consent Framework v2.2 purpose taxonomy. Extracted from the IAB Global Vendor List (GVL) specification. Used to understand and classify privacy purposes declared by consent management platforms.",
+  "_source": "https://vendor-list.consensu.org/v3/vendor-list.json",
+  "_version": "TCF v2.2 / GVL Spec v3",
+  "purposes": {
+    "1": {
+      "id": 1,
+      "name": "Store and/or access information on a device",
+      "description": "Cookies, device or similar online identifiers together with other information can be stored or read on your device to recognise it each time it connects to an app or website.",
+      "lawful_bases": ["consent"],
+      "risk_level": "low",
+      "notes": "Foundational purpose required by almost all vendors. Required for setting any cookie or accessing device storage."
+    },
+    "2": {
+      "id": 2,
+      "name": "Use limited data to select advertising",
+      "description": "Advertising can be shown based on limited data such as the content being viewed, the app being used, approximate location, or device type.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "medium",
+      "notes": "Contextual advertising. Less intrusive than profiling-based ads."
+    },
+    "3": {
+      "id": 3,
+      "name": "Create profiles for personalised advertising",
+      "description": "A profile can be built about you and your interests to show you personalised advertising that is relevant to you.",
+      "lawful_bases": ["consent"],
+      "risk_level": "high",
+      "notes": "Builds user profiles over time. Core concern for GDPR privacy advocates."
+    },
+    "4": {
+      "id": 4,
+      "name": "Use profiles to select personalised advertising",
+      "description": "Personalised advertising can be shown to you based on a profile about you.",
+      "lawful_bases": ["consent"],
+      "risk_level": "high",
+      "notes": "Uses profiles built in Purpose 3. Often paired together."
+    },
+    "5": {
+      "id": 5,
+      "name": "Create profiles to personalise content",
+      "description": "A profile can be built about you and your interests to show you personalised content that is relevant to you.",
+      "lawful_bases": ["consent"],
+      "risk_level": "medium",
+      "notes": "Content personalisation rather than ad personalisation. Still involves profiling."
+    },
+    "6": {
+      "id": 6,
+      "name": "Use profiles to select personalised content",
+      "description": "Personalised content can be shown to you based on a profile about you.",
+      "lawful_bases": ["consent"],
+      "risk_level": "medium",
+      "notes": "Uses profiles built in Purpose 5."
+    },
+    "7": {
+      "id": 7,
+      "name": "Measure advertising performance",
+      "description": "The performance and effectiveness of ads that you see or interact with can be measured.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "medium",
+      "notes": "Ad measurement analytics. Many vendors claim legitimate interest for this."
+    },
+    "8": {
+      "id": 8,
+      "name": "Measure content performance",
+      "description": "The performance and effectiveness of content that you see or interact with can be measured.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "low",
+      "notes": "Content analytics. Lower privacy risk than ad tracking."
+    },
+    "9": {
+      "id": 9,
+      "name": "Understand audiences through statistics or combinations of data from different sources",
+      "description": "Reports can be generated based on the combination of data sets regarding your interaction and those of other users.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "medium",
+      "notes": "Audience research and market analysis."
+    },
+    "10": {
+      "id": 10,
+      "name": "Develop and improve services",
+      "description": "Your data can be used to improve existing systems and software, and to develop new products.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "medium",
+      "notes": "Product development. Broad purpose that can cover many activities."
+    },
+    "11": {
+      "id": 11,
+      "name": "Use limited data to select content",
+      "description": "Content can be shown to you based on limited data such as the website or app you are using, your non-precise location, your device type, or which content you are interacting with.",
+      "lawful_bases": ["consent", "legitimate_interest"],
+      "risk_level": "low",
+      "notes": "Added in TCF v2.2. Basic content selection without profiling."
+    }
+  },
+  "special_purposes": {
+    "1": {
+      "id": 1,
+      "name": "Ensure security, prevent and detect fraud, and fix errors",
+      "description": "Your data can be used to monitor for and prevent unusual and possibly fraudulent activity, and ensure systems and processes work properly and securely.",
+      "lawful_bases": ["legitimate_interest"],
+      "risk_level": "low",
+      "notes": "Security purpose. Users cannot object to this. Always allowed."
+    },
+    "2": {
+      "id": 2,
+      "name": "Deliver and present advertising and content",
+      "description": "Certain information like an IP address or device capabilities is used to ensure the technical compatibility of the content or advertising and to facilitate the transmission of content.",
+      "lawful_bases": ["legitimate_interest"],
+      "risk_level": "low",
+      "notes": "Basic ad delivery. Users cannot object. Required for technical delivery."
+    },
+    "3": {
+      "id": 3,
+      "name": "Save and communicate privacy choices",
+      "description": "The choices you make regarding the purposes and entities listed in this notice are saved and made available.",
+      "lawful_bases": ["legitimate_interest"],
+      "risk_level": "low",
+      "notes": "Added in TCF v2.2. Stores and communicates user consent preferences."
+    }
+  },
+  "features": {
+    "1": {
+      "id": 1,
+      "name": "Match and combine data from other data sources",
+      "description": "Data from one data source may be combined with data from other data sources and matched to your online profile.",
+      "risk_level": "high",
+      "notes": "Cross-source data matching. Significant privacy concern."
+    },
+    "2": {
+      "id": 2,
+      "name": "Link different devices",
+      "description": "It can be determined that two or more devices belong to the same user or household.",
+      "risk_level": "high",
+      "notes": "Cross-device tracking. Major privacy concern."
+    },
+    "3": {
+      "id": 3,
+      "name": "Receive and use automatically-sent device characteristics for identification",
+      "description": "Your device might be distinguished from other devices based on information it automatically sends when accessing the internet.",
+      "risk_level": "high",
+      "notes": "Device fingerprinting. Can be used without cookies."
+    }
+  },
+  "special_features": {
+    "1": {
+      "id": 1,
+      "name": "Use precise geolocation data",
+      "description": "With your acceptance, your precise location can be used for purposes such as targeted advertising.",
+      "risk_level": "critical",
+      "notes": "GPS-level location tracking. Requires explicit consent. Very high privacy risk."
+    },
+    "2": {
+      "id": 2,
+      "name": "Actively scan device characteristics for identification",
+      "description": "With your acceptance, certain characteristics specific to your device can be requested and used to distinguish it from other devices.",
+      "risk_level": "critical",
+      "notes": "Active device fingerprinting. More intrusive than passive fingerprinting. Requires consent."
+    }
+  },
+  "data_declarations": {
+    "1": "IP address",
+    "2": "Device characteristics",
+    "3": "Device identifiers",
+    "4": "Probabilistic identifiers",
+    "5": "Authentication-derived identifiers",
+    "6": "Browsing and interaction data",
+    "7": "User-provided data",
+    "8": "Non-precise location data",
+    "9": "Precise location data",
+    "10": "Privacy choices",
+    "11": "Users' profiles"
+  }
+}

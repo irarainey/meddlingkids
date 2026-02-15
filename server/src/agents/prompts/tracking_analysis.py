@@ -19,18 +19,24 @@ found and explain what company/service it belongs to and \
 what they typically track.
 
 4. **Privacy Risk Assessment**: Rate the privacy risk level \
-(Low/Medium/High/Very High) and explain why.
+(Low/Medium/High/Very High) and explain why. Reference \
+relevant GDPR lawful bases and ePrivacy requirements \
+where applicable.
 
 5. **Cookie Analysis**: Analyse cookie purposes — which are \
-functional, which are for tracking, and their persistence.
+functional, which are for tracking, and their persistence. \
+Distinguish consent-state cookies (e.g. euconsent-v2, \
+OptanonConsent, CookieConsent) from tracking cookies.
 
 6. **Storage Analysis**: Analyse localStorage/sessionStorage \
 usage and what data might be persisted.
 
 7. **Consent Dialog Analysis**: If consent information is \
 provided, analyse what the website disclosed about tracking \
-and compare it to what was actually detected.  Highlight \
-any discrepancies or concerning practices.
+and compare it to what was actually detected. Reference \
+the IAB TCF v2.2 purpose taxonomy when evaluating \
+consent categories. Highlight any discrepancies or \
+concerning practices.
 
 8. **Partner/Vendor Analysis**: If partner information is \
 provided, explain what each partner does, what data they \

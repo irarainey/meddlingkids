@@ -132,6 +132,46 @@ FINGERPRINT_COOKIE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"client.?id", re.I),
 ]
 
+# ── Consent-state cookie patterns ───────────────────────────
+# Cookies set by Consent Management Platforms (CMPs) to store
+# user privacy preferences.  These are NOT tracking cookies and
+# should be distinguished from tracking cookies in analysis.
+# Their presence indicates a site is using a consent mechanism.
+
+CONSENT_STATE_COOKIE_PATTERNS: list[re.Pattern[str]] = [
+    # IAB TCF
+    re.compile(r"^euconsent", re.I),
+    re.compile(r"^addtl_consent$", re.I),
+    # US Privacy / CCPA
+    re.compile(r"^usprivacy$", re.I),
+    # OneTrust
+    re.compile(r"^OptanonConsent$", re.I),
+    re.compile(r"^OptanonAlertBoxClosed$", re.I),
+    # Cookiebot
+    re.compile(r"^CookieConsent$", re.I),
+    # Didomi
+    re.compile(r"^didomi", re.I),
+    # Complianz (WordPress)
+    re.compile(r"^cmplz_", re.I),
+    # Generic CMP
+    re.compile(r"^__cmpcc$", re.I),
+    # Cookie Law Info (WordPress)
+    re.compile(r"^cookielawinfo", re.I),
+    # Sourcepoint
+    re.compile(r"^sp_consent$", re.I),
+    re.compile(r"^consentUUID$", re.I),
+    # TrustArc
+    re.compile(r"^truste\.", re.I),
+    re.compile(r"^notice_behavior$", re.I),
+    re.compile(r"^notice_preferences$", re.I),
+    # Yahoo/Oath
+    re.compile(r"^CONSENTMGR$", re.I),
+    # Google
+    re.compile(r"^SOCS$", re.I),
+    # Global Privacy Control
+    re.compile(r"^GPC_SIGNAL$", re.I),
+]
+
 # ============================================================================
 # Sub-category Patterns (subsets of HIGH_RISK_TRACKERS)
 # ============================================================================
@@ -304,6 +344,24 @@ def _combine(patterns: list[re.Pattern[str]]) -> re.Pattern[str]:
 
 TRACKING_COOKIE_COMBINED: re.Pattern[str] = _combine(TRACKING_COOKIE_PATTERNS)
 
+CONSENT_STATE_COOKIE_COMBINED: re.Pattern[str] = _combine(CONSENT_STATE_COOKIE_PATTERNS)
+
 ALL_URL_TRACKERS_COMBINED: re.Pattern[str] = _combine(
     HIGH_RISK_TRACKERS + ADVERTISING_TRACKERS + SOCIAL_MEDIA_TRACKERS + ANALYTICS_TRACKERS
 )
+
+# ============================================================================
+# TCF / Consent Framework Detection
+# ============================================================================
+
+TCF_INDICATORS: list[re.Pattern[str]] = [
+    re.compile(r"__tcfapi", re.I),
+    re.compile(r"euconsent", re.I),
+    re.compile(r"tcf.*consent|consent.*tcf", re.I),
+    re.compile(r"iab.*vendor|vendor.*iab", re.I),
+    re.compile(r"transparencyandconsent|transparency.?consent", re.I),
+    re.compile(r"cmpapi|__cmp\b", re.I),
+    re.compile(r"gdpr.?consent|consent.?gdpr", re.I),
+]
+
+TCF_INDICATORS_COMBINED: re.Pattern[str] = _combine(TCF_INDICATORS)

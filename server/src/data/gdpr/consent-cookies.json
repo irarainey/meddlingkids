@@ -1,0 +1,211 @@
+{
+  "_description": "Known consent-state cookies set by Consent Management Platforms (CMPs) and privacy frameworks. These cookies store user consent preferences and should be distinguished from tracking cookies in privacy analysis.",
+  "_source": "Compiled from IAB TCF specification, CMP documentation, and common CMP implementations",
+  "tcf_cookies": {
+    "euconsent-v2": {
+      "description": "IAB TCF v2 consent string (TC String). Base64url-encoded binary format containing vendor consents, purpose consents, legitimate interest flags, and publisher restrictions.",
+      "set_by": "Any TCF-registered CMP",
+      "framework": "IAB TCF v2.x",
+      "format": "base64url-encoded binary TC String",
+      "contains": [
+        "CMP ID and version",
+        "Consent screen number",
+        "Vendor consents (bitfield or range)",
+        "Purpose consents (12 bits)",
+        "Legitimate interest flags",
+        "Special feature opt-ins",
+        "Publisher restrictions",
+        "Disclosed vendors (TCF v2.3+)"
+      ],
+      "max_age_days": 390,
+      "significance": "critical",
+      "notes": "The primary consent signal for IAB TCF. Its presence indicates the site uses TCF. The encoded string can be decoded to verify which vendors and purposes have consent."
+    },
+    "addtl_consent": {
+      "description": "Google Additional Consent Mode string. Lists non-IAB vendors that have received consent through a Google-certified CMP.",
+      "set_by": "Google-certified CMPs",
+      "framework": "Google Additional Consent",
+      "format": "Version.vendor_id1.vendor_id2...",
+      "significance": "high",
+      "notes": "Supplements the TC String for Google Ad Manager vendors not registered with IAB."
+    },
+    "__tcfapi": {
+      "description": "Not a cookie but a JavaScript API. TCF CMPs expose window.__tcfapi() for vendors to query consent status programmatically.",
+      "set_by": "TCF CMP JavaScript",
+      "framework": "IAB TCF v2.x",
+      "format": "JavaScript API function",
+      "significance": "critical",
+      "notes": "Presence of this API in page JavaScript indicates TCF compliance attempt."
+    }
+  },
+  "cmp_cookies": {
+    "OptanonConsent": {
+      "description": "OneTrust consent preferences cookie. Stores user's category-level consent choices.",
+      "set_by": "OneTrust",
+      "format": "URL-encoded key-value pairs including groups with consent flags",
+      "example_value": "isGpcApplied=0&datestamp=...&version=...&groups=C0001:1,C0002:1,C0003:0,C0004:0",
+      "significance": "high",
+      "notes": "Very common CMP. Groups field shows which cookie categories were accepted (1) or rejected (0)."
+    },
+    "OptanonAlertBoxClosed": {
+      "description": "OneTrust timestamp recording when the user dismissed the cookie banner.",
+      "set_by": "OneTrust",
+      "format": "ISO 8601 datetime",
+      "significance": "medium"
+    },
+    "CookieConsent": {
+      "description": "Cookiebot consent preferences. Stores granular consent state per category.",
+      "set_by": "Cookiebot (Usercentrics)",
+      "format": "URL-encoded JSON with stamp, necessary, preferences, statistics, marketing flags",
+      "example_value": "{stamp:'...', necessary:true, preferences:true, statistics:false, marketing:false}",
+      "significance": "high"
+    },
+    "CookieConsentPolicy": {
+      "description": "Salesforce/Commerce Cloud cookie consent policy flag.",
+      "set_by": "Salesforce Commerce Cloud",
+      "format": "Boolean string",
+      "significance": "medium"
+    },
+    "didomi_token": {
+      "description": "Didomi CMP consent token. JWT-like token containing user consent preferences.",
+      "set_by": "Didomi",
+      "format": "Base64-encoded JSON with purposes, vendors, and consent timestamp",
+      "significance": "high"
+    },
+    "usprivacy": {
+      "description": "US Privacy String (CCPA/CPRA). Four-character string encoding US privacy signal: version, notice given, opt-out sale, LSPA covered.",
+      "set_by": "IAB CCPA Compliance Framework CMPs",
+      "framework": "IAB US Privacy / CCPA",
+      "format": "4-character string: [version][notice][opt-out][LSPA]",
+      "example_value": "1YNN",
+      "significance": "high",
+      "notes": "1YNN = version 1, notice given, no opt-out of sale, no LSPA. Being replaced by GPP."
+    },
+    "cmplz_consented_services": {
+      "description": "Complianz cookie consent services list.",
+      "set_by": "Complianz (WordPress plugin)",
+      "format": "JSON-encoded service consent map",
+      "significance": "medium"
+    },
+    "cmplz_marketing": {
+      "description": "Complianz marketing consent flag.",
+      "set_by": "Complianz",
+      "format": "allow/deny",
+      "significance": "medium"
+    },
+    "cmplz_statistics": {
+      "description": "Complianz statistics consent flag.",
+      "set_by": "Complianz",
+      "format": "allow/deny",
+      "significance": "medium"
+    },
+    "cmplz_preferences": {
+      "description": "Complianz preferences consent flag.",
+      "set_by": "Complianz",
+      "format": "allow/deny",
+      "significance": "medium"
+    },
+    "__cmpcc": {
+      "description": "Generic CMP consent cookie. Used by various CMP implementations.",
+      "set_by": "Various CMPs",
+      "format": "Varies",
+      "significance": "medium"
+    },
+    "cookielawinfo-checkbox-necessary": {
+      "description": "Cookie Law Info (GDPR Cookie Consent) WordPress plugin consent flag for necessary cookies.",
+      "set_by": "Cookie Law Info / GDPR Cookie Consent WordPress plugin",
+      "format": "yes/no",
+      "significance": "low"
+    },
+    "cookielawinfo-checkbox-analytics": {
+      "description": "Cookie Law Info consent flag for analytics cookies.",
+      "set_by": "Cookie Law Info / GDPR Cookie Consent WordPress plugin",
+      "format": "yes/no",
+      "significance": "medium"
+    },
+    "cookielawinfo-checkbox-advertisement": {
+      "description": "Cookie Law Info consent flag for advertisement cookies.",
+      "set_by": "Cookie Law Info / GDPR Cookie Consent WordPress plugin",
+      "format": "yes/no",
+      "significance": "medium"
+    },
+    "sp_consent": {
+      "description": "Sourcepoint consent preferences cookie.",
+      "set_by": "Sourcepoint",
+      "format": "JSON-encoded consent data",
+      "significance": "high"
+    },
+    "consentUUID": {
+      "description": "Sourcepoint unique consent identifier.",
+      "set_by": "Sourcepoint",
+      "format": "UUID",
+      "significance": "medium"
+    },
+    "truste.eu.cookie.notice_gdpr_pr498": {
+      "description": "TrustArc (formerly TRUSTe) GDPR consent notice cookie.",
+      "set_by": "TrustArc",
+      "format": "Numeric consent level",
+      "significance": "high"
+    },
+    "notice_behavior": {
+      "description": "TrustArc consent behaviour preference.",
+      "set_by": "TrustArc",
+      "format": "expressed/implied",
+      "significance": "medium"
+    },
+    "notice_preferences": {
+      "description": "TrustArc consent preferences for cookie categories.",
+      "set_by": "TrustArc",
+      "format": "Numeric category flags",
+      "significance": "medium"
+    },
+    "CONSENTMGR": {
+      "description": "Yahoo/Oath consent manager cookie.",
+      "set_by": "Yahoo / Oath / Verizon Media",
+      "format": "URL-encoded consent flags",
+      "significance": "high"
+    },
+    "consent": {
+      "description": "Google consent cookie for YouTube and Google services.",
+      "set_by": "Google",
+      "format": "YES+/NO+",
+      "significance": "high",
+      "notes": "Set on .youtube.com and .google.com domains."
+    },
+    "SOCS": {
+      "description": "Google Search consent cookie storing consent preferences.",
+      "set_by": "Google Search",
+      "format": "Encoded consent state",
+      "significance": "medium"
+    },
+    "GPC_SIGNAL": {
+      "description": "Global Privacy Control signal cookie. Mirrors the Sec-GPC HTTP header.",
+      "set_by": "Various privacy-aware sites",
+      "framework": "Global Privacy Control",
+      "format": "0/1",
+      "significance": "medium",
+      "notes": "GPC is a browser-level signal that can also be stored as a cookie."
+    }
+  },
+  "consent_cookie_name_patterns": [
+    "euconsent",
+    "addtl_consent",
+    "usprivacy",
+    "OptanonConsent",
+    "OptanonAlertBoxClosed",
+    "CookieConsent",
+    "didomi",
+    "cmplz_",
+    "__cmpcc",
+    "cookielawinfo",
+    "sp_consent",
+    "consentUUID",
+    "truste",
+    "notice_behavior",
+    "notice_preferences",
+    "CONSENTMGR",
+    "SOCS",
+    "GPC_SIGNAL",
+    "consent"
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "_description": "GDPR and ePrivacy Directive reference data for privacy analysis context. Key concepts, principles, and regulatory requirements relevant to cookie consent and tracking analysis.",
+  "gdpr": {
+    "full_name": "General Data Protection Regulation",
+    "regulation": "EU Regulation 2016/679",
+    "effective_date": "2018-05-25",
+    "scope": "Processing of personal data of EU/EEA residents",
+    "lawful_bases": {
+      "consent": {
+        "article": "6(1)(a)",
+        "description": "The data subject has given consent to the processing of their personal data for one or more specific purposes.",
+        "requirements": [
+          "Must be freely given",
+          "Must be specific and informed",
+          "Must be unambiguous indication (clear affirmative action)",
+          "Must be as easy to withdraw as to give",
+          "Pre-ticked boxes do NOT constitute valid consent",
+          "Silence or inactivity does NOT constitute consent",
+          "Cookie walls may undermine freely given consent"
+        ]
+      },
+      "legitimate_interest": {
+        "article": "6(1)(f)",
+        "description": "Processing is necessary for the purposes of the legitimate interests pursued by the controller or a third party, except where overridden by the interests or fundamental rights of the data subject.",
+        "requirements": [
+          "Requires a balancing test",
+          "Controller must document the assessment",
+          "Data subjects can object at any time",
+          "Cannot be used for profiling that produces legal effects"
+        ],
+        "notes": "TCF allows vendors to declare legitimate interest for certain purposes, but DPAs have frequently challenged this for advertising purposes."
+      },
+      "contract": {
+        "article": "6(1)(b)",
+        "description": "Processing is necessary for the performance of a contract."
+      },
+      "legal_obligation": {
+        "article": "6(1)(c)",
+        "description": "Processing is necessary for compliance with a legal obligation."
+      },
+      "vital_interests": {
+        "article": "6(1)(d)",
+        "description": "Processing is necessary to protect vital interests."
+      },
+      "public_interest": {
+        "article": "6(1)(e)",
+        "description": "Processing is necessary for a task carried out in the public interest."
+      }
+    },
+    "key_principles": {
+      "data_minimisation": "Personal data must be adequate, relevant and limited to what is necessary.",
+      "purpose_limitation": "Data must be collected for specified, explicit and legitimate purposes.",
+      "storage_limitation": "Data must not be kept longer than necessary for the purposes.",
+      "transparency": "Processing must be lawful, fair and transparent to the data subject.",
+      "accountability": "The controller must be able to demonstrate compliance."
+    },
+    "data_subject_rights": [
+      "Right of access (Art. 15)",
+      "Right to rectification (Art. 16)",
+      "Right to erasure / right to be forgotten (Art. 17)",
+      "Right to restriction of processing (Art. 18)",
+      "Right to data portability (Art. 20)",
+      "Right to object (Art. 21)",
+      "Right not to be subject to automated decision-making (Art. 22)"
+    ]
+  },
+  "eprivacy_directive": {
+    "full_name": "Directive on Privacy and Electronic Communications",
+    "directive": "EU Directive 2002/58/EC (as amended by 2009/136/EC)",
+    "key_provision": "Article 5(3)",
+    "requirement": "Storing information or gaining access to information stored in terminal equipment (cookies) requires prior informed consent, except for cookies strictly necessary for a service explicitly requested by the user.",
+    "cookie_categories": {
+      "strictly_necessary": {
+        "description": "Cookies essential for providing a service explicitly requested by the user.",
+        "consent_required": false,
+        "examples": ["Session cookies", "Authentication tokens", "Shopping cart cookies", "Load balancing cookies", "Consent preference cookies"]
+      },
+      "functional": {
+        "description": "Cookies that enhance functionality but are not strictly necessary.",
+        "consent_required": true,
+        "examples": ["Language preferences", "UI customisation", "Chat widget state"]
+      },
+      "analytics": {
+        "description": "Cookies used to measure website performance and usage.",
+        "consent_required": true,
+        "examples": ["Google Analytics", "Matomo/Piwik", "Adobe Analytics"],
+        "notes": "Some DPAs allow analytics without consent if properly anonymised (e.g., CNIL exemption for Matomo)."
+      },
+      "advertising": {
+        "description": "Cookies used for targeted advertising and tracking across sites.",
+        "consent_required": true,
+        "examples": ["Ad network cookies", "Retargeting pixels", "Cross-site tracking identifiers"]
+      },
+      "social_media": {
+        "description": "Cookies set by social media platforms embedded in the page.",
+        "consent_required": true,
+        "examples": ["Facebook pixel", "Twitter widget cookies", "LinkedIn Insight tag"]
+      }
+    }
+  },
+  "tcf_overview": {
+    "full_name": "Transparency & Consent Framework",
+    "current_version": "v2.2 (v2.3 launched April 2025, adoption deadline February 2026)",
+    "maintained_by": "IAB Europe",
+    "technical_spec_by": "IAB Tech Lab",
+    "description": "An industry standard that enables publishers and their technology partners to communicate user consent choices in a standardised way.",
+    "key_components": {
+      "tc_string": {
+        "cookie_name": "euconsent-v2",
+        "description": "A Base64url-encoded binary string that encodes all consent and transparency information.",
+        "encoding": "Base64url over bitfield",
+        "contains": [
+          "Version number",
+          "Creation and last update timestamps",
+          "CMP ID and version",
+          "Consent screen number",
+          "Consent and publisher country codes",
+          "Vendor consents and legitimate interests",
+          "Purpose consents and legitimate interests",
+          "Special feature opt-ins",
+          "Publisher restrictions"
+        ]
+      },
+      "global_vendor_list": {
+        "url": "https://vendor-list.consensu.org/v3/vendor-list.json",
+        "description": "Canonical list of all registered TCF vendors with their declared purposes, features, cookie usage, and data retention.",
+        "update_frequency": "Regularly updated as vendors register or update declarations"
+      },
+      "cmp_api": {
+        "js_function": "__tcfapi",
+        "description": "JavaScript API that CMPs must expose on the page for vendors to query consent status.",
+        "key_commands": ["getTCData", "ping", "addEventListener"]
+      },
+      "consent_management_platform": {
+        "description": "Software that displays consent notices and collects user preferences.",
+        "requirements": [
+          "Must be registered with IAB Europe",
+          "Must support the CMP API (__tcfapi)",
+          "Must set the euconsent-v2 cookie",
+          "Must support all TCF purposes and features",
+          "Must provide vendor-level granularity"
+        ]
+      }
+    },
+    "compliance_concerns": [
+      "Pre-consent tracking: Loading tracking scripts before consent is obtained",
+      "Dark patterns: Making 'Accept All' prominently visible while hiding reject options",
+      "Consent walls: Requiring consent to access content (debated legality)",
+      "Legitimate interest misuse: Using legitimate interest for advertising purposes",
+      "Vendor count transparency: Not clearly disclosing the number of data recipients",
+      "Partner list accessibility: Making partner lists difficult to find or read",
+      "Consent string validity: TC String not accurately reflecting user choices",
+      "Re-consent frequency: Not re-asking consent when vendor list changes significantly"
+    ]
+  },
+  "privacy_signals": {
+    "gpc": {
+      "name": "Global Privacy Control",
+      "header": "Sec-GPC: 1",
+      "description": "Browser-level signal indicating user preference to opt out of sale/sharing of personal data.",
+      "legal_recognition": "Recognised under CCPA/CPRA (California), and gaining recognition in other jurisdictions."
+    },
+    "dnt": {
+      "name": "Do Not Track",
+      "header": "DNT: 1",
+      "description": "Legacy browser signal requesting not to be tracked. Largely deprecated and not legally binding.",
+      "status": "Deprecated by most browsers and not widely respected by sites."
+    }
+  }
+}

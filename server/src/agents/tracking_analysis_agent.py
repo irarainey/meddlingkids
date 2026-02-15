@@ -13,6 +13,7 @@ import agent_framework
 
 from src.agents import base, config
 from src.agents.prompts import tracking_analysis
+from src.data import loader
 from src.models import analysis, consent
 from src.utils import logger
 
@@ -127,6 +128,7 @@ def _build_user_prompt(
         f"## LocalStorage Data\n{local_json}\n\n"
         f"## SessionStorage Data\n{session_json}"
         f"{consent_section}\n\n"
+        f"{_build_gdpr_reference()}\n\n"
         "Please provide a comprehensive privacy analysis"
         " of this tracking data. If consent dialog"
         " information is provided, compare what was"
@@ -182,3 +184,42 @@ def _format_partner(p: consent.ConsentPartner) -> str:
     data = f" | Data: {', '.join(p.data_collected)}" if p.data_collected else ""
     concerns = f" | Concerns: {', '.join(p.concerns)}" if p.concerns else ""
     return f"- **{p.name}**{risk}{category}: {p.purpose}{data}{concerns}"
+
+
+def _build_gdpr_reference() -> str:
+    """Build a compact GDPR/TCF reference for the user prompt.
+
+    Provides the LLM with TCF purpose names and known
+    consent-state cookie names so it can produce more
+    informed and accurate analysis.
+
+    Returns:
+        Formatted reference section string.
+    """
+    lines: list[str] = ["## GDPR / TCF Reference"]
+
+    tcf = loader.get_tcf_purposes()
+    purposes = tcf.get("purposes", {})
+    if purposes:
+        lines.append("")
+        lines.append("### IAB TCF v2.2 Purposes")
+        for pid, entry in sorted(purposes.items(), key=lambda x: int(x[0])):
+            lines.append(f"- Purpose {pid}: {entry['name']}")
+
+    # Consent cookie names so the LLM distinguishes them
+    # from tracking cookies.
+    consent_data = loader.get_consent_cookies()
+    all_cookies: list[str] = []
+    for name in consent_data.get("tcf_cookies", {}):
+        if not name.startswith("__"):
+            all_cookies.append(name)
+    all_cookies.extend(consent_data.get("cmp_cookies", {}))
+    if all_cookies:
+        lines.append("")
+        lines.append("### Known Consent-State Cookies")
+        lines.append(
+            "These store user consent preferences (functional, "
+            "not tracking): " + ", ".join(all_cookies)
+        )
+
+    return "\n".join(lines)

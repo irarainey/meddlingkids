@@ -1,9 +1,9 @@
 """
-Data loader for tracker and partner databases.
+Data loader for tracker, partner, and GDPR/TCF reference databases.
 Loads JSON files and compiles patterns into regex objects.
 
-The JSON data files live alongside this module in partners/ and trackers/
-subdirectories.
+The JSON data files live alongside this module in partners/, trackers/,
+and gdpr/ subdirectories.
 """
 
 from __future__ import annotations
@@ -169,3 +169,72 @@ PARTNER_CATEGORIES: list[partners.PartnerCategoryConfig] = [
         risk_score=4,
     ),
 ]
+
+
+# ============================================================================
+# GDPR / TCF Reference Data Loading
+# ============================================================================
+
+_tcf_purposes_cache: dict[str, Any] | None = None
+_consent_cookies_cache: dict[str, Any] | None = None
+_gdpr_reference_cache: dict[str, Any] | None = None
+
+
+def get_tcf_purposes() -> dict[str, Any]:
+    """Get TCF purpose taxonomy (lazy loaded and cached).
+
+    Returns the IAB TCF v2.2 purpose definitions including
+    purposes, special purposes, features, special features,
+    and data declarations.
+    """
+    global _tcf_purposes_cache
+    if _tcf_purposes_cache is None:
+        _tcf_purposes_cache = _load_json("gdpr/tcf-purposes.json")
+    return _tcf_purposes_cache
+
+
+def get_consent_cookies() -> dict[str, Any]:
+    """Get known consent-state cookie definitions (lazy loaded and cached).
+
+    Returns data about TCF cookies, CMP-specific consent cookies,
+    and patterns for identifying consent-related cookies.
+    """
+    global _consent_cookies_cache
+    if _consent_cookies_cache is None:
+        _consent_cookies_cache = _load_json("gdpr/consent-cookies.json")
+    return _consent_cookies_cache
+
+
+def get_gdpr_reference() -> dict[str, Any]:
+    """Get GDPR and ePrivacy reference data (lazy loaded and cached).
+
+    Returns comprehensive reference information about GDPR lawful
+    bases, key principles, data subject rights, ePrivacy cookie
+    categories, and TCF overview.
+    """
+    global _gdpr_reference_cache
+    if _gdpr_reference_cache is None:
+        _gdpr_reference_cache = _load_json("gdpr/gdpr-reference.json")
+    return _gdpr_reference_cache
+
+
+def get_tcf_purpose_name(purpose_id: int) -> str:
+    """Look up a TCF purpose name by its numeric ID.
+
+    Returns the purpose name or 'Unknown purpose {id}' if not found.
+    """
+    purposes = get_tcf_purposes().get("purposes", {})
+    entry = purposes.get(str(purpose_id))
+    if entry:
+        return entry["name"]
+    return f"Unknown purpose {purpose_id}"
+
+
+def get_consent_cookie_names() -> list[str]:
+    """Get the list of known consent-state cookie name patterns.
+
+    Returns patterns that can be used to identify cookies set by
+    CMPs rather than tracking cookies.
+    """
+    data = get_consent_cookies()
+    return data.get("consent_cookie_name_patterns", [])
