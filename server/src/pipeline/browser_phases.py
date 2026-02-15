@@ -107,6 +107,7 @@ async def _wait_for_consent_dialog_ready(
                 has_main_frame_container = True
                 break
         except Exception:
+            log.debug("Consent container selector check failed", {"selector": sel})
             continue
 
     if not consent_frames and not has_main_frame_container:
@@ -139,6 +140,7 @@ async def _wait_for_consent_dialog_ready(
                         if await buttons.nth(i).is_visible():
                             visible_count += 1
                     except Exception:
+                        log.debug("Button visibility check failed", {"index": i})
                         continue
                 if visible_count >= 2:
                     log.debug(
@@ -152,6 +154,7 @@ async def _wait_for_consent_dialog_ready(
                     buttons_ready = True
                     break
             except Exception:
+                log.debug("Button enumeration failed in frame", {"frame": frame.url[:80]})
                 continue
         if buttons_ready:
             break
@@ -175,8 +178,11 @@ async def _wait_for_consent_dialog_ready(
                 "Consent frame reached load state",
                 {"url": frame.url[:80]},
             )
-        except (TimeoutError, Exception):
-            pass
+        except Exception:
+            log.debug(
+                "Consent frame load state wait failed",
+                {"url": frame.url[:80]},
+            )
 
     # Final rendering-settle delay — even after load, the
     # browser may need a moment to paint the composited frame.

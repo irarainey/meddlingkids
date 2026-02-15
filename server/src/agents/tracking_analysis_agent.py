@@ -237,70 +237,13 @@ def _format_partner(p: consent.ConsentPartner) -> str:
 def _build_gdpr_reference() -> str:
     """Build a GDPR/TCF reference for the user prompt.
 
-    Provides the LLM with TCF purpose names, known
-    consent-state cookie names, GDPR lawful bases, and
-    ePrivacy cookie categories so it can produce informed
-    and accurate analysis.
+    Delegates to the shared ``gdpr_context`` module so both
+    this agent and the structured-report agent use identical
+    reference data.
 
     Returns:
         Formatted reference section string.
     """
-    lines: list[str] = ["## GDPR / TCF Reference"]
+    from src.agents import gdpr_context
 
-    # TCF purpose names with risk levels.
-    tcf = loader.get_tcf_purposes()
-    purposes = tcf.get("purposes", {})
-    if purposes:
-        lines.append("")
-        lines.append("### IAB TCF v2.2 Purposes")
-        for pid, entry in sorted(purposes.items(), key=lambda x: int(x[0])):
-            risk_level = entry.get("risk_level", "")
-            lines.append(f"- Purpose {pid}: {entry['name']} (risk: {risk_level})")
-
-    # Special features (high privacy risk).
-    special_features = tcf.get("special_features", {})
-    if special_features:
-        lines.append("")
-        lines.append("### TCF Special Features (require explicit consent)")
-        for sfid, entry in sorted(special_features.items(), key=lambda x: int(x[0])):
-            lines.append(f"- SF {sfid}: {entry['name']}")
-
-    # Consent cookie names so the LLM distinguishes them
-    # from tracking cookies.
-    consent_data = loader.get_consent_cookies()
-    tcf_cookies = consent_data.get("tcf_cookies", {})
-    cmp_cookies = consent_data.get("cmp_cookies", {})
-    if tcf_cookies or cmp_cookies:
-        lines.append("")
-        lines.append("### Known Consent-State Cookies")
-        lines.append(
-            "These cookies store user consent preferences and should be classified as 'Functional / Necessary', NOT as tracking cookies:"
-        )
-        for name, info in tcf_cookies.items():
-            if name.startswith("__"):
-                continue  # Skip __tcfapi (it's a JS API, not a cookie)
-            lines.append(f"- {name}: {info['description']}")
-        for name, info in cmp_cookies.items():
-            lines.append(f"- {name}: {info['description']}")
-
-    # GDPR lawful bases (compact summary for consent evaluation).
-    gdpr = loader.get_gdpr_reference()
-    lawful_bases = gdpr.get("gdpr", {}).get("lawful_bases", {})
-    if lawful_bases:
-        lines.append("")
-        lines.append("### GDPR Lawful Bases for Processing")
-        for basis_key, basis in lawful_bases.items():
-            article = basis.get("article", "")
-            desc = basis.get("description", "")
-            lines.append(f"- {basis_key} ({article}): {desc}")
-
-    # ePrivacy cookie categories.
-    cookie_cats = gdpr.get("eprivacy_directive", {}).get("cookie_categories", {})
-    if cookie_cats:
-        lines.append("")
-        lines.append("### ePrivacy Cookie Categories")
-        for cat_key, cat in cookie_cats.items():
-            consent_req = "consent required" if cat.get("consent_required") else "no consent required"
-            lines.append(f"- {cat_key}: {cat['description']} ({consent_req})")
-
-    return "\n".join(lines)
+    return gdpr_context.build_gdpr_reference(heading="## GDPR / TCF Reference")

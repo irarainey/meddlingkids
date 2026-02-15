@@ -63,6 +63,7 @@ src/
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
 │   ├── observability_setup.py       # Azure Monitor / App Insights telemetry setup
+│   ├── gdpr_context.py              # Shared GDPR/TCF reference builder for agent prompts
 │   ├── prompts/                     # System prompts (one module per agent)
 │   │   ├── consent_detection.py     # Consent detection prompt
 │   │   ├── consent_extraction.py    # Consent extraction prompt
@@ -86,7 +87,8 @@ src/
 │   └── partner_classification.py    # Consent partner risk classification and URL enrichment
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
-│   ├── scripts.py                   # Script identification (patterns + LLM + cache)
+│   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
+│   │                                #   _match_known_patterns() + _analyze_unknowns()
 │   ├── script_cache.py              # Script analysis cache (URL + MD5 content hash, JSON)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
@@ -103,9 +105,9 @@ src/
 │       ├── social_media.py          # Social media pixels, SDKs, plugins
 │       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
-│   ├── stream.py                    # Top-level SSE endpoint orchestrator
+│   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators)
 │   ├── browser_phases.py            # Phases 1-3: setup, navigate, initial capture
-│   ├── overlay_pipeline.py          # Phase 4: overlay detect → click → extract
+│   ├── overlay_pipeline.py          # Phase 4: run() → _run_vision_loop() → _click_and_capture()
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
 │   └── sse_helpers.py               # SSE formatting & serialization helpers
@@ -187,3 +189,4 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) |
 | `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
 | `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx) |
+| `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |

@@ -57,8 +57,6 @@ export function useTrackingAnalysis() {
   /** Currently active tab */
   const activeTab = ref<TabId>('analysis')
 
-  /** Full AI analysis result (markdown) */
-  const analysisResult = ref('')
   /** Structured analysis report */
   const structuredReport = ref<StructuredReport | null>(null)
   /** Analysis error message if AI failed */
@@ -219,7 +217,6 @@ export function useTrackingAnalysis() {
     localStorage.value = []
     sessionStorage.value = []
     networkRequests.value = []
-    analysisResult.value = ''
     structuredReport.value = null
     analysisError.value = ''
     summaryFindings.value = []
@@ -383,9 +380,6 @@ export function useTrackingAnalysis() {
             privacyScore.value = data.privacyScore
             privacySummary.value = data.privacySummary || ''
           }
-          if (data.analysis) {
-            analysisResult.value = data.analysis
-          }
           if (data.structuredReport) {
             structuredReport.value = data.structuredReport
           }
@@ -511,7 +505,6 @@ export function useTrackingAnalysis() {
     localStorage,
     sessionStorage,
     activeTab,
-    analysisResult,
     structuredReport,
     analysisError,
     summaryFindings,

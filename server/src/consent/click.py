@@ -63,7 +63,7 @@ async def validate_element_exists(
                         )
                         return frame
                 except Exception:
-                    pass
+                    log.debug("CSS selector lookup failed", {"selector": css_selector})
             if text_from_selector:
                 try:
                     if await frame.get_by_text(text_from_selector, exact=False).count() > 0:
@@ -73,7 +73,7 @@ async def validate_element_exists(
                         )
                         return frame
                 except Exception:
-                    pass
+                    log.debug("Text selector lookup failed", {"text": text_from_selector})
 
         if button_text:
             try:
@@ -84,7 +84,7 @@ async def validate_element_exists(
                     )
                     return frame
             except Exception:
-                pass
+                log.debug("Button role lookup failed", {"buttonText": button_text})
             try:
                 if await frame.get_by_text(button_text, exact=False).count() > 0:
                     log.debug(
@@ -93,7 +93,7 @@ async def validate_element_exists(
                     )
                     return frame
             except Exception:
-                pass
+                log.debug("Text search lookup failed", {"buttonText": button_text})
 
     log.debug("Element not found in any frame", {"selector": selector, "buttonText": button_text})
     return None

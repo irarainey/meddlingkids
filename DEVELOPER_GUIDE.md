@@ -302,7 +302,6 @@ localStorage         // StorageItem[]
 sessionStorage       // StorageItem[]
 
 // Analysis results
-analysisResult       // Full markdown report
 structuredReport     // Structured per-section report
 summaryFindings      // Structured findings array
 privacyScore         // 0-100
@@ -363,8 +362,9 @@ App.vue
 ├── PageErrorDialog (access denied)
 ├── ErrorDialog (generic errors)
 ├── ScreenshotGallery (thumbnail row + modal)
+├── TrackerCategorySection (reusable tracker category block)
 └── Tab Content (v-if="isComplete")
-    ├── AnalysisTab
+    ├── AnalysisTab (uses TrackerCategorySection ×5)
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
@@ -404,6 +404,7 @@ Key framework types used:
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
+| `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
 
 ### Domain Packages
@@ -434,7 +435,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Responsibility |
 |--------|---------------|
 | `tracking.py` | Main tracking analysis orchestration (streaming LLM) |
-| `scripts.py` | Script identification (patterns + LLM via agent + script cache) |
+| `scripts.py` | Script identification — `analyze_scripts()` delegates to `_match_known_patterns()` (regex) and `_analyze_unknowns()` (cache + LLM) |
 | `script_cache.py` | Script analysis cache — caches LLM-generated descriptions by URL + MD5 content hash. Invalidates on hash mismatch |
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
@@ -455,9 +456,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `stream.py` | Top-level SSE endpoint orchestrator (6-phase workflow, cache clearing) |
+| `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
 | `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
-| `overlay_pipeline.py` | Phase 4: cached overlay → vision detect → click → extract (orchestrator) |
+| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_run_vision_loop()` (detection iterations) and `_click_and_capture()` (click + post-click capture) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract) |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting and serialization helpers |

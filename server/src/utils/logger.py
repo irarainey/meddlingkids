@@ -106,7 +106,7 @@ def end_log_file() -> None:
             stream.flush()
             stream.close()
         except Exception:
-            pass
+            print("\033[33m⚠ [Logger] Failed to flush/close log file stream\033[0m")
         _log_file_stream_var.set(None)
         _log_file_path_var.set(None)
 

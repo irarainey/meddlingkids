@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { StructuredReport, TrackerEntry, SummaryFinding, SummaryFindingType } from '../../types'
 import { getExclamation, getRiskLevel, getScoreClass, stripMarkdown } from '../../utils'
+import TrackerCategorySection from '../TrackerCategorySection.vue'
 
 /**
  * Tab panel displaying structured privacy analysis report.
@@ -73,11 +74,6 @@ function allTrackers(report: StructuredReport): TrackerEntry[] {
     ...t.socialMedia,
     ...t.other,
   ]
-}
-
-/** Whether a tracker category has entries. */
-function hasTrackers(entries: TrackerEntry[]): boolean {
-  return entries.length > 0
 }
 
 /** Map summary finding type to badge class. */
@@ -185,110 +181,11 @@ function findingLabel(type: SummaryFindingType): string {
           <span class="count-badge">{{ allTrackers(structuredReport).length }} detected</span>
         </h2>
 
-        <!-- Analytics -->
-        <div v-if="hasTrackers(structuredReport.trackingTechnologies.analytics)" class="tracker-category">
-          <h3>📊 Analytics &amp; Measurement</h3>
-          <div
-            v-for="tracker in structuredReport.trackingTechnologies.analytics"
-            :key="tracker.name"
-            class="tracker-card"
-          >
-            <div class="tracker-header">
-              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
-              <strong v-else>{{ tracker.name }}</strong>
-              <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
-            </div>
-            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
-            <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
-              <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
-              <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Advertising -->
-        <div v-if="hasTrackers(structuredReport.trackingTechnologies.advertising)" class="tracker-category">
-          <h3>📢 Advertising Networks</h3>
-          <div
-            v-for="tracker in structuredReport.trackingTechnologies.advertising"
-            :key="tracker.name"
-            class="tracker-card"
-          >
-            <div class="tracker-header">
-              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
-              <strong v-else>{{ tracker.name }}</strong>
-              <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
-            </div>
-            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
-            <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
-              <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
-              <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Identity Resolution -->
-        <div v-if="hasTrackers(structuredReport.trackingTechnologies.identityResolution)" class="tracker-category">
-          <h3>🔗 Identity Resolution</h3>
-          <div
-            v-for="tracker in structuredReport.trackingTechnologies.identityResolution"
-            :key="tracker.name"
-            class="tracker-card"
-          >
-            <div class="tracker-header">
-              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
-              <strong v-else>{{ tracker.name }}</strong>
-              <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
-            </div>
-            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
-            <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
-              <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
-              <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Social Media -->
-        <div v-if="hasTrackers(structuredReport.trackingTechnologies.socialMedia)" class="tracker-category">
-          <h3>💬 Social Media</h3>
-          <div
-            v-for="tracker in structuredReport.trackingTechnologies.socialMedia"
-            :key="tracker.name"
-            class="tracker-card"
-          >
-            <div class="tracker-header">
-              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
-              <strong v-else>{{ tracker.name }}</strong>
-              <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
-            </div>
-            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
-            <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
-              <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
-              <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Other -->
-        <div v-if="hasTrackers(structuredReport.trackingTechnologies.other)" class="tracker-category">
-          <h3>🔧 Other Technologies</h3>
-          <div
-            v-for="tracker in structuredReport.trackingTechnologies.other"
-            :key="tracker.name"
-            class="tracker-card"
-          >
-            <div class="tracker-header">
-              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
-              <strong v-else>{{ tracker.name }}</strong>
-              <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
-            </div>
-            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
-            <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
-              <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
-              <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
-            </div>
-          </div>
-        </div>
+        <TrackerCategorySection title="📊 Analytics & Measurement" :trackers="structuredReport.trackingTechnologies.analytics" />
+        <TrackerCategorySection title="📢 Advertising Networks" :trackers="structuredReport.trackingTechnologies.advertising" />
+        <TrackerCategorySection title="🔗 Identity Resolution" :trackers="structuredReport.trackingTechnologies.identityResolution" />
+        <TrackerCategorySection title="💬 Social Media" :trackers="structuredReport.trackingTechnologies.socialMedia" />
+        <TrackerCategorySection title="🔧 Other Technologies" :trackers="structuredReport.trackingTechnologies.other" />
       </section>
 
       <!-- ── Section 3: Data Collection ──────────────────────── -->
@@ -789,12 +686,15 @@ function findingLabel(type: SummaryFindingType): string {
 }
 
 /* ── Tracker cards ──────────────────────────────────── */
+/* :deep() is required because these elements are rendered
+   inside the child TrackerCategorySection component and
+   scoped styles do not penetrate child boundaries. */
 
-.tracker-category {
+:deep(.tracker-category) {
   margin-top: 0.75rem;
 }
 
-.tracker-card {
+:deep(.tracker-card) {
   background: #252a40;
   border: 1px solid #2d3350;
   border-radius: 6px;
@@ -802,49 +702,49 @@ function findingLabel(type: SummaryFindingType): string {
   margin-bottom: 0.5rem;
 }
 
-.tracker-header {
+:deep(.tracker-header) {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.tracker-header strong {
+:deep(.tracker-header strong) {
   color: #f0f4ff;
   font-size: 0.95rem;
 }
 
-.tracker-link {
+:deep(.tracker-link) {
   color: #7CB8E4;
   font-size: 0.95rem;
   font-weight: 600;
   text-decoration: none;
 }
 
-.tracker-link:hover {
+:deep(.tracker-link:hover) {
   text-decoration: underline;
   color: #a0d0ff;
 }
 
-.tracker-domains {
+:deep(.tracker-domains) {
   color: #7c8ab8;
   font-size: 0.85rem;
   font-family: monospace;
 }
 
-.tracker-purpose {
+:deep(.tracker-purpose) {
   color: #b0bcd5;
   font-size: 0.95rem;
   margin: 0.3rem 0 0 0;
 }
 
-.tracker-details {
+:deep(.tracker-details) {
   display: flex;
   gap: 0.75rem;
   margin-top: 0.4rem;
 }
 
-.detail-tag {
+:deep(.detail-tag) {
   font-size: 0.82rem;
   color: #9ca3af;
 }

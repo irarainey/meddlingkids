@@ -98,7 +98,8 @@ meddlingkids/
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
-│       │   └── prompts/       # System prompts (one module per agent)
+│       │   ├── prompts/       # System prompts (one module per agent)
+│       │   └── gdpr_context.py # Shared GDPR/TCF reference builder for agent prompts
 │       ├── browser/           # Browser automation (Playwright session, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching

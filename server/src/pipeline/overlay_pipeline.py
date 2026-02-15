@@ -92,7 +92,7 @@ async def _find_accept_button(
             text = await locator.first.inner_text()
             return text.strip() if text else None
     except Exception:
-        pass
+        log.debug("Accept button search failed in frame")
     return None
 
 
@@ -128,6 +128,11 @@ class OverlayPipeline:
         self._failed_cache_types: set[str] = set()
         self._new_overlays: list[overlay_cache.CachedOverlay] = []
         self._deferred_extraction: tuple[bytes, str | None] | None = None
+        # Mutable state shared across run phases
+        self._screenshot: bytes = initial_screenshot
+        self._storage: dict = {}
+        self._failed_signatures: set[str] = set()
+        self._pending_extract: asyncio.Task[list[str]] | None = None
         # High-water mark for progress values.  Ensures that
         # progress events emitted by the overlay pipeline are
         # monotonically increasing regardless of how many
@@ -255,19 +260,8 @@ class OverlayPipeline:
         on the same unclickable element.
         """
         result = self.result
-        session = self._session
-        page = self._page
-        screenshot = self._initial_screenshot
-        storage = await session.capture_storage()
-        result.final_storage = storage
-
-        # Track selectors that already failed clicking so we
-        # don't loop on the same unclickable element.
-        failed_signatures: set[str] = set()
-
-        # Pending extraction task — runs concurrently with
-        # the next detection call to save ~8s per overlay.
-        pending_extract: asyncio.Task[list[str]] | None = None
+        self._storage = await self._session.capture_storage()
+        result.final_storage = self._storage
 
         log.info(
             "Starting overlay detection loop",
@@ -280,39 +274,67 @@ class OverlayPipeline:
             async for event in self._try_cached_overlays(
                 cached_entry,
                 result,
-                session,
-                page,
+                self._session,
+                self._page,
             ):
                 yield event
             if self._cache_dismissed > 0:
-                screenshot = await session.take_screenshot(full_page=False)
-                storage = await session.capture_storage()
+                self._screenshot = await self._session.take_screenshot(full_page=False)
+                self._storage = await self._session.capture_storage()
 
-                # Start deferred consent extraction as a
-                # background task so it runs concurrently
-                # with the verification vision detect.
                 if self._deferred_extraction:
                     ext_screenshot, ext_text = self._deferred_extraction
                     self._deferred_extraction = None
-                    pending_extract = asyncio.create_task(
+                    self._pending_extract = asyncio.create_task(
                         overlay_steps.collect_extraction_events(
-                            page,
+                            self._page,
                             ext_screenshot,
                             result,
                             pre_click_consent_text=ext_text,
                         )
                     )
 
-        # Always run vision detection to catch overlays
-        # that the cache didn't cover (different pages
-        # on the same domain may show different subsets).
+        # ── Vision detection loop ───────────────────────
+        async for event in self._run_vision_loop():
+            yield event
+
+        # Collect any pending extraction.
+        if self._pending_extract is not None:
+            extract_events = await self._pending_extract
+            self._pending_extract = None
+            for event in extract_events:
+                yield event
+
+        overlay_count = result.overlay_count
+        if overlay_count >= MAX_OVERLAYS:
+            log.warn("Reached maximum overlay limit, stopping detection")
+            yield self._progress(
+                "overlays-limit",
+                "Maximum overlay limit reached...",
+                70,
+            )
+
+        result.final_screenshot = self._screenshot
+        result.final_storage = self._storage
+
+        # ── Persist / merge cache ───────────────────────
+        if result.overlay_count > 0 and not result.failed and self._domain:
+            self._save_cache(cached_entry)
+
+    async def _run_vision_loop(self) -> AsyncGenerator[str]:
+        """Run the vision-based overlay detection loop.
+
+        Always runs after the cached overlay strategy to catch
+        overlays that the cache didn't cover.  Yields SSE events
+        and updates ``self.result`` as side-state.
+        """
+        result = self.result
+        session = self._session
         overlay_count = result.overlay_count
 
         # Let the user know what's happening next.
         if overlay_count > 0:
-            if pending_extract is not None:
-                # Consent extraction is the dominant task
-                # (runs concurrently with overlay verify).
+            if self._pending_extract is not None:
                 log.info("Analyzing overlay concurrently with verification")
                 yield self._progress(
                     "consent-analyze",
@@ -329,9 +351,6 @@ class OverlayPipeline:
 
         while overlay_count < MAX_OVERLAYS:
             # ── Detect ──────────────────────────────────────
-            # Run detection independently — don't block on
-            # pending extraction so the loop can break early
-            # when no more overlays are found.
             detection = await overlay_steps.detect_overlay(session, overlay_count)
 
             if not detection.found or (not detection.selector and not detection.button_text):
@@ -341,7 +360,7 @@ class OverlayPipeline:
 
             # ── Check for repeated detection ────────────────
             sig = overlay_steps.detection_signature(detection)
-            if sig in failed_signatures:
+            if sig in self._failed_signatures:
                 log.warn(
                     "Skipping re-detected overlay that already failed to click",
                     {
@@ -373,8 +392,6 @@ class OverlayPipeline:
             # ── Prefer accept over LLM-detected reject ─────
             detection, found_in_frame = await self._prefer_accept_button(detection, found_in_frame)
             if not found_in_frame:
-                # Accept override failed and re-validation
-                # lost the element — re-detect from scratch.
                 detection = await overlay_steps.detect_overlay(session, overlay_count)
                 found_in_frame = await self._retry_validate_in_dom(
                     detection,
@@ -407,147 +424,139 @@ class OverlayPipeline:
             )
             result.dismissed_overlays.append(detection)
 
-            is_first_cookie_consent = detection.overlay_type == "cookie-consent" and not result.consent_details
+            # ── Click and capture ───────────────────────────
+            should_break = False
+            async for event in self._click_and_capture(
+                detection,
+                found_in_frame,
+                overlay_count,
+                progress_base,
+                sig,
+            ):
+                if event == "__BREAK__":
+                    should_break = True
+                else:
+                    yield event
+            if should_break:
+                break
 
-            # ── Capture consent content before dismissing ───
-            # For cookie-consent overlays, extract text and
-            # take a screenshot while the dialog is visible.
-            # The extraction agent analyses both later.
-            pre_click_screenshot: bytes | None = None
-            pre_click_consent_text: str | None = None
-            if is_first_cookie_consent:
-                yield self._progress(
-                    f"overlay-{overlay_count}-capture",
-                    "Inspecting overlay content...",
-                    progress_base,
-                )
-                pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
+        result.overlay_count = overlay_count
 
-            # ── Click ───────────────────────────────────────
+    async def _click_and_capture(
+        self,
+        detection: consent.CookieConsentDetection,
+        found_in_frame: async_api.Frame,
+        overlay_number: int,
+        progress_base: int,
+        sig: str,
+    ) -> AsyncGenerator[str]:
+        """Capture consent content, click the overlay, and handle the outcome.
+
+        Yields SSE event strings.  Yields the sentinel ``"__BREAK__"``
+        if the caller's detection loop should stop.
+
+        Args:
+            detection: The overlay detection to click.
+            found_in_frame: Frame where the element was validated.
+            overlay_number: 1-based overlay counter.
+            progress_base: Progress bar base value for this overlay.
+            sig: Detection signature for dedup tracking.
+        """
+        result = self.result
+        session = self._session
+        page = self._page
+        is_first_cookie_consent = detection.overlay_type == "cookie-consent" and not result.consent_details
+
+        # ── Capture consent content before dismissing ───
+        pre_click_screenshot: bytes | None = None
+        pre_click_consent_text: str | None = None
+        if is_first_cookie_consent:
             yield self._progress(
-                f"overlay-{overlay_count}-click",
-                "Dismissing overlay...",
-                progress_base + 1,
+                f"overlay-{overlay_number}-capture",
+                "Inspecting overlay content...",
+                progress_base,
+            )
+            pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
+
+        # ── Click ───────────────────────────────────────
+        yield self._progress(
+            f"overlay-{overlay_number}-click",
+            "Dismissing overlay...",
+            progress_base + 1,
+        )
+
+        try:
+            click_result = await overlay_steps.try_overlay_click(
+                page,
+                detection,
+                overlay_number,
+                found_in_frame=found_in_frame,
             )
 
-            try:
-                click_result = await overlay_steps.try_overlay_click(
-                    page,
-                    detection,
-                    overlay_count,
-                    found_in_frame=found_in_frame,
-                )
+            if not click_result.success:
+                self._failed_signatures.add(sig)
 
-                if not click_result.success:
-                    # Record this detection so we don't
-                    # waste time re-detecting it.
-                    failed_signatures.add(sig)
-
-                    # Even though click failed, preserve
-                    # any pre-click consent data (text +
-                    # screenshot) so the report includes
-                    # consent analysis.
-                    if is_first_cookie_consent and pre_click_screenshot:
-                        log.info(
-                            "Click failed but pre-click consent data available — preserving for analysis",
-                            {
-                                "textLength": len(pre_click_consent_text or ""),
-                            },
-                        )
-                        pending_extract = asyncio.create_task(
-                            overlay_steps.collect_extraction_events(
-                                page,
-                                pre_click_screenshot,
-                                result,
-                                pre_click_consent_text=(pre_click_consent_text),
-                            )
-                        )
-
-                    event, msg = overlay_steps.build_click_failure(detection, overlay_count)
-                    if overlay_count == 1:
-                        log.error("Failed to click first overlay, aborting analysis")
-                        result.failed = True
-                        result.failure_message = msg
-                        yield event
-                    else:
-                        log.warn(
-                            f"Failed to click overlay {overlay_count}, continuing analysis",
-                            {
-                                "type": (detection.overlay_type),
-                            },
-                        )
-                    break
-
-                # Click succeeded — capture post-click state
-                async for event in overlay_steps.capture_after_click(
-                    session,
-                    page,
-                    detection,
-                    overlay_count,
-                    progress_base,
-                ):
-                    yield event
-
-                self._new_overlays.append(
-                    overlay_cache.CachedOverlay(
-                        overlay_type=detection.overlay_type or "other",
-                        button_text=detection.button_text,
-                        css_selector=detection.selector,
-                        locator_strategy=click_result.strategy or "role-button",
-                        frame_type=click_result.frame_type or "main",
-                    )
-                )
-
-                # Update screenshot for next iteration
-                screenshot = await session.take_screenshot(full_page=False)
-                storage = await session.capture_storage()
-
-            except Exception as click_error:
-                failed_signatures.add(sig)
-
-                # Preserve pre-click consent data on error
                 if is_first_cookie_consent and pre_click_screenshot:
                     log.info(
-                        "Click errored but pre-click consent data available — preserving for analysis",
+                        "Click failed but pre-click consent data available — preserving for analysis",
+                        {"textLength": len(pre_click_consent_text or "")},
                     )
-                    if pending_extract is not None:
-                        await pending_extract
-                    pending_extract = asyncio.create_task(
+                    self._pending_extract = asyncio.create_task(
                         overlay_steps.collect_extraction_events(
                             page,
                             pre_click_screenshot,
                             result,
-                            pre_click_consent_text=(pre_click_consent_text),
+                            pre_click_consent_text=pre_click_consent_text,
                         )
                     )
 
-                event, msg = overlay_steps.build_click_failure(
-                    detection,
-                    overlay_count,
-                    error_detail=str(click_error),
-                )
-                if overlay_count == 1:
-                    log.error(
-                        "Failed to click first overlay",
-                        {"error": str(click_error)},
-                    )
+                event, msg = overlay_steps.build_click_failure(detection, overlay_number)
+                if overlay_number == 1:
+                    log.error("Failed to click first overlay, aborting analysis")
                     result.failed = True
                     result.failure_message = msg
                     yield event
                 else:
                     log.warn(
-                        f"Failed to click overlay {overlay_count}, continuing analysis",
-                        {"error": str(click_error)},
+                        f"Failed to click overlay {overlay_number}, continuing analysis",
+                        {"type": detection.overlay_type},
                     )
-                break
+                yield "__BREAK__"
+                return
 
-            # ── Consent extraction (first cookie only) ──────
-            # Start extraction as a background task so it runs
-            # concurrently with the next detection call.
+            # Click succeeded — capture post-click state
+            async for event in overlay_steps.capture_after_click(
+                session,
+                page,
+                detection,
+                overlay_number,
+                progress_base,
+            ):
+                yield event
+
+            self._new_overlays.append(
+                overlay_cache.CachedOverlay(
+                    overlay_type=detection.overlay_type or "other",
+                    button_text=detection.button_text,
+                    css_selector=detection.selector,
+                    locator_strategy=click_result.strategy or "role-button",
+                    frame_type=click_result.frame_type or "main",
+                )
+            )
+
+            self._screenshot = await session.take_screenshot(full_page=False)
+            self._storage = await session.capture_storage()
+
+        except Exception as click_error:
+            self._failed_signatures.add(sig)
+
             if is_first_cookie_consent and pre_click_screenshot:
-                if pending_extract is not None:
-                    await pending_extract
-                pending_extract = asyncio.create_task(
+                log.info(
+                    "Click errored but pre-click consent data available — preserving for analysis",
+                )
+                if self._pending_extract is not None:
+                    await self._pending_extract
+                self._pending_extract = asyncio.create_task(
                     overlay_steps.collect_extraction_events(
                         page,
                         pre_click_screenshot,
@@ -556,29 +565,39 @@ class OverlayPipeline:
                     )
                 )
 
-        # Collect any pending extraction that was started
-        # during the final loop iteration.
-        if pending_extract is not None:
-            extract_events = await pending_extract
-            pending_extract = None
-            for event in extract_events:
-                yield event
-
-        if overlay_count >= MAX_OVERLAYS:
-            log.warn("Reached maximum overlay limit, stopping detection")
-            yield self._progress(
-                "overlays-limit",
-                "Maximum overlay limit reached...",
-                70,
+            event, msg = overlay_steps.build_click_failure(
+                detection,
+                overlay_number,
+                error_detail=str(click_error),
             )
+            if overlay_number == 1:
+                log.error(
+                    "Failed to click first overlay",
+                    {"error": str(click_error)},
+                )
+                result.failed = True
+                result.failure_message = msg
+                yield event
+            else:
+                log.warn(
+                    f"Failed to click overlay {overlay_number}, continuing analysis",
+                    {"error": str(click_error)},
+                )
+            yield "__BREAK__"
+            return
 
-        result.overlay_count = overlay_count
-        result.final_screenshot = screenshot
-        result.final_storage = storage
-
-        # ── Persist / merge cache ───────────────────────
-        if result.overlay_count > 0 and not result.failed and self._domain:
-            self._save_cache(cached_entry)
+        # ── Consent extraction (first cookie only) ──────
+        if is_first_cookie_consent and pre_click_screenshot:
+            if self._pending_extract is not None:
+                await self._pending_extract
+            self._pending_extract = asyncio.create_task(
+                overlay_steps.collect_extraction_events(
+                    page,
+                    pre_click_screenshot,
+                    result,
+                    pre_click_consent_text=pre_click_consent_text,
+                )
+            )
 
     # ── Cached overlay helpers ──────────────────────────────
 

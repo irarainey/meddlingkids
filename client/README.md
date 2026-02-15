@@ -28,6 +28,7 @@ src/
 │   ├── ProgressBanner.vue       # Loading progress indicator
 │   ├── ScoreDialog.vue          # Privacy score results dialog
 │   ├── ScreenshotGallery.vue    # Screenshot thumbnails + modal
+│   ├── TrackerCategorySection.vue # Reusable tracker category block (used ×5 in AnalysisTab)
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
 │       ├── AnalysisTab.vue      # AI analysis results
@@ -131,7 +132,6 @@ const {
   localStorage,         // localStorage items
   sessionStorage,       // sessionStorage items
   activeTab,            // Currently selected tab
-  analysisResult,       // Full AI analysis (markdown)
   structuredReport,     // Structured per-section report
   analysisError,        // Analysis error if AI failed
   summaryFindings,      // Structured findings array

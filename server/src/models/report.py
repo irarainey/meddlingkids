@@ -13,7 +13,6 @@ import pydantic
 
 from src.utils import serialization
 
-
 # ── Shared entity with optional URL ─────────────────────────────
 
 
@@ -99,7 +98,8 @@ class DataCollectionItem(pydantic.BaseModel):
     @pydantic.field_validator("shared_with", mode="before")
     @classmethod
     def _coerce_shared_with(
-        cls, v: list[str | dict[str, str] | NamedEntity],
+        cls,
+        v: list[str | dict[str, str] | NamedEntity],
     ) -> list[NamedEntity]:
         return _coerce_named_entities(v)
 
@@ -127,7 +127,8 @@ class ThirdPartyGroup(pydantic.BaseModel):
     @pydantic.field_validator("services", mode="before")
     @classmethod
     def _coerce_services(
-        cls, v: list[str | dict[str, str] | NamedEntity],
+        cls,
+        v: list[str | dict[str, str] | NamedEntity],
     ) -> list[NamedEntity]:
         return _coerce_named_entities(v)
 

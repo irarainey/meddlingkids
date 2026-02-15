@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import hashlib
 from collections.abc import AsyncGenerator
 from typing import cast
@@ -25,7 +26,7 @@ from src.agents import config
 from src.analysis import tracking_summary
 from src.browser import device_configs
 from src.browser import session as browser_session
-from src.models import browser
+from src.models import analysis, browser, consent
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache, errors, logger, usage_tracking
 from src.utils import url as url_mod
@@ -48,6 +49,31 @@ _REFRESH_INTERVAL_SECONDS = 3.0
 # (page load, analysis) gets its own fresh cap so the UI stays
 # responsive throughout the run.
 _MAX_SCREENSHOT_REFRESHES = 3
+
+
+# ====================================================================
+# Shared context for the streaming pipeline
+# ====================================================================
+
+
+@dataclasses.dataclass
+class _StreamContext:
+    """Mutable state shared across streaming pipeline phases."""
+
+    session: browser_session.BrowserSession
+    url: str
+    hostname: str
+    domain: str
+    device_type: browser.DeviceType
+    refresher_task: asyncio.Task[None] | None = None
+    refresh_queue: asyncio.Queue[str] = dataclasses.field(default_factory=asyncio.Queue)
+    storage: dict = dataclasses.field(default_factory=dict)
+    screenshot: bytes = b""
+    pre_consent_stats: analysis.PreConsentStats | None = None
+    consent_details: consent.ConsentDetails | None = None
+    overlay_count: int = 0
+    overlay_result: overlay_pipeline.OverlayHandlingResult | None = None
+    aborted: bool = False
 
 
 async def _screenshot_refresher(
@@ -96,8 +122,7 @@ async def _screenshot_refresher(
         except asyncio.CancelledError:
             raise
         except Exception:
-            # Screenshot failed (page navigating, etc.) — skip
-            pass
+            log.debug("Screenshot refresh failed (page navigating, etc.) — skipping")
     log.debug(
         "Screenshot refresher stopped (limit reached)",
         {"updates": updates_sent},
@@ -138,6 +163,7 @@ async def analyze_url_stream(
     """
     if clear_cache:
         cache.clear_all()
+
     # ── Pre-flight validation ───────────────────────────────
     config_error = config.validate_llm_config()
     if config_error:
@@ -159,9 +185,17 @@ async def analyze_url_stream(
 
     session = browser_session.BrowserSession()
     domain = url_mod.extract_domain(url)
+    hostname = parse.urlparse(url).hostname or url
     logger.clear_log_buffer()
     logger.start_log_file(domain)
-    refresher_task: asyncio.Task[None] | None = None
+
+    ctx = _StreamContext(
+        session=session,
+        url=url,
+        hostname=hostname,
+        domain=domain,
+        device_type=device_type,
+    )
 
     usage_tracking.reset()
     log.section(f"Analyzing: {url}")
@@ -170,273 +204,18 @@ async def analyze_url_stream(
 
     try:
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
-            # ── Phase 1: Browser Setup & Navigation ─────────────
-            log.subsection("Phase 1: Browser Setup")
-            log.info("Initializing browser", {"url": url, "device": device_type})
-            yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
-
-            browser_phases.prepare_session(session, url)
-
-            yield sse_helpers.format_progress_event("browser", "Launching browser...", 8)
-            await browser_phases.launch_browser(session, device_type)
-
-            hostname = parse.urlparse(url).hostname or url
-
-            yield sse_helpers.format_progress_event("navigate", f"Loading {hostname}...", 12)
-            nav_result = await browser_phases.navigate(session, url)
-
-            if not nav_result.success:
-                for event in _emit_nav_failure(nav_result):
-                    yield event
+            async for event in _run_phases_1_to_3(ctx):
+                yield event
+            if ctx.aborted:
                 return
 
-            # Start Stage 1 screenshot refresher — captures
-            # visual changes while the page loads (fonts,
-            # images, layout shifts, ad placements).  Each
-            # stage gets its own refresh cap.
-            refresh_queue: asyncio.Queue[str] = asyncio.Queue()
-            try:
-                initial_png = await session.take_screenshot(full_page=False)
-                last_screenshot_hash = hashlib.md5(initial_png).hexdigest()
-            except Exception:
-                last_screenshot_hash = ""
-            refresher_task = asyncio.create_task(_screenshot_refresher(session, refresh_queue, last_screenshot_hash))
-            log.debug("Stage 1 screenshot refresher started")
-
-            # ── Phase 2: Page Load & Access Check ───────────────
-            log.subsection("Phase 2: Page Load & Access Check")
-
-            yield sse_helpers.format_progress_event("wait-network", f"Waiting for {hostname} to settle...", 18)
-            await browser_phases.wait_for_network_settle(session)
-
-            yield sse_helpers.format_progress_event("wait-content", "Waiting for page content to render...", 25)
-            await browser_phases.wait_for_content_render(session)
-
-            for refresh_event in _drain_queue(refresh_queue):
-                yield refresh_event
-
-            access_events, denied = await browser_phases.check_access(session, nav_result)
-            for event in access_events:
+            async for event in _run_phase_4_overlays(ctx):
                 yield event
-            for refresh_event in _drain_queue(refresh_queue):
-                yield refresh_event
-            if denied:
+            if ctx.aborted:
                 return
 
-            # ── Phase 3: Initial Data Capture ───────────────────
-            log.subsection("Phase 3: Initial Data Capture")
-
-            yield sse_helpers.format_progress_event("capture", "Capturing page data...", 32)
-            storage = await browser_phases.capture_page_data(session)
-
-            yield sse_helpers.format_progress_event("screenshot", "Capturing page screenshot...", 38)
-            screenshot_event, screenshot, storage = await browser_phases.take_initial_screenshot(session, storage)
-            yield screenshot_event
-
-            browser_phases.log_capture_stats(session, storage)
-
-            yield sse_helpers.format_progress_event("overlay-detect", "Detecting page overlays...", 42)
-
-            # Cancel Stage 1 refresher — the initial capture
-            # provides the authoritative page state from here.
-            if refresher_task and not refresher_task.done():
-                refresher_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await refresher_task
-            for refresh_event in _drain_queue(refresh_queue):
-                yield refresh_event
-            log.debug("Stage 1 screenshot refresher ended")
-
-            # Snapshot page-load data and classify what is
-            # actually tracking vs legitimate infrastructure.
-            # This runs before any overlay is dismissed —
-            # some overlays (e.g. sign-in prompts) may not
-            # be consent-related.  We cannot determine from
-            # this snapshot whether scripts use the cookies
-            # present, whether a dialog is a consent dialog,
-            # or whether the activity is covered by consent.
-            pre_consent_stats = tracking_summary.build_pre_consent_stats(
-                session.get_tracked_cookies(),
-                session.get_tracked_scripts(),
-                session.get_tracked_network_requests(),
-                storage,
-            )
-
-            # Tag every request captured so far as pre-consent.
-            # Requests arriving after this point (during or
-            # after overlay/consent handling) will keep the
-            # default pre_consent=False.
-            for req in session.get_tracked_network_requests():
-                req.pre_consent = True
-
-            # ── Phase 4: Overlay Detection & Handling ───────────
-            log.subsection("Phase 4: Overlay Detection & Handling")
-            log.start_timer("overlay-handling")
-
-            page = session.get_page()
-            consent_details = None
-            overlay_count = 0
-
-            if page:
-                pipeline = overlay_pipeline.OverlayPipeline(session, page, screenshot, domain=domain)
-                async for event in pipeline.run():
-                    yield event
-                overlay_result = pipeline.result
-                consent_details = overlay_result.consent_details
-                overlay_count = overlay_result.overlay_count
-                storage = overlay_result.final_storage
-            else:
-                overlay_result = overlay_pipeline.OverlayHandlingResult()
-
-            log.end_timer("overlay-handling", "Overlay handling complete")
-            log.info(
-                "Overlay handling result",
-                {
-                    "overlaysFound": overlay_count,
-                    "hasConsentDetails": consent_details is not None,
-                },
-            )
-
-            # Post-overlay capture — only emit a new screenshot
-            # when no overlays were dismissed.  The overlay
-            # pipeline already emits a screenshot after every
-            # successful dismiss, so taking another one here
-            # would just duplicate the last image.
-            #
-            # When no overlays were found the pipeline already
-            # emitted "No overlay detected..." at 70%.  Let
-            # that message stay visible while we silently
-            # capture the authoritative page state.
-
-            if overlay_count == 0:
-                log.info("No overlays dismissed — capturing final page state")
-                await session.capture_current_cookies()
-                event_str, _, storage = await sse_helpers.take_screenshot_event(session)
-                yield event_str
-            else:
-                # Still refresh cookies/storage for analysis,
-                # but don't emit a redundant screenshot event.
-                await session.capture_current_cookies()
-                storage = await session.capture_storage()
-
-            if page and overlay_result.failed:
-                # If consent data was still captured (pre-click
-                # text preserved despite click failure), continue
-                # analysis so the report includes consent info.
-                if consent_details:
-                    log.warn(
-                        "Overlay click failed but consent data preserved — continuing analysis",
-                        {
-                            "categories": len(consent_details.categories),
-                            "partners": len(consent_details.partners),
-                        },
-                    )
-                else:
-                    log.error(
-                        "Overlay dismissal failed, aborting analysis",
-                        {"reason": overlay_result.failure_message},
-                    )
-                    yield sse_helpers.format_sse_event(
-                        "pageError",
-                        {
-                            "type": "overlay-blocked",
-                            "message": overlay_result.failure_message,
-                            "isOverlayBlocked": True,
-                        },
-                    )
-                    yield sse_helpers.format_progress_event(
-                        "overlay-blocked",
-                        "Could not dismiss page overlay!",
-                        100,
-                    )
-                    return
-
-            # ── Post-overlay stabilisation ──────────────────
-            # After dismissing an overlay, sites typically
-            # fire a burst of deferred tracking scripts (ad
-            # loaders, analytics, pixels) that were held
-            # back pending user interaction.  A brief
-            # network-idle race gives them time to arrive
-            # so the analysis sees a consistent set of
-            # scripts regardless of network jitter.
-            if overlay_count > 0:
-                log.start_timer("post-overlay-settle")
-                yield sse_helpers.format_progress_event(
-                    "post-overlay-settle",
-                    "Waiting for page to settle...",
-                    73,
-                )
-                settled = await session.wait_for_network_idle(5000)
-                log.end_timer(
-                    "post-overlay-settle",
-                    f"Post-overlay settle ({'idle' if settled else 'timeout'})",
-                )
-
-            # ── Stage 2 screenshot refresher ────────────────
-            # Fresh cap for the analysis phase so the client
-            # sees visual changes (ads loading, deferred
-            # content) independently of Stage 1's quota.
-            remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
-            current_hash = ""
-
-            # Take an immediate screenshot — the page has
-            # very likely changed after page load, consent
-            # dismissal, and post-consent script loading.
-            if remaining_refreshes > 0:
-                try:
-                    png = await session.take_screenshot(full_page=False)
-                    current_hash = hashlib.md5(png).hexdigest()
-                    optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png)
-                    yield sse_helpers.format_screenshot_update_event(
-                        optimized,
-                    )
-                    remaining_refreshes -= 1
-                    log.info("Immediate pre-analysis screenshot refresh emitted")
-                except Exception:
-                    pass
-
-            refresh_queue = asyncio.Queue()
-            if remaining_refreshes > 0:
-                refresher_task = asyncio.create_task(
-                    _screenshot_refresher(
-                        session,
-                        refresh_queue,
-                        current_hash,
-                        remaining=remaining_refreshes,
-                    )
-                )
-                log.debug(
-                    "Stage 2 screenshot refresher started",
-                    {"remaining": remaining_refreshes},
-                )
-            else:
-                refresher_task = None
-
-            # ── Phase 5: AI Analysis ────────────────────────────
-            log.subsection("Phase 5: AI Analysis")
-
-            async for event in analysis_pipeline.run_ai_analysis(
-                session,
-                storage,
-                url,
-                consent_details,
-                overlay_count,
-                pre_consent_stats,
-            ):
+            async for event in _run_phase_5_analysis(ctx):
                 yield event
-                # Interleave any pending screenshot updates
-                for refresh_event in _drain_queue(refresh_queue):
-                    yield refresh_event
-
-            # Stop the refresher now that analysis is done —
-            # no value in updating screenshots after this point.
-            if refresher_task and not refresher_task.done():
-                refresher_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await refresher_task
-            # Drain any remaining refresh events after analysis
-            for refresh_event in _drain_queue(refresh_queue):
-                yield refresh_event
 
             # ── Phase 6: Complete ───────────────────────────────
             usage_tracking.log_summary()
@@ -445,7 +224,7 @@ async def analyze_url_stream(
                 "Investigation complete!",
                 {
                     "totalTime": f"{(total_time / 1000):.2f}s",
-                    "overlaysDismissed": overlay_count,
+                    "overlaysDismissed": ctx.overlay_count,
                 },
             )
 
@@ -456,9 +235,7 @@ async def analyze_url_stream(
         )
         yield sse_helpers.format_sse_event(
             "error",
-            {
-                "error": (f"Analysis timed out after {STREAM_TIMEOUT_SECONDS // 60} minutes"),
-            },
+            {"error": f"Analysis timed out after {STREAM_TIMEOUT_SECONDS // 60} minutes"},
         )
     except Exception as error:
         log.error(
@@ -470,12 +247,10 @@ async def analyze_url_stream(
             {"error": errors.get_error_message(error)},
         )
     finally:
-        # Cancel the background screenshot refresher if it's
-        # still running (e.g. due to an early return or error).
-        if refresher_task and not refresher_task.done():
-            refresher_task.cancel()
+        if ctx.refresher_task and not ctx.refresher_task.done():
+            ctx.refresher_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await refresher_task
+                await ctx.refresher_task
         log.debug("Cleaning up browser resources...")
         logger.end_log_file()
         try:
@@ -486,6 +261,276 @@ async def analyze_url_stream(
                 {"error": errors.get_error_message(err)},
             )
         log.debug("Browser cleanup complete")
+
+
+# ====================================================================
+# Phase helpers — each yields SSE events and mutates ctx
+# ====================================================================
+
+
+async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
+    """Phases 1–3: browser setup, navigation, page load, data capture.
+
+    Sets ``ctx.aborted`` if navigation fails or access is denied.
+    Populates ``ctx.storage``, ``ctx.screenshot``, and
+    ``ctx.pre_consent_stats``.
+    """
+    session = ctx.session
+
+    # ── Phase 1: Browser Setup & Navigation ─────────────
+    log.subsection("Phase 1: Browser Setup")
+    log.info("Initializing browser", {"url": ctx.url, "device": ctx.device_type})
+    yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
+
+    browser_phases.prepare_session(session, ctx.url)
+
+    yield sse_helpers.format_progress_event("browser", "Launching browser...", 8)
+    await browser_phases.launch_browser(session, ctx.device_type)
+
+    yield sse_helpers.format_progress_event("navigate", f"Loading {ctx.hostname}...", 12)
+    nav_result = await browser_phases.navigate(session, ctx.url)
+
+    if not nav_result.success:
+        for event in _emit_nav_failure(nav_result):
+            yield event
+        ctx.aborted = True
+        return
+
+    # Start Stage 1 screenshot refresher — captures
+    # visual changes while the page loads.
+    ctx.refresh_queue = asyncio.Queue()
+    try:
+        initial_png = await session.take_screenshot(full_page=False)
+        last_screenshot_hash = hashlib.md5(initial_png).hexdigest()
+    except Exception:
+        log.debug("Initial screenshot for hash failed — starting refresher with empty hash")
+        last_screenshot_hash = ""
+    ctx.refresher_task = asyncio.create_task(
+        _screenshot_refresher(session, ctx.refresh_queue, last_screenshot_hash),
+    )
+    log.debug("Stage 1 screenshot refresher started")
+
+    # ── Phase 2: Page Load & Access Check ───────────────
+    log.subsection("Phase 2: Page Load & Access Check")
+
+    yield sse_helpers.format_progress_event("wait-network", f"Waiting for {ctx.hostname} to settle...", 18)
+    await browser_phases.wait_for_network_settle(session)
+
+    yield sse_helpers.format_progress_event("wait-content", "Waiting for page content to render...", 25)
+    await browser_phases.wait_for_content_render(session)
+
+    for refresh_event in _drain_queue(ctx.refresh_queue):
+        yield refresh_event
+
+    access_events, denied = await browser_phases.check_access(session, nav_result)
+    for event in access_events:
+        yield event
+    for refresh_event in _drain_queue(ctx.refresh_queue):
+        yield refresh_event
+    if denied:
+        ctx.aborted = True
+        return
+
+    # ── Phase 3: Initial Data Capture ───────────────────
+    log.subsection("Phase 3: Initial Data Capture")
+
+    yield sse_helpers.format_progress_event("capture", "Capturing page data...", 32)
+    ctx.storage = await browser_phases.capture_page_data(session)
+
+    yield sse_helpers.format_progress_event("screenshot", "Capturing page screenshot...", 38)
+    screenshot_event, ctx.screenshot, ctx.storage = await browser_phases.take_initial_screenshot(
+        session,
+        ctx.storage,
+    )
+    yield screenshot_event
+
+    browser_phases.log_capture_stats(session, ctx.storage)
+
+    yield sse_helpers.format_progress_event("overlay-detect", "Detecting page overlays...", 42)
+
+    # Cancel Stage 1 refresher — the initial capture
+    # provides the authoritative page state from here.
+    if ctx.refresher_task and not ctx.refresher_task.done():
+        ctx.refresher_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await ctx.refresher_task
+    for refresh_event in _drain_queue(ctx.refresh_queue):
+        yield refresh_event
+    log.debug("Stage 1 screenshot refresher ended")
+
+    # Snapshot page-load data before any overlay is dismissed.
+    ctx.pre_consent_stats = tracking_summary.build_pre_consent_stats(
+        session.get_tracked_cookies(),
+        session.get_tracked_scripts(),
+        session.get_tracked_network_requests(),
+        ctx.storage,
+    )
+
+    # Tag every request captured so far as pre-consent.
+    for req in session.get_tracked_network_requests():
+        req.pre_consent = True
+
+
+async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
+    """Phase 4: overlay detection, dismissal, and post-overlay capture.
+
+    Sets ``ctx.aborted`` if overlay dismissal fails fatally.
+    Populates ``ctx.consent_details``, ``ctx.overlay_count``,
+    ``ctx.overlay_result``, and updates ``ctx.storage``.
+    """
+    session = ctx.session
+
+    log.subsection("Phase 4: Overlay Detection & Handling")
+    log.start_timer("overlay-handling")
+
+    page = session.get_page()
+
+    if page:
+        pipeline = overlay_pipeline.OverlayPipeline(
+            session,
+            page,
+            ctx.screenshot,
+            domain=ctx.domain,
+        )
+        async for event in pipeline.run():
+            yield event
+        ctx.overlay_result = pipeline.result
+        ctx.consent_details = ctx.overlay_result.consent_details
+        ctx.overlay_count = ctx.overlay_result.overlay_count
+        ctx.storage = ctx.overlay_result.final_storage
+    else:
+        ctx.overlay_result = overlay_pipeline.OverlayHandlingResult()
+
+    log.end_timer("overlay-handling", "Overlay handling complete")
+    log.info(
+        "Overlay handling result",
+        {
+            "overlaysFound": ctx.overlay_count,
+            "hasConsentDetails": ctx.consent_details is not None,
+        },
+    )
+
+    # Post-overlay capture — only emit a new screenshot when no
+    # overlays were dismissed (the overlay pipeline already emits
+    # one after every successful dismiss).
+    if ctx.overlay_count == 0:
+        log.info("No overlays dismissed — capturing final page state")
+        await session.capture_current_cookies()
+        event_str, _, ctx.storage = await sse_helpers.take_screenshot_event(session)
+        yield event_str
+    else:
+        await session.capture_current_cookies()
+        ctx.storage = await session.capture_storage()
+
+    if page and ctx.overlay_result.failed:
+        if ctx.consent_details:
+            log.warn(
+                "Overlay click failed but consent data preserved — continuing analysis",
+                {
+                    "categories": len(ctx.consent_details.categories),
+                    "partners": len(ctx.consent_details.partners),
+                },
+            )
+        else:
+            log.error(
+                "Overlay dismissal failed, aborting analysis",
+                {"reason": ctx.overlay_result.failure_message},
+            )
+            yield sse_helpers.format_sse_event(
+                "pageError",
+                {
+                    "type": "overlay-blocked",
+                    "message": ctx.overlay_result.failure_message,
+                    "isOverlayBlocked": True,
+                },
+            )
+            yield sse_helpers.format_progress_event(
+                "overlay-blocked",
+                "Could not dismiss page overlay!",
+                100,
+            )
+            ctx.aborted = True
+            return
+
+    # Post-overlay stabilisation — brief network-idle race
+    # for deferred tracking scripts to arrive.
+    if ctx.overlay_count > 0:
+        log.start_timer("post-overlay-settle")
+        yield sse_helpers.format_progress_event(
+            "post-overlay-settle",
+            "Waiting for page to settle...",
+            73,
+        )
+        settled = await session.wait_for_network_idle(5000)
+        log.end_timer(
+            "post-overlay-settle",
+            f"Post-overlay settle ({'idle' if settled else 'timeout'})",
+        )
+
+
+async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
+    """Phase 5: Stage 2 screenshot refresher + AI analysis.
+
+    Starts a fresh screenshot refresher, runs the analysis
+    pipeline, and drains any remaining refresh events.
+    """
+    session = ctx.session
+
+    # ── Stage 2 screenshot refresher ────────────────
+    remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
+    current_hash = ""
+
+    if remaining_refreshes > 0:
+        try:
+            png = await session.take_screenshot(full_page=False)
+            current_hash = hashlib.md5(png).hexdigest()
+            optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png)
+            yield sse_helpers.format_screenshot_update_event(optimized)
+            remaining_refreshes -= 1
+            log.info("Immediate pre-analysis screenshot refresh emitted")
+        except Exception:
+            log.debug("Pre-analysis screenshot refresh failed — skipping")
+
+    refresh_queue: asyncio.Queue[str] = asyncio.Queue()
+    ctx.refresh_queue = refresh_queue
+    if remaining_refreshes > 0:
+        ctx.refresher_task = asyncio.create_task(
+            _screenshot_refresher(
+                session,
+                refresh_queue,
+                current_hash,
+                remaining=remaining_refreshes,
+            ),
+        )
+        log.debug(
+            "Stage 2 screenshot refresher started",
+            {"remaining": remaining_refreshes},
+        )
+    else:
+        ctx.refresher_task = None
+
+    # ── AI Analysis ────────────────────────────────────
+    log.subsection("Phase 5: AI Analysis")
+
+    async for event in analysis_pipeline.run_ai_analysis(
+        session,
+        ctx.storage,
+        ctx.url,
+        ctx.consent_details,
+        ctx.overlay_count,
+        ctx.pre_consent_stats,
+    ):
+        yield event
+        for refresh_event in _drain_queue(refresh_queue):
+            yield refresh_event
+
+    # Stop the refresher now that analysis is done.
+    if ctx.refresher_task and not ctx.refresher_task.done():
+        ctx.refresher_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await ctx.refresher_task
+    for refresh_event in _drain_queue(refresh_queue):
+        yield refresh_event
 
 
 def _emit_nav_failure(
