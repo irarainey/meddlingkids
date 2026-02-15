@@ -226,7 +226,7 @@ def get_tcf_purpose_name(purpose_id: int) -> str:
     purposes = get_tcf_purposes().get("purposes", {})
     entry = purposes.get(str(purpose_id))
     if entry:
-        return entry["name"]
+        return str(entry["name"])
     return f"Unknown purpose {purpose_id}"
 
 
@@ -237,4 +237,4 @@ def get_consent_cookie_names() -> list[str]:
     CMPs rather than tracking cookies.
     """
     data = get_consent_cookies()
-    return data.get("consent_cookie_name_patterns", [])
+    return list(data.get("consent_cookie_name_patterns", []))

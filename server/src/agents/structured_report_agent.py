@@ -517,10 +517,7 @@ def _build_gdpr_context() -> str:
         lines.append("### IAB TCF v2.2 Purposes")
         for pid, entry in sorted(purposes.items(), key=lambda x: int(x[0])):
             risk_level = entry.get("risk_level", "")
-            lines.append(
-                f"- Purpose {pid}: {entry['name']} "
-                f"(risk: {risk_level})"
-            )
+            lines.append(f"- Purpose {pid}: {entry['name']} (risk: {risk_level})")
 
     # Special features (high privacy risk).
     special_features = tcf.get("special_features", {})
@@ -539,9 +536,7 @@ def _build_gdpr_context() -> str:
         lines.append("")
         lines.append("### Known Consent-State Cookies")
         lines.append(
-            "These cookies store user consent preferences and "
-            "should be classified as 'Functional / Necessary', "
-            "NOT as tracking cookies:"
+            "These cookies store user consent preferences and should be classified as 'Functional / Necessary', NOT as tracking cookies:"
         )
         for name, info in tcf_cookies.items():
             if name.startswith("__"):

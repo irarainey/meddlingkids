@@ -223,11 +223,15 @@
     "concerns": [
       "Content recommendation on 9000+ sites",
       "Behavioral profiling",
-      "Click tracking"
+      "Click tracking",
+      "IAB TCF vendor 42",
+      "Registered data broker in Texas",
+      "Owns Skimlinks and Connexity"
     ],
     "aliases": [
       "taboola inc",
-      "taboola.com"
+      "taboola.com",
+      "taboola.com ltd"
     ]
   },
   "outbrain": {
@@ -979,10 +983,14 @@
     "concerns": [
       "Commerce content",
       "Link affiliation",
-      "Purchase tracking"
+      "Purchase tracking",
+      "IAB TCF vendor 46",
+      "Taboola subsidiary"
     ],
     "aliases": [
       "skim links",
+      "skimbit",
+      "skimbit ltd",
       "taboola owned"
     ]
   },
@@ -1163,6 +1171,65 @@
     ],
     "aliases": [
       "broad sign"
+    ]
+  },
+  "freestar": {
+    "concerns": [
+      "Ad serving and management",
+      "Publisher monetization",
+      "Header bidding orchestration",
+      "Used by major UK publishers"
+    ],
+    "aliases": [
+      "freestar inc",
+      "free star"
+    ]
+  },
+  "captify": {
+    "concerns": [
+      "Contextual and semantic advertising",
+      "Search intelligence",
+      "Independent data controller",
+      "Real-time intent signals"
+    ],
+    "aliases": [
+      "captify technologies",
+      "captifytechnologies"
+    ]
+  },
+  "passendo": {
+    "concerns": [
+      "Newsletter ad serving",
+      "Email ad monetization",
+      "Used as processor by publishers"
+    ],
+    "aliases": [
+      "passendo aps"
+    ]
+  },
+  "openweb": {
+    "concerns": [
+      "Newsletter ad serving",
+      "Community engagement platform",
+      "Comment tracking",
+      "User interaction data"
+    ],
+    "aliases": [
+      "open web",
+      "openweb technologies",
+      "spot.im"
+    ]
+  },
+  "connexity": {
+    "concerns": [
+      "Commerce and shopping advertising",
+      "Product feed monetization",
+      "Purchase intent tracking",
+      "Taboola subsidiary"
+    ],
+    "aliases": [
+      "connexity inc",
+      "shopzilla"
     ]
   }
 }

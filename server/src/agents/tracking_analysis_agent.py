@@ -217,9 +217,6 @@ def _build_gdpr_reference() -> str:
     if all_cookies:
         lines.append("")
         lines.append("### Known Consent-State Cookies")
-        lines.append(
-            "These store user consent preferences (functional, "
-            "not tracking): " + ", ".join(all_cookies)
-        )
+        lines.append("These store user consent preferences (functional, not tracking): " + ", ".join(all_cookies))
 
     return "\n".join(lines)

@@ -4,12 +4,17 @@
       "Cross-device identity resolution",
       "Offline-to-online data matching",
       "Data selling to 500+ partners",
-      "IdentityLink graph"
+      "IdentityLink graph",
+      "IAB TCF vendor 97",
+      "Uses Electoral Roll data in UK",
+      "Legitimate interest for recognition and synchronisation"
     ],
     "aliases": [
       "live ramp",
       "liveramp holdings",
-      "liveramp inc"
+      "liveramp inc",
+      "liveramp uk",
+      "liveramp uk limited"
     ]
   },
   "acxiom": {
@@ -967,6 +972,54 @@
     "aliases": [
       "attom",
       "attomdata"
+    ]
+  },
+  "infosum": {
+    "concerns": [
+      "Data clean rooms",
+      "Aggregate audience insights",
+      "Privacy-preserving data matching",
+      "No raw data sharing between parties"
+    ],
+    "aliases": [
+      "info sum",
+      "infosum ltd"
+    ]
+  },
+  "cognism": {
+    "concerns": [
+      "B2B contact data provider",
+      "Phone number harvesting",
+      "Email data sales",
+      "Sales intelligence platform"
+    ],
+    "aliases": [
+      "cognism limited",
+      "cognism ltd"
+    ]
+  },
+  "market location": {
+    "concerns": [
+      "Business directory data",
+      "Company profiling",
+      "B2B marketing data"
+    ],
+    "aliases": [
+      "marketlocation",
+      "market location ltd"
+    ]
+  },
+  "upland software": {
+    "concerns": [
+      "Data management platform hosting",
+      "User data management",
+      "Customer engagement tracking",
+      "Hosts publisher DMP data"
+    ],
+    "aliases": [
+      "upland",
+      "upland software inc",
+      "localytics"
     ]
   }
 }

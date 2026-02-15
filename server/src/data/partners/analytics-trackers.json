@@ -99,12 +99,19 @@
       "Analytics",
       "Paywall",
       "Subscription tracking",
-      "User identification"
+      "User identification",
+      "DMP and CDP capabilities",
+      "Audience segmentation",
+      "Formerly AT Internet and Cxense"
     ],
     "aliases": [
       "piano.io",
       "at internet",
-      "cxense"
+      "cxense",
+      "piano software",
+      "tinypass",
+      "press plus",
+      "newzmate"
     ]
   },
   "hubspot": {
@@ -742,6 +749,30 @@
     ],
     "aliases": [
       "attribution.io"
+    ]
+  },
+  "viafoura": {
+    "concerns": [
+      "Community engagement platform",
+      "Comment and interaction tracking",
+      "User identity and profiling",
+      "Publisher audience analytics"
+    ],
+    "aliases": [
+      "viafoura inc"
+    ]
+  },
+  "akamai mpulse": {
+    "concerns": [
+      "Web performance monitoring",
+      "Real user measurement",
+      "Page load tracking",
+      "User session data collection"
+    ],
+    "aliases": [
+      "akamai",
+      "akamai technologies",
+      "mpulse"
     ]
   }
 }

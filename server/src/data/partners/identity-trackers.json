@@ -2,16 +2,20 @@
   "the trade desk": {
     "concerns": [
       "Unified ID 2.0 creator",
-      "Cross-site tracking",
+      "EUID for European identity resolution",
+      "Cross-site tracking via hashed email",
       "Email-based identity",
-      "Programmatic advertising"
+      "Programmatic advertising",
+      "Joint controller with publishers and advertisers"
     ],
     "aliases": [
       "thetradedesk",
       "trade desk",
       "ttd",
       "uid2",
-      "unified id"
+      "unified id",
+      "euid",
+      "uk trade desk"
     ]
   },
   "id5": {

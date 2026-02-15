@@ -206,7 +206,7 @@ class TestSummaryFinding:
         assert finding.text == "Excessive tracking detected"
 
     @pytest.mark.parametrize("finding_type", ["critical", "high", "moderate", "info", "positive"])
-    def test_valid_types(self, finding_type: str) -> None:
+    def test_valid_types(self, finding_type: analysis.SummaryFindingType) -> None:
         finding = analysis.SummaryFinding(type=finding_type, text="Test")
         assert finding.type == finding_type
 

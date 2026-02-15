@@ -486,5 +486,29 @@
     "aliases": [
       "supersonic ads"
     ]
+  },
+  "airship": {
+    "concerns": [
+      "Push notifications",
+      "Mobile engagement",
+      "User messaging and targeting",
+      "In-app messaging"
+    ],
+    "aliases": [
+      "airship inc",
+      "urban airship"
+    ]
+  },
+  "onesignal": {
+    "concerns": [
+      "Push notifications",
+      "In-app messaging",
+      "User segmentation",
+      "Email and SMS tracking"
+    ],
+    "aliases": [
+      "one signal",
+      "onesignal inc"
+    ]
   }
 }
