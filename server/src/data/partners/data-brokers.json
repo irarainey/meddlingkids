@@ -321,7 +321,9 @@
     ],
     "aliases": [
       "foursquare labs",
-      "factual"
+      "factual",
+      "placed",
+      "attribution.report"
     ],
     "url": "https://foursquare.com"
   },
@@ -1194,7 +1196,8 @@
       "Taboola data partner"
     ],
     "aliases": [
-      "navegg sa"
+      "navegg sa",
+      "navdmp"
     ],
     "url": "https://www.navegg.com"
   },
@@ -1342,5 +1345,18 @@
       "20ci"
     ],
     "url": "https://www.twentyci.co.uk"
+  },
+  "disqo": {
+    "concerns": [
+      "Consumer insights and audience measurement platform",
+      "Panel-based cross-device behaviour tracking",
+      "Browsing and purchase data collection via opt-in panels",
+      "Ad measurement and brand lift studies"
+    ],
+    "aliases": [
+      "disqo inc",
+      "activemetering"
+    ],
+    "url": "https://www.disqo.com"
   }
 }

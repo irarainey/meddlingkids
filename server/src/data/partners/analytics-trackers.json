@@ -136,7 +136,9 @@
       "piano software",
       "tinypass",
       "press plus",
-      "newzmate"
+      "newzmate",
+      "xiti",
+      "ati-host"
     ],
     "url": "https://piano.io"
   },
@@ -658,7 +660,9 @@
       "Mastercard owned"
     ],
     "aliases": [
-      "dynamicyield"
+      "dynamicyield",
+      "dy",
+      "adserve.io"
     ],
     "url": "https://www.dynamicyield.com"
   },
@@ -945,5 +949,61 @@
       "abc uk"
     ],
     "url": "https://www.abc.org.uk"
+  },
+  "cloudflare web analytics": {
+    "concerns": [
+      "Privacy-focused web analytics collecting page views and Core Web Vitals",
+      "Cloudflare beacon script loaded on millions of sites",
+      "Ties into Cloudflare's global CDN and network presence",
+      "Referrer and performance data collection"
+    ],
+    "aliases": [
+      "cloudflare analytics",
+      "cloudflare insights",
+      "cloudflareinsights",
+      "cloudflare inc"
+    ],
+    "url": "https://www.cloudflare.com/web-analytics/"
+  },
+  "constant contact": {
+    "concerns": [
+      "Email marketing and campaign tracking",
+      "Email open and click tracking via pixel beacons",
+      "Subscriber behaviour profiling",
+      "Contact list management and segmentation"
+    ],
+    "aliases": [
+      "constant contact inc",
+      "ctct",
+      "endurance brands"
+    ],
+    "url": "https://www.constantcontact.com"
+  },
+  "econda": {
+    "concerns": [
+      "German e-commerce analytics and personalization",
+      "Behavioural tracking and visitor profiling",
+      "A/B testing and conversion optimization",
+      "Significant presence in DACH market"
+    ],
+    "aliases": [
+      "econda gmbh",
+      "econda analytics",
+      "econda-monitor"
+    ],
+    "url": "https://www.econda.com"
+  },
+  "miaozhen": {
+    "concerns": [
+      "Major Chinese ad verification and digital analytics",
+      "Anti-fraud measurement and viewability tracking",
+      "Cross-site campaign tracking and attribution",
+      "Significant in Chinese digital advertising ecosystem"
+    ],
+    "aliases": [
+      "miaozhen systems",
+      "miaozhen technology"
+    ],
+    "url": "https://www.miaozhen.com"
   }
 }

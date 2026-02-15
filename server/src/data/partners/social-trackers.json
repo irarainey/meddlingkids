@@ -237,7 +237,9 @@
       "Cross-site"
     ],
     "aliases": [
-      "vimeo player"
+      "vimeo player",
+      "vimeo",
+      "livestream"
     ],
     "url": "https://vimeo.com"
   },

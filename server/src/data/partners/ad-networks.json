@@ -46,7 +46,9 @@
       "facebook pixel",
       "meta pixel",
       "threads",
-      "meta quest"
+      "meta quest",
+      "liverail",
+      "facebook audience network"
     ],
     "url": "https://www.meta.com"
   },
@@ -224,7 +226,8 @@
     "aliases": [
       "adelphic",
       "myspace data",
-      "adelphic llc"
+      "adelphic llc",
+      "viantsuite"
     ],
     "url": "https://www.viantinc.com"
   },
@@ -429,7 +432,8 @@
       "snapchat",
       "snap inc",
       "snap pixel",
-      "snap audience network"
+      "snap audience network",
+      "snapads"
     ],
     "url": "https://forbusiness.snapchat.com"
   },
@@ -776,7 +780,9 @@
     "aliases": [
       "unity technologies",
       "ironsource",
-      "unityads"
+      "unityads",
+      "unity3d",
+      "iron source"
     ],
     "url": "https://unity.com/products/unity-ads"
   },
@@ -789,7 +795,8 @@
     "aliases": [
       "app lovin",
       "applovin corporation",
-      "max"
+      "max",
+      "applvn"
     ],
     "url": "https://www.applovin.com"
   },
@@ -879,7 +886,9 @@
       "Vungle owner"
     ],
     "aliases": [
-      "lift off"
+      "lift off",
+      "liftoff.io",
+      "liftoff mobile"
     ],
     "url": "https://liftoff.io"
   },
@@ -1083,7 +1092,9 @@
       "Attribution"
     ],
     "aliases": [
-      "partnerize inc"
+      "partnerize inc",
+      "performance horizon",
+      "prf.hn"
     ],
     "url": "https://partnerize.com"
   },
@@ -1406,7 +1417,10 @@
     ],
     "aliases": [
       "connexity inc",
-      "shopzilla"
+      "shopzilla",
+      "pricegrabber",
+      "bizrate",
+      "become"
     ],
     "url": "https://connexity.com"
   },
@@ -1554,7 +1568,10 @@
     ],
     "aliases": [
       "cadent llc",
-      "one platform"
+      "one platform",
+      "clearstream",
+      "emx digital",
+      "emxdgt"
     ],
     "url": "https://www.cadent.tv"
   },
@@ -1633,5 +1650,185 @@
       "youview tv"
     ],
     "url": "https://www.youview.com"
+  },
+  "tradedoubler": {
+    "concerns": [
+      "European affiliate and performance marketing network",
+      "Cross-site conversion tracking and click attribution",
+      "Cookie-based tracking across publisher sites",
+      "Operates across 80+ countries"
+    ],
+    "aliases": [
+      "tradedoubler ab"
+    ],
+    "url": "https://www.tradedoubler.com"
+  },
+  "peer39": {
+    "concerns": [
+      "Contextual intelligence and brand safety classification",
+      "Page-level content scanning and categorization",
+      "Pre-bid contextual segments for ad targeting",
+      "Samba TV subsidiary"
+    ],
+    "aliases": [
+      "peer 39",
+      "peer39 inc"
+    ],
+    "url": "https://www.peer39.com"
+  },
+  "kevel": {
+    "concerns": [
+      "Ad serving API infrastructure used by major platforms",
+      "Server-side ad decisioning and targeting",
+      "Custom ad delivery with first-party data",
+      "White-label ad server"
+    ],
+    "aliases": [
+      "adzerk",
+      "kevel inc",
+      "adzerk inc"
+    ],
+    "url": "https://www.kevel.com"
+  },
+  "vk ads": {
+    "concerns": [
+      "Major Russian advertising and social platform",
+      "Cross-site tracking via mail.ru and VK widgets",
+      "Audience profiling across VK ecosystem",
+      "Display, video, and native ad network"
+    ],
+    "aliases": [
+      "mail.ru",
+      "mail.ru group",
+      "vk",
+      "vkontakte",
+      "mycom",
+      "mradx"
+    ],
+    "url": "https://ads.vk.com"
+  },
+  "uber advertising": {
+    "concerns": [
+      "In-app advertising across Uber and Uber Eats",
+      "Rider and driver location data for ad targeting",
+      "Journey-based advertising during trips",
+      "Purchase and delivery behaviour profiling"
+    ],
+    "aliases": [
+      "uber ads",
+      "uber journey ads",
+      "uber adsystem",
+      "uber technologies"
+    ],
+    "url": "https://www.uber.com/us/en/advertising/"
+  },
+  "temu": {
+    "concerns": [
+      "Aggressive retargeting and cross-platform advertising",
+      "Operates DSP with extensive behavioural tracking",
+      "Shopping intent profiling and purchase data collection",
+      "PDD Holdings / Pinduoduo subsidiary"
+    ],
+    "aliases": [
+      "temu dsp",
+      "temu.com",
+      "pinduoduo advertising",
+      "pdd holdings"
+    ],
+    "url": "https://www.temu.com"
+  },
+  "cyberagent": {
+    "concerns": [
+      "Major Japanese ad-tech company with programmatic DSP",
+      "Dynalyst retargeting across Japanese market",
+      "Cross-app and cross-site behavioural targeting",
+      "Significant mobile advertising presence in APAC"
+    ],
+    "aliases": [
+      "cyberagent inc",
+      "dynalyst",
+      "ameba",
+      "adtdp"
+    ],
+    "url": "https://www.cyberagent.co.jp"
+  },
+  "microad": {
+    "concerns": [
+      "Japanese programmatic advertising platform",
+      "SSP and DSP with extensive publisher network",
+      "Behavioural targeting across Japanese web",
+      "Significant presence in APAC ad market"
+    ],
+    "aliases": [
+      "microad inc",
+      "microad.jp"
+    ],
+    "url": "https://www.microad.co.jp"
+  },
+  "ligatus": {
+    "concerns": [
+      "European native advertising network",
+      "Content recommendation and native ad tracking",
+      "Cross-site behavioural profiling",
+      "Acquired by Outbrain"
+    ],
+    "aliases": [
+      "ligatus gmbh",
+      "outbrain ligatus",
+      "veeseo"
+    ],
+    "url": "https://www.outbrain.com"
+  },
+  "webgains": {
+    "concerns": [
+      "European affiliate marketing network",
+      "Cross-site conversion tracking and attribution",
+      "Performance-based advertising",
+      "Publisher cookie tracking"
+    ],
+    "aliases": [
+      "webgains ltd"
+    ],
+    "url": "https://www.webgains.com"
+  },
+  "kelkoo": {
+    "concerns": [
+      "European shopping comparison and commerce advertising",
+      "Product feed tracking and click attribution",
+      "Cross-site purchase intent profiling",
+      "Conversion tracking across merchant sites"
+    ],
+    "aliases": [
+      "kelkoo group"
+    ],
+    "url": "https://www.kelkoo.com"
+  },
+  "adcash": {
+    "concerns": [
+      "Global ad network with display, native, and push advertising",
+      "Pop-under and interstitial ad formats",
+      "Programmatic targeting across web and mobile",
+      "Anti-adblock circumvention techniques"
+    ],
+    "aliases": [
+      "adcash ou",
+      "cdnativ",
+      "discovernative"
+    ],
+    "url": "https://adcash.com"
+  },
+  "dstillery": {
+    "concerns": [
+      "AI-powered audience data and custom targeting",
+      "Behavioural profiling from browsing data",
+      "Cookieless ID solutions for cross-site tracking",
+      "Location and interest-based audience segments"
+    ],
+    "aliases": [
+      "dstillery inc",
+      "media6degrees",
+      "m6d"
+    ],
+    "url": "https://dstillery.com"
   }
 }

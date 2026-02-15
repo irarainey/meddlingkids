@@ -2020,6 +2020,74 @@
     "description": "Prebid.js: Header bidding library enabling multiple ad exchanges."
   },
   {
+    "pattern": "cloudflareinsights\\.com|static\\.cloudflareinsights",
+    "description": "Cloudflare Web Analytics: Privacy-focused analytics collecting page views and Core Web Vitals."
+  },
+  {
+    "pattern": "tradedoubler\\.com",
+    "description": "Tradedoubler: European affiliate marketing network tracking conversions and clicks."
+  },
+  {
+    "pattern": "peer39\\.com|peer39\\.net",
+    "description": "Peer39: Contextual intelligence and brand safety classification for ad targeting."
+  },
+  {
+    "pattern": "adzerk\\.net|kevel\\.com|zkcdn\\.net",
+    "description": "Kevel (Adzerk): Ad serving API infrastructure used by major platforms."
+  },
+  {
+    "pattern": "mail\\.ru\\/.*ad|mradx\\.net",
+    "description": "VK Ads (Mail.ru): Russian advertising platform cross-site tracking."
+  },
+  {
+    "pattern": "uber-adsystem\\.com",
+    "description": "Uber Advertising: In-app and journey-based ad targeting platform."
+  },
+  {
+    "pattern": "kwcdn\\.com|temu\\.com\\/.*track",
+    "description": "Temu DSP: Aggressive retargeting and cross-platform advertising tracker."
+  },
+  {
+    "pattern": "econda-monitor\\.de",
+    "description": "econda: German e-commerce analytics and behavioural tracking."
+  },
+  {
+    "pattern": "miaozhen\\.com",
+    "description": "Miaozhen Systems: Chinese ad verification and digital analytics."
+  },
+  {
+    "pattern": "dstillery\\.com|media6degrees",
+    "description": "Dstillery: AI-powered audience data and behavioural targeting."
+  },
+  {
+    "pattern": "adcash\\.com|cdnativ\\.com|discovernative\\.com",
+    "description": "Adcash: Global ad network with display, native, and push advertising."
+  },
+  {
+    "pattern": "ligatus\\.com|veeseo\\.com",
+    "description": "Ligatus: European native advertising network (Outbrain subsidiary)."
+  },
+  {
+    "pattern": "webgains\\.com|webgains\\.io",
+    "description": "Webgains: European affiliate marketing network with conversion tracking."
+  },
+  {
+    "pattern": "kelkoo\\.com",
+    "description": "Kelkoo: European shopping comparison and commerce advertising."
+  },
+  {
+    "pattern": "activemetering\\.com",
+    "description": "DISQO: Consumer insights panel-based cross-device behaviour tracking."
+  },
+  {
+    "pattern": "dynalyst\\.jp|adtdp\\.com|cyberagent\\.io",
+    "description": "CyberAgent: Japanese programmatic DSP and retargeting platform."
+  },
+  {
+    "pattern": "microad\\.jp|microad\\.co\\.jp",
+    "description": "MicroAd: Japanese programmatic advertising SSP/DSP platform."
+  },
+  {
     "pattern": "analytics|tracking|beacon|telemetry|metrics",
     "description": "Generic analytics/tracking script (detected by URL pattern)."
   }
