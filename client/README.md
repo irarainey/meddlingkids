@@ -177,7 +177,7 @@ Located in `types/tracking.ts`:
 | `StorageItem` | localStorage/sessionStorage entry |
 | `NetworkRequest` | HTTP request with domain, type, third-party flag |
 | `ConsentCategory` | Cookie category from consent dialog |
-| `ConsentPartner` | Third-party vendor from consent dialog |
+| `ConsentPartner` | Third-party vendor from consent dialog (with risk classification and URL) |
 | `ConsentDetails` | Full consent dialog information |
 | `SummaryFindingType` | Finding severity: critical, high, moderate, info, positive |
 | `SummaryFinding` | Structured finding with type and text |

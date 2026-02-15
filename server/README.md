@@ -78,12 +78,12 @@ src/
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling
-│   ├── click.py                     # Multi-strategy consent button clicker
+│   ├── click.py                     # Multi-strategy consent button clicker (deadline-based timeout management)
 │   ├── constants.py                 # Shared consent-manager detection constants, selectors, and utilities
 │   ├── detection.py                 # Overlay detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, JSON)
-│   └── partner_classification.py    # Consent partner risk classification
+│   └── partner_classification.py    # Consent partner risk classification and URL enrichment
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns + LLM + cache)
@@ -119,9 +119,9 @@ src/
 ├── data/                            # Static data and reference databases
 │   ├── loader.py                    # JSON data loader with caching
 │   ├── gdpr/                        # GDPR/TCF reference data for LLM context
-│   │   ├── gdpr-reference.json      # GDPR principles and requirements
-│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions
-│   │   └── consent-cookies.json     # Expected consent cookie categories
+│   │   ├── gdpr-reference.json      # GDPR lawful bases, principles, and ePrivacy cookie categories
+│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
+│   │   └── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
 │   ├── partners/                    # Partner risk databases (8 JSON files, 556 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
@@ -175,9 +175,9 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons |
 | `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
-| `StructuredReportAgent` | Tracking data + consent | `StructuredReport` | Generates structured privacy report with per-section LLM calls |
-| `SummaryFindingsAgent` | Analysis markdown | `list[SummaryFinding]` | Distils full analysis into 5-7 prioritized findings |
-| `TrackingAnalysisAgent` | Tracking summary | Markdown report | Comprehensive privacy analysis (supports streaming via `run_stream()`) |
+| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 9 concurrent section LLM calls, deterministic overrides, and vendor URL enrichment |
+| `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
+| `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run_stream()`) |
 
 ### Infrastructure
 

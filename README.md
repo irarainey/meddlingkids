@@ -107,7 +107,7 @@ meddlingkids/
 │       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
-│       │   ├── gdpr/          # GDPR/TCF reference data (consent cookies, purposes)
+│       │   ├── gdpr/          # GDPR/TCF reference data (lawful bases, consent cookies, purposes, ePrivacy categories)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 556 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)

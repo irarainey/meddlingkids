@@ -219,19 +219,34 @@ All data captured
    │   │   └── LLM analysis for uncached unknown scripts       │
    │   │       (concurrent with semaphore, max 10 at a time)   │
    │   │                                                       │
-   │   │  stream_tracking_analysis(summary, consent_details)   │
+   │   │  stream_tracking_analysis(summary, consent, stats)    │
    │   │   ├── build_tracking_summary() → Data for LLM         │
+   │   │   ├── GDPR/TCF reference data (purposes, lawful       │
+   │   │   │   bases, ePrivacy categories, consent cookies)     │
+   │   │   ├── Pre-consent page-load stats                     │
+   │   │   ├── Media group context (if domain recognised)      │
    │   │   └── Main analysis prompt → Full markdown report     │
    │   │                                                       │
    │   │                                                       │
    │   │  calculate_privacy_score() → Deterministic 0-100      │
    │   │                                                       │
-   │   │  summarise(analysis_text) → Structured JSON findings  │
+   │   │  summarise(analysis_text, score, consent, metrics)    │
+   │   │   ├── Deterministic consent facts (partner counts)    │
+   │   │   ├── Deterministic tracking metrics (exact counts)   │
+   │   │   ├── Pre-consent page-load stats                     │
+   │   │   └── Domain knowledge context                        │
+   │   │                                                       │
+   │   │  build_structured_report(tracking_summary, consent)   │
+   │   │   ├── 9 concurrent section LLM calls                  │
+   │   │   ├── GDPR/TCF reference data                         │
+   │   │   ├── Deterministic overrides (partner count,         │
+   │   │   │   domain count, cookie count, storage counts)      │
+   │   │   └── Vendor URL enrichment from partner databases    │
    │   │                                                       │
    │   └───────────────────────────────────────────────────────┘
    │
    └── Script analysis and tracking analysis run concurrently
-       Scoring and summary findings run after analysis completes
+       Scoring, structured report, and summary run after analysis
        Both tasks share a progress queue for merged SSE updates
 ```
 
@@ -375,9 +390,9 @@ Key framework types used:
 | `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons |
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
-| `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with per-section LLM calls |
-| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (markdown) |
+| `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls, deterministic overrides, and vendor URL enrichment |
+| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context |
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
@@ -406,10 +421,10 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|---------------|
 | `detection.py` | Overlay detection orchestration |
 | `extraction.py` | Consent detail extraction orchestration |
-| `click.py` | Click strategies for consent buttons |
+| `click.py` | Click strategies for consent buttons (per-strategy deadline checking to prevent timeout cascades) |
 | `constants.py` | Shared consent-manager host keywords, exclusion lists, container selectors, reject-button regex, and `is_consent_frame()` utility |
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, and frame type per overlay (JSON) |
-| `partner_classification.py` | Classify consent partners by risk level |
+| `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
 
 **`analysis/`** — Tracking analysis and scoring
 
@@ -452,9 +467,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 556 partner entries across 8 risk categories |
-| `data/gdpr/gdpr-reference.json` | GDPR principles and requirements for LLM context |
-| `data/gdpr/tcf-purposes.json` | IAB TCF v2.2 purpose definitions for LLM context |
-| `data/gdpr/consent-cookies.json` | Expected consent cookie categories for LLM context |
+| `data/gdpr/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
+| `data/gdpr/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
+| `data/gdpr/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
 | `data/publishers/media-groups.json` | 16 UK media group profiles (vendors, ad tech partners, data practices) |
 
 **`utils/`** — Cross-cutting utilities
@@ -580,6 +595,19 @@ class NetworkRequest(BaseModel):
     status_code: int | None = None
     post_data: str | None = None
     pre_consent: bool = False
+```
+
+### ConsentPartner
+```python
+class ConsentPartner(BaseModel):
+    name: str
+    purpose: str
+    data_collected: list[str]
+    risk_level: str | None = None      # Set during partner classification
+    risk_category: str | None = None   # Set during partner classification
+    risk_score: int | None = None      # Set during partner classification
+    concerns: list[str] | None = None  # Set during partner classification
+    url: str = ""                      # Enriched from partner databases
 ```
 
 ### ConsentDetails
