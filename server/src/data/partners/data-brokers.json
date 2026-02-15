@@ -53,13 +53,16 @@
       "Credit bureau data",
       "Identity verification tied to tracking",
       "Consumer profiling",
-      "Marketing services"
+      "Marketing services",
+      "Mosaic geodemographic classification system",
+      "Audience segmentation data sold to broadcasters and publishers"
     ],
     "aliases": [
       "experian marketing",
       "experian plc",
       "experian marketing services",
-      "experian audience"
+      "experian audience",
+      "experian mosaic"
     ]
   },
   "epsilon": {
@@ -108,11 +111,21 @@
       "Data management platform",
       "Audience segmentation",
       "Data selling",
-      "Panorama ID"
+      "Panorama ID",
+      "Merged into Epsilon Data Management LLC",
+      "Registered data broker in Texas",
+      "Processes sensitive personal data including racial and political",
+      "Hashed email matching for identity resolution",
+      "Machine learning for audience classification and profiling",
+      "Perpetual retention of email addresses",
+      "90-day identifier retention",
+      "IAB TCF vendor 95"
     ],
     "aliases": [
       "lotame solutions",
-      "lotame inc"
+      "lotame inc",
+      "epsilon lotame",
+      "lotame spherical"
     ]
   },
   "salesforce dmp": {
@@ -516,20 +529,38 @@
     "concerns": [
       "Audience data marketplace",
       "Third-party data",
-      "Cross-border data"
+      "Cross-border data",
+      "IAB TCF vendor 120",
+      "Owned by Dun & Bradstreet",
+      "Pseudonymous profiling via cookies and mobile IDs",
+      "Hashed email address identity resolution",
+      "Demographic, behavioural, and purchase intent segments",
+      "Device graph linking browsers and devices",
+      "120-day audience targeting window"
     ],
     "aliases": [
-      "eyeota pte"
+      "eyeota pte",
+      "eyeota pte ltd",
+      "eyeota marketplace",
+      "dun & bradstreet eyeota"
     ]
   },
   "bombora": {
     "concerns": [
       "B2B intent data",
       "Company surge data",
-      "Content consumption tracking"
+      "Content consumption tracking",
+      "IAB TCF vendor 163",
+      "Cross-device tracking via UIDs and hashed emails",
+      "Engagement metrics (dwell time, scroll depth)",
+      "Data enrichment with inferred business profiles",
+      "Interest-based advertising segments",
+      "Cookie matching and user syncing with partners"
     ],
     "aliases": [
-      "bombora inc"
+      "bombora inc",
+      "netfactor",
+      "bombora data co-op"
     ]
   },
   "peekyou": {
@@ -688,10 +719,13 @@
     "concerns": [
       "UK consumer data",
       "Credit scoring",
-      "Marketing services"
+      "Marketing services",
+      "Mosaic UK geodemographic classification",
+      "Supplies audience segmentation data to UK broadcasters"
     ],
     "aliases": [
-      "experian plc uk"
+      "experian plc uk",
+      "experian ltd"
     ]
   },
   "equifax uk": {
@@ -1020,6 +1054,57 @@
       "upland",
       "upland software inc",
       "localytics"
+    ]
+  },
+  "digital element": {
+    "concerns": [
+      "IP geolocation data provider",
+      "IP intelligence for ad targeting",
+      "Location-based audience segmentation",
+      "Taboola analytics partner"
+    ],
+    "aliases": [
+      "digitalelement",
+      "digital element inc",
+      "digital envoy"
+    ]
+  },
+  "navegg": {
+    "concerns": [
+      "Latin American audience data platform",
+      "Behavioural profiling from browsing",
+      "Third-party data segments",
+      "Taboola data partner"
+    ],
+    "aliases": [
+      "navegg sa"
+    ]
+  },
+  "onaudience": {
+    "concerns": [
+      "Audience data marketplace",
+      "Cookie-based profiling",
+      "Interest and intent segments",
+      "European data provider"
+    ],
+    "aliases": [
+      "on audience",
+      "onaudience.com"
+    ]
+  },
+  "caci": {
+    "concerns": [
+      "Geodemographic consumer classification (Acorn)",
+      "Lifestyle and demographic profiling overlay",
+      "Used by publishers for interest-based ad targeting",
+      "Consumer segmentation data",
+      "Location intelligence and behavioural data"
+    ],
+    "aliases": [
+      "caci limited",
+      "caci ltd",
+      "caci uk",
+      "acorn classification"
     ]
   }
 }

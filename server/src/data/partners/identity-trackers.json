@@ -23,11 +23,21 @@
       "Universal ID",
       "Cross-site identity",
       "Cookie replacement",
-      "Publisher identity"
+      "Publisher identity",
+      "California registered data broker",
+      "Cross-device identity graph",
+      "Probabilistic identification using IP and browser signals",
+      "Acquired TrueData mobile identity",
+      "278 advertising partners",
+      "100-day data retention for live services",
+      "IAB TCF registered vendor",
+      "Sells and shares identifiers under US state privacy laws"
     ],
     "aliases": [
       "id5 technology",
-      "id5.io"
+      "id5.io",
+      "id5 ltd",
+      "truedata"
     ]
   },
   "liveramp ats": {
@@ -66,10 +76,15 @@
     "concerns": [
       "People-based identity",
       "Cookie-less tracking",
-      "Cross-device graph"
+      "Cross-device graph",
+      "Probabilistic and deterministic cross-device linking",
+      "Uses IP address and user agent for device recognition",
+      "90-day ID retention after last activity",
+      "IAB TCF vendor 95"
     ],
     "aliases": [
-      "panorama id"
+      "panorama id",
+      "lotame panorama id"
     ]
   },
   "merkle": {
@@ -415,10 +430,15 @@
     "concerns": [
       "Publisher data platform",
       "Cohort-based targeting",
-      "Edge computing"
+      "Edge computing",
+      "Data Management Platform",
+      "Data Clean Room for publisher-advertiser collaboration",
+      "Curated audience segments",
+      "Halo agentic AI for automated audience buying"
     ],
     "aliases": [
-      "permutive inc"
+      "permutive inc",
+      "permutive ltd"
     ]
   },
   "flashpoint": {
@@ -559,6 +579,50 @@
     ],
     "aliases": [
       "zeotap id plus"
+    ]
+  },
+  "liveintent": {
+    "concerns": [
+      "IAB TCF vendor 148",
+      "Email-based identity resolution",
+      "Cross-context behavioural advertising",
+      "Being acquired by Zeta Global",
+      "Identity graph from hashed emails",
+      "Cross-device tracking via email",
+      "Lookalike modelling from consumer profiles",
+      "Data sharing with advertising partners"
+    ],
+    "aliases": [
+      "liveintent inc",
+      "live intent",
+      "zeta global liveintent",
+      "powerinbox liveintent"
+    ]
+  },
+  "intentiq": {
+    "concerns": [
+      "Cross-device identity mapping",
+      "Probabilistic device graph",
+      "Registered Texas data broker",
+      "Sells device map to advertising clients",
+      "Cookie and mobile ad ID tracking",
+      "Hashed email address identity resolution",
+      "Financial services data clients"
+    ],
+    "aliases": [
+      "intent iq",
+      "intentiq llc",
+      "intent iq ltd"
+    ]
+  },
+  "roqad": {
+    "concerns": [
+      "Cross-device identity graph",
+      "Probabilistic device matching",
+      "European identity resolution"
+    ],
+    "aliases": [
+      "roqad gmbh"
     ]
   }
 }

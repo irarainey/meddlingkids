@@ -774,5 +774,64 @@
       "akamai technologies",
       "mpulse"
     ]
+  },
+  "kantar": {
+    "concerns": [
+      "Advertising effectiveness measurement",
+      "Brand lift studies",
+      "Cross-media audience measurement",
+      "Taboola analytics partner"
+    ],
+    "aliases": [
+      "kantar millward brown",
+      "millward brown",
+      "kantar media",
+      "kantar group"
+    ]
+  },
+  "ipsos": {
+    "concerns": [
+      "Audience measurement panel research",
+      "Digital audience measurement via Ipsos iris",
+      "UKOM-endorsed UK online audience measurement",
+      "Cross-device audience research",
+      "Market research surveys and data collection"
+    ],
+    "aliases": [
+      "ipsos mori",
+      "ipsos iris",
+      "ipsos sa",
+      "ipsos group",
+      "ipsos digital"
+    ]
+  },
+  "dotmetrics": {
+    "concerns": [
+      "Digital audience measurement",
+      "Panel-based audience research",
+      "Publisher audience verification",
+      "Part of Ipsos ecosystem for UK audience measurement"
+    ],
+    "aliases": [
+      "dot metrics",
+      "dotmetrics.net"
+    ]
+  },
+  "atolls": {
+    "concerns": [
+      "Affiliate marketing tracking via commission cookies",
+      "Coupon and voucher attribution tracking",
+      "Browser extension data collection",
+      "Pseudonymous usage profiles for interest-based content",
+      "Cross-site promotional offer tracking",
+      "Formerly Global Savings Group and CupoNation"
+    ],
+    "aliases": [
+      "atolls germany gmbh",
+      "global savings group",
+      "gsg",
+      "cuponation",
+      "coupons.com"
+    ]
   }
 }

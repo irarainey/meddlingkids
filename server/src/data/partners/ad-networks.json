@@ -226,22 +226,49 @@
       "Click tracking",
       "IAB TCF vendor 42",
       "Registered data broker in Texas",
-      "Owns Skimlinks and Connexity"
+      "Owns Skimlinks and Connexity",
+      "60+ RTB partners receiving bid data",
+      "30+ data partners for audience enrichment",
+      "Shares data with fraud detection and attribution vendors"
     ],
     "aliases": [
       "taboola inc",
       "taboola.com",
-      "taboola.com ltd"
+      "taboola.com ltd",
+      "zemanta"
     ]
   },
   "outbrain": {
     "concerns": [
       "Content recommendation",
       "Behavioral tracking",
-      "Interest profiling"
+      "Interest profiling",
+      "Merged with Teads",
+      "Operates as Teads brand",
+      "DSP for open internet",
+      "Teads Amplify and Teads Engage services"
     ],
     "aliases": [
-      "outbrain inc"
+      "outbrain inc",
+      "outbrain direct",
+      "zemanta"
+    ]
+  },
+  "ozone project": {
+    "concerns": [
+      "UK publisher advertising alliance",
+      "Founded by News UK, Guardian, Telegraph, and Reach",
+      "Collects browsing data across publisher network",
+      "Interest inference and audience grouping",
+      "Cookies dropped after TCF consent",
+      "IAB TCF registered vendor",
+      "Shares audience data with advertisers"
+    ],
+    "aliases": [
+      "ozone",
+      "ozone project ltd",
+      "the ozone project",
+      "ozoneproject.com"
     ]
   },
   "revcontent": {
@@ -606,10 +633,15 @@
     "concerns": [
       "Outstream video",
       "Native video",
-      "Attention metrics"
+      "Attention metrics",
+      "Merged with Outbrain",
+      "Combined content recommendation and video ad platform",
+      "Teads Amplify advertiser services",
+      "Teads Engage media partner services"
     ],
     "aliases": [
-      "teads sa"
+      "teads sa",
+      "teads holding co"
     ]
   },
   "seedtag": {
@@ -865,10 +897,12 @@
     "concerns": [
       "Video advertising",
       "Emotional targeting",
-      "Tremor owned"
+      "Nexxen subsidiary (formerly Tremor International)"
     ],
     "aliases": [
-      "unruly group"
+      "unruly group",
+      "unruly media",
+      "nexxen unruly"
     ]
   },
   "connatix": {
@@ -1230,6 +1264,185 @@
     "aliases": [
       "connexity inc",
       "shopzilla"
+    ]
+  },
+  "rtb house": {
+    "concerns": [
+      "Deep learning retargeting",
+      "Real-time bidding personalised ads",
+      "IAB TCF vendor 16",
+      "Cross-device tracking via advertiser request",
+      "User profiling from browsing activity",
+      "Adlook subsidiary for branding campaigns",
+      "Global operations across 30+ countries"
+    ],
+    "aliases": [
+      "rtbhouse",
+      "rtb house s.a.",
+      "rtb house inc",
+      "rtb house limited",
+      "adlook",
+      "adlook limited",
+      "promotons"
+    ]
+  },
+  "nexxen": {
+    "concerns": [
+      "CTV and ACR data collection from Smart TVs",
+      "IAB TCF vendor 36 (SSP) and 23 (DSP)",
+      "Cross-device identity resolution",
+      "Automatic Content Recognition viewing data",
+      "Probabilistic identity graph building",
+      "Behavioural and demographic profiling",
+      "Registered Texas data broker"
+    ],
+    "aliases": [
+      "nexxen inc",
+      "nexxen international",
+      "tremor video",
+      "tremor international",
+      "unruly group",
+      "spearad"
+    ]
+  },
+  "bidtellect": {
+    "concerns": [
+      "Native advertising DSP",
+      "Context-driven targeting",
+      "Real-time bidding"
+    ],
+    "aliases": [
+      "bidtellect inc"
+    ]
+  },
+  "bidswitch": {
+    "concerns": [
+      "Exchange-to-exchange routing layer",
+      "Bid request forwarding across SSPs and DSPs",
+      "Owned by IPONWEB (now Magnite)"
+    ],
+    "aliases": [
+      "bidswitch gmbh",
+      "iponweb"
+    ]
+  },
+  "deepintent": {
+    "concerns": [
+      "Healthcare advertising DSP",
+      "Health data targeting",
+      "Programmatic healthcare marketing"
+    ],
+    "aliases": [
+      "deep intent"
+    ]
+  },
+  "media.net": {
+    "concerns": [
+      "Yahoo/Bing contextual ad network",
+      "Programmatic display and native",
+      "Cross-site ad serving"
+    ],
+    "aliases": [
+      "medianet",
+      "media.net advertising"
+    ]
+  },
+  "pulsepoint": {
+    "concerns": [
+      "Health-focused programmatic advertising",
+      "Real-time bidding exchange",
+      "Audience data activation"
+    ],
+    "aliases": [
+      "pulsepoint inc",
+      "contextweb"
+    ]
+  },
+  "showheroes": {
+    "concerns": [
+      "Video advertising platform",
+      "Contextual video targeting",
+      "European digital video"
+    ],
+    "aliases": [
+      "showheroes group",
+      "showheroes se"
+    ]
+  },
+  "stroeer": {
+    "concerns": [
+      "Major European digital advertising company",
+      "Digital out-of-home",
+      "Online video and display advertising"
+    ],
+    "aliases": [
+      "ströer",
+      "stroeer se",
+      "ströer se & co kgaa"
+    ]
+  },
+  "improve digital": {
+    "concerns": [
+      "European SSP",
+      "Owned by Magnite",
+      "Publisher monetisation platform"
+    ],
+    "aliases": [
+      "improvedigital",
+      "improve digital bv"
+    ]
+  },
+  "cadent": {
+    "concerns": [
+      "Connected TV advertising",
+      "Programmatic TV buying",
+      "Cross-screen targeting"
+    ],
+    "aliases": [
+      "cadent llc",
+      "one platform"
+    ]
+  },
+  "acuityads": {
+    "concerns": [
+      "Programmatic advertising DSP",
+      "Cross-channel targeting",
+      "Illumin journey advertising platform"
+    ],
+    "aliases": [
+      "acuity ads",
+      "illumin",
+      "acuityads holdings"
+    ]
+  },
+  "readpeak": {
+    "concerns": [
+      "Native advertising platform",
+      "Content recommendation engine",
+      "European native ads"
+    ],
+    "aliases": [
+      "readpeak oy"
+    ]
+  },
+  "geoedge": {
+    "concerns": [
+      "Ad verification and quality",
+      "Malvertising detection",
+      "Ad content scanning"
+    ],
+    "aliases": [
+      "geo edge"
+    ]
+  },
+  "datadome": {
+    "concerns": [
+      "Bot detection and fraud prevention",
+      "Device fingerprinting for bot identification",
+      "Real-time request analysis"
+    ],
+    "aliases": [
+      "datadome sas"
     ]
   }
 }
