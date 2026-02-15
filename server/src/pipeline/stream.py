@@ -28,7 +28,7 @@ from src.browser import session as browser_session
 from src.models import browser
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache as cache_util
-from src.utils import errors, logger
+from src.utils import errors, logger, usage_tracking
 from src.utils import url as url_mod
 
 log = logger.create_logger("Analyze")
@@ -164,6 +164,7 @@ async def analyze_url_stream(
     logger.start_log_file(domain)
     refresher_task: asyncio.Task[None] | None = None
 
+    usage_tracking.reset()
     log.section(f"Analyzing: {url}")
     log.info("Request received", {"url": url, "device": device_type})
     log.start_timer("total-analysis")
@@ -422,6 +423,7 @@ async def analyze_url_stream(
                 yield refresh_event
 
             # ── Phase 6: Complete ───────────────────────────────
+            usage_tracking.log_summary()
             total_time = log.end_timer("total-analysis", "Analysis complete")
             log.success(
                 "Investigation complete!",

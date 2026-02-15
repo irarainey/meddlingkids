@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 
 import agent_framework
 
-from src.utils import logger
+from src.utils import logger, usage_tracking
 
 log = logger.create_logger("Agent-Middleware")
 
@@ -63,6 +63,31 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
             "duration_seconds": round(duration, 3),
             "agent_name": self.agent_name,
         }
+
+        # Record LLM token usage for the running session tally.
+        self._record_usage(context)
+
+    def _record_usage(self, context: agent_framework.ChatContext) -> None:
+        """Extract token usage from the LLM response and record it.
+
+        Args:
+            context: Chat context after LLM invocation.
+        """
+        result = context.result
+        if result is None:
+            return
+
+        usage = getattr(result, "usage_details", None)
+        if usage is None:
+            usage_tracking.record(self.agent_name)
+            return
+
+        usage_tracking.record(
+            self.agent_name,
+            input_tokens=usage.get("input_token_count"),
+            output_tokens=usage.get("output_token_count"),
+            total_tokens=usage.get("total_token_count"),
+        )
 
 
 # ── Retry constants ────────────────────────────────────────────────
