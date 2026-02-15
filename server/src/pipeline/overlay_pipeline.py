@@ -510,6 +510,8 @@ class OverlayPipeline:
                     log.info(
                         "Click errored but pre-click consent data available — preserving for analysis",
                     )
+                    if pending_extract is not None:
+                        await pending_extract
                     pending_extract = asyncio.create_task(
                         overlay_steps.collect_extraction_events(
                             page,
@@ -543,6 +545,8 @@ class OverlayPipeline:
             # Start extraction as a background task so it runs
             # concurrently with the next detection call.
             if is_first_cookie_consent and pre_click_screenshot:
+                if pending_extract is not None:
+                    await pending_extract
                 pending_extract = asyncio.create_task(
                     overlay_steps.collect_extraction_events(
                         page,
@@ -728,11 +732,6 @@ class OverlayPipeline:
                         frame_type=click_result.frame_type or "main",
                     )
                 )
-
-                # Update latest screenshot so subsequent
-                # overlays (and consent extraction) get the
-                # correct page state.
-                _latest_screenshot = await session.take_screenshot(full_page=False)
 
                 # Defer consent extraction — it will run
                 # concurrently with the verification vision

@@ -55,8 +55,9 @@ def get_log_buffer() -> list[str]:
 
 
 def clear_log_buffer() -> None:
-    """Clear the in-memory log buffer for the next analysis run."""
+    """Clear the in-memory log buffer and timers for the next analysis run."""
     _get_log_buffer().clear()
+    _get_timers().clear()
 
 
 # ============================================================================

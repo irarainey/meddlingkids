@@ -50,20 +50,26 @@ def optimize_png_to_jpeg(
         Tuple of (jpeg_bytes, final_width, final_height).
     """
     img: Image.Image = Image.open(io.BytesIO(png_bytes))
+    try:
+        if img.width > max_width:
+            ratio = max_width / img.width
+            resized = img.resize(
+                (max_width, int(img.height * ratio)),
+                Image.Resampling.LANCZOS,
+            )
+            img.close()
+            img = resized
 
-    if img.width > max_width:
-        ratio = max_width / img.width
-        img = img.resize(
-            (max_width, int(img.height * ratio)),
-            Image.Resampling.LANCZOS,
-        )
+        if img.mode in ("RGBA", "P"):
+            converted = img.convert("RGB")
+            img.close()
+            img = converted
 
-    if img.mode in ("RGBA", "P"):
-        img = img.convert("RGB")
-
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=quality, optimize=True)
-    return buf.getvalue(), img.width, img.height
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        return buf.getvalue(), img.width, img.height
+    finally:
+        img.close()
 
 
 def png_to_data_url(png_bytes: bytes) -> str:

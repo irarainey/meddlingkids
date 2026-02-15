@@ -59,6 +59,13 @@ _FETCH_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"
 _FETCH_TIMEOUT = aiohttp.ClientTimeout(total=5)
 
 
+# Maximum bytes to read from a single script fetch.  Large
+# scripts (e.g. bundled vendor files) can exceed 10 MB; there
+# is no value in downloading the full content since the LLM
+# agent truncates to 2 000 chars anyway.
+_MAX_SCRIPT_BYTES = 128 * 1024  # 128 KB
+
+
 async def _fetch_script_content(
     url: str,
     http_session: aiohttp.ClientSession,
@@ -68,6 +75,9 @@ async def _fetch_script_content(
 
     Accepts a shared ``aiohttp.ClientSession`` so that TCP
     connections are reused across many concurrent fetches.
+
+    Only the first ``_MAX_SCRIPT_BYTES`` bytes are read to
+    prevent excessive memory use from very large bundles.
     """
     for attempt in range(retries + 1):
         try:
@@ -78,7 +88,8 @@ async def _fetch_script_content(
                         continue
                     log.debug("Script fetch failed", {"url": url, "status": response.status})
                     return None
-                return await response.text()
+                body = await response.content.read(_MAX_SCRIPT_BYTES)
+                return body.decode("utf-8", errors="replace")
         except Exception as exc:
             if attempt < retries:
                 await asyncio.sleep(0.5 * (attempt + 1))
