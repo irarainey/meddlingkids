@@ -358,26 +358,19 @@ class OverlayPipeline:
 
             is_first_cookie_consent = detection.overlay_type == "cookie-consent" and not result.consent_details
 
-            # ── Expand dialog & capture pre-click state ─────
-            # For cookie-consent overlays, try to click
-            # "More Options" to expand hidden partner lists
-            # and capture the DOM text while the dialog is
-            # still visible.
+            # ── Capture consent content before dismissing ───
+            # For cookie-consent overlays, extract text and
+            # take a screenshot while the dialog is visible.
+            # The extraction agent analyses both later.
             pre_click_screenshot: bytes | None = None
             pre_click_consent_text: str | None = None
             if is_first_cookie_consent:
                 yield self._progress(
-                    f"overlay-{overlay_count}-expand",
+                    f"overlay-{overlay_count}-capture",
                     "Inspecting overlay content...",
                     progress_base,
                 )
-                (
-                    pre_click_consent_text,
-                    pre_click_screenshot,
-                ) = await overlay_steps.expand_consent_dialog(
-                    page,
-                    session,
-                )
+                pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
 
             # ── Click ───────────────────────────────────────
             yield self._progress(
@@ -677,22 +670,16 @@ class OverlayPipeline:
 
             is_first_cookie = cached.overlay_type == "cookie-consent" and not result.consent_details
 
-            # ── Expand dialog & capture pre-click state ─────
+            # ── Capture consent content before dismissing ───
             pre_click_screenshot: bytes | None = None
             pre_click_consent_text: str | None = None
             if is_first_cookie:
                 yield self._progress(
-                    f"overlay-{overlay_number}-expand",
+                    f"overlay-{overlay_number}-capture",
                     "Inspecting overlay content...",
                     progress_base,
                 )
-                (
-                    pre_click_consent_text,
-                    pre_click_screenshot,
-                ) = await overlay_steps.expand_consent_dialog(
-                    page,
-                    session,
-                )
+                pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
 
             yield self._progress(
                 f"overlay-{overlay_number}-click",
