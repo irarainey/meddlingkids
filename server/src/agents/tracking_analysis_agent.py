@@ -129,11 +129,15 @@ def _build_user_prompt(
         f"## SessionStorage Data\n{session_json}"
         f"{consent_section}\n\n"
         f"{_build_gdpr_reference()}\n\n"
+        f"{loader.build_media_group_context(tracking_summary.analyzed_url)}\n\n"
         "Please provide a comprehensive privacy analysis"
         " of this tracking data. If consent dialog"
         " information is provided, compare what was"
         " disclosed to users vs what is actually happening,"
         " and highlight any concerning discrepancies."
+        " If publisher/media group context is provided,"
+        " cross-reference observed activity against"
+        " known vendors and privacy characteristics."
     )
 
 

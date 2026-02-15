@@ -238,3 +238,106 @@ def get_consent_cookie_names() -> list[str]:
     """
     data = get_consent_cookies()
     return list(data.get("consent_cookie_name_patterns", []))
+
+
+# ============================================================================
+# Media Group Profile Loading
+# ============================================================================
+
+_media_groups_cache: dict[str, partners.MediaGroupProfile] | None = None
+
+
+def get_media_groups() -> dict[str, partners.MediaGroupProfile]:
+    """Get media group profiles (lazy loaded and cached).
+
+    Returns a dictionary mapping lowercase group names to
+    their MediaGroupProfile containing ownership, properties,
+    domains, key vendors, and privacy characteristics.
+    """
+    global _media_groups_cache
+    if _media_groups_cache is None:
+        raw: dict[str, dict[str, Any]] = _load_json("publishers/media-groups.json")
+        _media_groups_cache = {key: partners.MediaGroupProfile(**val) for key, val in raw.items()}
+    return _media_groups_cache
+
+
+def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupProfile] | None:
+    """Look up a media group by one of its known domains.
+
+    Args:
+        domain: A domain name (e.g. 'thesun.co.uk') to search for.
+
+    Returns:
+        A tuple of (group_name, profile) if found, or None.
+    """
+    domain_lower = domain.lower().strip()
+    for name, profile in get_media_groups().items():
+        if domain_lower in profile.domains:
+            return (name, profile)
+    return None
+
+
+def build_media_group_context(analyzed_url: str) -> str:
+    """Build media group context for LLM prompts.
+
+    Extracts the domain from *analyzed_url*, looks up a
+    matching media group profile, and returns a formatted
+    reference section.  Returns an empty string when no
+    match is found.
+
+    Args:
+        analyzed_url: The full URL being analysed.
+
+    Returns:
+        Formatted media group context section, or ``""``.
+    """
+    from src.utils import url as url_mod  # Local import to avoid circular dependency
+
+    hostname = url_mod.extract_domain(analyzed_url)
+    base_domain = url_mod.get_base_domain(hostname)
+    result = find_media_group_by_domain(base_domain)
+    if result is None:
+        return ""
+
+    name, profile = result
+    lines: list[str] = [
+        "",
+        "## Publisher / Media Group Context (Prior Research)",
+        "",
+        "The following is background information gathered from prior research "
+        "into this publisher's privacy practices. It represents what was "
+        "previously known about this media group BEFORE the current analysis. "
+        "Use it as a reference — not as a definitive or exhaustive list.",
+        "",
+        f"This site belongs to **{profile.parent}** (group key: {name}).",
+        f"- Privacy policy: {profile.privacy_policy}",
+        f"- Consent platform: {profile.consent_platform}",
+        f"- Properties ({len(profile.properties)}): {', '.join(profile.properties[:10])}",
+        f"- Known domains: {', '.join(profile.domains[:10])}",
+        "",
+        "### Key Vendors (previously identified through privacy policy research)",
+        "These vendors were identified in prior reviews of this publisher's privacy policy and consent dialogs:",
+    ]
+    for vendor in profile.key_vendors:
+        lines.append(f"- {vendor}")
+    lines.append("")
+    lines.append("### Privacy Characteristics (previously documented)")
+    for char in profile.privacy_characteristics:
+        lines.append(f"- {char}")
+    lines.append("")
+    lines.append(
+        "### How to use this context\n"
+        "- Cross-reference the trackers and cookies you observe in the "
+        "current scan against the vendors listed above.\n"
+        "- If you detect a vendor from the list, note that it was previously "
+        "known to be used by this publisher — this is expected behaviour.\n"
+        "- If you detect trackers or vendors NOT in the list, highlight them "
+        "as potentially new or undisclosed.\n"
+        "- If a vendor from the list is NOT observed in the current scan, "
+        "do not assume it is absent — it may load conditionally, on other "
+        "pages, or via server-side integration.\n"
+        "- Use the privacy characteristics to provide richer context in "
+        "your analysis (e.g. ownership structure, consent platform, "
+        "known data-sharing arrangements)."
+    )
+    return "\n".join(lines)

@@ -262,8 +262,7 @@
       "User journeys"
     ],
     "aliases": [
-      "datadog",
-      "datadog rum"
+      "datadog"
     ]
   },
   "new relic": {
@@ -498,7 +497,7 @@
       "B2B tracking"
     ],
     "aliases": [
-      "clearbit reveal"
+      "clearbit visitor identification"
     ]
   },
   "leadfeeder": {

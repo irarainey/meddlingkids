@@ -162,3 +162,108 @@ class TestGdprTcfData:
         assert "euconsent" in names
         assert "OptanonConsent" in names
         assert "usprivacy" in names
+
+
+class TestGetMediaGroups:
+    """Tests for media group profile loading."""
+
+    def test_loads_dict(self) -> None:
+        groups = loader.get_media_groups()
+        assert isinstance(groups, dict)
+        assert len(groups) > 0
+
+    def test_cached(self) -> None:
+        a = loader.get_media_groups()
+        b = loader.get_media_groups()
+        assert a is b
+
+    def test_values_are_media_group_profiles(self) -> None:
+        from src.models.partners import MediaGroupProfile
+
+        for profile in loader.get_media_groups().values():
+            assert isinstance(profile, MediaGroupProfile)
+
+    def test_known_groups_present(self) -> None:
+        groups = loader.get_media_groups()
+        expected = ["reach plc", "dmg media", "bbc", "news uk", "guardian media group", "financial times"]
+        for name in expected:
+            assert name in groups, f"Expected media group '{name}' not found"
+
+    def test_profiles_have_required_fields(self) -> None:
+        for name, profile in loader.get_media_groups().items():
+            assert profile.parent, f"{name}: missing parent"
+            assert profile.privacy_policy, f"{name}: missing privacy_policy"
+            assert len(profile.properties) > 0, f"{name}: no properties"
+            assert len(profile.domains) > 0, f"{name}: no domains"
+            assert profile.consent_platform, f"{name}: missing consent_platform"
+            assert len(profile.key_vendors) > 0, f"{name}: no key_vendors"
+            assert len(profile.privacy_characteristics) > 0, f"{name}: no privacy_characteristics"
+
+    def test_domains_are_lowercase(self) -> None:
+        for name, profile in loader.get_media_groups().items():
+            for domain in profile.domains:
+                assert domain == domain.lower(), f"{name}: domain '{domain}' should be lowercase"
+
+
+class TestFindMediaGroupByDomain:
+    """Tests for domain-based media group lookup."""
+
+    def test_known_domain(self) -> None:
+        result = loader.find_media_group_by_domain("thesun.co.uk")
+        assert result is not None
+        name, profile = result
+        assert name == "news uk"
+        assert "The Sun" in profile.properties
+
+    def test_unknown_domain_returns_none(self) -> None:
+        result = loader.find_media_group_by_domain("example.com")
+        assert result is None
+
+    def test_case_insensitive(self) -> None:
+        result = loader.find_media_group_by_domain("BBC.co.uk")
+        assert result is not None
+        assert result[0] == "bbc"
+
+    def test_whitespace_stripped(self) -> None:
+        result = loader.find_media_group_by_domain("  theguardian.com  ")
+        assert result is not None
+        assert result[0] == "guardian media group"
+
+    def test_reach_domain(self) -> None:
+        result = loader.find_media_group_by_domain("bristolpost.co.uk")
+        assert result is not None
+        assert result[0] == "reach plc"
+
+    def test_ft_domain(self) -> None:
+        result = loader.find_media_group_by_domain("ft.com")
+        assert result is not None
+        assert result[0] == "financial times"
+
+
+class TestBuildMediaGroupContext:
+    """Tests for URL-based media group context builder."""
+
+    def test_known_url_returns_context(self) -> None:
+        ctx = loader.build_media_group_context("https://www.bristolpost.co.uk/news/some-article")
+        assert "Reach plc" in ctx
+        assert "Prior Research" in ctx
+        assert "previously known" in ctx
+        assert "Key Vendors" in ctx
+        assert "Privacy Characteristics" in ctx
+
+    def test_unknown_url_returns_empty(self) -> None:
+        ctx = loader.build_media_group_context("https://www.example.com/page")
+        assert ctx == ""
+
+    def test_includes_vendor_list(self) -> None:
+        ctx = loader.build_media_group_context("https://www.thesun.co.uk/")
+        assert "Ozone Project" in ctx
+        assert "LiveRamp" in ctx
+
+    def test_includes_consent_platform(self) -> None:
+        ctx = loader.build_media_group_context("https://www.theguardian.com/uk")
+        assert "Sourcepoint" in ctx
+
+    def test_includes_cross_reference_instruction(self) -> None:
+        ctx = loader.build_media_group_context("https://www.bbc.co.uk/news")
+        assert "cross-reference" in ctx.lower()

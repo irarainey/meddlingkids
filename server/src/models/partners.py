@@ -69,3 +69,15 @@ class PartnerRiskSummary(pydantic.BaseModel):
     high_count: int
     total_risk_score: int
     worst_partners: list[str]
+
+
+class MediaGroupProfile(pydantic.BaseModel):
+    """Profile of a media group or publisher conglomerate."""
+
+    parent: str
+    privacy_policy: str
+    properties: list[str]
+    domains: list[str]
+    consent_platform: str
+    key_vendors: list[str]
+    privacy_characteristics: list[str]

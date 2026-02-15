@@ -1,4 +1,17 @@
 {
+  "118 data resource": {
+    "concerns": [
+      "UK consumer data broker providing marketing contact lists to publishers",
+      "Sources personal data from telephone directories, electoral rolls, and public records",
+      "Provides lead generation lists \u2014 publisher receives your contact details with claimed consent",
+      "Data supplied to publishers for direct marketing outreach without prior relationship"
+    ],
+    "aliases": [
+      "118 data resource limited",
+      "118 data resource ltd",
+      "118 information"
+    ]
+  },
   "liveramp": {
     "concerns": [
       "Cross-device identity resolution",
@@ -46,7 +59,6 @@
       "bluekai",
       "datalogix",
       "oracle advertising",
-      "oracle moat",
       "grapeshot"
     ]
   },
@@ -151,8 +163,7 @@
     ],
     "aliases": [
       "adobe aam",
-      "audience manager",
-      "adobe experience cloud"
+      "audience manager"
     ]
   },
   "nielsen": {
@@ -318,7 +329,9 @@
       "Offline attribution",
       "Mobility data"
     ],
-    "aliases": []
+    "aliases": [
+      "cuebiq inc"
+    ]
   },
   "x-mode": {
     "concerns": [
@@ -338,7 +351,9 @@
       "Phone tracking",
       "Movement patterns"
     ],
-    "aliases": []
+    "aliases": [
+      "venntel inc"
+    ]
   },
   "iqvia": {
     "concerns": [
@@ -359,7 +374,9 @@
       "Healthcare marketing",
       "Patient data"
     ],
-    "aliases": []
+    "aliases": [
+      "lexis health"
+    ]
   },
   "verisk": {
     "concerns": [
@@ -525,7 +542,9 @@
       "Publisher data sharing",
       "First-party data exchange"
     ],
-    "aliases": []
+    "aliases": [
+      "axiom data"
+    ]
   },
   "eyeota": {
     "concerns": [
@@ -1015,7 +1034,9 @@
       "Data clean rooms",
       "Aggregate audience insights",
       "Privacy-preserving data matching",
-      "No raw data sharing between parties"
+      "No raw data sharing between parties",
+      "Privacy-safe matching",
+      "Identity bunker"
     ],
     "aliases": [
       "info sum",
@@ -1054,8 +1075,7 @@
     ],
     "aliases": [
       "upland",
-      "upland software inc",
-      "localytics"
+      "upland software inc"
     ]
   },
   "digital element": {

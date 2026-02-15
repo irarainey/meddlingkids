@@ -191,16 +191,6 @@
       "twilio segment"
     ]
   },
-  "tealium": {
-    "concerns": [
-      "Customer data platform",
-      "Tag management",
-      "Identity resolution"
-    ],
-    "aliases": [
-      "tealium inc"
-    ]
-  },
   "blueconic": {
     "concerns": [
       "Customer data platform",
@@ -305,17 +295,6 @@
       "kount inc"
     ]
   },
-  "branch": {
-    "concerns": [
-      "Mobile attribution",
-      "Deep linking",
-      "Cross-platform identity"
-    ],
-    "aliases": [
-      "branch.io",
-      "branch metrics"
-    ]
-  },
   "appsflyer": {
     "concerns": [
       "Mobile attribution",
@@ -406,16 +385,6 @@
       "optable inc"
     ]
   },
-  "infosum": {
-    "concerns": [
-      "Data clean rooms",
-      "Privacy-safe matching",
-      "Identity bunker"
-    ],
-    "aliases": [
-      "info sum"
-    ]
-  },
   "habu": {
     "concerns": [
       "Data clean rooms",
@@ -447,7 +416,9 @@
       "Japanese market",
       "Programmatic identity"
     ],
-    "aliases": []
+    "aliases": [
+      "flashpoint intel"
+    ]
   },
   "sirdata": {
     "concerns": [
@@ -461,12 +432,20 @@
   },
   "liveintent": {
     "concerns": [
-      "Email identity",
-      "Newsletter monetization",
-      "Identity resolution"
+      "IAB TCF vendor 148",
+      "Email-based identity resolution",
+      "Cross-context behavioural advertising",
+      "Being acquired by Zeta Global",
+      "Identity graph from hashed emails",
+      "Cross-device tracking via email",
+      "Lookalike modelling from consumer profiles",
+      "Data sharing with advertising partners"
     ],
     "aliases": [
-      "live intent"
+      "liveintent inc",
+      "live intent",
+      "zeta global liveintent",
+      "powerinbox liveintent"
     ]
   },
   "powerinbox": {
@@ -579,24 +558,6 @@
     ],
     "aliases": [
       "zeotap id plus"
-    ]
-  },
-  "liveintent": {
-    "concerns": [
-      "IAB TCF vendor 148",
-      "Email-based identity resolution",
-      "Cross-context behavioural advertising",
-      "Being acquired by Zeta Global",
-      "Identity graph from hashed emails",
-      "Cross-device tracking via email",
-      "Lookalike modelling from consumer profiles",
-      "Data sharing with advertising partners"
-    ],
-    "aliases": [
-      "liveintent inc",
-      "live intent",
-      "zeta global liveintent",
-      "powerinbox liveintent"
     ]
   },
   "intentiq": {

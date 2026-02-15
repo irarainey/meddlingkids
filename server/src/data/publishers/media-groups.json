@@ -1,0 +1,478 @@
+{
+  "reach plc": {
+    "parent": "Reach plc",
+    "privacy_policy": "https://www.reachplc.com/site-services/privacy-policy",
+    "properties": [
+      "Daily Mirror",
+      "Daily Express",
+      "Daily Star",
+      "Manchester Evening News",
+      "Liverpool Echo",
+      "Birmingham Live",
+      "Bristol Post",
+      "Wales Online",
+      "ChronicleLive",
+      "Leicestershire Live",
+      "OK! Magazine",
+      "MyLondon",
+      "InYourArea"
+    ],
+    "domains": [
+      "mirror.co.uk",
+      "express.co.uk",
+      "dailystar.co.uk",
+      "manchestereveningnews.co.uk",
+      "liverpoolecho.co.uk",
+      "birminghammail.co.uk",
+      "bristolpost.co.uk",
+      "walesonline.co.uk",
+      "chroniclelive.co.uk",
+      "leicestermercury.co.uk",
+      "ok.co.uk",
+      "mylondon.news",
+      "inyourarea.co.uk"
+    ],
+    "consent_platform": "Sourcepoint",
+    "key_vendors": [
+      "Google",
+      "Permutive",
+      "Lotame",
+      "Lotame Panorama",
+      "Ozone Project",
+      "comScore",
+      "LiveRamp",
+      "Teads",
+      "Outbrain",
+      "ID5",
+      "Ipsos",
+      "DotMetrics",
+      "CACI",
+      "Atolls"
+    ],
+    "privacy_characteristics": [
+      "UK's largest commercial national and regional news publisher",
+      "Over 100 regional and national titles",
+      "Extensive use of Permutive for on-device audience segmentation",
+      "Member of Ozone Project publisher advertising alliance",
+      "Uses Lotame DMP for data management and audience insight",
+      "Shares data with LiveRamp for identity resolution",
+      "Participates in IAB TCF v2 framework",
+      "Ipsos Iris audience measurement panel participant",
+      "Significant programmatic advertising operation"
+    ]
+  },
+  "dmg media": {
+    "parent": "Daily Mail and General Trust plc (DMGT)",
+    "privacy_policy": "https://www.dailymail.co.uk/privacy",
+    "properties": [
+      "Daily Mail",
+      "The Mail on Sunday",
+      "MailOnline",
+      "Metro",
+      "i newspaper",
+      "This is Money",
+      "New Scientist"
+    ],
+    "domains": [
+      "dailymail.co.uk",
+      "mailonsunday.co.uk",
+      "metro.co.uk",
+      "inews.co.uk",
+      "thisismoney.co.uk",
+      "newscientist.com"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "LiveRamp",
+      "Teads",
+      "Outbrain",
+      "ID5",
+      "Ipsos",
+      "DotMetrics",
+      "CACI",
+      "Atolls"
+    ],
+    "privacy_characteristics": [
+      "MailOnline is one of the world's most visited English-language newspaper websites",
+      "Significant programmatic advertising operation",
+      "Uses session replay tools for UX analysis",
+      "Extensive third-party cookie ecosystem",
+      "Participates in IAB TCF v2 framework",
+      "Shares data with data brokers including CACI and Experian",
+      "Ipsos Iris audience measurement panel participant",
+      "DotMetrics digital audience measurement"
+    ]
+  },
+  "independent digital news and media": {
+    "parent": "Independent Digital News and Media Ltd",
+    "privacy_policy": "https://www.independent.co.uk/service/privacy-policy-a6184181.html",
+    "properties": [
+      "The Independent",
+      "Evening Standard"
+    ],
+    "domains": [
+      "independent.co.uk",
+      "standard.co.uk"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "Permutive",
+      "LiveRamp",
+      "Teads",
+      "Outbrain"
+    ],
+    "privacy_characteristics": [
+      "Digital-only national newspaper since 2016",
+      "All identified vendors already present in standard ad-tech databases",
+      "Standard programmatic advertising operation",
+      "Participates in IAB TCF v2 framework",
+      "Uses standard consent management platform"
+    ]
+  },
+  "guardian media group": {
+    "parent": "Guardian Media Group plc",
+    "privacy_policy": "https://www.theguardian.com/help/privacy-policy",
+    "properties": [
+      "The Guardian",
+      "The Observer",
+      "Guardian Weekly"
+    ],
+    "domains": [
+      "theguardian.com"
+    ],
+    "consent_platform": "Sourcepoint",
+    "key_vendors": [
+      "Google",
+      "Permutive",
+      "Lotame",
+      "Lotame Panorama",
+      "Ozone Project",
+      "comScore",
+      "LiveRamp"
+    ],
+    "privacy_characteristics": [
+      "Scott Trust ownership — operated for journalistic independence, not shareholder profit",
+      "Founding member of Ozone Project publisher advertising alliance",
+      "Strong emphasis on reader-funded journalism alongside advertising",
+      "Uses Permutive for on-device audience segmentation (privacy-preserving approach)",
+      "Participates in IAB TCF v2 framework",
+      "Lotame DMP for audience data management with Panorama identity resolution",
+      "Relatively contained ad-tech vendor footprint compared to tabloid publishers"
+    ]
+  },
+  "bbc": {
+    "parent": "British Broadcasting Corporation",
+    "privacy_policy": "https://www.bbc.co.uk/usingthebbc/privacy/",
+    "properties": [
+      "BBC News",
+      "BBC Sport",
+      "BBC iPlayer",
+      "BBC Sounds",
+      "BBC Bitesize",
+      "BBC Weather",
+      "BBC Studios"
+    ],
+    "domains": [
+      "bbc.co.uk",
+      "bbc.com",
+      "bbci.co.uk"
+    ],
+    "consent_platform": "Custom BBC CMP",
+    "key_vendors": [
+      "comScore",
+      "Permutive",
+      "Experian",
+      "Chartbeat"
+    ],
+    "privacy_characteristics": [
+      "Publicly funded broadcaster — distinct privacy obligations under Royal Charter",
+      "No programmatic advertising on domestic UK services",
+      "BBC Studios (commercial arm) has separate privacy policy for international services",
+      "Minimal ad-tech footprint as a public broadcaster",
+      "Uses Permutive for audience segmentation in-house",
+      "Uses Experian Mosaic geodemographic classification for audience insight",
+      "Shares hashed email data with social platforms for audience matching",
+      "Custom consent management rather than commercial CMP"
+    ]
+  },
+  "news uk": {
+    "parent": "News Corp (via News UK & Ireland Limited)",
+    "privacy_policy": "https://newsprivacy.co.uk/",
+    "properties": [
+      "The Sun",
+      "The Sun on Sunday",
+      "The Times",
+      "The Sunday Times",
+      "The Sunday Times Travel Magazine",
+      "The Times Literary Supplement",
+      "talkSPORT",
+      "talkRADIO",
+      "TalkTV",
+      "Virgin Radio UK",
+      "Times Radio"
+    ],
+    "domains": [
+      "thesun.co.uk",
+      "thetimes.co.uk",
+      "thetimes.com",
+      "talksport.com",
+      "virginradio.co.uk",
+      "timesradio.com",
+      "talk.tv"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "Ozone Project",
+      "Octave Audio",
+      "LiveRamp",
+      "Covatic",
+      "NC Audience Exchange",
+      "Experian",
+      "comScore",
+      "Ipsos",
+      "DotMetrics",
+      "OneTrust"
+    ],
+    "privacy_characteristics": [
+      "Part of News Corp global media group",
+      "Operates Octave Audio programmatic digital audio advertising platform",
+      "NC Audience Exchange (NewsIQ) provides cross-publisher identity tracking globally",
+      "NewsIQ cookie syncs across all News Corp properties worldwide (Sun, Times, WSJ, NY Post)",
+      "LiveRamp operates as joint controller rather than processor",
+      "Covatic SDK used for geolocation-based ad targeting in mobile apps",
+      "Ozone Project founding member (publisher advertising alliance)",
+      "Extensive vendor ecosystem with dedicated privacy portal (newsprivacy.co.uk)",
+      "Shares data with Experian for audience profiling and lookalike modelling",
+      "Participates in IAB TCF v2 framework",
+      "Ipsos Iris and DotMetrics for audience measurement"
+    ]
+  },
+  "financial times": {
+    "parent": "Nikkei Inc. (via The Financial Times Limited)",
+    "privacy_policy": "https://help.ft.com/legal-privacy/privacy-policy/",
+    "properties": [
+      "Financial Times",
+      "FT.com",
+      "The Banker",
+      "fDi Intelligence",
+      "MandateWire",
+      "FT Live"
+    ],
+    "domains": [
+      "ft.com",
+      "thebanker.com",
+      "fdiintelligence.com"
+    ],
+    "consent_platform": "Sourcepoint",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "Sourcepoint"
+    ],
+    "privacy_characteristics": [
+      "Premium subscription model reduces reliance on advertising revenue",
+      "Notably lean and privacy-conscious ad-tech stack",
+      "Uses Google DoubleClick (AdX) for programmatic advertising",
+      "Does not name most vendors in privacy policy — refers generically to service providers",
+      "39 technology partners listed in consent manager but not individually named in policy",
+      "Session replay used for UX research (records scrolling, clicks, text entry)",
+      "Owned by Nikkei Inc. — shares subscriber data with parent for joint subscription offers",
+      "UK Cyber Essentials accredited",
+      "Participates in IAB TCF v2 framework via Sourcepoint CMP",
+      "Business intelligence data retained for 36 months then aggregated"
+    ]
+  },
+  "telegraph media group": {
+    "parent": "Telegraph Media Group Ltd",
+    "privacy_policy": "https://www.telegraph.co.uk/about-us/privacy-and-cookie-policy/",
+    "properties": [
+      "The Daily Telegraph",
+      "The Sunday Telegraph",
+      "Telegraph.co.uk"
+    ],
+    "domains": [
+      "telegraph.co.uk"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "Ozone Project",
+      "Permutive",
+      "LiveRamp",
+      "comScore"
+    ],
+    "privacy_characteristics": [
+      "Founding member of Ozone Project publisher advertising alliance",
+      "Premium subscription model alongside advertising",
+      "Participates in IAB TCF v2 framework",
+      "Uses Permutive for audience segmentation"
+    ]
+  },
+  "sky": {
+    "parent": "Comcast Corporation (via Sky Group)",
+    "privacy_policy": "https://www.sky.com/help/articles/sky-privacy-and-cookies-notice",
+    "properties": [
+      "Sky News",
+      "Sky Sports",
+      "Sky Go",
+      "NOW TV"
+    ],
+    "domains": [
+      "sky.com",
+      "news.sky.com",
+      "skysports.com",
+      "nowtv.com"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "Adobe Analytics",
+      "Salesforce DMP"
+    ],
+    "privacy_characteristics": [
+      "Broadcaster and pay-TV provider with extensive data collection",
+      "Part of Comcast/NBCUniversal global media group",
+      "Collects viewing habits across linear and on-demand services",
+      "Uses set-top box data for audience measurement",
+      "Participates in IAB TCF v2 framework"
+    ]
+  },
+  "channel 4": {
+    "parent": "Channel Four Television Corporation",
+    "privacy_policy": "https://www.channel4.com/privacy",
+    "properties": [
+      "Channel 4",
+      "E4",
+      "More4",
+      "Film4",
+      "Channel 4 News",
+      "All 4"
+    ],
+    "domains": [
+      "channel4.com"
+    ],
+    "consent_platform": "Custom CMP",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "Adobe Analytics",
+      "LiveRamp"
+    ],
+    "privacy_characteristics": [
+      "Publicly owned, commercially funded broadcaster",
+      "Requires registration for All 4 streaming — collects viewer profiles",
+      "Pioneered data-driven advertising in UK broadcasting",
+      "Contextual and addressable advertising via 4Sales",
+      "Participates in IAB TCF v2 framework"
+    ]
+  },
+  "jpi media": {
+    "parent": "National World plc (operating as Iconic Media Group Ltd)",
+    "privacy_policy": "https://www.nationalworld.com/privacy-policy",
+    "properties": [
+      "The Scotsman",
+      "Yorkshire Post",
+      "Sheffield Star",
+      "Edinburgh News",
+      "NationalWorld",
+      "The News (Portsmouth)",
+      "Sunderland Echo"
+    ],
+    "domains": [
+      "scotsman.com",
+      "yorkshirepost.co.uk",
+      "thestar.co.uk",
+      "edinburghnews.scotsman.com",
+      "nationalworld.com",
+      "portsmouth.co.uk",
+      "sunderlandecho.com"
+    ],
+    "consent_platform": "Sourcepoint",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "Ozone Project",
+      "LiveRamp",
+      "1PlusX AG",
+      "118 Data Resource",
+      "Sourcepoint"
+    ],
+    "privacy_characteristics": [
+      "Major regional newspaper publisher across UK",
+      "Formerly Johnston Press, acquired by National World in 2021",
+      "Now operating as Iconic Media Group Ltd",
+      "Participates in Ozone Project publisher advertising alliance",
+      "214 technology partners listed in Sourcepoint consent manager",
+      "LiveRamp operates as joint controller for identity resolution — hashed email shared for cross-device ad targeting",
+      "1PlusX AG (now TripleLift) used for cookies and audience data enrichment",
+      "118 Data Resource supplies third-party marketing contact lists to publisher",
+      "Participates in IAB TCF v2 framework",
+      "Significant programmatic advertising operation across regional titles"
+    ]
+  },
+  "newsquest": {
+    "parent": "Gannett Co. Inc. (via Newsquest Media Group Ltd)",
+    "privacy_policy": "https://www.newsquest.co.uk/our-policies/privacy-policy/",
+    "properties": [
+      "Glasgow Herald",
+      "The National",
+      "Southern Daily Echo",
+      "Oxford Mail",
+      "Bournemouth Echo",
+      "South Wales Argus",
+      "Bradford Telegraph & Argus",
+      "The Bolton News",
+      "LOCALiQ",
+      "s1 Jobs",
+      "Exchange & Mart",
+      "Newsquest Specialist Media"
+    ],
+    "domains": [
+      "heraldscotland.com",
+      "thenational.scot",
+      "dailyecho.co.uk",
+      "oxfordmail.co.uk",
+      "bournemouthecho.co.uk",
+      "southwalesargus.co.uk",
+      "thetelegraphandargus.co.uk",
+      "theboltonnews.co.uk",
+      "newsquest.co.uk",
+      "exchangeandmart.co.uk",
+      "s1jobs.com"
+    ],
+    "consent_platform": "OneTrust",
+    "key_vendors": [
+      "Google",
+      "comScore",
+      "LiveRamp",
+      "Criteo",
+      "Magnite",
+      "Experian",
+      "ZoomInfo",
+      "InMobi",
+      "Quantcast Choice",
+      "HubSpot"
+    ],
+    "privacy_characteristics": [
+      "UK subsidiary of Gannett (US parent company owns USA Today)",
+      "Over 200 regional newspaper titles and magazines across UK",
+      "Also operates LOCALiQ digital marketing, s1 Jobs, and Exchange & Mart",
+      "LiveRamp operates as joint controller — hashed email shared for cross-device ad targeting",
+      "Third-party ad networks include Google AdEx, Magnite (Rubicon), and Criteo for behavioural retargeting",
+      "Experian used for credit reference and consumer data enrichment",
+      "ZoomInfo Technologies used as data broker to validate business contact details",
+      "Arkadium games platform with InMobi/Quantcast for ad serving and consent",
+      "HubSpot used for digital marketing automation",
+      "2AdPro in India receives personal data for ad production under EU model contracts",
+      "Audience extension enables advertisers to target Newsquest readers on other websites",
+      "Participates in IAB TCF v2 framework",
+      "Marketing contact lists reviewed and deleted after three years of inactivity"
+    ]
+  }
+}

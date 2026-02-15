@@ -14,7 +14,6 @@
       "doubleclick",
       "google marketing",
       "google adsense",
-      "admob",
       "google ad manager"
     ]
   },
@@ -58,14 +57,21 @@
       "Bing search tracking",
       "Windows telemetry",
       "Xbox gaming data",
-      "Office 365 usage"
+      "Office 365 usage",
+      "AT&T data",
+      "Programmatic advertising",
+      "Cross-device",
+      "Microsoft owned"
     ],
     "aliases": [
       "microsoft advertising",
       "microsoft corporation",
       "bing ads",
       "msn",
-      "xandr"
+      "xandr",
+      "appnexus",
+      "at&t advertising",
+      "xandr inc"
     ]
   },
   "apple": {
@@ -93,30 +99,21 @@
       "criteo inc"
     ]
   },
-  "xandr": {
-    "concerns": [
-      "AT&T data",
-      "Programmatic advertising",
-      "Cross-device",
-      "Microsoft owned"
-    ],
-    "aliases": [
-      "appnexus",
-      "at&t advertising",
-      "xandr inc"
-    ]
-  },
   "magnite": {
     "concerns": [
       "Largest independent SSP",
       "CTV tracking",
-      "Real-time bidding"
+      "Real-time bidding",
+      "Video advertising",
+      "CTV",
+      "Magnite owned"
     ],
     "aliases": [
       "rubicon project",
       "telaria",
       "spotx",
-      "springserve"
+      "springserve",
+      "spot x"
     ]
   },
   "pubmatic": {
@@ -168,21 +165,31 @@
     "concerns": [
       "Native advertising",
       "CTV",
-      "Programmatic"
+      "Programmatic",
+      "Acquired 1PlusX AG \u2014 first-party data management platform for predictive audience modelling",
+      "1PlusX enables publishers to enrich and monetise first-party data via lookalike audiences"
     ],
     "aliases": [
-      "triple lift"
+      "triple lift",
+      "1plusx",
+      "1plusx ag",
+      "1 plus x",
+      "1plusxag"
     ]
   },
   "viant": {
     "concerns": [
       "Adelphic DSP",
       "Household data",
-      "CTV"
+      "CTV",
+      "People-based DSP",
+      "Cross-device",
+      "Viant owned"
     ],
     "aliases": [
       "adelphic",
-      "myspace data"
+      "myspace data",
+      "adelphic llc"
     ]
   },
   "mediamath": {
@@ -234,8 +241,7 @@
     "aliases": [
       "taboola inc",
       "taboola.com",
-      "taboola.com ltd",
-      "zemanta"
+      "taboola.com ltd"
     ]
   },
   "outbrain": {
@@ -448,16 +454,6 @@
     ],
     "aliases": [
       "innovid inc"
-    ]
-  },
-  "spotx": {
-    "concerns": [
-      "Video advertising",
-      "CTV",
-      "Magnite owned"
-    ],
-    "aliases": [
-      "spot x"
     ]
   },
   "freewheel": {
@@ -853,16 +849,6 @@
       "remerge gmbh"
     ]
   },
-  "adelphic": {
-    "concerns": [
-      "People-based DSP",
-      "Cross-device",
-      "Viant owned"
-    ],
-    "aliases": [
-      "adelphic llc"
-    ]
-  },
   "yahoo ssp": {
     "concerns": [
       "SSP",
@@ -900,7 +886,6 @@
       "Nexxen subsidiary (formerly Tremor International)"
     ],
     "aliases": [
-      "unruly group",
       "unruly media",
       "nexxen unruly"
     ]
@@ -988,8 +973,7 @@
     ],
     "aliases": [
       "commission junction",
-      "cj",
-      "conversant"
+      "cj"
     ]
   },
   "rakuten advertising": {
@@ -1250,8 +1234,7 @@
     ],
     "aliases": [
       "open web",
-      "openweb technologies",
-      "spot.im"
+      "openweb technologies"
     ]
   },
   "connexity": {
@@ -1376,9 +1359,9 @@
       "Online video and display advertising"
     ],
     "aliases": [
-      "ströer",
+      "str\u00f6er",
       "stroeer se",
-      "ströer se & co kgaa"
+      "str\u00f6er se & co kgaa"
     ]
   },
   "improve digital": {

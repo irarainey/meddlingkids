@@ -492,6 +492,11 @@ def _build_data_context(
     # Append GDPR/TCF reference data for informed analysis.
     sections.append(_build_gdpr_context())
 
+    # Append media group context when the domain is recognised.
+    media_ctx = loader.build_media_group_context(tracking_summary.analyzed_url)
+    if media_ctx:
+        sections.append(media_ctx)
+
     return "\n".join(sections)
 
 

@@ -300,7 +300,7 @@
       "trustcommander"
     ]
   },
-  "appConsent": {
+  "appconsent": {
     "concerns": [
       "Mobile consent",
       "App CMP",

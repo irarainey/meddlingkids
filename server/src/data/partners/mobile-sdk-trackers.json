@@ -8,8 +8,7 @@
     ],
     "aliases": [
       "firebase analytics",
-      "google firebase",
-      "firebase crashlytics"
+      "google firebase"
     ]
   },
   "flurry": {
@@ -229,11 +228,13 @@
     "concerns": [
       "Deep linking",
       "Attribution",
-      "Cross-platform identity"
+      "Cross-platform identity",
+      "Mobile attribution"
     ],
     "aliases": [
       "branch",
-      "branch metrics"
+      "branch metrics",
+      "branch.io"
     ]
   },
   "appsflyer sdk": {
@@ -243,7 +244,8 @@
       "Fraud prevention"
     ],
     "aliases": [
-      "appsflyer"
+      "appsflyer mobile",
+      "appsflyer attribution"
     ]
   },
   "adjust sdk": {
@@ -253,7 +255,8 @@
       "Fraud prevention"
     ],
     "aliases": [
-      "adjust"
+      "adjust mobile",
+      "adjust attribution"
     ]
   },
   "tenjin": {
@@ -492,7 +495,9 @@
       "Push notifications",
       "Mobile engagement",
       "User messaging and targeting",
-      "In-app messaging"
+      "In-app messaging",
+      "Customer engagement",
+      "Behavioral data"
     ],
     "aliases": [
       "airship inc",
@@ -504,7 +509,8 @@
       "Push notifications",
       "In-app messaging",
       "User segmentation",
-      "Email and SMS tracking"
+      "Email and SMS tracking",
+      "Behavioral triggers"
     ],
     "aliases": [
       "one signal",

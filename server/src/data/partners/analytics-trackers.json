@@ -257,7 +257,8 @@
       "Tag management",
       "CDP",
       "Data layer",
-      "Identity resolution"
+      "Identity resolution",
+      "Customer data platform"
     ],
     "aliases": [
       "tealium inc",
@@ -292,7 +293,7 @@
       "TransUnion owned"
     ],
     "aliases": [
-      "signal digital"
+      "signal tag management"
     ]
   },
   "countly": {
@@ -527,16 +528,6 @@
       "power reviews"
     ]
   },
-  "onesignal": {
-    "concerns": [
-      "Push notifications",
-      "User segmentation",
-      "Behavioral triggers"
-    ],
-    "aliases": [
-      "one signal"
-    ]
-  },
   "pushwoosh": {
     "concerns": [
       "Push notifications",
@@ -545,16 +536,6 @@
     ],
     "aliases": [
       "push woosh"
-    ]
-  },
-  "airship": {
-    "concerns": [
-      "Push notifications",
-      "Customer engagement",
-      "Behavioral data"
-    ],
-    "aliases": [
-      "urban airship"
     ]
   },
   "pushcrew": {
