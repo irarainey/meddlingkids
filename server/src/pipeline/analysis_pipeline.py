@@ -11,8 +11,9 @@ import asyncio
 from collections.abc import AsyncGenerator
 
 from src import agents
-from src.analysis import domain_cache, scoring, scripts, tracking
+from src.analysis import domain_cache, scripts, tracking
 from src.analysis import tracking_summary as tracking_summary_mod
+from src.analysis.scoring import calculator
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
 from src.models import report as report_models
@@ -398,7 +399,7 @@ async def _score_and_summarise(
         url,
     )
 
-    score_breakdown = scoring.calculate_privacy_score(
+    score_breakdown = calculator.calculate_privacy_score(
         final_cookies,
         final_scripts,
         final_requests,

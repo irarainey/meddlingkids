@@ -27,8 +27,7 @@ from src.browser import device_configs
 from src.browser import session as browser_session
 from src.models import browser
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
-from src.utils import cache as cache_util
-from src.utils import errors, logger, usage_tracking
+from src.utils import cache, errors, logger, usage_tracking
 from src.utils import url as url_mod
 
 log = logger.create_logger("Analyze")
@@ -138,7 +137,7 @@ async def analyze_url_stream(
             (domain, overlay, scripts) before starting.
     """
     if clear_cache:
-        cache_util.clear_all()
+        cache.clear_all()
     # ── Pre-flight validation ───────────────────────────────
     config_error = config.validate_llm_config()
     if config_error:
