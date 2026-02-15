@@ -100,6 +100,34 @@ export function getResourceTypeIcon(type: string): string {
 }
 
 /**
+ * Strip markdown formatting from text for plain-text display.
+ *
+ * LLM-generated text sometimes includes markdown bold (`**text**`),
+ * italic (`*text*`), inline code (`` `text` ``), or links
+ * (`[text](url)`). When rendered via Vue text interpolation
+ * (`{{ }}`), the raw markup characters are visible to the user.
+ * This function removes them, leaving only the readable content.
+ *
+ * @param text - Text that may contain markdown formatting
+ * @returns Plain text with markdown syntax stripped
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    // Bold: **text** or __text__
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    // Italic: *text* or _text_ (single markers)
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/(?<!\w)_(.+?)_(?!\w)/g, '$1')
+    // Inline code: `text`
+    .replace(/`(.+?)`/g, '$1')
+    // Links: [text](url)
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    // Headers: ### text
+    .replace(/^#{1,6}\s+/gm, '')
+}
+
+/**
  * Convert simple markdown to HTML for display.
  * Handles headers, bold, italic, code blocks, lists, and line breaks.
  *

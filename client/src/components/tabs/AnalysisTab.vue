@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StructuredReport, TrackerEntry, SummaryFinding, SummaryFindingType } from '../../types'
-import { getExclamation, getRiskLevel, getScoreClass } from '../../utils'
+import { getExclamation, getRiskLevel, getScoreClass, stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying structured privacy analysis report.
@@ -145,7 +145,7 @@ function findingLabel(type: SummaryFindingType): string {
             class="factor-item"
           >
             <span class="severity-dot" :class="findingSeverityClass(finding.type)"></span>
-            <span class="factor-text">{{ finding.text }}</span>
+            <span class="factor-text">{{ stripMarkdown(finding.text) }}</span>
             <span class="badge" :class="findingSeverityClass(finding.type)">{{ findingLabel(finding.type) }}</span>
           </li>
         </ul>
@@ -162,7 +162,7 @@ function findingLabel(type: SummaryFindingType): string {
           >{{ riskLabel(structuredReport.privacyRisk.overallRisk) }} Risk</span>
         </h2>
         <p v-if="structuredReport.privacyRisk.summary" class="section-summary">
-          {{ structuredReport.privacyRisk.summary }}
+          {{ stripMarkdown(structuredReport.privacyRisk.summary) }}
         </p>
         <ul v-if="structuredReport.privacyRisk.factors.length" class="factor-list">
           <li
@@ -171,7 +171,7 @@ function findingLabel(type: SummaryFindingType): string {
             class="factor-item"
           >
             <span class="severity-dot" :class="severityClass(factor.severity)"></span>
-            <span class="factor-text">{{ factor.description }}</span>
+            <span class="factor-text">{{ stripMarkdown(factor.description) }}</span>
             <span class="badge" :class="severityClass(factor.severity)">{{ riskLabel(factor.severity) }}</span>
           </li>
         </ul>
@@ -197,7 +197,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
-            <p class="tracker-purpose">{{ tracker.purpose }}</p>
+            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
             <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
               <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
               <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
@@ -217,7 +217,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
-            <p class="tracker-purpose">{{ tracker.purpose }}</p>
+            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
             <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
               <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
               <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
@@ -237,7 +237,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
-            <p class="tracker-purpose">{{ tracker.purpose }}</p>
+            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
             <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
               <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
               <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
@@ -257,7 +257,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
-            <p class="tracker-purpose">{{ tracker.purpose }}</p>
+            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
             <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
               <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
               <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
@@ -277,7 +277,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
-            <p class="tracker-purpose">{{ tracker.purpose }}</p>
+            <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
             <div v-if="tracker.cookies.length || tracker.storageKeys.length" class="tracker-details">
               <span v-if="tracker.cookies.length" class="detail-tag">🍪 {{ tracker.cookies.length }} cookies</span>
               <span v-if="tracker.storageKeys.length" class="detail-tag">💾 {{ tracker.storageKeys.length }} storage keys</span>
@@ -304,7 +304,7 @@ function findingLabel(type: SummaryFindingType): string {
             <span class="badge" :class="severityClass(item.risk)">{{ riskLabel(item.risk) }}</span>
           </div>
           <ul class="data-details">
-            <li v-for="(detail, j) in item.details" :key="j">{{ detail }}</li>
+            <li v-for="(detail, j) in item.details" :key="j">{{ stripMarkdown(detail) }}</li>
           </ul>
           <div v-if="item.sharedWith.length" class="shared-with">
             <span class="shared-label">Shared with:</span>
@@ -321,7 +321,7 @@ function findingLabel(type: SummaryFindingType): string {
           <span class="count-badge">{{ structuredReport.thirdPartyServices.totalDomains }} domains</span>
         </h2>
         <p v-if="structuredReport.thirdPartyServices.summary" class="section-summary">
-          {{ structuredReport.thirdPartyServices.summary }}
+          {{ stripMarkdown(structuredReport.thirdPartyServices.summary) }}
         </p>
         <div
           v-for="(group, i) in structuredReport.thirdPartyServices.groups"
@@ -334,7 +334,7 @@ function findingLabel(type: SummaryFindingType): string {
               {{ service }}
             </span>
           </div>
-          <p class="impact-text">{{ group.privacyImpact }}</p>
+          <p class="impact-text">{{ stripMarkdown(group.privacyImpact) }}</p>
         </div>
       </section>
 
@@ -363,7 +363,7 @@ function findingLabel(type: SummaryFindingType): string {
           <h3>⚠️ Concerning Cookies</h3>
           <ul>
             <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
-              {{ concern }}
+              {{ stripMarkdown(concern) }}
             </li>
           </ul>
         </div>
@@ -390,18 +390,18 @@ function findingLabel(type: SummaryFindingType): string {
           </div>
         </div>
         <p v-if="structuredReport.storageAnalysis.summary" class="section-summary">
-          {{ structuredReport.storageAnalysis.summary }}
+          {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
         </p>
         <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length" class="storage-concerns">
           <h3>localStorage Concerns</h3>
           <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ concern }}</li>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
           </ul>
         </div>
         <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length" class="storage-concerns">
           <h3>sessionStorage Concerns</h3>
           <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ concern }}</li>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
           </ul>
         </div>
       </section>
@@ -423,7 +423,7 @@ function findingLabel(type: SummaryFindingType): string {
           </div>
         </div>
         <p v-if="structuredReport.consentAnalysis.summary" class="section-summary">
-          {{ structuredReport.consentAnalysis.summary }}
+          {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
         </p>
         <div v-if="structuredReport.consentAnalysis.discrepancies.length" class="discrepancies">
           <h3>⚠️ Discrepancies Found</h3>
@@ -436,11 +436,11 @@ function findingLabel(type: SummaryFindingType): string {
             <div class="discrepancy-detail">
               <div class="discrepancy-row">
                 <span class="discrepancy-label">Claimed:</span>
-                <span>{{ d.claimed }}</span>
+                <span>{{ stripMarkdown(d.claimed) }}</span>
               </div>
               <div class="discrepancy-row">
                 <span class="discrepancy-label">Actual:</span>
-                <span>{{ d.actual }}</span>
+                <span>{{ stripMarkdown(d.actual) }}</span>
               </div>
             </div>
           </div>
@@ -464,7 +464,7 @@ function findingLabel(type: SummaryFindingType): string {
               <strong>{{ vendor.name }}</strong>
               <span class="vendor-role">{{ vendor.role }}</span>
             </div>
-            <p class="vendor-impact">{{ vendor.privacyImpact }}</p>
+            <p class="vendor-impact">{{ stripMarkdown(vendor.privacyImpact) }}</p>
           </div>
         </div>
       </section>
@@ -482,7 +482,7 @@ function findingLabel(type: SummaryFindingType): string {
         >
           <h3>{{ group.category }}</h3>
           <ul>
-            <li v-for="(item, j) in group.items" :key="j">{{ item }}</li>
+            <li v-for="(item, j) in group.items" :key="j">{{ stripMarkdown(item) }}</li>
           </ul>
         </div>
       </section>

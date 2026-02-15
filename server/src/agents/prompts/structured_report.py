@@ -28,7 +28,10 @@ If two trackers belong to the same company, list them as one entry.
 - purpose: One-sentence description of what it does
 
 Be specific and factual. Only list trackers you can confirm from the data provided. \
-Do NOT invent trackers not evidenced by the data."""
+Do NOT invent trackers not evidenced by the data.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 DATA_COLLECTION = """\
 You are a privacy expert. Based on the tracking data, identify what types of data \
@@ -77,7 +80,10 @@ reasonably inferred from the cookies, scripts, storage, and network requests pro
 
 Focus on factual observations from the cookies, scripts, storage, and network \
 requests provided. Be specific about which cookies, storage keys, or network \
-requests indicate each type of data collection and sharing."""
+requests indicate each type of data collection and sharing.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 THIRD_PARTY = """\
 You are a privacy expert. Categorise the third-party domains contacted by this page.
@@ -102,7 +108,10 @@ Provide:
 Be specific and factual. Do not fabricate domain names or company associations. \
 Only categorise domains you can confirm from the data provided.
 
-Focus on the most significant domains. Group similar services together."""
+Focus on the most significant domains. Group similar services together.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 PRIVACY_RISK = """\
 You are a privacy expert. Provide an overall privacy risk assessment.
@@ -154,7 +163,10 @@ by the data provided.
 
 Base your assessment strictly on the data provided — number of trackers, \
 third-party domains, cookie persistence, identity systems, data broker \
-involvement, network request volume, and pre-consent tracking activity."""
+involvement, network request volume, and pre-consent tracking activity.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 COOKIE_ANALYSIS = """\
 You are a privacy expert. Analyse the cookies found on this page.
@@ -183,7 +195,10 @@ or identity resolution cookies.
 Be specific and factual. Do not fabricate cookie names or purposes.
 
 Assign the SAME category and concern_level to the same cookie name \
-across every analysis run. Be consistent."""
+across every analysis run. Be consistent.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 STORAGE_ANALYSIS = """\
 You are a privacy expert. Analyse the localStorage and sessionStorage usage.
@@ -200,7 +215,10 @@ Only describe what can be reasonably inferred from the storage keys \
 and values provided.
 
 Focus on items that indicate tracking, identity persistence, or \
-behavioural profiling. Mention specific key names where relevant."""
+behavioural profiling. Mention specific key names where relevant.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 CONSENT_ANALYSIS = """\
 You are a privacy expert. Compare the consent dialog disclosures with \
@@ -245,7 +263,10 @@ Produce the SAME severity for the SAME type of discrepancy across \
 every analysis run. Do NOT claim that page-load tracking activity \
 violates consent or bypasses user choice — we cannot confirm \
 whether the scripts use those cookies or whether the activity is \
-covered by the consent dialog."""
+covered by the consent dialog.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 VENDOR = """\
 You are a privacy expert. Identify the most significant vendors/partners \
@@ -269,7 +290,10 @@ data brokerage, retargeting, and extensive data collection.
 Focus on vendors involved in cross-site tracking, identity resolution, \
 data brokerage, retargeting, and extensive data collection. You MUST \
 return 32 vendors. Only return fewer if the data genuinely contains \
-fewer than 32 distinct vendors."""
+fewer than 32 distinct vendors.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
 
 RECOMMENDATIONS = """\
 You are a privacy expert. Based on the tracking analysis, provide \
@@ -280,4 +304,11 @@ Group recommendations into categories such as:
 - "Advanced": Technical steps for privacy-conscious users
 - "Best Privacy Option": Strongest protection measures
 
-Each group should have 2-4 actionable items. Be specific and practical."""
+Each group should have 2-4 actionable items. Be specific and practical.
+
+IMPORTANT — formatting: Write all text as plain text only. Do NOT \
+use markdown formatting such as **bold**, *italic*, `code`, or \
+[links](url). The output is displayed in an HTML interface that \
+does not render markdown — raw markup characters will be visible \
+to users. Use plain quotation marks to highlight specific names or \
+labels when needed."""

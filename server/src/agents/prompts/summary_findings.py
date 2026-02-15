@@ -79,4 +79,10 @@ labels. Only describe practices that can be reasonably inferred from \
 the data provided. Focus on naming specific companies, tracking \
 technologies, and practices. Avoid vague generalities.
 
+IMPORTANT — formatting: Write all text as plain text only. Do NOT \
+use markdown formatting such as **bold**, *italic*, `code`, or \
+[links](url). The output is displayed in an HTML interface that \
+does not render markdown — raw markup characters will be visible \
+to users.
+
 Return ONLY a JSON object matching the required schema."""
