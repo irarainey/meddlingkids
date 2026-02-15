@@ -29,6 +29,7 @@ class PartnerEntry(pydantic.BaseModel):
 
     concerns: list[str]
     aliases: list[str]
+    url: str = ""
 
 
 class ScriptPattern(pydantic.BaseModel):

@@ -8,7 +8,8 @@
     "aliases": [
       "share this",
       "sharethis inc"
-    ]
+    ],
+    "url": "https://sharethis.com"
   },
   "addthis": {
     "concerns": [
@@ -19,7 +20,8 @@
     ],
     "aliases": [
       "add this"
-    ]
+    ],
+    "url": "https://www.addthis.com"
   },
   "addtoany": {
     "concerns": [
@@ -29,7 +31,8 @@
     ],
     "aliases": [
       "add to any"
-    ]
+    ],
+    "url": "https://www.addtoany.com"
   },
   "shareaholic": {
     "concerns": [
@@ -39,7 +42,8 @@
     ],
     "aliases": [
       "share a holic"
-    ]
+    ],
+    "url": "https://www.shareaholic.com"
   },
   "sumo": {
     "concerns": [
@@ -50,7 +54,8 @@
     "aliases": [
       "sumo.com",
       "sumome"
-    ]
+    ],
+    "url": "https://sumo.com"
   },
   "po.st": {
     "concerns": [
@@ -61,7 +66,8 @@
     "aliases": [
       "post",
       "radiumone"
-    ]
+    ],
+    "url": ""
   },
   "gigya": {
     "concerns": [
@@ -72,7 +78,8 @@
     "aliases": [
       "sap gigya",
       "gigya inc"
-    ]
+    ],
+    "url": "https://www.sap.com/products/crm/customer-data-management.html"
   },
   "auth0": {
     "concerns": [
@@ -83,7 +90,8 @@
     ],
     "aliases": [
       "auth 0"
-    ]
+    ],
+    "url": "https://auth0.com"
   },
   "okta": {
     "concerns": [
@@ -93,7 +101,8 @@
     ],
     "aliases": [
       "okta inc"
-    ]
+    ],
+    "url": "https://www.okta.com"
   },
   "onelogin": {
     "concerns": [
@@ -104,7 +113,8 @@
     ],
     "aliases": [
       "one login"
-    ]
+    ],
+    "url": "https://www.onelogin.com"
   },
   "loginradius": {
     "concerns": [
@@ -114,7 +124,8 @@
     ],
     "aliases": [
       "login radius"
-    ]
+    ],
+    "url": "https://www.loginradius.com"
   },
   "janrain": {
     "concerns": [
@@ -124,38 +135,49 @@
     ],
     "aliases": [
       "jan rain"
-    ]
+    ],
+    "url": "https://www.akamai.com"
   },
   "facebook like": {
     "concerns": [
-      "Like button tracking",
-      "Shadow profiles",
-      "Cross-site"
+      "Like button loads Meta tracking even without user interaction",
+      "Creates shadow profiles for non-Facebook users via cross-site cookies",
+      "Cross-site tracking feeding into off-Facebook activity data",
+      "Shares browsing data with Meta advertising ecosystem"
     ],
     "aliases": [
       "fb like",
-      "facebook button"
-    ]
+      "facebook button",
+      "meta like button"
+    ],
+    "url": "https://developers.facebook.com/docs/plugins/like-button/"
   },
   "twitter buttons": {
     "concerns": [
-      "Tweet button tracking",
-      "Social graph",
-      "Cross-site"
+      "Share button loads X tracking scripts on page load",
+      "Social graph mapping via cross-site cookie tracking",
+      "Data shared with X Corp affiliates including xAI/Grok",
+      "Tracks signed-out users via advertising identifiers and IP"
     ],
     "aliases": [
       "x buttons",
-      "twitter share"
-    ]
+      "twitter share",
+      "x share button"
+    ],
+    "url": "https://developer.x.com"
   },
   "linkedin buttons": {
     "concerns": [
-      "Share button tracking",
-      "Professional profiling"
+      "Share button loads LinkedIn tracking on page load",
+      "Professional and employment data profiling",
+      "Data shared with Microsoft for cross-product advertising",
+      "LinkedIn Insight Tag integration for website retargeting"
     ],
     "aliases": [
-      "linkedin share"
-    ]
+      "linkedin share",
+      "linkedin share button"
+    ],
+    "url": "https://www.linkedin.com"
   },
   "pinterest widget": {
     "concerns": [
@@ -165,38 +187,48 @@
     ],
     "aliases": [
       "pinterest button"
-    ]
+    ],
+    "url": "https://www.pinterest.com"
   },
   "instagram embed": {
     "concerns": [
-      "Embed tracking",
-      "Meta data collection",
-      "Cross-site"
+      "Embed loads Meta tracking scripts including cookies and pixels",
+      "Cross-site data collection feeding off-Facebook activity tracking",
+      "Data shared across Meta Companies including Facebook, WhatsApp, and Messenger",
+      "Contributes to shadow profiles for non-Meta users"
     ],
     "aliases": [
-      "ig embed"
-    ]
+      "ig embed",
+      "instagram widget"
+    ],
+    "url": "https://www.instagram.com"
   },
   "tiktok embed": {
     "concerns": [
-      "Video embed tracking",
-      "ByteDance data",
-      "Cross-site"
+      "Video embed loads TikTok tracking scripts on page load",
+      "Data shared within ByteDance corporate group",
+      "Cross-site behavioural profiling for ad targeting",
+      "Device fingerprinting and advertising identifier collection"
     ],
     "aliases": [
-      "tiktok widget"
-    ]
+      "tiktok widget",
+      "tiktok video embed"
+    ],
+    "url": "https://www.tiktok.com"
   },
   "youtube embed": {
     "concerns": [
-      "Video embed tracking",
-      "Google data",
-      "Watch history"
+      "Video embed loads Google tracking cookies and scripts",
+      "Watch history fed into Google cross-service profiling",
+      "Tracks non-signed-in users via device identifiers",
+      "Data linked to Google advertising ecosystem for ad targeting"
     ],
     "aliases": [
       "youtube iframe",
-      "yt embed"
-    ]
+      "yt embed",
+      "youtube player"
+    ],
+    "url": "https://www.youtube.com"
   },
   "vimeo embed": {
     "concerns": [
@@ -206,7 +238,8 @@
     ],
     "aliases": [
       "vimeo player"
-    ]
+    ],
+    "url": "https://vimeo.com"
   },
   "spotify embed": {
     "concerns": [
@@ -217,7 +250,8 @@
     "aliases": [
       "spotify player",
       "spotify widget"
-    ]
+    ],
+    "url": "https://www.spotify.com"
   },
   "soundcloud embed": {
     "concerns": [
@@ -226,7 +260,8 @@
     ],
     "aliases": [
       "soundcloud player"
-    ]
+    ],
+    "url": "https://soundcloud.com"
   },
   "disqus": {
     "concerns": [
@@ -237,17 +272,21 @@
     ],
     "aliases": [
       "disqus inc"
-    ]
+    ],
+    "url": "https://disqus.com"
   },
   "facebook comments": {
     "concerns": [
-      "Comment plugin",
-      "Meta tracking",
-      "Cross-site"
+      "Comment plugin loads full Meta tracking scripts on page load",
+      "Cross-site tracking via cookies even without user interaction",
+      "Data shared across Meta Companies and advertising ecosystem",
+      "Creates shadow profiles for non-Facebook users"
     ],
     "aliases": [
-      "fb comments"
-    ]
+      "fb comments",
+      "meta comments plugin"
+    ],
+    "url": "https://developers.facebook.com/docs/plugins/comments/"
   },
   "spot.im": {
     "concerns": [
@@ -258,7 +297,8 @@
     ],
     "aliases": [
       "spotim"
-    ]
+    ],
+    "url": "https://www.openweb.com"
   },
   "coral": {
     "concerns": [
@@ -269,7 +309,8 @@
     ],
     "aliases": [
       "coral project"
-    ]
+    ],
+    "url": "https://coralproject.net"
   },
   "livefyre": {
     "concerns": [
@@ -279,7 +320,8 @@
     ],
     "aliases": [
       "live fyre"
-    ]
+    ],
+    "url": "https://business.adobe.com"
   },
   "vuukle": {
     "concerns": [
@@ -289,7 +331,8 @@
     ],
     "aliases": [
       "vuukle inc"
-    ]
+    ],
+    "url": "https://vuukle.com"
   },
   "yotpo social": {
     "concerns": [
@@ -299,7 +342,8 @@
     ],
     "aliases": [
       "yotpo ugc"
-    ]
+    ],
+    "url": "https://www.yotpo.com"
   },
   "curalate": {
     "concerns": [
@@ -310,7 +354,8 @@
     ],
     "aliases": [
       "curalate inc"
-    ]
+    ],
+    "url": "https://www.curalate.com"
   },
   "stackla": {
     "concerns": [
@@ -320,7 +365,8 @@
     ],
     "aliases": [
       "stackla inc"
-    ]
+    ],
+    "url": "https://stackla.com"
   },
   "olapic": {
     "concerns": [
@@ -331,7 +377,8 @@
     ],
     "aliases": [
       "olapic inc"
-    ]
+    ],
+    "url": "https://www.olapic.com"
   },
   "pixlee": {
     "concerns": [
@@ -343,7 +390,8 @@
     "aliases": [
       "pixlee inc",
       "emplifi"
-    ]
+    ],
+    "url": "https://www.pixlee.com"
   },
   "sprinklr": {
     "concerns": [
@@ -353,7 +401,8 @@
     ],
     "aliases": [
       "sprinklr inc"
-    ]
+    ],
+    "url": "https://www.sprinklr.com"
   },
   "brandwatch": {
     "concerns": [
@@ -363,7 +412,8 @@
     ],
     "aliases": [
       "brand watch"
-    ]
+    ],
+    "url": "https://www.brandwatch.com"
   },
   "talkwalker": {
     "concerns": [
@@ -374,7 +424,8 @@
     ],
     "aliases": [
       "talk walker"
-    ]
+    ],
+    "url": "https://www.talkwalker.com"
   },
   "mention": {
     "concerns": [
@@ -384,7 +435,8 @@
     ],
     "aliases": [
       "mention.com"
-    ]
+    ],
+    "url": "https://mention.com"
   },
   "meltwater": {
     "concerns": [
@@ -394,7 +446,8 @@
     ],
     "aliases": [
       "meltwater inc"
-    ]
+    ],
+    "url": "https://www.meltwater.com"
   },
   "cision": {
     "concerns": [
@@ -405,7 +458,8 @@
     "aliases": [
       "cision inc",
       "pr newswire"
-    ]
+    ],
+    "url": "https://www.cision.com"
   },
   "shop social": {
     "concerns": [
@@ -415,7 +469,8 @@
     ],
     "aliases": [
       "social commerce"
-    ]
+    ],
+    "url": ""
   },
   "like to know it": {
     "concerns": [
@@ -427,7 +482,8 @@
       "liketoknowit",
       "ltk",
       "rewardstyle"
-    ]
+    ],
+    "url": "https://www.liketoknow.it"
   },
   "shopmy": {
     "concerns": [
@@ -438,7 +494,8 @@
     "aliases": [
       "shop my",
       "shopmy.us"
-    ]
+    ],
+    "url": "https://www.shopmy.us"
   },
   "collective voice": {
     "concerns": [
@@ -449,6 +506,7 @@
     "aliases": [
       "collectivevoice",
       "shopstyle collective"
-    ]
+    ],
+    "url": "https://www.collectivevoice.com"
   }
 }

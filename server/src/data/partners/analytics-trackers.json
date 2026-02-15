@@ -1,28 +1,46 @@
 {
   "google analytics": {
     "concerns": [
-      "Page views",
-      "User journeys",
-      "Demographics",
-      "Interests",
-      "Cross-site with Google signals"
+      "Page views, user journeys, and session recording",
+      "Demographics, interests, and behavioural profiling",
+      "Cross-site tracking with Google Signals linking activity to Google accounts",
+      "Enables Google to link site activity to ad services for personalised advertising",
+      "Collects device, browser, and network information",
+      "Can be configured to link with other Google products for cross-service analytics"
     ],
     "aliases": [
       "ga4",
       "universal analytics",
       "google analytics 4",
-      "gtag"
-    ]
+      "gtag",
+      "google analytics 360"
+    ],
+    "url": "https://analytics.google.com"
   },
   "google tag manager": {
     "concerns": [
-      "Tag container",
-      "Script injection",
-      "Event tracking"
+      "Tag container enabling injection of any third-party tracking scripts",
+      "Server-side tagging can obscure data collection from users",
+      "Event tracking and custom variable collection",
+      "Facilitates data flow to Google and third-party analytics and advertising services"
     ],
     "aliases": [
-      "gtm"
-    ]
+      "gtm",
+      "google tag manager 360"
+    ],
+    "url": "https://tagmanager.google.com"
+  },
+  "adalyser": {
+    "concerns": [
+      "TV advertising analytics",
+      "Share of Voice measurement",
+      "Campaign performance tracking",
+      "Media planning data"
+    ],
+    "aliases": [
+      "adalyser ltd"
+    ],
+    "url": "https://www.adalyser.com"
   },
   "adobe analytics": {
     "concerns": [
@@ -34,7 +52,8 @@
       "omniture",
       "sitecatalyst",
       "adobe experience cloud"
-    ]
+    ],
+    "url": "https://business.adobe.com/products/analytics/adobe-analytics.html"
   },
   "matomo": {
     "concerns": [
@@ -44,7 +63,8 @@
     "aliases": [
       "piwik",
       "matomo analytics"
-    ]
+    ],
+    "url": "https://matomo.org"
   },
   "plausible": {
     "concerns": [
@@ -52,7 +72,8 @@
     ],
     "aliases": [
       "plausible.io"
-    ]
+    ],
+    "url": "https://plausible.io"
   },
   "fathom": {
     "concerns": [
@@ -62,7 +83,8 @@
     "aliases": [
       "fathom analytics",
       "usefathom"
-    ]
+    ],
+    "url": "https://usefathom.com"
   },
   "simple analytics": {
     "concerns": [
@@ -72,7 +94,8 @@
     ],
     "aliases": [
       "simpleanalytics"
-    ]
+    ],
+    "url": "https://www.simpleanalytics.com"
   },
   "chartbeat": {
     "concerns": [
@@ -82,7 +105,8 @@
     ],
     "aliases": [
       "chartbeat inc"
-    ]
+    ],
+    "url": "https://chartbeat.com"
   },
   "parsely": {
     "concerns": [
@@ -92,7 +116,8 @@
     ],
     "aliases": [
       "parse.ly"
-    ]
+    ],
+    "url": "https://www.parse.ly"
   },
   "piano": {
     "concerns": [
@@ -112,7 +137,8 @@
       "tinypass",
       "press plus",
       "newzmate"
-    ]
+    ],
+    "url": "https://piano.io"
   },
   "hubspot": {
     "concerns": [
@@ -123,7 +149,8 @@
     ],
     "aliases": [
       "hubspot inc"
-    ]
+    ],
+    "url": "https://www.hubspot.com"
   },
   "marketo": {
     "concerns": [
@@ -135,7 +162,8 @@
     "aliases": [
       "marketo inc",
       "adobe marketo"
-    ]
+    ],
+    "url": "https://www.marketo.com"
   },
   "pardot": {
     "concerns": [
@@ -146,7 +174,8 @@
     ],
     "aliases": [
       "salesforce pardot"
-    ]
+    ],
+    "url": "https://www.salesforce.com/products/marketing-cloud/marketing-automation/"
   },
   "eloqua": {
     "concerns": [
@@ -156,7 +185,8 @@
     ],
     "aliases": [
       "oracle eloqua"
-    ]
+    ],
+    "url": "https://www.oracle.com/cx/marketing/automation/"
   },
   "mailchimp": {
     "concerns": [
@@ -168,7 +198,8 @@
     "aliases": [
       "mailchimp inc",
       "intuit mailchimp"
-    ]
+    ],
+    "url": "https://mailchimp.com"
   },
   "klaviyo": {
     "concerns": [
@@ -178,7 +209,8 @@
     ],
     "aliases": [
       "klaviyo inc"
-    ]
+    ],
+    "url": "https://www.klaviyo.com"
   },
   "braze": {
     "concerns": [
@@ -189,7 +221,8 @@
     "aliases": [
       "braze inc",
       "appboy"
-    ]
+    ],
+    "url": "https://www.braze.com"
   },
   "iterable": {
     "concerns": [
@@ -199,7 +232,8 @@
     ],
     "aliases": [
       "iterable inc"
-    ]
+    ],
+    "url": "https://iterable.com"
   },
   "customer.io": {
     "concerns": [
@@ -209,7 +243,8 @@
     ],
     "aliases": [
       "customerio"
-    ]
+    ],
+    "url": "https://customer.io"
   },
   "intercom": {
     "concerns": [
@@ -219,7 +254,8 @@
     ],
     "aliases": [
       "intercom inc"
-    ]
+    ],
+    "url": "https://www.intercom.com"
   },
   "drift": {
     "concerns": [
@@ -229,7 +265,8 @@
     ],
     "aliases": [
       "drift.com"
-    ]
+    ],
+    "url": "https://www.drift.com"
   },
   "zendesk": {
     "concerns": [
@@ -239,7 +276,8 @@
     ],
     "aliases": [
       "zendesk inc"
-    ]
+    ],
+    "url": "https://www.zendesk.com"
   },
   "freshworks": {
     "concerns": [
@@ -250,7 +288,8 @@
     "aliases": [
       "freshdesk",
       "freshsales"
-    ]
+    ],
+    "url": "https://www.freshworks.com"
   },
   "tealium": {
     "concerns": [
@@ -263,7 +302,8 @@
     "aliases": [
       "tealium inc",
       "tealium iq"
-    ]
+    ],
+    "url": "https://tealium.com"
   },
   "ensighten": {
     "concerns": [
@@ -273,7 +313,8 @@
     ],
     "aliases": [
       "ensighten inc"
-    ]
+    ],
+    "url": "https://www.ensighten.com"
   },
   "commanders act": {
     "concerns": [
@@ -284,7 +325,8 @@
     "aliases": [
       "commandersact",
       "tagcommander"
-    ]
+    ],
+    "url": "https://www.commandersact.com"
   },
   "signal": {
     "concerns": [
@@ -294,7 +336,8 @@
     ],
     "aliases": [
       "signal tag management"
-    ]
+    ],
+    "url": "https://www.signal.co"
   },
   "countly": {
     "concerns": [
@@ -304,7 +347,8 @@
     ],
     "aliases": [
       "count.ly"
-    ]
+    ],
+    "url": "https://countly.com"
   },
   "woopra": {
     "concerns": [
@@ -314,7 +358,8 @@
     ],
     "aliases": [
       "woopra inc"
-    ]
+    ],
+    "url": "https://www.woopra.com"
   },
   "clicky": {
     "concerns": [
@@ -324,7 +369,8 @@
     ],
     "aliases": [
       "clicky web analytics"
-    ]
+    ],
+    "url": "https://clicky.com"
   },
   "statcounter": {
     "concerns": [
@@ -334,7 +380,8 @@
     ],
     "aliases": [
       "stat counter"
-    ]
+    ],
+    "url": "https://statcounter.com"
   },
   "gauges": {
     "concerns": [
@@ -344,7 +391,8 @@
     ],
     "aliases": [
       "gaug.es"
-    ]
+    ],
+    "url": "https://get.gaug.es"
   },
   "goatcounter": {
     "concerns": [
@@ -354,7 +402,8 @@
     ],
     "aliases": [
       "goat counter"
-    ]
+    ],
+    "url": "https://www.goatcounter.com"
   },
   "umami": {
     "concerns": [
@@ -364,7 +413,8 @@
     ],
     "aliases": [
       "umami.is"
-    ]
+    ],
+    "url": "https://umami.is"
   },
   "pirsch": {
     "concerns": [
@@ -374,7 +424,8 @@
     ],
     "aliases": [
       "pirsch analytics"
-    ]
+    ],
+    "url": "https://pirsch.io"
   },
   "splitbee": {
     "concerns": [
@@ -384,7 +435,8 @@
     ],
     "aliases": [
       "split bee"
-    ]
+    ],
+    "url": "https://splitbee.io"
   },
   "usermaven": {
     "concerns": [
@@ -394,7 +446,8 @@
     ],
     "aliases": [
       "user maven"
-    ]
+    ],
+    "url": "https://usermaven.com"
   },
   "oribi": {
     "concerns": [
@@ -404,7 +457,8 @@
     ],
     "aliases": [
       "oribi analytics"
-    ]
+    ],
+    "url": "https://oribi.io"
   },
   "shopify analytics": {
     "concerns": [
@@ -414,7 +468,8 @@
     ],
     "aliases": [
       "shopify pixel"
-    ]
+    ],
+    "url": "https://www.shopify.com/analytics"
   },
   "nosto": {
     "concerns": [
@@ -424,7 +479,8 @@
     ],
     "aliases": [
       "nosto solutions"
-    ]
+    ],
+    "url": "https://www.nosto.com"
   },
   "klevu": {
     "concerns": [
@@ -434,7 +490,8 @@
     ],
     "aliases": [
       "klevu oy"
-    ]
+    ],
+    "url": "https://www.klevu.com"
   },
   "algolia": {
     "concerns": [
@@ -444,7 +501,8 @@
     ],
     "aliases": [
       "algolia inc"
-    ]
+    ],
+    "url": "https://www.algolia.com"
   },
   "searchspring": {
     "concerns": [
@@ -454,7 +512,8 @@
     ],
     "aliases": [
       "search spring"
-    ]
+    ],
+    "url": "https://searchspring.com"
   },
   "yotpo": {
     "concerns": [
@@ -465,7 +524,8 @@
     ],
     "aliases": [
       "yotpo ltd"
-    ]
+    ],
+    "url": "https://www.yotpo.com"
   },
   "okendo": {
     "concerns": [
@@ -475,7 +535,8 @@
     ],
     "aliases": [
       "okendo inc"
-    ]
+    ],
+    "url": "https://www.okendo.io"
   },
   "stamped": {
     "concerns": [
@@ -485,7 +546,8 @@
     ],
     "aliases": [
       "stamped.io"
-    ]
+    ],
+    "url": "https://stamped.io"
   },
   "loox": {
     "concerns": [
@@ -495,7 +557,8 @@
     ],
     "aliases": [
       "loox reviews"
-    ]
+    ],
+    "url": "https://loox.app"
   },
   "trustpilot": {
     "concerns": [
@@ -505,7 +568,8 @@
     ],
     "aliases": [
       "trust pilot"
-    ]
+    ],
+    "url": "https://www.trustpilot.com"
   },
   "bazaarvoice": {
     "concerns": [
@@ -516,7 +580,8 @@
     ],
     "aliases": [
       "bazaar voice"
-    ]
+    ],
+    "url": "https://www.bazaarvoice.com"
   },
   "powerreviews": {
     "concerns": [
@@ -526,7 +591,8 @@
     ],
     "aliases": [
       "power reviews"
-    ]
+    ],
+    "url": "https://www.powerreviews.com"
   },
   "pushwoosh": {
     "concerns": [
@@ -536,7 +602,8 @@
     ],
     "aliases": [
       "push woosh"
-    ]
+    ],
+    "url": "https://www.pushwoosh.com"
   },
   "pushcrew": {
     "concerns": [
@@ -547,7 +614,8 @@
     "aliases": [
       "push crew",
       "vwo engage"
-    ]
+    ],
+    "url": "https://pushcrew.com"
   },
   "webpushr": {
     "concerns": [
@@ -557,7 +625,8 @@
     ],
     "aliases": [
       "web pushr"
-    ]
+    ],
+    "url": "https://www.webpushr.com"
   },
   "pushengage": {
     "concerns": [
@@ -567,7 +636,8 @@
     ],
     "aliases": [
       "push engage"
-    ]
+    ],
+    "url": "https://www.pushengage.com"
   },
   "subscribers": {
     "concerns": [
@@ -577,7 +647,8 @@
     ],
     "aliases": [
       "subscribers.com"
-    ]
+    ],
+    "url": "https://subscribers.com"
   },
   "dynamic yield": {
     "concerns": [
@@ -588,7 +659,8 @@
     ],
     "aliases": [
       "dynamicyield"
-    ]
+    ],
+    "url": "https://www.dynamicyield.com"
   },
   "monetate": {
     "concerns": [
@@ -599,7 +671,8 @@
     ],
     "aliases": [
       "monetate inc"
-    ]
+    ],
+    "url": "https://monetate.com"
   },
   "evergage": {
     "concerns": [
@@ -609,7 +682,8 @@
     ],
     "aliases": [
       "salesforce interaction studio"
-    ]
+    ],
+    "url": "https://www.evergage.com"
   },
   "certona": {
     "concerns": [
@@ -619,7 +693,8 @@
     ],
     "aliases": [
       "certona corporation"
-    ]
+    ],
+    "url": "https://www.certona.com"
   },
   "richrelevance": {
     "concerns": [
@@ -630,7 +705,8 @@
     "aliases": [
       "rich relevance",
       "algonomy"
-    ]
+    ],
+    "url": "https://www.richrelevance.com"
   },
   "barilliance": {
     "concerns": [
@@ -640,7 +716,8 @@
     ],
     "aliases": [
       "barilliance ltd"
-    ]
+    ],
+    "url": "https://www.barilliance.com"
   },
   "fresh relevance": {
     "concerns": [
@@ -650,7 +727,8 @@
     ],
     "aliases": [
       "freshrelevance"
-    ]
+    ],
+    "url": "https://www.freshrelevance.com"
   },
   "qubit": {
     "concerns": [
@@ -660,7 +738,8 @@
     ],
     "aliases": [
       "qubit digital"
-    ]
+    ],
+    "url": "https://www.qubit.com"
   },
   "coveo": {
     "concerns": [
@@ -670,7 +749,8 @@
     ],
     "aliases": [
       "coveo solutions"
-    ]
+    ],
+    "url": "https://www.coveo.com"
   },
   "triple whale": {
     "concerns": [
@@ -680,7 +760,8 @@
     ],
     "aliases": [
       "triplewhale"
-    ]
+    ],
+    "url": "https://www.triplewhale.com"
   },
   "northbeam": {
     "concerns": [
@@ -690,7 +771,8 @@
     ],
     "aliases": [
       "north beam"
-    ]
+    ],
+    "url": "https://www.northbeam.io"
   },
   "wicked reports": {
     "concerns": [
@@ -700,7 +782,8 @@
     ],
     "aliases": [
       "wickedreports"
-    ]
+    ],
+    "url": "https://www.wickedreports.com"
   },
   "hyros": {
     "concerns": [
@@ -710,7 +793,8 @@
     ],
     "aliases": [
       "hyros.com"
-    ]
+    ],
+    "url": "https://hyros.com"
   },
   "cometly": {
     "concerns": [
@@ -720,7 +804,8 @@
     ],
     "aliases": [
       "cometly inc"
-    ]
+    ],
+    "url": "https://www.cometly.com"
   },
   "attribution": {
     "concerns": [
@@ -730,7 +815,8 @@
     ],
     "aliases": [
       "attribution.io"
-    ]
+    ],
+    "url": "https://www.attributionapp.com"
   },
   "viafoura": {
     "concerns": [
@@ -741,7 +827,8 @@
     ],
     "aliases": [
       "viafoura inc"
-    ]
+    ],
+    "url": "https://viafoura.com"
   },
   "akamai mpulse": {
     "concerns": [
@@ -754,7 +841,8 @@
       "akamai",
       "akamai technologies",
       "mpulse"
-    ]
+    ],
+    "url": "https://www.akamai.com/products/mpulse"
   },
   "kantar": {
     "concerns": [
@@ -768,7 +856,8 @@
       "millward brown",
       "kantar media",
       "kantar group"
-    ]
+    ],
+    "url": "https://www.kantar.com"
   },
   "ipsos": {
     "concerns": [
@@ -784,7 +873,8 @@
       "ipsos sa",
       "ipsos group",
       "ipsos digital"
-    ]
+    ],
+    "url": "https://www.ipsos.com"
   },
   "dotmetrics": {
     "concerns": [
@@ -796,7 +886,8 @@
     "aliases": [
       "dot metrics",
       "dotmetrics.net"
-    ]
+    ],
+    "url": "https://www.dotmetrics.net"
   },
   "atolls": {
     "concerns": [
@@ -813,6 +904,46 @@
       "gsg",
       "cuponation",
       "coupons.com"
-    ]
+    ],
+    "url": ""
+  },
+  "dynata": {
+    "concerns": [
+      "Research panel data collection",
+      "Survey-based profiling",
+      "First-party data marketplace",
+      "Audience measurement"
+    ],
+    "aliases": [
+      "dynata llc",
+      "research now",
+      "survey sampling international",
+      "ssi"
+    ],
+    "url": "https://www.dynata.com"
+  },
+  "apptweak": {
+    "concerns": [
+      "App store analytics and optimisation",
+      "Mobile app usage statistics collection",
+      "App performance monitoring and reporting"
+    ],
+    "aliases": [
+      "app tweak",
+      "apptweak sa"
+    ],
+    "url": "https://www.apptweak.com"
+  },
+  "abc": {
+    "concerns": [
+      "Circulation and audience verification",
+      "Personal data sharing for aggregated statistics",
+      "Editorial and advertising compliance auditing"
+    ],
+    "aliases": [
+      "audit bureau of circulations",
+      "abc uk"
+    ],
+    "url": "https://www.abc.org.uk"
   }
 }

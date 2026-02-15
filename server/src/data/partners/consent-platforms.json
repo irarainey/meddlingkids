@@ -8,7 +8,8 @@
     "aliases": [
       "one trust",
       "onetrust llc"
-    ]
+    ],
+    "url": "https://www.onetrust.com"
   },
   "cookiebot": {
     "concerns": [
@@ -19,7 +20,8 @@
     "aliases": [
       "cybot",
       "usercentrics cookiebot"
-    ]
+    ],
+    "url": "https://www.cookiebot.com"
   },
   "usercentrics": {
     "concerns": [
@@ -29,7 +31,8 @@
     ],
     "aliases": [
       "user centrics"
-    ]
+    ],
+    "url": "https://usercentrics.com"
   },
   "trustarc": {
     "concerns": [
@@ -40,7 +43,8 @@
     "aliases": [
       "trust arc",
       "truste"
-    ]
+    ],
+    "url": "https://trustarc.com"
   },
   "quantcast choice": {
     "concerns": [
@@ -50,7 +54,8 @@
     ],
     "aliases": [
       "quantcast cmp"
-    ]
+    ],
+    "url": "https://www.quantcast.com"
   },
   "didomi": {
     "concerns": [
@@ -60,7 +65,8 @@
     ],
     "aliases": [
       "didomi inc"
-    ]
+    ],
+    "url": "https://www.didomi.io"
   },
   "sourcepoint": {
     "concerns": [
@@ -74,7 +80,8 @@
       "source point",
       "sourcepoint technologies",
       "sourcepoint technologies inc"
-    ]
+    ],
+    "url": "https://www.sourcepoint.com"
   },
   "termly": {
     "concerns": [
@@ -84,7 +91,8 @@
     ],
     "aliases": [
       "termly inc"
-    ]
+    ],
+    "url": "https://termly.io"
   },
   "cookiefirst": {
     "concerns": [
@@ -94,7 +102,8 @@
     ],
     "aliases": [
       "cookie first"
-    ]
+    ],
+    "url": "https://cookiefirst.com"
   },
   "consentmanager": {
     "concerns": [
@@ -104,7 +113,8 @@
     ],
     "aliases": [
       "consent manager"
-    ]
+    ],
+    "url": "https://www.consentmanager.net"
   },
   "iubenda": {
     "concerns": [
@@ -114,7 +124,8 @@
     ],
     "aliases": [
       "iubenda srl"
-    ]
+    ],
+    "url": "https://www.iubenda.com"
   },
   "osano": {
     "concerns": [
@@ -124,7 +135,8 @@
     ],
     "aliases": [
       "osano inc"
-    ]
+    ],
+    "url": "https://www.osano.com"
   },
   "liveramp privacy": {
     "concerns": [
@@ -134,7 +146,8 @@
     ],
     "aliases": [
       "liveramp cmp"
-    ]
+    ],
+    "url": "https://liveramp.com"
   },
   "securiti": {
     "concerns": [
@@ -144,7 +157,8 @@
     ],
     "aliases": [
       "securiti.ai"
-    ]
+    ],
+    "url": "https://securiti.ai"
   },
   "bigid": {
     "concerns": [
@@ -154,7 +168,8 @@
     ],
     "aliases": [
       "big id"
-    ]
+    ],
+    "url": "https://bigid.com"
   },
   "wirewheel": {
     "concerns": [
@@ -164,7 +179,8 @@
     ],
     "aliases": [
       "wire wheel"
-    ]
+    ],
+    "url": "https://wirewheel.io"
   },
   "transcend": {
     "concerns": [
@@ -174,7 +190,8 @@
     ],
     "aliases": [
       "transcend.io"
-    ]
+    ],
+    "url": "https://transcend.io"
   },
   "ketch": {
     "concerns": [
@@ -184,7 +201,8 @@
     ],
     "aliases": [
       "ketch.com"
-    ]
+    ],
+    "url": "https://www.ketch.com"
   },
   "ethyca": {
     "concerns": [
@@ -195,7 +213,8 @@
     "aliases": [
       "ethyca inc",
       "fides"
-    ]
+    ],
+    "url": "https://ethyca.com"
   },
   "privacera": {
     "concerns": [
@@ -205,7 +224,8 @@
     ],
     "aliases": [
       "privacera inc"
-    ]
+    ],
+    "url": "https://privacera.com"
   },
   "complianz": {
     "concerns": [
@@ -215,7 +235,8 @@
     ],
     "aliases": [
       "complianz gdpr"
-    ]
+    ],
+    "url": "https://complianz.io"
   },
   "cookie notice": {
     "concerns": [
@@ -225,7 +246,8 @@
     ],
     "aliases": [
       "cookie notice by hu-manity"
-    ]
+    ],
+    "url": "https://hu-manity.co"
   },
   "cookie law info": {
     "concerns": [
@@ -236,7 +258,8 @@
     "aliases": [
       "cookielawinfo",
       "webtoffee"
-    ]
+    ],
+    "url": "https://www.cookieyes.com"
   },
   "borlabs": {
     "concerns": [
@@ -246,7 +269,8 @@
     ],
     "aliases": [
       "borlabs cookie"
-    ]
+    ],
+    "url": "https://borlabs.io"
   },
   "real cookie banner": {
     "concerns": [
@@ -257,7 +281,8 @@
     "aliases": [
       "realcookiebanner",
       "devowl"
-    ]
+    ],
+    "url": "https://devowl.io/wordpress-real-cookie-banner/"
   },
   "axeptio": {
     "concerns": [
@@ -267,7 +292,8 @@
     ],
     "aliases": [
       "axeptio sas"
-    ]
+    ],
+    "url": "https://www.axeptio.eu"
   },
   "sirdata cmp": {
     "concerns": [
@@ -277,7 +303,8 @@
     ],
     "aliases": [
       "sirdata consent"
-    ]
+    ],
+    "url": "https://www.sirdata.com"
   },
   "crownpeak": {
     "concerns": [
@@ -288,7 +315,8 @@
     "aliases": [
       "crown peak",
       "evidon"
-    ]
+    ],
+    "url": "https://www.crownpeak.com"
   },
   "commander act cmp": {
     "concerns": [
@@ -298,7 +326,8 @@
     ],
     "aliases": [
       "trustcommander"
-    ]
+    ],
+    "url": "https://www.commandersact.com"
   },
   "appconsent": {
     "concerns": [
@@ -309,17 +338,20 @@
     "aliases": [
       "app consent",
       "sfbx"
-    ]
+    ],
+    "url": "https://www.appconsent.io"
   },
   "funding choices": {
     "concerns": [
-      "Google CMP",
-      "Ad recovery",
-      "Consent collection"
+      "Google-owned consent management platform",
+      "Designed to recover ad revenue by managing consent for Google ads",
+      "Consent data flows to Google advertising ecosystem",
+      "May prioritise ad revenue recovery over user privacy choices"
     ],
     "aliases": [
       "google funding choices"
-    ]
+    ],
+    "url": "https://fundingchoices.google.com"
   },
   "admiral": {
     "concerns": [
@@ -330,7 +362,8 @@
     "aliases": [
       "admiral inc",
       "getadmiral"
-    ]
+    ],
+    "url": "https://getadmiral.com"
   },
   "blockthrough": {
     "concerns": [
@@ -341,6 +374,20 @@
     "aliases": [
       "block through",
       "eyeo partner"
-    ]
+    ],
+    "url": "https://www.blockthrough.com"
+  },
+  "mpp global": {
+    "concerns": [
+      "Payment processing",
+      "Subscription management",
+      "User identity platform",
+      "eSuite platform"
+    ],
+    "aliases": [
+      "mpp global solutions",
+      "esuite"
+    ],
+    "url": "https://www.mppglobal.com"
   }
 }

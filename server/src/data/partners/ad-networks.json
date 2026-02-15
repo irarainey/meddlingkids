@@ -1,11 +1,15 @@
 {
   "google": {
     "concerns": [
-      "Tracks across 80%+ of websites",
-      "Search history",
-      "YouTube viewing",
-      "Gmail scanning",
-      "Android data"
+      "Tracks across 80%+ of websites via ads and analytics",
+      "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+      "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address",
+      "Voice and audio collection from Assistant and voice-enabled services",
+      "Chrome browsing history sync with Google Account",
+      "Purchase activity tracking",
+      "Activity on third-party sites using Google services",
+      "Personalised advertising based on interests and activity across all Google services",
+      "Device and app information collection including unique identifiers and crash reports"
     ],
     "aliases": [
       "google llc",
@@ -14,54 +18,70 @@
       "doubleclick",
       "google marketing",
       "google adsense",
-      "google ad manager"
-    ]
+      "google ad manager",
+      "google marketing platform",
+      "google display network"
+    ],
+    "url": "https://ads.google.com"
   },
   "meta": {
     "concerns": [
       "Facebook pixel on millions of sites",
-      "Instagram tracking",
-      "WhatsApp metadata",
-      "Shadow profiles",
-      "Off-Facebook activity"
+      "Cross-company data sharing across Facebook, Instagram, WhatsApp, Messenger, and Meta Quest",
+      "Off-Facebook activity tracking via integrated partners",
+      "Shadow profiles of non-users from contact uploads and social connections",
+      "Camera, microphone, and GPS location access",
+      "AI model training using public user content and interactions",
+      "Personalised advertising across all Meta products and Audience Network",
+      "Device fingerprinting including mouse movements and app foreground detection",
+      "Facial recognition technology for identity verification"
     ],
     "aliases": [
       "facebook",
       "meta platforms",
+      "meta platforms inc",
       "facebook inc",
       "fb",
       "instagram",
       "facebook pixel",
-      "meta pixel"
-    ]
+      "meta pixel",
+      "threads",
+      "meta quest"
+    ],
+    "url": "https://www.meta.com"
   },
   "amazon": {
     "concerns": [
-      "Purchase history",
-      "Cross-site advertising",
-      "Alexa recordings",
-      "Ring doorbell data",
-      "AWS tracking"
+      "Cross-service data linking across retail, Alexa, Ring, Prime Video, Kindle, Fire devices, and Twitch",
+      "Purchase and browsing history used for interest-based ad targeting",
+      "Alexa voice recordings processed and retained for service improvement",
+      "Ring doorbell video and image data collection",
+      "Device metrics including app usage, connectivity, Wi-Fi credentials, and location",
+      "Advertising identifiers and hashed emails shared with third-party ad partners",
+      "Data shared across Amazon Group Companies including Whole Foods, IMDb, Audible, and MGM",
+      "Full clickstream URLs, page interaction data, and content viewing history collected automatically"
     ],
     "aliases": [
       "amazon advertising",
       "amazon.com",
       "amazon ads",
       "amazon dsp",
-      "amazon publisher services"
-    ]
+      "amazon publisher services",
+      "amazon marketing cloud"
+    ],
+    "url": "https://advertising.amazon.com"
   },
   "microsoft": {
     "concerns": [
-      "LinkedIn data",
-      "Bing search tracking",
-      "Windows telemetry",
-      "Xbox gaming data",
-      "Office 365 usage",
-      "AT&T data",
-      "Programmatic advertising",
-      "Cross-device",
-      "Microsoft owned"
+      "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+      "Windows telemetry and diagnostic data collection",
+      "Copilot AI prompt and conversation data processing",
+      "Edge browsing data and search history",
+      "Xbox gaming activity and social data",
+      "Advertising via Xandr programmatic platform",
+      "Third-party cookies including social media, analytics, and advertising cookies",
+      "Advertising ID in Windows for cross-app tracking",
+      "Web beacons and similar technologies across Microsoft properties"
     ],
     "aliases": [
       "microsoft advertising",
@@ -71,21 +91,29 @@
       "xandr",
       "appnexus",
       "at&t advertising",
-      "xandr inc"
-    ]
+      "xandr inc",
+      "microsoft copilot"
+    ],
+    "url": "https://ads.microsoft.com"
   },
   "apple": {
     "concerns": [
-      "App Store data",
-      "Apple Search Ads",
-      "First-party tracking",
-      "SKAdNetwork"
+      "Extensive first-party data collection across App Store, iCloud, Apple Music, TV+, and Apple Pay",
+      "Apple Search Ads targeting based on App Store behaviour and device usage",
+      "SKAdNetwork anonymous ad attribution framework",
+      "Device identifiers and IDFA for advertising",
+      "Siri voice and audio data processing",
+      "Health and fitness data collection via HealthKit and Apple Watch",
+      "Apple Intelligence on-device and Private Cloud Compute data processing",
+      "App Tracking Transparency controls but significant first-party data retention"
     ],
     "aliases": [
       "apple inc",
       "apple advertising",
-      "apple search ads"
-    ]
+      "apple search ads",
+      "apple distribution international"
+    ],
+    "url": "https://searchads.apple.com"
   },
   "criteo": {
     "concerns": [
@@ -97,7 +125,8 @@
     "aliases": [
       "criteo sa",
       "criteo inc"
-    ]
+    ],
+    "url": "https://www.criteo.com"
   },
   "magnite": {
     "concerns": [
@@ -114,7 +143,8 @@
       "spotx",
       "springserve",
       "spot x"
-    ]
+    ],
+    "url": "https://www.magnite.com"
   },
   "pubmatic": {
     "concerns": [
@@ -125,7 +155,8 @@
     ],
     "aliases": [
       "pubmatic inc"
-    ]
+    ],
+    "url": "https://pubmatic.com"
   },
   "openx": {
     "concerns": [
@@ -136,7 +167,8 @@
     "aliases": [
       "openx technologies",
       "openx software"
-    ]
+    ],
+    "url": "https://www.openx.com"
   },
   "index exchange": {
     "concerns": [
@@ -148,7 +180,8 @@
       "indexexchange",
       "casalemedia",
       "ix"
-    ]
+    ],
+    "url": "https://www.indexexchange.com"
   },
   "sovrn": {
     "concerns": [
@@ -159,7 +192,8 @@
     "aliases": [
       "sovrn holdings",
       "lijit"
-    ]
+    ],
+    "url": "https://www.sovrn.com"
   },
   "triplelift": {
     "concerns": [
@@ -175,7 +209,8 @@
       "1plusx ag",
       "1 plus x",
       "1plusxag"
-    ]
+    ],
+    "url": "https://www.triplelift.com"
   },
   "viant": {
     "concerns": [
@@ -190,7 +225,8 @@
       "adelphic",
       "myspace data",
       "adelphic llc"
-    ]
+    ],
+    "url": "https://www.viantinc.com"
   },
   "mediamath": {
     "concerns": [
@@ -201,7 +237,8 @@
     ],
     "aliases": [
       "media math"
-    ]
+    ],
+    "url": "https://www.mediamath.com"
   },
   "amobee": {
     "concerns": [
@@ -212,8 +249,10 @@
     ],
     "aliases": [
       "amobee inc",
-      "turn"
-    ]
+      "turn",
+      "videology"
+    ],
+    "url": "https://www.amobee.com"
   },
   "basis": {
     "concerns": [
@@ -224,7 +263,8 @@
     "aliases": [
       "basis technologies",
       "centro"
-    ]
+    ],
+    "url": "https://basis.net"
   },
   "taboola": {
     "concerns": [
@@ -242,7 +282,8 @@
       "taboola inc",
       "taboola.com",
       "taboola.com ltd"
-    ]
+    ],
+    "url": "https://www.taboola.com"
   },
   "outbrain": {
     "concerns": [
@@ -258,7 +299,8 @@
       "outbrain inc",
       "outbrain direct",
       "zemanta"
-    ]
+    ],
+    "url": "https://www.outbrain.com"
   },
   "ozone project": {
     "concerns": [
@@ -275,7 +317,8 @@
       "ozone project ltd",
       "the ozone project",
       "ozoneproject.com"
-    ]
+    ],
+    "url": "https://www.ozoneproject.com"
   },
   "revcontent": {
     "concerns": [
@@ -285,7 +328,8 @@
     ],
     "aliases": [
       "rev content"
-    ]
+    ],
+    "url": "https://www.revcontent.com"
   },
   "mgid": {
     "concerns": [
@@ -295,7 +339,8 @@
     ],
     "aliases": [
       "mgid inc"
-    ]
+    ],
+    "url": "https://www.mgid.com"
   },
   "nativo": {
     "concerns": [
@@ -305,35 +350,56 @@
     ],
     "aliases": [
       "nativo inc"
-    ]
+    ],
+    "url": "https://www.nativo.com"
   },
   "tiktok": {
     "concerns": [
-      "Behavioral tracking",
-      "Video viewing",
-      "Interest profiling",
-      "ByteDance data sharing"
+      "Content pre-loading at creation time before user saves or uploads",
+      "Keystroke patterns and rhythms collection",
+      "Facial and body detection in user content for effects and moderation",
+      "Spoken word analysis and audio recognition in videos",
+      "In-app browser tracking of website interactions",
+      "Joint controller with advertisers for ad measurement data",
+      "Cross-platform data sharing within ByteDance corporate group",
+      "Data stored in US, Malaysia, and Singapore servers",
+      "Inferred attributes including age-range, gender, and interests",
+      "TikTok Pixel tracking on third-party advertiser websites"
     ],
     "aliases": [
       "tiktok inc",
+      "tiktok technology limited",
+      "tiktok information technologies uk",
       "bytedance",
       "tiktok for business",
-      "tiktok pixel"
-    ]
+      "tiktok pixel",
+      "tiktok advertiser tools"
+    ],
+    "url": "https://ads.tiktok.com"
   },
   "twitter": {
     "concerns": [
-      "Interest tracking",
-      "Social graph",
-      "Tweet engagement",
-      "Now X Corp"
+      "Direct Message content collection and metadata",
+      "Biometric data collection with user consent",
+      "Third-party data sharing for AI model training including generative AI",
+      "Cross-device identity inference from email hashes and browsing behaviour",
+      "Tracking even when signed out via IP, cookies, and device identifiers",
+      "Apps installed and battery level collection",
+      "Data sharing with corporate affiliates including xAI and Grok",
+      "Ad partner data combination with on-platform activity",
+      "Cookie retention up to 13 months"
     ],
     "aliases": [
       "twitter inc",
       "x corp",
+      "x internet unlimited company",
       "twitter ads",
-      "x ads"
-    ]
+      "x ads",
+      "x.com",
+      "grok",
+      "xai"
+    ],
+    "url": "https://ads.x.com"
   },
   "pinterest": {
     "concerns": [
@@ -344,33 +410,44 @@
     ],
     "aliases": [
       "pinterest inc"
-    ]
+    ],
+    "url": "https://ads.pinterest.com"
   },
   "snap": {
     "concerns": [
-      "Location tracking",
-      "Camera/AR data",
-      "Social interactions",
-      "Spectacles data"
+      "Precise GPS location tracking via Snap Map",
+      "Camera and AR data collection including TrueDepth on iOS",
+      "My AI conversation data used for personalisation and improvement",
+      "Content analysis detecting objects, scenery, and context in photos",
+      "Device sensor data including motion, compass, and microphone",
+      "Contact book scanning and matching to platform users",
+      "Cookie and pixel tracking across third-party websites",
+      "Spectacles AR wearable data collection",
+      "Keystroke patterns via device information collection"
     ],
     "aliases": [
       "snapchat",
       "snap inc",
-      "snap pixel"
-    ]
+      "snap pixel",
+      "snap audience network"
+    ],
+    "url": "https://forbusiness.snapchat.com"
   },
   "linkedin": {
     "concerns": [
-      "Professional profile data",
-      "Job interest tracking",
-      "B2B targeting",
-      "Microsoft owned"
+      "Professional profile and employment data",
+      "Job interest and career activity tracking",
+      "B2B behavioural targeting via Insight Tag",
+      "Data sharing with parent company Microsoft for cross-product advertising",
+      "Website visitor retargeting and conversion tracking"
     ],
     "aliases": [
       "linkedin corporation",
       "linkedin ireland",
-      "linkedin insight tag"
-    ]
+      "linkedin insight tag",
+      "linkedin marketing solutions"
+    ],
+    "url": "https://business.linkedin.com/marketing-solutions"
   },
   "reddit": {
     "concerns": [
@@ -381,7 +458,8 @@
     "aliases": [
       "reddit inc",
       "reddit ads"
-    ]
+    ],
+    "url": "https://ads.reddit.com"
   },
   "quora": {
     "concerns": [
@@ -392,7 +470,8 @@
     "aliases": [
       "quora inc",
       "quora pixel"
-    ]
+    ],
+    "url": "https://www.quora.com/business"
   },
   "tradingdesk": {
     "concerns": [
@@ -402,7 +481,8 @@
     ],
     "aliases": [
       "trading desk"
-    ]
+    ],
+    "url": "https://www.thetradedesk.com"
   },
   "adform": {
     "concerns": [
@@ -412,7 +492,8 @@
     ],
     "aliases": [
       "adform a/s"
-    ]
+    ],
+    "url": "https://www.adform.com"
   },
   "smartadserver": {
     "concerns": [
@@ -423,17 +504,21 @@
     "aliases": [
       "smart adserver",
       "equativ"
-    ]
+    ],
+    "url": "https://smartadserver.com"
   },
   "sizmek": {
     "concerns": [
-      "Ad serving",
-      "DCO",
-      "Amazon owned"
+      "Ad serving and dynamic creative optimisation",
+      "Amazon-owned with data shared across Amazon Group Companies",
+      "Cross-site ad tracking and measurement",
+      "Feeds into Amazon advertising ecosystem"
     ],
     "aliases": [
-      "sizmek inc"
-    ]
+      "sizmek inc",
+      "sizmek by amazon"
+    ],
+    "url": "https://www.sizmek.com"
   },
   "flashtalking": {
     "concerns": [
@@ -444,7 +529,8 @@
     ],
     "aliases": [
       "flash talking"
-    ]
+    ],
+    "url": "https://www.flashtalking.com"
   },
   "innovid": {
     "concerns": [
@@ -454,7 +540,8 @@
     ],
     "aliases": [
       "innovid inc"
-    ]
+    ],
+    "url": "https://www.innovid.com"
   },
   "freewheel": {
     "concerns": [
@@ -465,7 +552,8 @@
     "aliases": [
       "free wheel",
       "freewheel media"
-    ]
+    ],
+    "url": "https://www.freewheel.com"
   },
   "criteo retail": {
     "concerns": [
@@ -475,7 +563,8 @@
     ],
     "aliases": [
       "criteo retail media"
-    ]
+    ],
+    "url": "https://www.criteo.com"
   },
   "citrusad": {
     "concerns": [
@@ -485,7 +574,8 @@
     ],
     "aliases": [
       "citrus ad"
-    ]
+    ],
+    "url": "https://www.citrusad.com"
   },
   "instacart ads": {
     "concerns": [
@@ -495,7 +585,8 @@
     ],
     "aliases": [
       "instacart advertising"
-    ]
+    ],
+    "url": "https://ads.instacart.com"
   },
   "walmart connect": {
     "concerns": [
@@ -506,7 +597,8 @@
     "aliases": [
       "walmart advertising",
       "walmart dsp"
-    ]
+    ],
+    "url": "https://www.walmartconnect.com"
   },
   "moat": {
     "concerns": [
@@ -517,7 +609,8 @@
     "aliases": [
       "moat analytics",
       "oracle moat"
-    ]
+    ],
+    "url": "https://moat.com"
   },
   "doubleverify": {
     "concerns": [
@@ -528,7 +621,8 @@
     "aliases": [
       "double verify",
       "dv"
-    ]
+    ],
+    "url": "https://www.doubleverify.com"
   },
   "integral ad science": {
     "concerns": [
@@ -539,7 +633,8 @@
     "aliases": [
       "ias",
       "integral ad"
-    ]
+    ],
+    "url": "https://integralads.com"
   },
   "verizon media": {
     "concerns": [
@@ -553,7 +648,8 @@
       "aol",
       "yahoo advertising",
       "yahoo dsp"
-    ]
+    ],
+    "url": "https://www.yahoo.com"
   },
   "sonobi": {
     "concerns": [
@@ -563,7 +659,8 @@
     ],
     "aliases": [
       "sonobi inc"
-    ]
+    ],
+    "url": "https://sonobi.com"
   },
   "sharethrough": {
     "concerns": [
@@ -573,7 +670,8 @@
     ],
     "aliases": [
       "share through"
-    ]
+    ],
+    "url": "https://www.sharethrough.com"
   },
   "33across": {
     "concerns": [
@@ -583,7 +681,8 @@
     ],
     "aliases": [
       "33 across"
-    ]
+    ],
+    "url": "https://www.33across.com"
   },
   "gumgum": {
     "concerns": [
@@ -593,7 +692,8 @@
     ],
     "aliases": [
       "gum gum"
-    ]
+    ],
+    "url": "https://www.gumgum.com"
   },
   "undertone": {
     "concerns": [
@@ -603,7 +703,8 @@
     ],
     "aliases": [
       "undertone networks"
-    ]
+    ],
+    "url": "https://www.undertone.com"
   },
   "vibrant": {
     "concerns": [
@@ -613,7 +714,8 @@
     ],
     "aliases": [
       "vibrant media"
-    ]
+    ],
+    "url": "https://www.vibrantmedia.com"
   },
   "yieldmo": {
     "concerns": [
@@ -623,7 +725,8 @@
     ],
     "aliases": [
       "yield mo"
-    ]
+    ],
+    "url": "https://www.yieldmo.com"
   },
   "teads": {
     "concerns": [
@@ -638,7 +741,8 @@
     "aliases": [
       "teads sa",
       "teads holding co"
-    ]
+    ],
+    "url": "https://www.teads.com"
   },
   "seedtag": {
     "concerns": [
@@ -648,7 +752,8 @@
     ],
     "aliases": [
       "seed tag"
-    ]
+    ],
+    "url": "https://www.seedtag.com"
   },
   "adcolony": {
     "concerns": [
@@ -659,7 +764,8 @@
     "aliases": [
       "ad colony",
       "digital turbine adcolony"
-    ]
+    ],
+    "url": "https://www.adcolony.com"
   },
   "unity ads": {
     "concerns": [
@@ -671,7 +777,8 @@
       "unity technologies",
       "ironsource",
       "unityads"
-    ]
+    ],
+    "url": "https://unity.com/products/unity-ads"
   },
   "applovin": {
     "concerns": [
@@ -683,7 +790,8 @@
       "app lovin",
       "applovin corporation",
       "max"
-    ]
+    ],
+    "url": "https://www.applovin.com"
   },
   "chartboost": {
     "concerns": [
@@ -693,7 +801,8 @@
     ],
     "aliases": [
       "chart boost"
-    ]
+    ],
+    "url": "https://www.chartboost.com"
   },
   "vungle": {
     "concerns": [
@@ -703,7 +812,8 @@
     ],
     "aliases": [
       "vungle inc"
-    ]
+    ],
+    "url": "https://vungle.com"
   },
   "fyber": {
     "concerns": [
@@ -714,7 +824,8 @@
     "aliases": [
       "fyber gmbh",
       "inneractive"
-    ]
+    ],
+    "url": "https://www.fyber.com"
   },
   "mintegral": {
     "concerns": [
@@ -724,7 +835,8 @@
     ],
     "aliases": [
       "mint egral"
-    ]
+    ],
+    "url": "https://www.mintegral.com"
   },
   "inmobi": {
     "concerns": [
@@ -735,7 +847,8 @@
     "aliases": [
       "in mobi",
       "inmobi pte"
-    ]
+    ],
+    "url": "https://www.inmobi.com"
   },
   "smaato": {
     "concerns": [
@@ -745,7 +858,8 @@
     ],
     "aliases": [
       "smaato inc"
-    ]
+    ],
+    "url": "https://www.smaato.com"
   },
   "verve": {
     "concerns": [
@@ -755,7 +869,8 @@
     ],
     "aliases": [
       "verve group"
-    ]
+    ],
+    "url": "https://verve.com"
   },
   "liftoff": {
     "concerns": [
@@ -765,7 +880,8 @@
     ],
     "aliases": [
       "lift off"
-    ]
+    ],
+    "url": "https://liftoff.io"
   },
   "moloco": {
     "concerns": [
@@ -775,7 +891,8 @@
     ],
     "aliases": [
       "moloco inc"
-    ]
+    ],
+    "url": "https://www.moloco.com"
   },
   "digital turbine": {
     "concerns": [
@@ -785,7 +902,8 @@
     ],
     "aliases": [
       "digitalturbine"
-    ]
+    ],
+    "url": "https://www.digitalturbine.com"
   },
   "beeswax": {
     "concerns": [
@@ -795,7 +913,8 @@
     ],
     "aliases": [
       "beeswax.io"
-    ]
+    ],
+    "url": "https://www.beeswax.com"
   },
   "stackadapt": {
     "concerns": [
@@ -805,7 +924,8 @@
     ],
     "aliases": [
       "stack adapt"
-    ]
+    ],
+    "url": "https://www.stackadapt.com"
   },
   "adroll": {
     "concerns": [
@@ -816,7 +936,8 @@
     "aliases": [
       "ad roll",
       "nextroll"
-    ]
+    ],
+    "url": "https://www.adroll.com"
   },
   "simplifi": {
     "concerns": [
@@ -827,7 +948,8 @@
     "aliases": [
       "simpli.fi",
       "simplifi holdings"
-    ]
+    ],
+    "url": "https://simpli.fi"
   },
   "jampp": {
     "concerns": [
@@ -837,7 +959,8 @@
     ],
     "aliases": [
       "jampp inc"
-    ]
+    ],
+    "url": "https://www.jampp.com"
   },
   "remerge": {
     "concerns": [
@@ -847,7 +970,8 @@
     ],
     "aliases": [
       "remerge gmbh"
-    ]
+    ],
+    "url": "https://www.remerge.io"
   },
   "yahoo ssp": {
     "concerns": [
@@ -857,7 +981,8 @@
     ],
     "aliases": [
       "yahoo exchange"
-    ]
+    ],
+    "url": "https://www.yahoo.com"
   },
   "kargo": {
     "concerns": [
@@ -867,7 +992,8 @@
     ],
     "aliases": [
       "kargo global"
-    ]
+    ],
+    "url": "https://www.kargo.com"
   },
   "adyoulike": {
     "concerns": [
@@ -877,7 +1003,8 @@
     ],
     "aliases": [
       "ad you like"
-    ]
+    ],
+    "url": "https://www.adyoulike.com"
   },
   "unruly": {
     "concerns": [
@@ -888,7 +1015,8 @@
     "aliases": [
       "unruly media",
       "nexxen unruly"
-    ]
+    ],
+    "url": "https://unruly.co"
   },
   "connatix": {
     "concerns": [
@@ -898,7 +1026,8 @@
     ],
     "aliases": [
       "connatix inc"
-    ]
+    ],
+    "url": "https://www.connatix.com"
   },
   "primis": {
     "concerns": [
@@ -908,7 +1037,8 @@
     ],
     "aliases": [
       "primis ltd"
-    ]
+    ],
+    "url": "https://www.primis.tech"
   },
   "ex.co": {
     "concerns": [
@@ -919,7 +1049,8 @@
     "aliases": [
       "exco",
       "playbuzz"
-    ]
+    ],
+    "url": "https://ex.co"
   },
   "dailymotion": {
     "concerns": [
@@ -930,7 +1061,8 @@
     "aliases": [
       "daily motion",
       "dm"
-    ]
+    ],
+    "url": "https://www.dailymotion.com"
   },
   "impact": {
     "concerns": [
@@ -941,7 +1073,8 @@
     "aliases": [
       "impact.com",
       "impact radius"
-    ]
+    ],
+    "url": "https://impact.com"
   },
   "partnerize": {
     "concerns": [
@@ -951,7 +1084,8 @@
     ],
     "aliases": [
       "partnerize inc"
-    ]
+    ],
+    "url": "https://partnerize.com"
   },
   "awin": {
     "concerns": [
@@ -963,7 +1097,8 @@
       "awin ag",
       "affiliate window",
       "zanox"
-    ]
+    ],
+    "url": "https://www.awin.com"
   },
   "cj affiliate": {
     "concerns": [
@@ -974,7 +1109,8 @@
     "aliases": [
       "commission junction",
       "cj"
-    ]
+    ],
+    "url": "https://www.cj.com"
   },
   "rakuten advertising": {
     "concerns": [
@@ -985,7 +1121,8 @@
     "aliases": [
       "rakuten marketing",
       "linkshare"
-    ]
+    ],
+    "url": "https://rakutenadvertising.com"
   },
   "shareasale": {
     "concerns": [
@@ -995,7 +1132,8 @@
     ],
     "aliases": [
       "share a sale"
-    ]
+    ],
+    "url": "https://www.shareasale.com"
   },
   "skimlinks": {
     "concerns": [
@@ -1010,7 +1148,8 @@
       "skimbit",
       "skimbit ltd",
       "taboola owned"
-    ]
+    ],
+    "url": "https://skimlinks.com"
   },
   "sovrn commerce": {
     "concerns": [
@@ -1021,7 +1160,8 @@
     "aliases": [
       "viglink",
       "sovrn//commerce"
-    ]
+    ],
+    "url": "https://www.sovrn.com"
   },
   "button": {
     "concerns": [
@@ -1032,7 +1172,8 @@
     "aliases": [
       "button inc",
       "usebutton"
-    ]
+    ],
+    "url": "https://www.usebutton.com"
   },
   "pepperjam": {
     "concerns": [
@@ -1043,7 +1184,8 @@
     "aliases": [
       "pepper jam",
       "pepperjam network"
-    ]
+    ],
+    "url": "https://www.pepperjam.com"
   },
   "roku": {
     "concerns": [
@@ -1054,7 +1196,8 @@
     "aliases": [
       "roku inc",
       "roku ads"
-    ]
+    ],
+    "url": "https://advertising.roku.com"
   },
   "samsung ads": {
     "concerns": [
@@ -1064,7 +1207,8 @@
     ],
     "aliases": [
       "samsung advertising"
-    ]
+    ],
+    "url": "https://www.samsung.com/us/business/samsung-ads/"
   },
   "vizio": {
     "concerns": [
@@ -1075,7 +1219,8 @@
     "aliases": [
       "vizio inscape",
       "vizio ads"
-    ]
+    ],
+    "url": "https://www.vizio.com"
   },
   "lg ads": {
     "concerns": [
@@ -1086,7 +1231,8 @@
     "aliases": [
       "lg advertising",
       "alphonso lg"
-    ]
+    ],
+    "url": "https://www.lgads.tv"
   },
   "alphonso": {
     "concerns": [
@@ -1096,7 +1242,8 @@
     ],
     "aliases": [
       "alphonso inc"
-    ]
+    ],
+    "url": "https://www.alphonso.tv"
   },
   "samba tv": {
     "concerns": [
@@ -1107,7 +1254,8 @@
     "aliases": [
       "sambatv",
       "samba tv inc"
-    ]
+    ],
+    "url": "https://www.samba.tv"
   },
   "tvision": {
     "concerns": [
@@ -1117,7 +1265,8 @@
     ],
     "aliases": [
       "tvision insights"
-    ]
+    ],
+    "url": "https://www.tvisioninsights.com"
   },
   "tubi": {
     "concerns": [
@@ -1128,7 +1277,8 @@
     "aliases": [
       "tubi tv",
       "tubi inc"
-    ]
+    ],
+    "url": "https://www.tubi.tv"
   },
   "pluto tv": {
     "concerns": [
@@ -1139,7 +1289,8 @@
     "aliases": [
       "plutotv",
       "pluto"
-    ]
+    ],
+    "url": "https://www.plutotv.com"
   },
   "xumo": {
     "concerns": [
@@ -1149,7 +1300,8 @@
     ],
     "aliases": [
       "xumo play"
-    ]
+    ],
+    "url": "https://www.xumo.com"
   },
   "vistar media": {
     "concerns": [
@@ -1159,7 +1311,8 @@
     ],
     "aliases": [
       "vistarmedia"
-    ]
+    ],
+    "url": "https://www.vistarmedia.com"
   },
   "hivestack": {
     "concerns": [
@@ -1169,7 +1322,8 @@
     ],
     "aliases": [
       "hive stack"
-    ]
+    ],
+    "url": "https://www.hivestack.com"
   },
   "place exchange": {
     "concerns": [
@@ -1179,7 +1333,8 @@
     ],
     "aliases": [
       "placeexchange"
-    ]
+    ],
+    "url": "https://www.placeexchange.com"
   },
   "broadsign": {
     "concerns": [
@@ -1189,7 +1344,8 @@
     ],
     "aliases": [
       "broad sign"
-    ]
+    ],
+    "url": "https://broadsign.com"
   },
   "freestar": {
     "concerns": [
@@ -1201,7 +1357,8 @@
     "aliases": [
       "freestar inc",
       "free star"
-    ]
+    ],
+    "url": "https://freestar.com"
   },
   "captify": {
     "concerns": [
@@ -1213,7 +1370,8 @@
     "aliases": [
       "captify technologies",
       "captifytechnologies"
-    ]
+    ],
+    "url": "https://www.captify.us"
   },
   "passendo": {
     "concerns": [
@@ -1223,7 +1381,8 @@
     ],
     "aliases": [
       "passendo aps"
-    ]
+    ],
+    "url": "https://www.passendo.com"
   },
   "openweb": {
     "concerns": [
@@ -1235,7 +1394,8 @@
     "aliases": [
       "open web",
       "openweb technologies"
-    ]
+    ],
+    "url": "https://www.openweb.com"
   },
   "connexity": {
     "concerns": [
@@ -1247,7 +1407,8 @@
     "aliases": [
       "connexity inc",
       "shopzilla"
-    ]
+    ],
+    "url": "https://connexity.com"
   },
   "rtb house": {
     "concerns": [
@@ -1267,7 +1428,8 @@
       "adlook",
       "adlook limited",
       "promotons"
-    ]
+    ],
+    "url": "https://www.rtbhouse.com"
   },
   "nexxen": {
     "concerns": [
@@ -1286,7 +1448,8 @@
       "tremor international",
       "unruly group",
       "spearad"
-    ]
+    ],
+    "url": "https://www.nexxen.com"
   },
   "bidtellect": {
     "concerns": [
@@ -1296,7 +1459,8 @@
     ],
     "aliases": [
       "bidtellect inc"
-    ]
+    ],
+    "url": "https://www.bidtellect.com"
   },
   "bidswitch": {
     "concerns": [
@@ -1307,7 +1471,8 @@
     "aliases": [
       "bidswitch gmbh",
       "iponweb"
-    ]
+    ],
+    "url": "https://www.bidswitch.com"
   },
   "deepintent": {
     "concerns": [
@@ -1317,7 +1482,8 @@
     ],
     "aliases": [
       "deep intent"
-    ]
+    ],
+    "url": "https://www.deepintent.com"
   },
   "media.net": {
     "concerns": [
@@ -1328,7 +1494,8 @@
     "aliases": [
       "medianet",
       "media.net advertising"
-    ]
+    ],
+    "url": "https://www.media.net"
   },
   "pulsepoint": {
     "concerns": [
@@ -1339,7 +1506,8 @@
     "aliases": [
       "pulsepoint inc",
       "contextweb"
-    ]
+    ],
+    "url": "https://www.pulsepoint.com"
   },
   "showheroes": {
     "concerns": [
@@ -1350,7 +1518,8 @@
     "aliases": [
       "showheroes group",
       "showheroes se"
-    ]
+    ],
+    "url": "https://showheroes.com"
   },
   "stroeer": {
     "concerns": [
@@ -1362,7 +1531,8 @@
       "str\u00f6er",
       "stroeer se",
       "str\u00f6er se & co kgaa"
-    ]
+    ],
+    "url": "https://www.stroeer.com"
   },
   "improve digital": {
     "concerns": [
@@ -1373,7 +1543,8 @@
     "aliases": [
       "improvedigital",
       "improve digital bv"
-    ]
+    ],
+    "url": "https://www.improvedigital.com"
   },
   "cadent": {
     "concerns": [
@@ -1384,7 +1555,8 @@
     "aliases": [
       "cadent llc",
       "one platform"
-    ]
+    ],
+    "url": "https://www.cadent.tv"
   },
   "acuityads": {
     "concerns": [
@@ -1396,7 +1568,8 @@
       "acuity ads",
       "illumin",
       "acuityads holdings"
-    ]
+    ],
+    "url": "https://illumin.com"
   },
   "readpeak": {
     "concerns": [
@@ -1406,7 +1579,8 @@
     ],
     "aliases": [
       "readpeak oy"
-    ]
+    ],
+    "url": "https://www.readpeak.com"
   },
   "geoedge": {
     "concerns": [
@@ -1416,7 +1590,8 @@
     ],
     "aliases": [
       "geo edge"
-    ]
+    ],
+    "url": "https://www.geoedge.com"
   },
   "datadome": {
     "concerns": [
@@ -1426,7 +1601,8 @@
     ],
     "aliases": [
       "datadome sas"
-    ]
+    ],
+    "url": "https://datadome.co"
   },
   "octave audio": {
     "concerns": [
@@ -1443,6 +1619,19 @@
       "octave audio ltd",
       "octaveaudio.com",
       "octaveip.com"
-    ]
+    ],
+    "url": "https://www.octaveaudio.com"
+  },
+  "youview": {
+    "concerns": [
+      "UK connected TV platform",
+      "Device-level ad targeting",
+      "BT/TalkTalk partnership",
+      "Cross-platform viewing data"
+    ],
+    "aliases": [
+      "youview tv"
+    ],
+    "url": "https://www.youview.com"
   }
 }

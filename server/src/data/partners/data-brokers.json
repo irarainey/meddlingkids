@@ -10,7 +10,8 @@
       "118 data resource limited",
       "118 data resource ltd",
       "118 information"
-    ]
+    ],
+    "url": "https://www.118dataresource.com"
   },
   "liveramp": {
     "concerns": [
@@ -30,7 +31,8 @@
       "liveramp uk",
       "liveramp uk limited",
       "liveramp group"
-    ]
+    ],
+    "url": "https://liveramp.com"
   },
   "acxiom": {
     "concerns": [
@@ -43,7 +45,8 @@
       "acxiom llc",
       "acxiom corporation",
       "acxiom marketing"
-    ]
+    ],
+    "url": "https://www.acxiom.com"
   },
   "oracle data cloud": {
     "concerns": [
@@ -60,7 +63,8 @@
       "datalogix",
       "oracle advertising",
       "grapeshot"
-    ]
+    ],
+    "url": "https://www.oracle.com/cx/advertising/"
   },
   "experian": {
     "concerns": [
@@ -77,7 +81,8 @@
       "experian marketing services",
       "experian audience",
       "experian mosaic"
-    ]
+    ],
+    "url": "https://www.experian.com"
   },
   "epsilon": {
     "concerns": [
@@ -91,7 +96,8 @@
       "epsilon digital",
       "conversant",
       "publicis epsilon"
-    ]
+    ],
+    "url": "https://www.epsilon.com"
   },
   "transunion": {
     "concerns": [
@@ -105,7 +111,8 @@
       "transunion marketing",
       "signal digital",
       "neustar"
-    ]
+    ],
+    "url": "https://www.transunion.com"
   },
   "equifax": {
     "concerns": [
@@ -118,7 +125,8 @@
       "equifax inc",
       "equifax marketing",
       "ixi services"
-    ]
+    ],
+    "url": "https://www.equifax.com"
   },
   "lotame": {
     "concerns": [
@@ -140,7 +148,8 @@
       "lotame inc",
       "epsilon lotame",
       "lotame spherical"
-    ]
+    ],
+    "url": "https://www.lotame.com"
   },
   "salesforce dmp": {
     "concerns": [
@@ -153,7 +162,8 @@
       "krux",
       "salesforce audience studio",
       "salesforce cdp"
-    ]
+    ],
+    "url": "https://www.salesforce.com"
   },
   "adobe audience manager": {
     "concerns": [
@@ -164,7 +174,8 @@
     "aliases": [
       "adobe aam",
       "audience manager"
-    ]
+    ],
+    "url": "https://business.adobe.com/products/audience-manager/adobe-audience-manager.html"
   },
   "nielsen": {
     "concerns": [
@@ -178,7 +189,8 @@
       "nielsen digital",
       "exelate",
       "nielsen dmp"
-    ]
+    ],
+    "url": "https://www.nielsen.com"
   },
   "comscore": {
     "concerns": [
@@ -190,7 +202,8 @@
     "aliases": [
       "comscore inc",
       "comscore networks"
-    ]
+    ],
+    "url": "https://www.comscore.com"
   },
   "lexisnexis": {
     "concerns": [
@@ -204,7 +217,8 @@
       "relx",
       "lexisnexis risk",
       "accurint"
-    ]
+    ],
+    "url": "https://www.lexisnexis.com"
   },
   "thomson reuters": {
     "concerns": [
@@ -215,7 +229,8 @@
     "aliases": [
       "thomson reuters risk",
       "clear investigation"
-    ]
+    ],
+    "url": "https://www.thomsonreuters.com"
   },
   "intelius": {
     "concerns": [
@@ -226,7 +241,8 @@
     "aliases": [
       "intelius inc",
       "peopleconnect"
-    ]
+    ],
+    "url": "https://www.intelius.com"
   },
   "spokeo": {
     "concerns": [
@@ -236,7 +252,8 @@
     ],
     "aliases": [
       "spokeo inc"
-    ]
+    ],
+    "url": "https://www.spokeo.com"
   },
   "whitepages": {
     "concerns": [
@@ -247,7 +264,8 @@
     "aliases": [
       "whitepages inc",
       "whitepages pro"
-    ]
+    ],
+    "url": "https://www.whitepages.com"
   },
   "beenverified": {
     "concerns": [
@@ -257,7 +275,8 @@
     ],
     "aliases": [
       "been verified"
-    ]
+    ],
+    "url": "https://www.beenverified.com"
   },
   "truthfinder": {
     "concerns": [
@@ -267,7 +286,8 @@
     ],
     "aliases": [
       "truth finder"
-    ]
+    ],
+    "url": "https://www.truthfinder.com"
   },
   "instantcheckmate": {
     "concerns": [
@@ -277,7 +297,8 @@
     ],
     "aliases": [
       "instant checkmate"
-    ]
+    ],
+    "url": "https://www.instantcheckmate.com"
   },
   "safegraph": {
     "concerns": [
@@ -288,7 +309,8 @@
     ],
     "aliases": [
       "safe graph"
-    ]
+    ],
+    "url": "https://www.safegraph.com"
   },
   "foursquare": {
     "concerns": [
@@ -300,7 +322,8 @@
     "aliases": [
       "foursquare labs",
       "factual"
-    ]
+    ],
+    "url": "https://foursquare.com"
   },
   "placer.ai": {
     "concerns": [
@@ -311,7 +334,8 @@
     "aliases": [
       "placer ai",
       "placer labs"
-    ]
+    ],
+    "url": "https://www.placer.ai"
   },
   "gravy analytics": {
     "concerns": [
@@ -321,7 +345,8 @@
     ],
     "aliases": [
       "gravy"
-    ]
+    ],
+    "url": "https://gravyanalytics.com"
   },
   "cuebiq": {
     "concerns": [
@@ -331,7 +356,8 @@
     ],
     "aliases": [
       "cuebiq inc"
-    ]
+    ],
+    "url": "https://www.cuebiq.com"
   },
   "x-mode": {
     "concerns": [
@@ -343,7 +369,8 @@
       "xmode",
       "x mode social",
       "outlogic"
-    ]
+    ],
+    "url": "https://www.outlogic.io"
   },
   "venntel": {
     "concerns": [
@@ -353,7 +380,8 @@
     ],
     "aliases": [
       "venntel inc"
-    ]
+    ],
+    "url": "https://www.venntel.com"
   },
   "iqvia": {
     "concerns": [
@@ -366,7 +394,8 @@
       "ims health",
       "quintiles",
       "iqvia holdings"
-    ]
+    ],
+    "url": "https://www.iqvia.com"
   },
   "lexishealth": {
     "concerns": [
@@ -376,7 +405,8 @@
     ],
     "aliases": [
       "lexis health"
-    ]
+    ],
+    "url": "https://www.lexishealth.com"
   },
   "verisk": {
     "concerns": [
@@ -388,7 +418,8 @@
     "aliases": [
       "verisk analytics",
       "jornaya"
-    ]
+    ],
+    "url": "https://www.verisk.com"
   },
   "corelogic": {
     "concerns": [
@@ -398,7 +429,8 @@
     ],
     "aliases": [
       "core logic"
-    ]
+    ],
+    "url": "https://www.corelogic.com"
   },
   "moodys": {
     "concerns": [
@@ -409,7 +441,8 @@
     "aliases": [
       "moodys analytics",
       "moody's"
-    ]
+    ],
+    "url": "https://www.moodys.com"
   },
   "catalina": {
     "concerns": [
@@ -419,7 +452,8 @@
     ],
     "aliases": [
       "catalina marketing"
-    ]
+    ],
+    "url": "https://www.catalina.com"
   },
   "ibotta": {
     "concerns": [
@@ -429,7 +463,8 @@
     ],
     "aliases": [
       "ibotta inc"
-    ]
+    ],
+    "url": "https://home.ibotta.com"
   },
   "ncs": {
     "concerns": [
@@ -440,7 +475,8 @@
     "aliases": [
       "nielsen catalina",
       "ncs solutions"
-    ]
+    ],
+    "url": "https://www.ncsolutions.com"
   },
   "iri": {
     "concerns": [
@@ -451,7 +487,8 @@
     "aliases": [
       "iri worldwide",
       "information resources"
-    ]
+    ],
+    "url": "https://www.iriworldwide.com"
   },
   "numerator": {
     "concerns": [
@@ -462,7 +499,8 @@
     "aliases": [
       "numerator insights",
       "infoscout"
-    ]
+    ],
+    "url": "https://www.numerator.com"
   },
   "zoominfo": {
     "concerns": [
@@ -473,7 +511,8 @@
     "aliases": [
       "zoom info",
       "zoominfo technologies"
-    ]
+    ],
+    "url": "https://www.zoominfo.com"
   },
   "clearbit": {
     "concerns": [
@@ -483,7 +522,8 @@
     ],
     "aliases": [
       "clearbit inc"
-    ]
+    ],
+    "url": "https://clearbit.com"
   },
   "fullcontact": {
     "concerns": [
@@ -493,7 +533,8 @@
     ],
     "aliases": [
       "full contact"
-    ]
+    ],
+    "url": "https://www.fullcontact.com"
   },
   "pipl": {
     "concerns": [
@@ -503,7 +544,8 @@
     ],
     "aliases": [
       "pipl inc"
-    ]
+    ],
+    "url": "https://pipl.com"
   },
   "hunter.io": {
     "concerns": [
@@ -514,7 +556,8 @@
     "aliases": [
       "hunter",
       "email hunter"
-    ]
+    ],
+    "url": "https://hunter.io"
   },
   "lusha": {
     "concerns": [
@@ -524,7 +567,8 @@
     ],
     "aliases": [
       "lusha systems"
-    ]
+    ],
+    "url": "https://www.lusha.com"
   },
   "apollo.io": {
     "concerns": [
@@ -534,7 +578,8 @@
     ],
     "aliases": [
       "apollo"
-    ]
+    ],
+    "url": "https://www.apollo.io"
   },
   "axiom": {
     "concerns": [
@@ -544,7 +589,8 @@
     ],
     "aliases": [
       "axiom data"
-    ]
+    ],
+    "url": "https://www.axiom.ai"
   },
   "eyeota": {
     "concerns": [
@@ -564,7 +610,8 @@
       "eyeota pte ltd",
       "eyeota marketplace",
       "dun & bradstreet eyeota"
-    ]
+    ],
+    "url": "https://www.eyeota.com"
   },
   "bombora": {
     "concerns": [
@@ -582,7 +629,8 @@
       "bombora inc",
       "netfactor",
       "bombora data co-op"
-    ]
+    ],
+    "url": "https://bombora.com"
   },
   "peekyou": {
     "concerns": [
@@ -593,7 +641,8 @@
     "aliases": [
       "peek you",
       "peekyou inc"
-    ]
+    ],
+    "url": "https://www.peekyou.com"
   },
   "towerdata": {
     "concerns": [
@@ -604,7 +653,8 @@
     "aliases": [
       "tower data",
       "rapleaf"
-    ]
+    ],
+    "url": "https://www.towerdata.com"
   },
   "dataaxle": {
     "concerns": [
@@ -616,7 +666,8 @@
       "data axle",
       "infousa",
       "databaseusa"
-    ]
+    ],
+    "url": "https://www.data-axle.com"
   },
   "exact data": {
     "concerns": [
@@ -627,7 +678,8 @@
     "aliases": [
       "exactdata",
       "exact data llc"
-    ]
+    ],
+    "url": "https://www.exactdata.com"
   },
   "peoplesmart": {
     "concerns": [
@@ -637,7 +689,8 @@
     ],
     "aliases": [
       "people smart"
-    ]
+    ],
+    "url": "https://www.peoplesmart.com"
   },
   "usdate": {
     "concerns": [
@@ -648,7 +701,8 @@
     "aliases": [
       "us date",
       "usdate llc"
-    ]
+    ],
+    "url": ""
   },
   "melissa data": {
     "concerns": [
@@ -659,7 +713,8 @@
     "aliases": [
       "melissa",
       "melissadata"
-    ]
+    ],
+    "url": "https://www.melissa.com"
   },
   "dun & bradstreet": {
     "concerns": [
@@ -672,7 +727,8 @@
       "d&b",
       "dun and bradstreet",
       "hoovers"
-    ]
+    ],
+    "url": "https://www.dnb.com"
   },
   "pitney bowes": {
     "concerns": [
@@ -683,7 +739,8 @@
     "aliases": [
       "pitneybowes",
       "pbdata"
-    ]
+    ],
+    "url": "https://www.pitneybowes.com"
   },
   "talenthouse": {
     "concerns": [
@@ -692,7 +749,8 @@
     ],
     "aliases": [
       "talent house"
-    ]
+    ],
+    "url": "https://www.talenthouse.com"
   },
   "callcredit": {
     "concerns": [
@@ -703,7 +761,8 @@
     "aliases": [
       "call credit",
       "transunion uk"
-    ]
+    ],
+    "url": "https://www.transunion.co.uk"
   },
   "crif": {
     "concerns": [
@@ -714,7 +773,8 @@
     "aliases": [
       "crif spa",
       "crif buergel"
-    ]
+    ],
+    "url": "https://www.crif.com"
   },
   "creditreform": {
     "concerns": [
@@ -724,7 +784,8 @@
     ],
     "aliases": [
       "credit reform"
-    ]
+    ],
+    "url": "https://www.creditreform.com"
   },
   "schufa": {
     "concerns": [
@@ -734,7 +795,8 @@
     ],
     "aliases": [
       "schufa holding"
-    ]
+    ],
+    "url": "https://www.schufa.de"
   },
   "experian uk": {
     "concerns": [
@@ -747,7 +809,8 @@
     "aliases": [
       "experian plc uk",
       "experian ltd"
-    ]
+    ],
+    "url": "https://www.experian.co.uk"
   },
   "equifax uk": {
     "concerns": [
@@ -757,7 +820,8 @@
     ],
     "aliases": [
       "equifax ltd"
-    ]
+    ],
+    "url": "https://www.equifax.co.uk"
   },
   "qas": {
     "concerns": [
@@ -767,7 +831,8 @@
     ],
     "aliases": [
       "experian qas"
-    ]
+    ],
+    "url": "https://www.qas.com"
   },
   "acuity": {
     "concerns": [
@@ -777,7 +842,8 @@
     ],
     "aliases": [
       "acuity best"
-    ]
+    ],
+    "url": "https://www.acuityads.com"
   },
   "l2 political": {
     "concerns": [
@@ -788,7 +854,8 @@
     "aliases": [
       "l2 inc",
       "l2 data"
-    ]
+    ],
+    "url": "https://l2-data.com"
   },
   "aristotle": {
     "concerns": [
@@ -799,7 +866,8 @@
     "aliases": [
       "aristotle inc",
       "aristotle political"
-    ]
+    ],
+    "url": "https://aristotle.com"
   },
   "targetsmart": {
     "concerns": [
@@ -809,7 +877,8 @@
     ],
     "aliases": [
       "target smart"
-    ]
+    ],
+    "url": "https://www.targetsmart.com"
   },
   "i360": {
     "concerns": [
@@ -819,7 +888,8 @@
     ],
     "aliases": [
       "i-360"
-    ]
+    ],
+    "url": "https://www.i-360.com"
   },
   "cambridge analytica": {
     "concerns": [
@@ -829,7 +899,8 @@
     ],
     "aliases": [
       "scl group"
-    ]
+    ],
+    "url": "https://web.archive.org/web/2018/https://cambridgeanalytica.org/"
   },
   "data trust": {
     "concerns": [
@@ -840,7 +911,8 @@
     "aliases": [
       "datatrust",
       "data trust llc"
-    ]
+    ],
+    "url": "https://www.data-trust.com"
   },
   "carfax": {
     "concerns": [
@@ -851,7 +923,8 @@
     "aliases": [
       "car fax",
       "carfax inc"
-    ]
+    ],
+    "url": "https://www.carfax.com"
   },
   "polk": {
     "concerns": [
@@ -863,7 +936,8 @@
       "r.l. polk",
       "rl polk",
       "ihs polk"
-    ]
+    ],
+    "url": "https://www.polkauto.com"
   },
   "jd power": {
     "concerns": [
@@ -874,7 +948,8 @@
     "aliases": [
       "j.d. power",
       "jdpower"
-    ]
+    ],
+    "url": "https://www.jdpower.com"
   },
   "autobytel": {
     "concerns": [
@@ -884,7 +959,8 @@
     ],
     "aliases": [
       "auto bytel"
-    ]
+    ],
+    "url": "https://www.autoweb.com"
   },
   "symphony health": {
     "concerns": [
@@ -894,7 +970,8 @@
     ],
     "aliases": [
       "symphonyhealth"
-    ]
+    ],
+    "url": "https://symphonyhealth.prahs.com"
   },
   "healthverity": {
     "concerns": [
@@ -904,7 +981,8 @@
     ],
     "aliases": [
       "health verity"
-    ]
+    ],
+    "url": "https://healthverity.com"
   },
   "komodo health": {
     "concerns": [
@@ -914,7 +992,8 @@
     ],
     "aliases": [
       "komodohealth"
-    ]
+    ],
+    "url": "https://www.komodohealth.com"
   },
   "definitive healthcare": {
     "concerns": [
@@ -924,7 +1003,8 @@
     ],
     "aliases": [
       "definitivehc"
-    ]
+    ],
+    "url": "https://www.definitivehc.com"
   },
   "plaid": {
     "concerns": [
@@ -935,7 +1015,8 @@
     "aliases": [
       "plaid inc",
       "plaid technologies"
-    ]
+    ],
+    "url": "https://plaid.com"
   },
   "yodlee": {
     "concerns": [
@@ -945,7 +1026,8 @@
     ],
     "aliases": [
       "envestnet yodlee"
-    ]
+    ],
+    "url": "https://www.yodlee.com"
   },
   "mx": {
     "concerns": [
@@ -955,7 +1037,8 @@
     ],
     "aliases": [
       "mx technologies"
-    ]
+    ],
+    "url": "https://www.mx.com"
   },
   "finicity": {
     "concerns": [
@@ -965,7 +1048,8 @@
     ],
     "aliases": [
       "finicity corporation"
-    ]
+    ],
+    "url": "https://www.finicity.com"
   },
   "argus information": {
     "concerns": [
@@ -975,7 +1059,8 @@
     ],
     "aliases": [
       "argus information and advisory"
-    ]
+    ],
+    "url": "https://www.argusinformation.com"
   },
   "zillow": {
     "concerns": [
@@ -986,7 +1071,8 @@
     "aliases": [
       "zillow group",
       "trulia"
-    ]
+    ],
+    "url": "https://www.zillow.com"
   },
   "redfin": {
     "concerns": [
@@ -996,7 +1082,8 @@
     ],
     "aliases": [
       "redfin corporation"
-    ]
+    ],
+    "url": "https://www.redfin.com"
   },
   "realtor.com": {
     "concerns": [
@@ -1006,7 +1093,8 @@
     ],
     "aliases": [
       "move inc"
-    ]
+    ],
+    "url": "https://www.realtor.com"
   },
   "costar": {
     "concerns": [
@@ -1016,7 +1104,8 @@
     ],
     "aliases": [
       "costar group"
-    ]
+    ],
+    "url": "https://www.costargroup.com"
   },
   "attom data": {
     "concerns": [
@@ -1027,7 +1116,8 @@
     "aliases": [
       "attom",
       "attomdata"
-    ]
+    ],
+    "url": "https://www.attomdata.com"
   },
   "infosum": {
     "concerns": [
@@ -1041,7 +1131,8 @@
     "aliases": [
       "info sum",
       "infosum ltd"
-    ]
+    ],
+    "url": "https://www.infosum.com"
   },
   "cognism": {
     "concerns": [
@@ -1053,7 +1144,8 @@
     "aliases": [
       "cognism limited",
       "cognism ltd"
-    ]
+    ],
+    "url": "https://www.cognism.com"
   },
   "market location": {
     "concerns": [
@@ -1064,7 +1156,8 @@
     "aliases": [
       "marketlocation",
       "market location ltd"
-    ]
+    ],
+    "url": "https://www.marketlocation.com"
   },
   "upland software": {
     "concerns": [
@@ -1076,7 +1169,8 @@
     "aliases": [
       "upland",
       "upland software inc"
-    ]
+    ],
+    "url": "https://uplandsoftware.com"
   },
   "digital element": {
     "concerns": [
@@ -1089,7 +1183,8 @@
       "digitalelement",
       "digital element inc",
       "digital envoy"
-    ]
+    ],
+    "url": "https://www.digitalelement.com"
   },
   "navegg": {
     "concerns": [
@@ -1100,7 +1195,8 @@
     ],
     "aliases": [
       "navegg sa"
-    ]
+    ],
+    "url": "https://www.navegg.com"
   },
   "onaudience": {
     "concerns": [
@@ -1112,7 +1208,8 @@
     "aliases": [
       "on audience",
       "onaudience.com"
-    ]
+    ],
+    "url": "https://www.onaudience.com"
   },
   "caci": {
     "concerns": [
@@ -1127,6 +1224,123 @@
       "caci ltd",
       "caci uk",
       "acorn classification"
-    ]
+    ],
+    "url": "https://www.caci.co.uk"
+  },
+  "mediarithmics": {
+    "concerns": [
+      "Customer Data Platform",
+      "Audience segmentation",
+      "Data management platform",
+      "Third-party data integration"
+    ],
+    "aliases": [
+      "mediarithmics sas"
+    ],
+    "url": "https://www.mediarithmics.com"
+  },
+  "nectar360": {
+    "concerns": [
+      "Loyalty card data monetization",
+      "Shopping behaviour profiling",
+      "Retailer data partnerships",
+      "Sainsbury's owned"
+    ],
+    "aliases": [
+      "nectar 360",
+      "nectar data"
+    ],
+    "url": "https://www.nectar360.co.uk"
+  },
+  "cifas": {
+    "concerns": [
+      "Cross-industry fraud prevention database",
+      "Personal data shared between member organisations",
+      "Fraud markers retained for up to 6 years",
+      "Identity verification data sharing"
+    ],
+    "aliases": [
+      "cifas fraud prevention"
+    ],
+    "url": "https://www.cifas.org.uk"
+  },
+  "dunnhumby": {
+    "concerns": [
+      "Consumer data science and profiling",
+      "Retail purchase data monetization",
+      "Audience segmentation from shopping behaviour",
+      "Tesco owned"
+    ],
+    "aliases": [
+      "dunnhumby ltd",
+      "dunnhumby limited"
+    ],
+    "url": "https://www.dunnhumby.com"
+  },
+  "mastercard": {
+    "concerns": [
+      "Payment data insights and monetization",
+      "Consumer spending behaviour profiling",
+      "Aggregated transaction data for advertising",
+      "Cross-merchant purchase tracking"
+    ],
+    "aliases": [
+      "mastercard incorporated",
+      "mastercard data & services"
+    ],
+    "url": "https://www.mastercard.com"
+  },
+  "ordnance survey": {
+    "concerns": [
+      "Address and location data provision",
+      "Geospatial data for consumer profiling",
+      "Address verification services",
+      "Property-level data enrichment"
+    ],
+    "aliases": [
+      "ordnance survey limited",
+      "os data"
+    ],
+    "url": "https://www.ordnancesurvey.co.uk"
+  },
+  "royal mail": {
+    "concerns": [
+      "Address verification and postal data",
+      "Postcode Address File data provision",
+      "Address data enrichment services",
+      "Royal Mail Data Services"
+    ],
+    "aliases": [
+      "royal mail group",
+      "royal mail data services"
+    ],
+    "url": "https://www.royalmail.com"
+  },
+  "synectics solutions": {
+    "concerns": [
+      "Cross-industry fraud data matching",
+      "Joint data controller with partner organisations",
+      "Shared fraud prevention databases",
+      "Identity verification and risk assessment"
+    ],
+    "aliases": [
+      "synectics solutions limited",
+      "synectics"
+    ],
+    "url": "https://www.synectics-solutions.com"
+  },
+  "twentyci": {
+    "concerns": [
+      "Home mover data tracking",
+      "Property transaction data monetization",
+      "Lifestyle and life-event profiling",
+      "Consumer data enrichment from property records"
+    ],
+    "aliases": [
+      "twentyci limited",
+      "twenty ci",
+      "20ci"
+    ],
+    "url": "https://www.twentyci.co.uk"
   }
 }

@@ -1,15 +1,18 @@
 {
   "firebase": {
     "concerns": [
-      "Google analytics for apps",
-      "Crash reporting",
-      "Event tracking",
-      "User properties"
+      "Google analytics for apps with full event and user property tracking",
+      "Crash reporting with device and user context",
+      "Remote config enabling server-controlled app behaviour",
+      "Cloud Messaging for push notification targeting",
+      "Data shared with Google for cross-product analytics and advertising"
     ],
     "aliases": [
       "firebase analytics",
-      "google firebase"
-    ]
+      "google firebase",
+      "firebase sdk"
+    ],
+    "url": "https://firebase.google.com"
   },
   "flurry": {
     "concerns": [
@@ -20,7 +23,8 @@
     "aliases": [
       "flurry analytics",
       "yahoo flurry"
-    ]
+    ],
+    "url": "https://www.flurry.com"
   },
   "localytics": {
     "concerns": [
@@ -31,7 +35,8 @@
     ],
     "aliases": [
       "localytics inc"
-    ]
+    ],
+    "url": "https://www.localytics.com"
   },
   "leanplum": {
     "concerns": [
@@ -42,7 +47,8 @@
     ],
     "aliases": [
       "lean plum"
-    ]
+    ],
+    "url": "https://www.leanplum.com"
   },
   "clevertap": {
     "concerns": [
@@ -53,7 +59,8 @@
     "aliases": [
       "clever tap",
       "clevertap inc"
-    ]
+    ],
+    "url": "https://clevertap.com"
   },
   "braze sdk": {
     "concerns": [
@@ -63,7 +70,8 @@
     ],
     "aliases": [
       "appboy sdk"
-    ]
+    ],
+    "url": "https://www.braze.com"
   },
   "airbridge": {
     "concerns": [
@@ -73,7 +81,8 @@
     ],
     "aliases": [
       "air bridge"
-    ]
+    ],
+    "url": "https://www.airbridge.io"
   },
   "tune": {
     "concerns": [
@@ -84,40 +93,48 @@
     "aliases": [
       "tune inc",
       "hasoffers"
-    ]
+    ],
+    "url": "https://www.tune.com"
   },
   "admob": {
     "concerns": [
-      "Google mobile ads",
-      "Behavioral targeting",
-      "Mediation"
+      "Google mobile advertising with behavioural targeting",
+      "Interest-based ad personalisation across apps",
+      "Mediation connecting multiple ad networks",
+      "Advertising ID collection for cross-app tracking",
+      "Data flows to Google advertising ecosystem"
     ],
     "aliases": [
       "google admob",
       "admob sdk"
-    ]
+    ],
+    "url": "https://admob.google.com"
   },
   "facebook audience network": {
     "concerns": [
-      "Meta mobile ads",
-      "Cross-app tracking",
-      "Behavioral targeting"
+      "Meta mobile ads served across third-party apps",
+      "Cross-app tracking even for non-Facebook users",
+      "Behavioural targeting using Meta profile data and off-platform activity",
+      "Device and usage data collection for ad personalisation"
     ],
     "aliases": [
       "fan",
       "fb audience network",
       "meta audience network"
-    ]
+    ],
+    "url": "https://www.facebook.com/audiencenetwork/"
   },
   "mopub": {
     "concerns": [
-      "Twitter mobile ads",
-      "Mediation",
-      "AppLovin acquired"
+      "Formerly Twitter mobile ad platform, acquired by AppLovin",
+      "Ad mediation connecting multiple demand sources",
+      "Device-level targeting and real-time bidding"
     ],
     "aliases": [
-      "mo pub"
-    ]
+      "mo pub",
+      "applovin mopub"
+    ],
+    "url": "https://www.applovin.com"
   },
   "tapjoy": {
     "concerns": [
@@ -128,18 +145,21 @@
     "aliases": [
       "tap joy",
       "tapjoy inc"
-    ]
+    ],
+    "url": "https://www.tapjoy.com"
   },
   "pangle": {
     "concerns": [
-      "ByteDance ads",
-      "TikTok network",
-      "Global reach"
+      "ByteDance/TikTok mobile ad network with global reach",
+      "Data sharing within ByteDance corporate group",
+      "Device-level tracking and behavioural profiling for ad targeting"
     ],
     "aliases": [
       "pangle ads",
-      "bytedance pangle"
-    ]
+      "bytedance pangle",
+      "csj"
+    ],
+    "url": "https://www.pangleglobal.com"
   },
   "startapp": {
     "concerns": [
@@ -150,7 +170,8 @@
     "aliases": [
       "start app",
       "start.io"
-    ]
+    ],
+    "url": "https://www.start.io"
   },
   "loopme": {
     "concerns": [
@@ -160,7 +181,8 @@
     ],
     "aliases": [
       "loop me"
-    ]
+    ],
+    "url": "https://loopme.com"
   },
   "ogury": {
     "concerns": [
@@ -170,19 +192,21 @@
     ],
     "aliases": [
       "ogury ltd"
-    ]
+    ],
+    "url": "https://www.ogury.com"
   },
   "crashlytics": {
     "concerns": [
-      "Crash reporting",
-      "User tracking",
-      "Device info",
-      "Firebase/Google"
+      "Crash reporting with device info, OS, and app state",
+      "User tracking via unique identifiers in crash reports",
+      "Data shared with Firebase and Google analytics ecosystem",
+      "Collects device model, orientation, RAM, disk space, and battery state"
     ],
     "aliases": [
       "firebase crashlytics",
       "fabric crashlytics"
-    ]
+    ],
+    "url": "https://firebase.google.com/products/crashlytics"
   },
   "bugly": {
     "concerns": [
@@ -192,7 +216,8 @@
     ],
     "aliases": [
       "tencent bugly"
-    ]
+    ],
+    "url": "https://bugly.qq.com"
   },
   "instabug": {
     "concerns": [
@@ -202,7 +227,8 @@
     ],
     "aliases": [
       "insta bug"
-    ]
+    ],
+    "url": "https://instabug.com"
   },
   "embrace": {
     "concerns": [
@@ -212,7 +238,8 @@
     ],
     "aliases": [
       "embrace.io"
-    ]
+    ],
+    "url": "https://embrace.io"
   },
   "appdynamics mobile": {
     "concerns": [
@@ -222,7 +249,8 @@
     ],
     "aliases": [
       "appdynamics apm"
-    ]
+    ],
+    "url": "https://www.appdynamics.com"
   },
   "branch io": {
     "concerns": [
@@ -235,7 +263,8 @@
       "branch",
       "branch metrics",
       "branch.io"
-    ]
+    ],
+    "url": "https://www.branch.io"
   },
   "appsflyer sdk": {
     "concerns": [
@@ -246,7 +275,8 @@
     "aliases": [
       "appsflyer mobile",
       "appsflyer attribution"
-    ]
+    ],
+    "url": "https://www.appsflyer.com"
   },
   "adjust sdk": {
     "concerns": [
@@ -257,7 +287,8 @@
     "aliases": [
       "adjust mobile",
       "adjust attribution"
-    ]
+    ],
+    "url": "https://www.adjust.com"
   },
   "tenjin": {
     "concerns": [
@@ -267,7 +298,8 @@
     ],
     "aliases": [
       "tenjin inc"
-    ]
+    ],
+    "url": "https://www.tenjin.com"
   },
   "apsalar": {
     "concerns": [
@@ -277,7 +309,8 @@
     ],
     "aliases": [
       "apsalar inc"
-    ]
+    ],
+    "url": "https://www.singular.net"
   },
   "radar": {
     "concerns": [
@@ -288,7 +321,8 @@
     "aliases": [
       "radar.io",
       "radar labs"
-    ]
+    ],
+    "url": "https://radar.com"
   },
   "gimbal": {
     "concerns": [
@@ -298,7 +332,8 @@
     ],
     "aliases": [
       "gimbal inc"
-    ]
+    ],
+    "url": "https://gimbal.com"
   },
   "bluedot": {
     "concerns": [
@@ -309,7 +344,8 @@
     "aliases": [
       "blue dot",
       "bluedot innovation"
-    ]
+    ],
+    "url": "https://bluedot.io"
   },
   "mapbox": {
     "concerns": [
@@ -319,7 +355,8 @@
     ],
     "aliases": [
       "mapbox inc"
-    ]
+    ],
+    "url": "https://www.mapbox.com"
   },
   "here": {
     "concerns": [
@@ -330,7 +367,8 @@
     "aliases": [
       "here technologies",
       "here maps"
-    ]
+    ],
+    "url": "https://www.here.com"
   },
   "tomtom": {
     "concerns": [
@@ -341,42 +379,52 @@
     "aliases": [
       "tom tom",
       "tomtom nv"
-    ]
+    ],
+    "url": "https://www.tomtom.com"
   },
   "facebook sdk": {
     "concerns": [
-      "Social login",
-      "Event tracking",
-      "App events",
-      "Meta data collection"
+      "Social login with profile data access",
+      "Automatic app event logging including installs, launches, and purchases",
+      "Custom event tracking for conversion measurement",
+      "Data feeds into Meta advertising and analytics ecosystem",
+      "Cross-app and cross-device tracking via Meta identifiers"
     ],
     "aliases": [
       "fb sdk",
       "meta sdk",
-      "facebook login"
-    ]
+      "facebook login",
+      "meta business sdk"
+    ],
+    "url": "https://developers.facebook.com"
   },
   "google sign-in": {
     "concerns": [
-      "Social login",
-      "Account linking",
-      "Profile data"
+      "Social login linking third-party apps to Google Account",
+      "Account linking enables cross-service identity resolution",
+      "Profile data sharing including name, email, and photo",
+      "Google collects info about which third-party apps you sign into"
     ],
     "aliases": [
       "google signin",
-      "google identity"
-    ]
+      "google identity",
+      "google identity services",
+      "sign in with google"
+    ],
+    "url": "https://developers.google.com/identity"
   },
   "twitter kit": {
     "concerns": [
-      "Social login",
-      "Tweet sharing",
-      "X Corp"
+      "Social login and tweet sharing integration",
+      "Deprecated SDK but still found in legacy apps",
+      "Data shared with X Corp and corporate affiliates"
     ],
     "aliases": [
       "twitter sdk",
-      "x sdk"
-    ]
+      "x sdk",
+      "twitter mobile sdk"
+    ],
+    "url": "https://developer.x.com"
   },
   "line sdk": {
     "concerns": [
@@ -386,7 +434,8 @@
     ],
     "aliases": [
       "line corporation"
-    ]
+    ],
+    "url": "https://developers.line.biz"
   },
   "kakao sdk": {
     "concerns": [
@@ -396,7 +445,8 @@
     ],
     "aliases": [
       "kakaotalk sdk"
-    ]
+    ],
+    "url": "https://developers.kakao.com"
   },
   "wechat sdk": {
     "concerns": [
@@ -407,7 +457,8 @@
     ],
     "aliases": [
       "weixin sdk"
-    ]
+    ],
+    "url": "https://developers.weixin.qq.com"
   },
   "comscore sdk": {
     "concerns": [
@@ -417,7 +468,8 @@
     ],
     "aliases": [
       "comscore mobile"
-    ]
+    ],
+    "url": "https://www.comscore.com"
   },
   "nielsen sdk": {
     "concerns": [
@@ -427,7 +479,8 @@
     ],
     "aliases": [
       "nielsen mobile"
-    ]
+    ],
+    "url": "https://www.nielsen.com"
   },
   "sensorium": {
     "concerns": [
@@ -437,7 +490,8 @@
     ],
     "aliases": [
       "sensorium sdk"
-    ]
+    ],
+    "url": ""
   },
   "placed": {
     "concerns": [
@@ -448,7 +502,8 @@
     "aliases": [
       "placed sdk",
       "foursquare attribution"
-    ]
+    ],
+    "url": "https://www.foursquare.com"
   },
   "gameanalytics": {
     "concerns": [
@@ -458,7 +513,8 @@
     ],
     "aliases": [
       "game analytics"
-    ]
+    ],
+    "url": "https://gameanalytics.com"
   },
   "deltadna": {
     "concerns": [
@@ -468,7 +524,8 @@
     ],
     "aliases": [
       "delta dna"
-    ]
+    ],
+    "url": "https://unity.com"
   },
   "tenjin gaming": {
     "concerns": [
@@ -478,7 +535,8 @@
     ],
     "aliases": [
       "tenjin games"
-    ]
+    ],
+    "url": "https://www.tenjin.com"
   },
   "supersonic": {
     "concerns": [
@@ -488,7 +546,8 @@
     ],
     "aliases": [
       "supersonic ads"
-    ]
+    ],
+    "url": "https://www.is.com"
   },
   "airship": {
     "concerns": [
@@ -502,7 +561,8 @@
     "aliases": [
       "airship inc",
       "urban airship"
-    ]
+    ],
+    "url": "https://www.airship.com"
   },
   "onesignal": {
     "concerns": [
@@ -515,7 +575,8 @@
     "aliases": [
       "one signal",
       "onesignal inc"
-    ]
+    ],
+    "url": "https://onesignal.com"
   },
   "covatic": {
     "concerns": [
@@ -531,6 +592,7 @@
       "covatic ltd",
       "covatic limited",
       "covatic.com"
-    ]
+    ],
+    "url": "https://www.covatic.com"
   }
 }

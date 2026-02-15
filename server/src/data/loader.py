@@ -97,7 +97,14 @@ _partner_database_cache: dict[str, dict[str, partners.PartnerEntry]] = {}
 def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
     """Load partner database from a JSON file."""
     raw: dict[str, dict[str, Any]] = _load_json(f"partners/{filename}")
-    return {key: partners.PartnerEntry(concerns=val.get("concerns", []), aliases=val.get("aliases", [])) for key, val in raw.items()}
+    return {
+        key: partners.PartnerEntry(
+            concerns=val.get("concerns", []),
+            aliases=val.get("aliases", []),
+            url=val.get("url", ""),
+        )
+        for key, val in raw.items()
+    }
 
 
 def get_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:

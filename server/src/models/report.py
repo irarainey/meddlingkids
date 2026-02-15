@@ -185,6 +185,7 @@ class VendorEntry(pydantic.BaseModel):
     name: str
     role: str
     privacy_impact: str
+    url: str = ""
 
 
 class VendorSection(pydantic.BaseModel):

@@ -116,9 +116,15 @@ src/
 │   ├── partners.py                  # Partner classification models
 │   ├── report.py                    # Structured report section models
 │   └── browser.py                   # Navigation, access denial & device models
-├── data/                            # Static pattern databases
+├── data/                            # Static data and reference databases
 │   ├── loader.py                    # JSON data loader with caching
-│   ├── partners/                    # Partner risk databases (8 JSON files)
+│   ├── gdpr/                        # GDPR/TCF reference data for LLM context
+│   │   ├── gdpr-reference.json      # GDPR principles and requirements
+│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions
+│   │   └── consent-cookies.json     # Expected consent cookie categories
+│   ├── partners/                    # Partner risk databases (8 JSON files, 556 entries)
+│   ├── publishers/                  # Media group profiles
+│   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear all caches)
@@ -128,7 +134,8 @@ src/
     ├── logger.py                    # Structured logger with colour output (contextvars isolation)
     ├── risk.py                      # Shared risk-scoring helpers (risk_label)
     ├── serialization.py             # Pydantic model serialization helpers
-    └── url.py                       # URL / domain utilities
+    ├── url.py                       # URL / domain utilities
+    └── usage_tracking.py            # Per-session LLM call count and token usage tracking
 ```
 
 ## Linting and Formatting
@@ -144,6 +151,8 @@ poe lint          # Run all linting (ruff check + format check + mypy)
 poe lint:ruff     # Run ruff linter and format check only
 poe lint:mypy     # Run mypy type checking only
 poe format        # Auto-fix ruff lint issues and format code
+poe test          # Run unit tests
+poe test:cov      # Run unit tests with coverage summary
 ```
 
 Configuration for all tools is in `pyproject.toml`.

@@ -106,10 +106,12 @@ meddlingkids/
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
 │       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
 │       ├── models/            # Pydantic data models
-│       ├── data/              # Static pattern databases (JSON)
-│       │   ├── partners/      # Partner risk databases (8 JSON files)
+│       ├── data/              # Static data and reference databases (JSON)
+│       │   ├── gdpr/          # GDPR/TCF reference data (consent cookies, purposes)
+│       │   ├── partners/      # Partner risk databases (8 JSON files, 556 entries)
+│       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
-│       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache mgmt)
+│       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
 ├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)
 ├── .cache/                    # Analysis caches (auto-created)
@@ -301,6 +303,8 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 | `poe lint:ruff` | Run ruff linter and format check only |
 | `poe lint:mypy` | Run mypy type checking only |
 | `poe format` | Auto-fix ruff lint issues and format code |
+| `poe test` | Run unit tests |
+| `poe test:cov` | Run unit tests with coverage summary |
 
 ## Project Documentation
 

@@ -461,7 +461,10 @@ function findingLabel(type: SummaryFindingType): string {
             class="vendor-card"
           >
             <div class="vendor-header">
-              <strong>{{ vendor.name }}</strong>
+              <a v-if="vendor.url" :href="vendor.url" target="_blank" rel="noopener noreferrer" class="vendor-link">
+                {{ vendor.name }}
+              </a>
+              <strong v-else>{{ vendor.name }}</strong>
               <span class="vendor-role">{{ vendor.role }}</span>
             </div>
             <p class="vendor-impact">{{ stripMarkdown(vendor.privacyImpact) }}</p>
@@ -1070,6 +1073,18 @@ function findingLabel(type: SummaryFindingType): string {
 .vendor-header strong {
   color: #f0f4ff;
   font-size: 0.95rem;
+}
+
+.vendor-link {
+  color: #7CB8E4;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vendor-link:hover {
+  text-decoration: underline;
+  color: #a0d0ff;
 }
 
 .vendor-role {

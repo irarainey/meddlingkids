@@ -11,7 +11,8 @@
     "aliases": [
       "hotjar ltd",
       "contentsquare hotjar"
-    ]
+    ],
+    "url": "https://www.hotjar.com"
   },
   "fullstory": {
     "concerns": [
@@ -22,7 +23,8 @@
     ],
     "aliases": [
       "fullstory inc"
-    ]
+    ],
+    "url": "https://www.fullstory.com"
   },
   "logrocket": {
     "concerns": [
@@ -33,7 +35,8 @@
     ],
     "aliases": [
       "logrocket inc"
-    ]
+    ],
+    "url": "https://logrocket.com"
   },
   "mouseflow": {
     "concerns": [
@@ -44,19 +47,21 @@
     ],
     "aliases": [
       "mouseflow inc"
-    ]
+    ],
+    "url": "https://mouseflow.com"
   },
   "clarity": {
     "concerns": [
-      "Microsoft session replay",
-      "Free but Microsoft collects data",
-      "Heatmaps",
-      "Click tracking"
+      "Microsoft session replay capturing user interactions in detail",
+      "Free service where Microsoft collects and processes user behaviour data",
+      "Heatmaps and click tracking feeding into Microsoft analytics",
+      "Data may be combined with Microsoft advertising ecosystem via Xandr"
     ],
     "aliases": [
       "microsoft clarity",
       "clarity.ms"
-    ]
+    ],
+    "url": "https://clarity.microsoft.com"
   },
   "smartlook": {
     "concerns": [
@@ -67,7 +72,8 @@
     ],
     "aliases": [
       "smartlook.com"
-    ]
+    ],
+    "url": "https://www.smartlook.com"
   },
   "lucky orange": {
     "concerns": [
@@ -79,7 +85,8 @@
     "aliases": [
       "luckyorange",
       "lucky orange inc"
-    ]
+    ],
+    "url": "https://www.luckyorange.com"
   },
   "inspectlet": {
     "concerns": [
@@ -89,7 +96,8 @@
     ],
     "aliases": [
       "inspectlet inc"
-    ]
+    ],
+    "url": "https://www.inspectlet.com"
   },
   "heap": {
     "concerns": [
@@ -101,7 +109,8 @@
     "aliases": [
       "heap inc",
       "heap analytics"
-    ]
+    ],
+    "url": "https://heap.io"
   },
   "amplitude": {
     "concerns": [
@@ -113,7 +122,8 @@
     "aliases": [
       "amplitude inc",
       "amplitude analytics"
-    ]
+    ],
+    "url": "https://amplitude.com"
   },
   "mixpanel": {
     "concerns": [
@@ -124,7 +134,8 @@
     ],
     "aliases": [
       "mixpanel inc"
-    ]
+    ],
+    "url": "https://mixpanel.com"
   },
   "pendo": {
     "concerns": [
@@ -136,7 +147,8 @@
     "aliases": [
       "pendo.io",
       "pendo inc"
-    ]
+    ],
+    "url": "https://www.pendo.io"
   },
   "gainsight px": {
     "concerns": [
@@ -148,7 +160,8 @@
     "aliases": [
       "gainsight",
       "aptrinsic"
-    ]
+    ],
+    "url": "https://www.gainsight.com"
   },
   "walkme": {
     "concerns": [
@@ -159,7 +172,8 @@
     ],
     "aliases": [
       "walk me"
-    ]
+    ],
+    "url": "https://www.walkme.com"
   },
   "whatfix": {
     "concerns": [
@@ -169,7 +183,8 @@
     ],
     "aliases": [
       "what fix"
-    ]
+    ],
+    "url": "https://whatfix.com"
   },
   "qualtrics": {
     "concerns": [
@@ -181,7 +196,8 @@
     "aliases": [
       "qualtrics xm",
       "qualtrics inc"
-    ]
+    ],
+    "url": "https://www.qualtrics.com"
   },
   "medallia": {
     "concerns": [
@@ -191,7 +207,8 @@
     ],
     "aliases": [
       "medallia inc"
-    ]
+    ],
+    "url": "https://www.medallia.com"
   },
   "usertesting": {
     "concerns": [
@@ -201,7 +218,8 @@
     ],
     "aliases": [
       "user testing"
-    ]
+    ],
+    "url": "https://www.usertesting.com"
   },
   "userzoom": {
     "concerns": [
@@ -211,7 +229,8 @@
     ],
     "aliases": [
       "user zoom"
-    ]
+    ],
+    "url": "https://www.userzoom.com"
   },
   "sentry": {
     "concerns": [
@@ -222,7 +241,8 @@
     "aliases": [
       "sentry.io",
       "getsentry"
-    ]
+    ],
+    "url": "https://sentry.io"
   },
   "bugsnag": {
     "concerns": [
@@ -232,7 +252,8 @@
     ],
     "aliases": [
       "bug snag"
-    ]
+    ],
+    "url": "https://www.bugsnag.com"
   },
   "rollbar": {
     "concerns": [
@@ -242,7 +263,8 @@
     ],
     "aliases": [
       "rollbar inc"
-    ]
+    ],
+    "url": "https://rollbar.com"
   },
   "raygun": {
     "concerns": [
@@ -253,7 +275,8 @@
     "aliases": [
       "ray gun",
       "mindscape"
-    ]
+    ],
+    "url": "https://raygun.com"
   },
   "datadog rum": {
     "concerns": [
@@ -263,7 +286,8 @@
     ],
     "aliases": [
       "datadog"
-    ]
+    ],
+    "url": "https://www.datadoghq.com"
   },
   "new relic": {
     "concerns": [
@@ -274,7 +298,8 @@
     "aliases": [
       "newrelic",
       "new relic inc"
-    ]
+    ],
+    "url": "https://newrelic.com"
   },
   "dynatrace": {
     "concerns": [
@@ -285,7 +310,8 @@
     ],
     "aliases": [
       "dynatrace llc"
-    ]
+    ],
+    "url": "https://www.dynatrace.com"
   },
   "appdynamics": {
     "concerns": [
@@ -296,7 +322,8 @@
     ],
     "aliases": [
       "app dynamics"
-    ]
+    ],
+    "url": "https://www.appdynamics.com"
   },
   "optimizely": {
     "concerns": [
@@ -308,7 +335,8 @@
     "aliases": [
       "optimizely inc",
       "episerver"
-    ]
+    ],
+    "url": "https://www.optimizely.com"
   },
   "vwo": {
     "concerns": [
@@ -320,7 +348,8 @@
     "aliases": [
       "visual website optimizer",
       "wingify"
-    ]
+    ],
+    "url": "https://vwo.com"
   },
   "abtasty": {
     "concerns": [
@@ -330,7 +359,8 @@
     ],
     "aliases": [
       "ab tasty"
-    ]
+    ],
+    "url": "https://www.abtasty.com"
   },
   "kameleoon": {
     "concerns": [
@@ -340,7 +370,8 @@
     ],
     "aliases": [
       "kameleoon sas"
-    ]
+    ],
+    "url": "https://www.kameleoon.com"
   },
   "convert": {
     "concerns": [
@@ -350,7 +381,8 @@
     ],
     "aliases": [
       "convert.com"
-    ]
+    ],
+    "url": "https://www.convert.com"
   },
   "contentsquare": {
     "concerns": [
@@ -362,7 +394,8 @@
     "aliases": [
       "content square",
       "clicktale"
-    ]
+    ],
+    "url": "https://contentsquare.com"
   },
   "glassbox": {
     "concerns": [
@@ -372,7 +405,8 @@
     ],
     "aliases": [
       "glass box"
-    ]
+    ],
+    "url": "https://www.glassbox.com"
   },
   "quantum metric": {
     "concerns": [
@@ -382,7 +416,8 @@
     ],
     "aliases": [
       "quantummetric"
-    ]
+    ],
+    "url": "https://www.quantummetric.com"
   },
   "decibel": {
     "concerns": [
@@ -393,7 +428,8 @@
     "aliases": [
       "decibel insight",
       "medallia decibel"
-    ]
+    ],
+    "url": "https://www.decibelinsight.com"
   },
   "auryc": {
     "concerns": [
@@ -403,7 +439,8 @@
     ],
     "aliases": [
       "auryc inc"
-    ]
+    ],
+    "url": "https://www.auryc.com"
   },
   "usabilla": {
     "concerns": [
@@ -414,7 +451,8 @@
     ],
     "aliases": [
       "usabilla bv"
-    ]
+    ],
+    "url": "https://usabilla.com"
   },
   "surveymonkey": {
     "concerns": [
@@ -425,7 +463,8 @@
     "aliases": [
       "survey monkey",
       "momentive"
-    ]
+    ],
+    "url": "https://www.surveymonkey.com"
   },
   "uxcam": {
     "concerns": [
@@ -435,7 +474,8 @@
     ],
     "aliases": [
       "ux cam"
-    ]
+    ],
+    "url": "https://uxcam.com"
   },
   "appsee": {
     "concerns": [
@@ -445,7 +485,8 @@
     ],
     "aliases": [
       "app see"
-    ]
+    ],
+    "url": "https://www.appsee.com"
   },
   "posthog": {
     "concerns": [
@@ -456,7 +497,8 @@
     ],
     "aliases": [
       "post hog"
-    ]
+    ],
+    "url": "https://posthog.com"
   },
   "june": {
     "concerns": [
@@ -466,7 +508,8 @@
     ],
     "aliases": [
       "june.so"
-    ]
+    ],
+    "url": "https://www.june.so"
   },
   "koala": {
     "concerns": [
@@ -477,7 +520,8 @@
     "aliases": [
       "koala.com",
       "getkoala"
-    ]
+    ],
+    "url": "https://getkoala.com"
   },
   "mutiny": {
     "concerns": [
@@ -488,7 +532,8 @@
     "aliases": [
       "mutiny corp",
       "mutinyhq"
-    ]
+    ],
+    "url": "https://www.mutinyhq.com"
   },
   "clearbit reveal": {
     "concerns": [
@@ -498,7 +543,8 @@
     ],
     "aliases": [
       "clearbit visitor identification"
-    ]
+    ],
+    "url": "https://clearbit.com"
   },
   "leadfeeder": {
     "concerns": [
@@ -509,7 +555,8 @@
     "aliases": [
       "lead feeder",
       "dealfront"
-    ]
+    ],
+    "url": "https://www.leadfeeder.com"
   },
   "albacross": {
     "concerns": [
@@ -519,7 +566,8 @@
     ],
     "aliases": [
       "alba cross"
-    ]
+    ],
+    "url": "https://albacross.com"
   },
   "demandbase": {
     "concerns": [
@@ -529,7 +577,8 @@
     ],
     "aliases": [
       "demand base"
-    ]
+    ],
+    "url": "https://www.demandbase.com"
   },
   "6sense": {
     "concerns": [
@@ -540,7 +589,8 @@
     "aliases": [
       "6 sense",
       "sixsense"
-    ]
+    ],
+    "url": "https://6sense.com"
   },
   "terminus": {
     "concerns": [
@@ -550,7 +600,8 @@
     ],
     "aliases": [
       "terminus software"
-    ]
+    ],
+    "url": "https://terminus.com"
   },
   "rollworks": {
     "concerns": [
@@ -560,7 +611,8 @@
     ],
     "aliases": [
       "roll works"
-    ]
+    ],
+    "url": "https://www.rollworks.com"
   },
   "livechat": {
     "concerns": [
@@ -571,7 +623,8 @@
     "aliases": [
       "live chat",
       "livechat inc"
-    ]
+    ],
+    "url": "https://www.livechat.com"
   },
   "tawk.to": {
     "concerns": [
@@ -582,7 +635,8 @@
     "aliases": [
       "tawk",
       "tawkto"
-    ]
+    ],
+    "url": "https://www.tawk.to"
   },
   "crisp": {
     "concerns": [
@@ -592,7 +646,8 @@
     ],
     "aliases": [
       "crisp.chat"
-    ]
+    ],
+    "url": "https://crisp.chat"
   },
   "tidio": {
     "concerns": [
@@ -602,7 +657,8 @@
     ],
     "aliases": [
       "tidio llc"
-    ]
+    ],
+    "url": "https://www.tidio.com"
   },
   "olark": {
     "concerns": [
@@ -612,7 +668,8 @@
     ],
     "aliases": [
       "olark inc"
-    ]
+    ],
+    "url": "https://www.olark.com"
   },
   "chatra": {
     "concerns": [
@@ -622,7 +679,8 @@
     ],
     "aliases": [
       "chatra.io"
-    ]
+    ],
+    "url": "https://chatra.com"
   },
   "gorgias": {
     "concerns": [
@@ -632,18 +690,21 @@
     ],
     "aliases": [
       "gorgias inc"
-    ]
+    ],
+    "url": "https://www.gorgias.com"
   },
   "kustomer": {
     "concerns": [
-      "Customer service",
-      "Unified timeline",
-      "Behavioral data",
-      "Meta owned"
+      "Customer service platform with unified timeline of all user interactions",
+      "Behavioural data collection across support channels",
+      "Meta-owned since 2022 with data shared across Meta Companies",
+      "Customer data may feed into Meta advertising and AI training"
     ],
     "aliases": [
-      "kustomer inc"
-    ]
+      "kustomer inc",
+      "meta kustomer"
+    ],
+    "url": "https://www.kustomer.com"
   },
   "gladly": {
     "concerns": [
@@ -653,6 +714,7 @@
     ],
     "aliases": [
       "gladly inc"
-    ]
+    ],
+    "url": "https://www.gladly.com"
   }
 }

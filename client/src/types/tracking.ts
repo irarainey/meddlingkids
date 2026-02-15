@@ -252,6 +252,7 @@ export interface VendorEntry {
   name: string
   role: string
   privacyImpact: string
+  url: string
 }
 
 /** Key vendors and their privacy implications. */

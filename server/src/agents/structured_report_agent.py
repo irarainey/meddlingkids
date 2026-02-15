@@ -266,9 +266,11 @@ class StructuredReportAgent(base.BaseAgent):
             cookie_analysis=cookie_sec,
             storage_analysis=storage_sec,
             consent_analysis=consent_sec,
-            key_vendors=_extract(
-                vendors,
-                report.VendorSection,
+            key_vendors=_enrich_vendor_urls(
+                _extract(
+                    vendors,
+                    report.VendorSection,
+                ),
             ),
             recommendations=_extract(
                 recommendations,
@@ -368,6 +370,34 @@ def _extract[S: pydantic.BaseModel](
     if isinstance(result, section_cls):
         return result
     return section_cls()
+
+
+def _enrich_vendor_urls(vendor_section: report.VendorSection) -> report.VendorSection:
+    """Look up vendor URLs from the partner databases.
+
+    For each vendor in the section, attempt to match the vendor
+    name against known partner entries and populate the URL field.
+
+    Args:
+        vendor_section: Vendor section from LLM output.
+
+    Returns:
+        Updated vendor section with URLs populated where found.
+    """
+    for vendor in vendor_section.vendors:
+        if vendor.url:
+            continue
+        name_lower = vendor.name.lower().strip()
+        for config in loader.PARTNER_CATEGORIES:
+            database = loader.get_partner_database(config.file)
+            for key, entry in database.items():
+                if key in name_lower or name_lower in key or any(a in name_lower or name_lower in a for a in entry.aliases):
+                    if entry.url:
+                        vendor.url = entry.url
+                    break
+            if vendor.url:
+                break
+    return vendor_section
 
 
 def _build_data_context(

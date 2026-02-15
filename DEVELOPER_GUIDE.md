@@ -449,6 +449,13 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Content |
 |--------|--------|
 | `data/loader.py` | JSON data loader with lazy loading and caching |
+| `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
+| `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
+| `data/partners/*.json` | 556 partner entries across 8 risk categories |
+| `data/gdpr/gdpr-reference.json` | GDPR principles and requirements for LLM context |
+| `data/gdpr/tcf-purposes.json` | IAB TCF v2.2 purpose definitions for LLM context |
+| `data/gdpr/consent-cookies.json` | Expected consent cookie categories for LLM context |
+| `data/publishers/media-groups.json` | 16 UK media group profiles (vendors, ad tech partners, data practices) |
 
 **`utils/`** — Cross-cutting utilities
 
@@ -463,9 +470,6 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `risk.py` | Shared risk-scoring helpers (`risk_label`) |
 | `serialization.py` | Pydantic model serialization helpers |
 | `url.py` | URL and domain utilities |
-| `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
-| `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
-| `data/partners/*.json` | 504 partner entries across 8 risk categories |
 
 ---
 
@@ -751,6 +755,8 @@ poe lint          # Run all linting (ruff check + format check + mypy)
 poe lint:ruff     # Run ruff linter and format check only
 poe lint:mypy     # Run mypy type checking only
 poe format        # Auto-fix ruff lint issues and format code
+poe test          # Run unit tests
+poe test:cov      # Run unit tests with coverage summary
 ```
 
 All tool configuration (ruff rules, mypy settings, poe tasks) lives in `server/pyproject.toml`.
