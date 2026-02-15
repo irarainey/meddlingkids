@@ -159,9 +159,11 @@ class ConsentExtractionAgent(base.BaseAgent):
                 "Vision extraction failed",
             )
             error_msg = errors.get_error_message(error)
-            if isinstance(error, asyncio.TimeoutError):
+            is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
+            if is_timeout:
                 log.warn(
-                    "Consent extraction timed out after 30s",
+                    "Consent extraction timed out",
+                    {"error": error_msg},
                 )
             else:
                 log.error(

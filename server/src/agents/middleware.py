@@ -121,6 +121,8 @@ def _is_retryable(error: BaseException) -> bool:
     err_str = str(error).lower()
     if "429" in err_str or "rate limit" in err_str:
         return True
+    if "timed out" in err_str or "timeout" in err_str:
+        return True
     for attr in ("status", "status_code"):
         code = getattr(error, attr, None)
         if isinstance(code, int) and (code == 429 or 500 <= code < 600):
