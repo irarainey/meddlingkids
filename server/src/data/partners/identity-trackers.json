@@ -624,5 +624,24 @@
     "aliases": [
       "roqad gmbh"
     ]
+  },
+  "nc audience exchange": {
+    "concerns": [
+      "Cross-publisher identity tracking via NewsID cookie",
+      "Cookie syncing across News Corp properties globally",
+      "Browsing behaviour and content viewing data collection",
+      "Interest-based advertising profiling across devices",
+      "Cross-device and cross-browser user association",
+      "Data shared with News Corp affiliates worldwide",
+      "13-month data retention period",
+      "IAB TCF participant"
+    ],
+    "aliases": [
+      "newsiq",
+      "news iq",
+      "nc audience exchange llc",
+      "ncaudienceexchange.com",
+      "ncae"
+    ]
   }
 }

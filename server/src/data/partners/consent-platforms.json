@@ -66,10 +66,14 @@
     "concerns": [
       "Consent management",
       "Adblock detection",
-      "Messaging"
+      "Messaging",
+      "IAB TCF v2 framework implementation",
+      "Privacy measurement and compliance monitoring"
     ],
     "aliases": [
-      "source point"
+      "source point",
+      "sourcepoint technologies",
+      "sourcepoint technologies inc"
     ]
   },
   "termly": {

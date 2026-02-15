@@ -510,5 +510,21 @@
       "one signal",
       "onesignal inc"
     ]
+  },
+  "covatic": {
+    "concerns": [
+      "Mobile SDK embedded in publisher apps",
+      "Geolocation-based audience segmentation",
+      "Device identifier and IP address collection",
+      "Media consumption and activity tracking",
+      "Combines location data with multiple sources for personalised advertising",
+      "IAB TCF registered vendor 1104",
+      "Processes gender and age range data via publisher apps"
+    ],
+    "aliases": [
+      "covatic ltd",
+      "covatic limited",
+      "covatic.com"
+    ]
   }
 }
