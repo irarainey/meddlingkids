@@ -326,6 +326,9 @@ selectedScreenshot   // Currently selected screenshot index
 // In analyzeUrl():
 const eventSource = new EventSource(`/api/open-browser-stream?url=...&device=...&clear-cache=...`)
 
+// 15-second connection timeout safety net — if no events arrive,
+// the connection is aborted and an error dialog is shown.
+
 eventSource.addEventListener('progress', (e) => {
   // Update loading indicators
 })
@@ -464,9 +467,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Content |
 |--------|--------|
 | `data/loader.py` | JSON data loader with lazy loading and caching |
-| `data/trackers/tracking-scripts.json` | 506 regex patterns for known trackers |
+| `data/trackers/tracking-scripts.json` | 523 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
-| `data/partners/*.json` | 556 partner entries across 8 risk categories |
+| `data/partners/*.json` | 574 partner entries across 8 risk categories |
 | `data/gdpr/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
 | `data/gdpr/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
 | `data/gdpr/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
@@ -619,6 +622,52 @@ class ConsentDetails(BaseModel):
     purposes: list[str]
     raw_text: str
     claimed_partner_count: int | None = None
+```
+
+### NamedEntity (Report Model)
+```python
+class NamedEntity(BaseModel):
+    """A company or service name with an optional URL.
+
+    Used in shared_with lists and third-party service lists
+    so the client can render names as clickable links.
+    """
+    name: str
+    url: str = ""
+```
+
+### TrackerEntry (Report Model)
+```python
+class TrackerEntry(BaseModel):
+    """A single identified tracking technology in the structured report."""
+    name: str
+    domains: list[str]
+    cookies: list[str] = []
+    storage_keys: list[str] = []
+    purpose: str
+    url: str = ""              # Enriched from partner databases
+```
+
+### DataCollectionItem (Report Model)
+```python
+class DataCollectionItem(BaseModel):
+    """A type of data being collected."""
+    category: str
+    details: list[str]
+    risk: Literal["low", "medium", "high", "critical"]
+    sensitive: bool = False
+    shared_with: list[NamedEntity] = []  # Companies with optional URLs for clickable links
+```
+
+### ThirdPartyGroup (Report Model)
+```python
+class ThirdPartyGroup(BaseModel):
+    """A group of third-party services."""
+    category: str
+    purpose: str
+    services: list[NamedEntity] = []     # Services with optional URLs for clickable links
+    risk: Literal["low", "medium", "high", "critical"]
+    concerns: list[str] = []
 ```
 
 ---
@@ -906,7 +955,7 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance) via 8 decomposed category scorers
-- Tracker classification patterns (~80+) are merged into combined alternation regexes for single-pass matching per URL/cookie
+- Tracker classification patterns (523 tracking + 51 benign) are merged into combined alternation regexes for single-pass matching per URL/cookie
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
 ### LLM Usage Tracking

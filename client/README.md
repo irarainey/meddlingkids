@@ -101,10 +101,10 @@ Each tab is a self-contained component with its own template and scoped styles:
 
 | Component | Purpose |
 |-----------|---------|
-| `AnalysisTab` | Full AI analysis with structured report and summary findings |
+| `AnalysisTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
 | `CookiesTab` | Cookies grouped by domain |
 | `DebugLogTab` | Server debug log output (visible in debug mode only) |
-| `NetworkTab` | Network requests with third-party filter |
+| `NetworkTab` | Network requests with third-party filter and filter explanation note |
 | `ScriptsTab` | JavaScript files grouped by domain |
 | `StorageTab` | localStorage and sessionStorage items |
 
@@ -181,6 +181,18 @@ Located in `types/tracking.ts`:
 | `ConsentDetails` | Full consent dialog information |
 | `SummaryFindingType` | Finding severity: critical, high, moderate, info, positive |
 | `SummaryFinding` | Structured finding with type and text |
+| `TrackerEntry` | Identified tracking technology with name, domains, cookies, purpose, and URL |
+| `TrackingTechnologiesSection` | Categorised trackers (analytics, advertising, identity, social, other) |
+| `NamedEntity` | Company or service name with optional URL for clickable links |
+| `DataCollectionItem` | Data collection category with risk level and shared-with entities |
+| `DataCollectionSection` | Collection of data collection items |
+| `ThirdPartyGroup` | Third-party service group with services as named entities |
+| `ThirdPartySection` | Collection of third-party groups |
+| `RiskFactor` | Individual privacy risk factor with severity |
+| `PrivacyRiskSection` | Overall privacy risk assessment with risk factors |
+| `CookieGroup` | Cookie analysis group |
+| `CookieAnalysisSection` | Cookie analysis details |
+| `StorageAnalysisSection` | Storage analysis details |
 | `StructuredReport` | Per-section structured privacy report |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |

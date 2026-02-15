@@ -3,7 +3,7 @@ flowchart TD
         A["User enters URL &\nclicks Unmask"] --> B["useTrackingAnalysis.ts\ncreates EventSource"]
     end
 
-    B -->|"GET /api/open-browser-stream\n?url=...&device=...&clear-cache=..."| C
+    B -->|"GET /api/open-browser-stream\n?url=...&device=...&clear-cache=...\n(15s connection timeout)"| C
 
     subgraph SERVER["⚙️ Server — FastAPI + Playwright"]
 
@@ -79,7 +79,7 @@ flowchart TD
                 TA["Tracking Analysis\n• Build summary\n• Stream LLM report"]
             end
             CONCURRENT --> SC["Privacy Scoring\n(deterministic, 8 categories)"]
-            SC --> SR["Structured Report\n(LLM per section)"]
+            SC --> SR["Structured Report\n(LLM per section +\nvendor URL enrichment)"]
             SC --> SF["Summary Findings\n(LLM)"]
             SR --> DC["Save domain cache\nfor future consistency"]
         end
@@ -99,7 +99,7 @@ flowchart TD
 
     subgraph RESULTS["📊 Client — Results"]
         R1["Display privacy\nscore dialog"]
-        R2["Render analysis tabs\n(Analysis, Network,\nCookies, Scripts, Debug)"]
+        R2["Render analysis tabs\n(Analysis with clickable\nvendor links, Network,\nCookies, Scripts, Debug)"]
         R3["Show screenshot\ngallery"]
     end
 

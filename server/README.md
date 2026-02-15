@@ -122,7 +122,7 @@ src/
 │   │   ├── gdpr-reference.json      # GDPR lawful bases, principles, and ePrivacy cookie categories
 │   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
 │   │   └── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
-│   ├── partners/                    # Partner risk databases (8 JSON files, 556 entries)
+│   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
