@@ -194,7 +194,8 @@ function findingLabel(type: SummaryFindingType): string {
             class="tracker-card"
           >
             <div class="tracker-header">
-              <strong>{{ tracker.name }}</strong>
+              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
+              <strong v-else>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
             <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
@@ -214,7 +215,8 @@ function findingLabel(type: SummaryFindingType): string {
             class="tracker-card"
           >
             <div class="tracker-header">
-              <strong>{{ tracker.name }}</strong>
+              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
+              <strong v-else>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
             <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
@@ -234,7 +236,8 @@ function findingLabel(type: SummaryFindingType): string {
             class="tracker-card"
           >
             <div class="tracker-header">
-              <strong>{{ tracker.name }}</strong>
+              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
+              <strong v-else>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
             <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
@@ -254,7 +257,8 @@ function findingLabel(type: SummaryFindingType): string {
             class="tracker-card"
           >
             <div class="tracker-header">
-              <strong>{{ tracker.name }}</strong>
+              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
+              <strong v-else>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
             <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
@@ -274,7 +278,8 @@ function findingLabel(type: SummaryFindingType): string {
             class="tracker-card"
           >
             <div class="tracker-header">
-              <strong>{{ tracker.name }}</strong>
+              <a v-if="tracker.url" :href="tracker.url" target="_blank" rel="noopener noreferrer" class="tracker-link">{{ tracker.name }}</a>
+              <strong v-else>{{ tracker.name }}</strong>
               <span class="tracker-domains">{{ tracker.domains.join(', ') }}</span>
             </div>
             <p class="tracker-purpose">{{ stripMarkdown(tracker.purpose) }}</p>
@@ -308,7 +313,10 @@ function findingLabel(type: SummaryFindingType): string {
           </ul>
           <div v-if="item.sharedWith.length" class="shared-with">
             <span class="shared-label">Shared with:</span>
-            <span v-for="party in item.sharedWith" :key="party" class="shared-chip">{{ party }}</span>
+            <template v-for="entity in item.sharedWith" :key="entity.name">
+              <a v-if="entity.url" :href="entity.url" target="_blank" rel="noopener noreferrer" class="shared-chip shared-chip-link">{{ entity.name }}</a>
+              <span v-else class="shared-chip">{{ entity.name }}</span>
+            </template>
           </div>
         </div>
       </section>
@@ -330,9 +338,10 @@ function findingLabel(type: SummaryFindingType): string {
         >
           <h3>{{ group.category }}</h3>
           <div class="services-list">
-            <span v-for="service in group.services" :key="service" class="service-chip">
-              {{ service }}
-            </span>
+            <template v-for="entity in group.services" :key="entity.name">
+              <a v-if="entity.url" :href="entity.url" target="_blank" rel="noopener noreferrer" class="service-chip service-chip-link">{{ entity.name }}</a>
+              <span v-else class="service-chip">{{ entity.name }}</span>
+            </template>
           </div>
           <p class="impact-text">{{ stripMarkdown(group.privacyImpact) }}</p>
         </div>
@@ -805,6 +814,18 @@ function findingLabel(type: SummaryFindingType): string {
   font-size: 0.95rem;
 }
 
+.tracker-link {
+  color: #7CB8E4;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tracker-link:hover {
+  text-decoration: underline;
+  color: #a0d0ff;
+}
+
 .tracker-domains {
   color: #7c8ab8;
   font-size: 0.85rem;
@@ -899,6 +920,16 @@ function findingLabel(type: SummaryFindingType): string {
   border: 1px solid #4c3a7a;
 }
 
+.shared-chip-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.shared-chip-link:hover {
+  background: #3a2d5a;
+  text-decoration: underline;
+}
+
 /* ── Third-party groups ──────────────────────────────── */
 
 .third-party-group {
@@ -918,6 +949,16 @@ function findingLabel(type: SummaryFindingType): string {
   padding: 0.2rem 0.55rem;
   border-radius: 4px;
   font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.service-chip-link {
+  cursor: pointer;
+}
+
+.service-chip-link:hover {
+  background: #3a4565;
+  text-decoration: underline;
 }
 
 .impact-text {

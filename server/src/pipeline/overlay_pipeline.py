@@ -316,7 +316,7 @@ class OverlayPipeline:
                 log.info("Analyzing overlay concurrently with verification")
                 yield self._progress(
                     "consent-analyze",
-                    "Analyzing overlay content...",
+                    "Analyzing page for overlay...",
                     68,
                 )
             else:

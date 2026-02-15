@@ -71,4 +71,14 @@ information if provided — this is what users typically \
 do not read but agree to. Highlight the most concerning \
 aspects. When a claimed partner count is provided (e.g. \
 "Claimed Partner Count: 1467"), use that exact number — \
-do not say the dialog reports zero partners."""
+do not say the dialog reports zero partners.
+
+IMPORTANT — partner disclosure assumptions:
+Our analysis only captures the top-level consent dialog. \
+Most large publishers disclose individual partner lists \
+deeper in the consent UI (e.g. behind a "view partners" \
+link) as required by regulation. Do NOT claim that the site \
+"does not list" or "does not disclose" individual partners. \
+You MAY note that partner details are not prominently \
+shown in the main dialog and are likely buried in \
+secondary screens that most users would not navigate to."""

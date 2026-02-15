@@ -169,6 +169,17 @@ that a consent dialog is deceptive or non-compliant unless the data \
 shows a clear, material gap between what was disclosed and what was \
 detected.
 
+IMPORTANT — partner disclosure assumptions:
+Our analysis only captures the top-level consent dialog. Most \
+large publishers make individual partner lists available deeper \
+in the consent UI (e.g. behind a "view partners" link) as \
+required by regulation. Do NOT claim that the site "discloses \
+zero named partners", "does not list", "does not disclose", or \
+"hides" individual partners — we cannot confirm this. You MAY \
+note that partner details are not prominently surfaced in the \
+main consent dialog and are likely buried in secondary screens \
+that most users would not navigate to.
+
 Write all text as plain text only. Do NOT use markdown formatting \
 such as **bold**, *italic*, `code`, or [links](url)."""
 
@@ -293,6 +304,18 @@ number for partners_disclosed — it represents what the consent \
 dialog tells users. Do not report zero partners when a claimed \
 count exists.
 
+IMPORTANT — partner disclosure assumptions:
+Our analysis only captures the top-level consent dialog. Most \
+large publishers make individual partner lists available deeper \
+in the consent UI (e.g. behind "view partners" or "vendor list" \
+links) as required by regulation. Do NOT claim that the site \
+"does not list", "does not disclose", or "hides" individual \
+partners — we cannot confirm this. You MAY note that partner \
+details are not prominently surfaced in the main consent dialog \
+and are likely buried in secondary screens that most users \
+would not navigate to, making it difficult for typical users \
+to understand the full scale of data sharing.
+
 Produce the SAME severity for the SAME type of discrepancy across \
 every analysis run. Do NOT claim that page-load tracking activity \
 violates consent or bypasses user choice — we cannot confirm \
@@ -316,6 +339,8 @@ or role descriptions. For example use "Comscore" not \
 same company, merge them into one entry.
 - role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
 - privacy_impact: One-sentence privacy impact description
+- url: The vendor's website URL if provided in the data (e.g. from \
+consent partner listings). Leave empty if no URL is available.
 
 Be specific and factual. Do not fabricate vendors not evidenced by the data. \
 Focus on those involved in cross-site tracking, identity resolution, \

@@ -282,7 +282,7 @@ def _render_report_text(
             for d in item.details:
                 lines.append(f"    - {d}")
             if item.shared_with:
-                lines.append(f"    Shared with: {', '.join(item.shared_with)}")
+                lines.append(f"    Shared with: {', '.join(e.name for e in item.shared_with)}")
         lines.append("")
 
     # Third-party services
@@ -292,7 +292,7 @@ def _render_report_text(
         lines.append(f"THIRD-PARTY SERVICES ({tp.total_domains} domains)")
         lines.append("─" * 40)
         for tpg in tp.groups:
-            lines.append(f"  {tpg.category}: {', '.join(tpg.services)}")
+            lines.append(f"  {tpg.category}: {', '.join(e.name for e in tpg.services)}")
             lines.append(f"    Impact: {tpg.privacy_impact}")
         if tp.summary:
             lines.append(f"\n  {tp.summary}")
@@ -464,7 +464,7 @@ async def _score_and_summarise(
         )
     )
 
-    yield sse_helpers.format_progress_event("ai-report", "Building report...", 97)
+    yield sse_helpers.format_progress_event("ai-report", "Generating report...", 97)
 
     structured_report, summary_findings = await asyncio.gather(structured_report_task, summary_task)
     log.info(

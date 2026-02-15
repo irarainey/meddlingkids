@@ -278,15 +278,34 @@ export function useTrackingAnalysis() {
     resetState()
 
     try {
-      // Use relative URL in production (same origin), absolute in development
+      // Use relative URL — Vite proxies /api to the Python server in
+      // development; production serves both client and API on the same
+      // origin.  VITE_API_URL is only needed for manual overrides.
       const apiBase = import.meta.env.VITE_API_URL || ''
       const eventSource = new EventSource(
         `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}${clearCache ? '&clear-cache=true' : ''}`
       )
       activeEventSource = eventSource
 
+      // Safety-net timeout — if the server never sends the first
+      // event (e.g. it isn't running, or a proxy is buffering the
+      // SSE stream), surface an error instead of waiting forever.
+      const connectionTimeout = setTimeout(() => {
+        if (!statusMessage.value && isLoading.value) {
+          errorDialog.value = {
+            title: 'Connection Timeout',
+            message: 'No response from the server. Check that the Python server is running on port 3001.',
+          }
+          showErrorDialog.value = true
+          isLoading.value = false
+          eventSource.close()
+          activeEventSource = null
+        }
+      }, 15_000)
+
       eventSource.addEventListener('progress', (event) => {
         try {
+          clearTimeout(connectionTimeout)
           const data = JSON.parse(event.data)
           statusMessage.value = data.message
           progressStep.value = data.step
@@ -354,6 +373,7 @@ export function useTrackingAnalysis() {
 
       eventSource.addEventListener('complete', (event) => {
         try {
+          clearTimeout(connectionTimeout)
           const data = JSON.parse(event.data)
 
           if (data.summaryFindings) {
@@ -408,6 +428,7 @@ export function useTrackingAnalysis() {
       })
 
       eventSource.addEventListener('error', (event) => {
+        clearTimeout(connectionTimeout)
         if (event instanceof MessageEvent) {
           try {
             const data = JSON.parse(event.data)
@@ -446,6 +467,7 @@ export function useTrackingAnalysis() {
       })
 
       eventSource.onerror = () => {
+        clearTimeout(connectionTimeout)
         // After a successful 'complete' event the handler calls
         // eventSource.close(), which sets readyState to CLOSED.
         // In that case the error is just the browser noticing the

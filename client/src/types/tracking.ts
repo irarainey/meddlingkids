@@ -157,6 +157,7 @@ export interface TrackerEntry {
   cookies: string[]
   storageKeys: string[]
   purpose: string
+  url: string
 }
 
 /** Categorised tracking technologies found on the page. */
@@ -168,13 +169,19 @@ export interface TrackingTechnologiesSection {
   other: TrackerEntry[]
 }
 
+/** A company or service name with an optional URL. */
+export interface NamedEntity {
+  name: string
+  url: string
+}
+
 /** A type of data being collected. */
 export interface DataCollectionItem {
   category: string
   details: string[]
   risk: 'low' | 'medium' | 'high' | 'critical'
   sensitive: boolean
-  sharedWith: string[]
+  sharedWith: NamedEntity[]
 }
 
 /** What data the page collects from users. */
@@ -185,7 +192,7 @@ export interface DataCollectionSection {
 /** A categorised group of third-party services. */
 export interface ThirdPartyGroup {
   category: string
-  services: string[]
+  services: NamedEntity[]
   privacyImpact: string
 }
 

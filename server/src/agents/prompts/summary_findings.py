@@ -68,8 +68,8 @@ three third-party analytics providers for media measurement."},
   {"type": "moderate", "text": "Scroll depth and time-on-page \
 metrics are collected for behavioural engagement analytics."},
   {"type": "info", "text": "Consent dialog groups all optional \
-tracking under a single vague category without listing \
-partners."},
+tracking under a single vague category with partner details \
+buried in secondary screens most users would not navigate to."},
   {"type": "positive", "text": "No advertising networks, \
 retargeting, or data broker integrations are present."}
 ]}
@@ -96,6 +96,16 @@ data clearly shows a material gap — for example, if the consent \
 dialog claims a specific partner count and the data confirms that \
 count, do not call the disclosure deceptive. Only describe \
 discrepancies that are actually present in the data.
+
+IMPORTANT — partner disclosure assumptions:
+Our analysis only captures the top-level consent dialog. Most \
+large publishers make individual partner lists available deeper \
+in the consent UI (e.g. behind a "view partners" link) as \
+required by regulation. Do NOT claim that the site "does not \
+list", "does not disclose", or "hides" individual partners. \
+You MAY note that partner details are not prominently surfaced \
+in the main dialog and are likely buried in secondary screens \
+that most users would not navigate to.
 
 IMPORTANT — formatting: Write all text as plain text only. Do NOT \
 use markdown formatting such as **bold**, *italic*, `code`, or \

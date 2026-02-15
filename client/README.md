@@ -240,7 +240,8 @@ Located in `utils/formatters.ts`:
 The client communicates with the server using Server-Sent Events:
 
 ```typescript
-// API base URL: empty in production (relative), absolute in development
+// Relative URL — Vite proxies /api to the Python server in development;
+// production serves both client and API on the same origin.
 const apiBase = import.meta.env.VITE_API_URL || ''
 const eventSource = new EventSource(
   `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${deviceType}`
@@ -259,11 +260,11 @@ eventSource.addEventListener('error', (event) => { /* Handle errors */ })
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VITE_API_URL` | `''` (empty) | API base URL. In development, set to `http://localhost:3001`. In production (Docker), leave empty for same-origin requests. |
+| `VITE_API_URL` | `''` (empty) | Optional API base URL override. Not needed in normal use — the Vite dev proxy and same-origin production serving handle routing automatically. |
 
 The environment is configured via:
-- `client/.env.development` - Development settings (set for local dev server)
-- Production builds use empty string (relative URLs work with same-origin server)
+- `vite.config.ts` - Dev proxy forwards `/api` requests to `http://localhost:3001`
+- Production builds use relative URLs (same-origin server)
 
 ### Event Types Received
 

@@ -13,6 +13,47 @@ import pydantic
 
 from src.utils import serialization
 
+
+# ── Shared entity with optional URL ─────────────────────────────
+
+
+class NamedEntity(pydantic.BaseModel):
+    """A company or service name with an optional URL.
+
+    Used in shared_with lists and third-party service lists
+    so the client can render names as clickable links.
+    """
+
+    model_config = pydantic.ConfigDict(
+        alias_generator=serialization.snake_to_camel,
+        populate_by_name=True,
+    )
+
+    name: str
+    url: str = ""
+
+
+def _coerce_named_entities(
+    value: list[str | dict[str, str] | NamedEntity],
+) -> list[NamedEntity]:
+    """Accept plain strings or dicts and normalise to NamedEntity.
+
+    The LLM returns plain strings; the enrichment step later
+    populates URLs.  This validator lets both forms coexist.
+    """
+    result: list[NamedEntity] = []
+    for item in value:
+        if isinstance(item, NamedEntity):
+            result.append(item)
+        elif isinstance(item, dict):
+            result.append(NamedEntity(**item))
+        elif isinstance(item, str):
+            result.append(NamedEntity(name=item))
+        else:
+            result.append(NamedEntity(name=str(item)))
+    return result
+
+
 # ── Section 1: Tracking Technologies ────────────────────────────
 
 
@@ -26,6 +67,7 @@ class TrackerEntry(pydantic.BaseModel):
     cookies: list[str] = pydantic.Field(default_factory=list)
     storage_keys: list[str] = pydantic.Field(default_factory=list)
     purpose: str
+    url: str = ""
 
 
 class TrackingTechnologiesSection(pydantic.BaseModel):
@@ -52,7 +94,14 @@ class DataCollectionItem(pydantic.BaseModel):
     details: list[str]
     risk: Literal["low", "medium", "high", "critical"]
     sensitive: bool = False
-    shared_with: list[str] = pydantic.Field(default_factory=list)
+    shared_with: list[NamedEntity] = pydantic.Field(default_factory=list)
+
+    @pydantic.field_validator("shared_with", mode="before")
+    @classmethod
+    def _coerce_shared_with(
+        cls, v: list[str | dict[str, str] | NamedEntity],
+    ) -> list[NamedEntity]:
+        return _coerce_named_entities(v)
 
 
 class DataCollectionSection(pydantic.BaseModel):
@@ -72,8 +121,15 @@ class ThirdPartyGroup(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     category: str
-    services: list[str]
+    services: list[NamedEntity] = pydantic.Field(default_factory=list)
     privacy_impact: str
+
+    @pydantic.field_validator("services", mode="before")
+    @classmethod
+    def _coerce_services(
+        cls, v: list[str | dict[str, str] | NamedEntity],
+    ) -> list[NamedEntity]:
+        return _coerce_named_entities(v)
 
 
 class ThirdPartySection(pydantic.BaseModel):

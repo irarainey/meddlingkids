@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** API base URL (empty in production, http://localhost:3001 in development) */
+  /** Optional API base URL override (proxy handles routing by default) */
   readonly VITE_API_URL?: string
 }
 

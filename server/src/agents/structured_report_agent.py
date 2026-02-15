@@ -249,15 +249,28 @@ class StructuredReportAgent(base.BaseAgent):
         storage_sec.local_storage_count = tracking_summary.local_storage_items
         storage_sec.session_storage_count = tracking_summary.session_storage_items
 
+        # ── URL enrichment ──────────────────────────────────
+        # Build a single name→URL lookup from all partner
+        # databases and consent partners, then apply it to
+        # every section that mentions company names.
+        url_lookup = _build_url_lookup(consent_details)
+
+        tracking_tech_sec = _enrich_tracker_urls(
+            _extract(tracking_tech, report.TrackingTechnologiesSection),
+            url_lookup,
+        )
+        data_collection_sec = _enrich_data_collection_urls(
+            _extract(data_collection, report.DataCollectionSection),
+            url_lookup,
+        )
+        third_party_sec = _enrich_third_party_urls(
+            third_party_sec,
+            url_lookup,
+        )
+
         result = report.StructuredReport(
-            tracking_technologies=_extract(
-                tracking_tech,
-                report.TrackingTechnologiesSection,
-            ),
-            data_collection=_extract(
-                data_collection,
-                report.DataCollectionSection,
-            ),
+            tracking_technologies=tracking_tech_sec,
+            data_collection=data_collection_sec,
             third_party_services=third_party_sec,
             privacy_risk=_extract(
                 privacy_risk,
@@ -271,6 +284,7 @@ class StructuredReportAgent(base.BaseAgent):
                     vendors,
                     report.VendorSection,
                 ),
+                url_lookup,
             ),
             recommendations=_extract(
                 recommendations,
@@ -372,32 +386,164 @@ def _extract[S: pydantic.BaseModel](
     return section_cls()
 
 
-def _enrich_vendor_urls(vendor_section: report.VendorSection) -> report.VendorSection:
-    """Look up vendor URLs from the partner databases.
+def _build_url_lookup(
+    consent_details: consent.ConsentDetails | None = None,
+) -> dict[str, str]:
+    """Build a combined name→URL lookup from all partner databases and consent partners.
 
-    For each vendor in the section, attempt to match the vendor
-    name against known partner entries and populate the URL field.
+    The lookup maps lowercase company names (and aliases) to
+    their canonical URLs.  Partner databases are checked first;
+    consent partner URLs serve as a fallback.
+
+    Args:
+        consent_details: Optional consent details with enriched
+            partner URLs from classification.
+
+    Returns:
+        Dict mapping lowercase name → URL.
+    """
+    urls: dict[str, str] = {}
+
+    # Partner databases (authoritative).
+    for config in loader.PARTNER_CATEGORIES:
+        database = loader.get_partner_database(config.file)
+        for key, entry in database.items():
+            if entry.url and key not in urls:
+                urls[key] = entry.url
+                for alias in entry.aliases:
+                    alias_lower = alias.lower().strip()
+                    if alias_lower not in urls:
+                        urls[alias_lower] = entry.url
+
+    # Consent partners (fallback).
+    if consent_details:
+        for partner in consent_details.partners:
+            if partner.url:
+                name_lower = partner.name.lower().strip()
+                if name_lower not in urls:
+                    urls[name_lower] = partner.url
+
+    return urls
+
+
+def _find_url(name: str, url_lookup: dict[str, str]) -> str:
+    """Find the URL for a company name using fuzzy substring matching.
+
+    Args:
+        name: Company name to look up.
+        url_lookup: Pre-built name→URL mapping.
+
+    Returns:
+        URL string, or empty string if not found.
+    """
+    name_lower = name.lower().strip()
+
+    # Exact match.
+    if name_lower in url_lookup:
+        return url_lookup[name_lower]
+
+    # Substring match (either direction).
+    for key, url in url_lookup.items():
+        if key in name_lower or name_lower in key:
+            return url
+
+    return ""
+
+
+def _enrich_vendor_urls(
+    vendor_section: report.VendorSection,
+    url_lookup: dict[str, str],
+) -> report.VendorSection:
+    """Populate vendor URLs from the shared lookup.
 
     Args:
         vendor_section: Vendor section from LLM output.
+        url_lookup: Pre-built name→URL mapping.
 
     Returns:
         Updated vendor section with URLs populated where found.
     """
     for vendor in vendor_section.vendors:
-        if vendor.url:
-            continue
-        name_lower = vendor.name.lower().strip()
-        for config in loader.PARTNER_CATEGORIES:
-            database = loader.get_partner_database(config.file)
-            for key, entry in database.items():
-                if key in name_lower or name_lower in key or any(a in name_lower or name_lower in a for a in entry.aliases):
-                    if entry.url:
-                        vendor.url = entry.url
-                    break
-            if vendor.url:
-                break
+        if not vendor.url:
+            vendor.url = _find_url(vendor.name, url_lookup)
     return vendor_section
+
+
+def _enrich_tracker_urls(
+    tracking_section: report.TrackingTechnologiesSection,
+    url_lookup: dict[str, str],
+) -> report.TrackingTechnologiesSection:
+    """Populate tracker URLs from the shared lookup.
+
+    Args:
+        tracking_section: Tracking technologies section.
+        url_lookup: Pre-built name→URL mapping.
+
+    Returns:
+        Updated section with URLs populated where found.
+    """
+    for category in (
+        tracking_section.analytics,
+        tracking_section.advertising,
+        tracking_section.identity_resolution,
+        tracking_section.social_media,
+        tracking_section.other,
+    ):
+        for tracker in category:
+            if not tracker.url:
+                tracker.url = _find_url(tracker.name, url_lookup)
+    return tracking_section
+
+
+def _enrich_named_entities(
+    entities: list[report.NamedEntity],
+    url_lookup: dict[str, str],
+) -> None:
+    """Populate URLs on a list of NamedEntity objects in place.
+
+    Args:
+        entities: List of named entities to enrich.
+        url_lookup: Pre-built name→URL mapping.
+    """
+    for entity in entities:
+        if not entity.url:
+            entity.url = _find_url(entity.name, url_lookup)
+
+
+def _enrich_data_collection_urls(
+    data_section: report.DataCollectionSection,
+    url_lookup: dict[str, str],
+) -> report.DataCollectionSection:
+    """Populate shared_with URLs in data collection items.
+
+    Args:
+        data_section: Data collection section.
+        url_lookup: Pre-built name→URL mapping.
+
+    Returns:
+        Updated section with URLs populated where found.
+    """
+    for item in data_section.items:
+        _enrich_named_entities(item.shared_with, url_lookup)
+    return data_section
+
+
+def _enrich_third_party_urls(
+    third_party_section: report.ThirdPartySection,
+    url_lookup: dict[str, str],
+) -> report.ThirdPartySection:
+    """Populate service URLs in third-party groups.
+
+    Args:
+        third_party_section: Third-party services section.
+        url_lookup: Pre-built name→URL mapping.
+
+    Returns:
+        Updated section with URLs populated where found.
+    """
+    for group in third_party_section.groups:
+        _enrich_named_entities(group.services, url_lookup)
+    return third_party_section
 
 
 def _build_data_context(
@@ -476,7 +622,10 @@ def _build_data_context(
             or "None disclosed"
         )
 
-        partners = "\n".join(f"- {p.name}: {p.purpose}" for p in consent_details.partners[:50]) or "None listed"
+        partners = "\n".join(
+            f"- {p.name}: {p.purpose}" + (f" (URL: {p.url})" if p.url else "")
+            for p in consent_details.partners[:50]
+        ) or "None listed"
 
         claimed_count = consent_details.claimed_partner_count
         claimed_line = f"\n### Claimed Partner Count: {claimed_count}" if claimed_count else ""

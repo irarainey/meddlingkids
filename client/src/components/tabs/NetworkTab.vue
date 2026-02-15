@@ -19,6 +19,10 @@ defineProps<{
       No network requests detected yet
     </div>
     <div v-else class="domain-groups">
+      <p class="filter-note">
+        Showing {{ filteredNetworkRequests.length }} data requests (XHR, fetch, and POST only).
+        Script, stylesheet, image, font, and document loads are excluded.
+      </p>
       <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
           <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
@@ -47,6 +51,16 @@ defineProps<{
 </template>
 
 <style scoped>
+.filter-note {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #2a2f45;
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+}
+
 .third-party-badge {
   background: #ef4444;
   color: white;
