@@ -58,7 +58,7 @@ async def detect_overlay(
     """Run AI overlay detection on the current page state.
 
     Uses vision-only detection — the LLM analyses the screenshot
-    to identify cookie consent dialogs and their dismiss buttons.
+    to identify page overlays and their dismiss buttons.
 
     Takes a viewport-only screenshot for detection (overlays are
     always visible in the viewport) to reduce image size and
@@ -77,7 +77,7 @@ async def detect_overlay(
         },
     )
 
-    log.info("Sending screenshot to consent detection model...")
+    log.info("Sending screenshot to overlay detection model...")
     detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
@@ -474,7 +474,7 @@ def build_no_overlay_events(
     if overlay_count == 0:
         log.info("No overlay detected", {"reason": reason})
         return [
-            sse_helpers.format_progress_event("consent-none", "No consent dialog detected...", 70),
+            sse_helpers.format_progress_event("consent-none", "No overlay detected...", 70),
             sse_helpers.format_sse_event(
                 "consent",
                 {

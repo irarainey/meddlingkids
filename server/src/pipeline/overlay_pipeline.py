@@ -229,10 +229,10 @@ class OverlayPipeline:
             if pending_extract is not None:
                 # Consent extraction is the dominant task
                 # (runs concurrently with overlay verify).
-                log.info("Processing consent dialog concurrently with overlay verification")
+                log.info("Analyzing overlay concurrently with verification")
                 yield self._progress(
                     "consent-analyze",
-                    "Processing consent dialog...",
+                    "Analyzing overlay content...",
                     68,
                 )
             else:
@@ -368,7 +368,7 @@ class OverlayPipeline:
             if is_first_cookie_consent:
                 yield self._progress(
                     f"overlay-{overlay_count}-expand",
-                    "Expanding consent details...",
+                    "Inspecting overlay content...",
                     progress_base,
                 )
                 (
@@ -683,7 +683,7 @@ class OverlayPipeline:
             if is_first_cookie:
                 yield self._progress(
                     f"overlay-{overlay_number}-expand",
-                    "Expanding consent details...",
+                    "Inspecting overlay content...",
                     progress_base,
                 )
                 (

@@ -56,7 +56,7 @@ src/
 │   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings)
 │   ├── llm_client.py                # Chat client factory
 │   ├── middleware.py                # Timing & retry middleware
-│   ├── consent_detection_agent.py   # Vision agent for consent dialogs
+│   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall)
 │   ├── consent_extraction_agent.py  # Extract consent details agent
 │   ├── script_analysis_agent.py     # Script identification agent
 │   ├── structured_report_agent.py   # Structured privacy report agent
@@ -80,7 +80,7 @@ src/
 ├── consent/                         # Consent handling
 │   ├── click.py                     # Multi-strategy consent button clicker
 │   ├── constants.py                 # Shared consent-manager detection constants
-│   ├── detection.py                 # Consent dialog detection orchestration
+│   ├── detection.py                 # Overlay detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, JSON)
 │   └── partner_classification.py    # Consent partner risk classification
@@ -163,7 +163,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
-| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of consent dialogs and overlay dismiss buttons |
+| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons |
 | `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent | `StructuredReport` | Generates structured privacy report with per-section LLM calls |

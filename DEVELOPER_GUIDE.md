@@ -182,11 +182,11 @@ OverlayPipeline.run() loop (up to 5 iterations)
    │       └── AI extracts partners, categories, purposes
    │       └── Events yielded when both extraction and next detection complete
    │
-   ├── capture_current_cookies() → New cookies after consent
+   ├── capture_current_cookies() → New cookies after overlay dismissal
    │
    ├── overlay_cache.merge_and_save() → Persist cache for repeat visits
    │
-   └── send_event('screenshot', {...}) → Post-consent screenshot
+   └── send_event('screenshot', {...}) → Post-dismissal screenshot
 ```
 
 ### Phase 5: AI Analysis
@@ -225,15 +225,18 @@ Analysis complete
    │
    └── send_event('complete', {
          success,
-         analysis,        // Full markdown report
-         summaryFindings, // Structured findings array
-         privacyScore,    // 0-100
-         privacySummary,  // One sentence
-         scoreBreakdown,  // Detailed score breakdown
-         analysisSummary, // Aggregate statistics
-         consentDetails,  // Consent dialog info
-         scripts,         // Scripts with descriptions
-         scriptGroups     // Grouped similar scripts
+         analysis,          // Full markdown report
+         structuredReport,  // Per-section structured report
+         summaryFindings,   // Structured findings array
+         privacyScore,      // 0-100
+         privacySummary,    // One sentence
+         scoreBreakdown,    // Detailed score breakdown
+         analysisSummary,   // Aggregate statistics
+         analysisError,     // Error message if analysis failed
+         consentDetails,    // Consent dialog info
+         scripts,           // Scripts with descriptions
+         scriptGroups,      // Grouped similar scripts
+         debugLog           // Server debug log lines
        })
    │
    └── await session.close() → Cleanup Playwright (in finally block)
@@ -274,6 +277,7 @@ summaryFindings      // Structured findings array
 privacyScore         // 0-100
 privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
+analysisError        // Error message if AI analysis failed
 debugLog             // Server debug log lines
 
 // Dialog state
@@ -384,7 +388,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `detection.py` | Consent dialog detection orchestration |
+| `detection.py` | Overlay detection orchestration |
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons |
 | `constants.py` | Shared consent-manager host keywords and exclusion lists |
@@ -579,10 +583,11 @@ class ConsentDetails(BaseModel):
 |-------|-----------|---------|-------------|
 | `progress` | Server → Client | `{ step, message, progress }` | Loading progress updates |
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
-| `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, reason? }` | Access denied or HTTP error |
+| `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (background refresh as ads/content load) |
+| `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
 | `analysis-chunk` | Server → Client | `{ text }` | Streamed token from tracking analysis (real-time LLM output) |
-| `complete` | Server → Client | `{ success, analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, scripts, scriptGroups, consentDetails }` | Final analysis results |
+| `complete` | Server → Client | `{ success, analysis, structuredReport, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, analysisError, consentDetails, scripts, scriptGroups, debugLog }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---

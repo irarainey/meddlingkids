@@ -303,14 +303,14 @@ async def analyze_url_stream(
             # pipeline already emits a screenshot after every
             # successful dismiss, so taking another one here
             # would just duplicate the last image.
+            #
+            # When no overlays were found the pipeline already
+            # emitted "No overlay detected..." at 70%.  Let
+            # that message stay visible while we silently
+            # capture the authoritative page state.
 
             if overlay_count == 0:
                 log.info("No overlays dismissed — capturing final page state")
-                yield sse_helpers.format_progress_event(
-                    "post-overlay-screenshot",
-                    "Capturing final page state...",
-                    72,
-                )
                 await session.capture_current_cookies()
                 event_str, _, storage = await sse_helpers.take_screenshot_event(session)
                 yield event_str
@@ -352,25 +352,25 @@ async def analyze_url_stream(
                     )
                     return
 
-            # ── Post-consent stabilisation ──────────────────
-            # After dismissing a consent banner, sites
-            # typically fire a burst of deferred tracking
-            # scripts (ad loaders, analytics, pixels) that
-            # were held back pending user consent.  A brief
+            # ── Post-overlay stabilisation ──────────────────
+            # After dismissing an overlay, sites typically
+            # fire a burst of deferred tracking scripts (ad
+            # loaders, analytics, pixels) that were held
+            # back pending user interaction.  A brief
             # network-idle race gives them time to arrive
             # so the analysis sees a consistent set of
             # scripts regardless of network jitter.
             if overlay_count > 0:
-                log.start_timer("post-consent-settle")
+                log.start_timer("post-overlay-settle")
                 yield sse_helpers.format_progress_event(
-                    "post-consent-settle",
+                    "post-overlay-settle",
                     "Waiting for page to settle...",
                     73,
                 )
                 settled = await session.wait_for_network_idle(5000)
                 log.end_timer(
-                    "post-consent-settle",
-                    f"Post-consent settle ({'idle' if settled else 'timeout'})",
+                    "post-overlay-settle",
+                    f"Post-overlay settle ({'idle' if settled else 'timeout'})",
                 )
 
             # ── Stage 2 screenshot refresher ────────────────

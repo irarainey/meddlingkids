@@ -7,10 +7,10 @@ The Vue.js frontend for the Meddling Kids tracking analysis tool. Provides an in
 The client is a single-page application built with Vue 3 and TypeScript. It connects to the server via Server-Sent Events (SSE) to receive real-time updates during URL analysis, displaying:
 
 - **Progress indicators** during the multi-stage analysis
-- **Screenshots** captured at each stage (initial load, after consent, final state)
+- **Screenshots** captured at each stage (initial load, after overlay dismissal, final state)
 - **Tracking data** including cookies, scripts, storage, and network requests
 - **AI-generated analysis** with risk assessments and privacy concerns
-- **Consent dialog details** extracted from cookie banners
+- **Overlay and consent details** extracted from page overlays
 
 ## Architecture
 
@@ -199,6 +199,7 @@ Located in `utils/formatters.ts`:
 | `formatExpiry(expires)` | Format cookie expiry timestamp for display |
 | `truncateValue(value, maxLength)` | Truncate long strings with ellipsis |
 | `getResourceTypeIcon(type)` | Get emoji icon for resource type |
+| `stripMarkdown(text)` | Strip markdown formatting (bold, italic, code, links, headers) from text |
 | `formatMarkdown(text)` | Convert markdown to HTML for rendering |
 
 ## User Interface
@@ -229,7 +230,7 @@ Located in `utils/formatters.ts`:
 
 - **Mystery Machine van**: Animated van on progress bar during analysis
 - **Progress bar**: Visual progress through analysis stages
-- **Status messages**: Real-time updates ("Loading page...", "Analyzing consent...", etc.)
+- **Status messages**: Real-time updates ("Loading page...", "Detecting page overlays...", etc.)
 - **Privacy score animation**: Animated counter revealing final score
 - **Third-party badges**: Highlight external domains in network requests
 - **Resource type icons**: Emoji indicators for request types (📜 script, 🔄 XHR, 🖼️ image)
@@ -247,6 +248,8 @@ const eventSource = new EventSource(
 
 eventSource.addEventListener('progress', (event) => { /* Update status */ })
 eventSource.addEventListener('screenshot', (event) => { /* Add screenshot + data */ })
+eventSource.addEventListener('screenshotUpdate', (event) => { /* Replace latest screenshot */ })
+eventSource.addEventListener('pageError', (event) => { /* Show page error dialog */ })
 eventSource.addEventListener('consentDetails', (event) => { /* Store consent info */ })
 eventSource.addEventListener('complete', (event) => { /* Finalize results */ })
 eventSource.addEventListener('error', (event) => { /* Handle errors */ })
@@ -268,10 +271,11 @@ The environment is configured via:
 |-------|---------|---------|
 | `progress` | `{ step, message, progress }` | Update progress bar and status |
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
+| `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (background refresh) |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
 | `analysis-chunk` | `{ text }` | Streamed token from tracking analysis (not currently consumed by client) |
-| `complete` | `{ analysis, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, ... }` | Final results with AI analysis and privacy score |
+| `complete` | `{ analysis, structuredReport, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, analysisError, consentDetails, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development
