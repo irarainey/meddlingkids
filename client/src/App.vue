@@ -107,6 +107,7 @@ function handleViewReport(): void {
         placeholder="Enter a suspicious URL to investigate..."
         :disabled="isLoading"
         @keyup.enter="analyzeUrl"
+        @focus="($event.target as HTMLInputElement).select()"
       />
       <select v-model="deviceType" class="device-select" :disabled="isLoading">
         <option value="iphone">iPhone</option>
