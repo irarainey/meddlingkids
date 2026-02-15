@@ -79,6 +79,24 @@ labels. Only describe practices that can be reasonably inferred from \
 the data provided. Focus on naming specific companies, tracking \
 technologies, and practices. Avoid vague generalities.
 
+IMPORTANT — use deterministic facts:
+You will be given DETERMINISTIC TRACKING METRICS and \
+DETERMINISTIC CONSENT FACTS at the end of the input. These are \
+ground-truth numbers extracted directly from the page and consent \
+dialog. Always use these exact numbers in your findings — do NOT \
+guess, approximate, or contradict them. For example, if the \
+deterministic consent facts say "Claimed partner count: 1467", \
+you MUST report 1467, not zero or any other number.
+
+IMPORTANT — evidence-based claims:
+Every finding MUST be supported by evidence from the data provided. \
+Do NOT make claims that contradict the deterministic metrics or \
+consent facts. Do NOT imply deception or non-disclosure unless the \
+data clearly shows a material gap — for example, if the consent \
+dialog claims a specific partner count and the data confirms that \
+count, do not call the disclosure deceptive. Only describe \
+discrepancies that are actually present in the data.
+
 IMPORTANT — formatting: Write all text as plain text only. Do NOT \
 use markdown formatting such as **bold**, *italic*, `code`, or \
 [links](url). The output is displayed in an HTML interface that \

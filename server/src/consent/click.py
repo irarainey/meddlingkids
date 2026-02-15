@@ -143,7 +143,7 @@ async def try_click_consent_button(
     # Phase 0: Try the frame where validation already found the element
     if found_in_frame and found_in_frame != page.main_frame:
         log.debug("Trying validated frame first", {"url": found_in_frame.url[:80]})
-        strategy = await _try_click_in_frame(found_in_frame, selector, button_text, 3000)
+        strategy = await _try_click_in_frame(found_in_frame, selector, button_text, 3000, deadline=deadline)
         if strategy:
             if await _did_navigate_away(page, original_url):
                 return _fail
@@ -154,7 +154,7 @@ async def try_click_consent_button(
             return _fail
 
     # Phase 1: LLM suggestion on main page
-    strategy = await _try_click_in_frame(page.main_frame, selector, button_text, 3000)
+    strategy = await _try_click_in_frame(page.main_frame, selector, button_text, 3000, deadline=deadline)
     if strategy:
         if await _did_navigate_away(page, original_url):
             return _fail
@@ -174,7 +174,7 @@ async def try_click_consent_button(
                 return _fail
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
-            strategy = await _try_click_in_frame(frame, selector, button_text, 3000)
+            strategy = await _try_click_in_frame(frame, selector, button_text, 3000, deadline=deadline)
             if strategy:
                 if await _did_navigate_away(page, original_url):
                     return _fail
@@ -371,6 +371,8 @@ async def _try_click_in_frame(
     selector: str | None,
     button_text: str | None,
     timeout: int,
+    *,
+    deadline: float = 0.0,
 ) -> overlay_cache.LocatorStrategy | None:
     """Try clicking in a specific frame using LLM-provided selector and text.
 
@@ -382,15 +384,27 @@ async def _try_click_in_frame(
     LLM-identified consent elements — if the safety check times out
     on a busy page, we still try clicking since the LLM identified
     the element as a consent button.
+
+    Respects the *deadline* (monotonic clock) to avoid exhausting the
+    total click time budget when the page is unresponsive and every
+    safety evaluation times out.
     """
+
+    def _time_ok() -> bool:
+        return deadline <= 0.0 or time.monotonic() < deadline
+
     # Strategy 1: CSS selector (strip non-standard pseudo-selectors)
     if selector:
         css_selector, text_from_selector = _parse_selector(selector)
 
-        if css_selector and await _safe_click(
-            frame.locator(css_selector),
-            timeout,
-            force_on_timeout=True,
+        if (
+            css_selector
+            and _time_ok()
+            and await _safe_click(
+                frame.locator(css_selector),
+                timeout,
+                force_on_timeout=True,
+            )
         ):
             return "css"
 
@@ -401,6 +415,8 @@ async def _try_click_in_frame(
                 ("role-button", frame.get_by_role("button", name=text_from_selector)),
                 ("text-fuzzy", frame.get_by_text(text_from_selector, exact=False)),
             ]:
+                if not _time_ok():
+                    return None
                 if await _safe_click(
                     locator,
                     timeout,
@@ -416,6 +432,8 @@ async def _try_click_in_frame(
             ("text-exact", frame.get_by_text(button_text, exact=True)),
             ("text-fuzzy", frame.get_by_text(button_text, exact=False)),
         ]:
+            if not _time_ok():
+                return None
             if await _safe_click(
                 locator,
                 timeout,

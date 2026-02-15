@@ -41,6 +41,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
         self,
         tracking_summary: analysis.TrackingSummary,
         consent_details: consent.ConsentDetails | None = None,
+        pre_consent_stats: analysis.PreConsentStats | None = None,
     ):
         """Stream the tracking analysis token-by-token.
 
@@ -50,11 +51,12 @@ class TrackingAnalysisAgent(base.BaseAgent):
         Args:
             tracking_summary: Collected tracking data summary.
             consent_details: Optional consent dialog info.
+            pre_consent_stats: Optional pre-consent page-load stats.
 
         Yields:
             ``AgentResponseUpdate`` with text deltas.
         """
-        prompt = _build_user_prompt(tracking_summary, consent_details)
+        prompt = _build_user_prompt(tracking_summary, consent_details, pre_consent_stats)
         log.info(
             "Starting streaming tracking analysis",
             {
@@ -85,18 +87,20 @@ class TrackingAnalysisAgent(base.BaseAgent):
 def _build_user_prompt(
     tracking_summary: analysis.TrackingSummary,
     consent_details: consent.ConsentDetails | None = None,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> str:
     """Build the user prompt from tracking data.
 
     Args:
         tracking_summary: Collected tracking data summary.
         consent_details: Optional consent dialog info.
+        pre_consent_stats: Optional pre-consent page-load stats.
 
     Returns:
         Formatted user prompt string.
     """
     consent_section = ""
-    if consent_details and (consent_details.categories or consent_details.partners):
+    if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count):
         consent_section = _build_consent_section(consent_details)
 
     breakdown = json.dumps(
@@ -105,6 +109,10 @@ def _build_user_prompt(
     )
     local_json = json.dumps(tracking_summary.local_storage, indent=2)
     session_json = json.dumps(tracking_summary.session_storage, indent=2)
+
+    pre_consent_section = ""
+    if pre_consent_stats:
+        pre_consent_section = _build_pre_consent_section(pre_consent_stats)
 
     return (
         "Analyze the following tracking data collected"
@@ -127,6 +135,7 @@ def _build_user_prompt(
         f"{breakdown}\n\n"
         f"## LocalStorage Data\n{local_json}\n\n"
         f"## SessionStorage Data\n{session_json}"
+        f"{pre_consent_section}"
         f"{consent_section}\n\n"
         f"{_build_gdpr_reference()}\n\n"
         f"{loader.build_media_group_context(tracking_summary.analyzed_url)}\n\n"
@@ -162,15 +171,50 @@ def _build_consent_section(
 
     purposes = "\n".join(f"- {p}" for p in cd.purposes) if cd.purposes else "No specific purposes listed"
 
+    # Include the claimed partner count so the LLM knows
+    # how many partners the dialog says it has, even when
+    # individual partners were not extracted.
+    claimed_line = ""
+    if cd.claimed_partner_count:
+        claimed_line = f"\n\n### Claimed Partner Count: {cd.claimed_partner_count}"
+
     return (
         "\n\n## Cookie Consent Dialog Information"
         " (What Users Agreed To)\n\n"
         f"### Cookie Categories Disclosed\n{cats}\n\n"
         "### Partners/Vendors Listed"
-        f" ({len(cd.partners)} found)\n{partners}\n\n"
+        f" ({len(cd.partners)} found)\n{partners}"
+        f"{claimed_line}\n\n"
         f"### Stated Purposes\n{purposes}\n\n"
         "### Raw Consent Text Excerpts\n"
         f"{cd.raw_text[:3000]}"
+    )
+
+
+def _build_pre_consent_section(
+    stats: analysis.PreConsentStats,
+) -> str:
+    """Build the pre-consent page-load activity section.
+
+    Args:
+        stats: Pre-consent statistics snapshot.
+
+    Returns:
+        Formatted markdown section.
+    """
+    return (
+        "\n\n## Activity on Initial Page Load"
+        " (before any dialogs were dismissed)\n"
+        "NOTE: This is what was present when the page first loaded. "
+        "We cannot confirm whether these scripts use the cookies listed, "
+        "whether any dialog is a consent dialog, or whether this activity "
+        "falls within the scope of what the user is asked to consent to.\n"
+        f"- Cookies on load: {stats.total_cookies}"
+        f" ({stats.tracking_cookies} matched tracking patterns)\n"
+        f"- Scripts on load: {stats.total_scripts}"
+        f" ({stats.tracking_scripts} matched tracking patterns)\n"
+        f"- Requests on load: {stats.total_requests}"
+        f" ({stats.tracker_requests} matched tracking patterns)"
     )
 
 

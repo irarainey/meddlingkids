@@ -163,7 +163,11 @@ by the data provided.
 
 Base your assessment strictly on the data provided — number of trackers, \
 third-party domains, cookie persistence, identity systems, data broker \
-involvement, network request volume, and pre-consent tracking activity.
+involvement, network request volume, and pre-consent tracking activity. \
+Every claim must be supported by evidence in the data. Do not assert \
+that a consent dialog is deceptive or non-compliant unless the data \
+shows a clear, material gap between what was disclosed and what was \
+detected.
 
 Write all text as plain text only. Do NOT use markdown formatting \
 such as **bold**, *italic*, `code`, or [links](url)."""
@@ -283,7 +287,11 @@ privacy impact, such as a slightly outdated partner count.
 
 Be specific and factual. Do not fabricate numbers. \
 Highlight practices where the actual data collection significantly \
-exceeds what is disclosed to users.
+exceeds what is disclosed to users. When a claimed partner count \
+is provided (e.g. "Claimed Partner Count: 1467"), use that exact \
+number for partners_disclosed — it represents what the consent \
+dialog tells users. Do not report zero partners when a claimed \
+count exists.
 
 Produce the SAME severity for the SAME type of discrepancy across \
 every analysis run. Do NOT claim that page-load tracking activity \

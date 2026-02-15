@@ -13,7 +13,7 @@ import pydantic
 from src.agents import base, config
 from src.agents.prompts import summary_findings
 from src.analysis import domain_cache
-from src.models import analysis
+from src.models import analysis, consent
 from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("SummaryFindingsAgent")
@@ -56,6 +56,9 @@ class SummaryFindingsAgent(base.BaseAgent):
         analysis_text: str,
         score_breakdown: analysis.ScoreBreakdown | None = None,
         domain_knowledge: domain_cache.DomainKnowledge | None = None,
+        consent_details: consent.ConsentDetails | None = None,
+        tracking_summary: analysis.TrackingSummary | None = None,
+        pre_consent_stats: analysis.PreConsentStats | None = None,
     ) -> list[analysis.SummaryFinding]:
         """Generate summary findings from analysis text.
 
@@ -65,6 +68,14 @@ class SummaryFindingsAgent(base.BaseAgent):
                 available, so the LLM can calibrate severity.
             domain_knowledge: Optional cached knowledge from
                 a prior analysis of the same domain.
+            consent_details: Optional consent dialog info
+                (deterministic facts to prevent hallucinated
+                partner counts).
+            tracking_summary: Optional tracking data summary
+                (deterministic metrics like cookie counts,
+                domain counts, storage usage).
+            pre_consent_stats: Optional pre-consent statistics
+                for accurate page-load activity reporting.
 
         Returns:
             List of typed ``SummaryFinding`` objects.
@@ -90,9 +101,20 @@ class SummaryFindingsAgent(base.BaseAgent):
                 domain_knowledge,
             )
 
+        consent_ctx = ""
+        if consent_details:
+            consent_ctx = _build_consent_facts(consent_details)
+
+        metrics_ctx = ""
+        if tracking_summary:
+            metrics_ctx = _build_metrics_facts(
+                tracking_summary,
+                pre_consent_stats,
+            )
+
         try:
             response = await self._complete(
-                f"Based on this full analysis, create a structured JSON object with key findings:\n\n{analysis_text}{score_ctx}{knowledge_ctx}"
+                f"Based on this full analysis, create a structured JSON object with key findings:\n\n{analysis_text}{score_ctx}{knowledge_ctx}{consent_ctx}{metrics_ctx}"
             )
             log.end_timer("summary-generation", "Summary generated")
 
@@ -155,3 +177,80 @@ def _parse_text_fallback(
             {"text": (text or "")[:200]},
         )
         return []
+
+
+def _build_consent_facts(
+    cd: consent.ConsentDetails,
+) -> str:
+    """Build deterministic consent facts for the summary prompt.
+
+    Provides the LLM with ground-truth numbers extracted from
+    the consent dialog so it doesn't rely on (possibly wrong)
+    counts from the streaming analysis text.
+
+    Args:
+        cd: Consent details captured from the dialog.
+
+    Returns:
+        Formatted context string.
+    """
+    lines = [
+        "",
+        "",
+        "DETERMINISTIC CONSENT FACTS (use these numbers, do not guess):",
+    ]
+    if cd.categories:
+        lines.append(f"- Consent categories disclosed: {len(cd.categories)}")
+    if cd.claimed_partner_count:
+        lines.append(f"- Claimed partner count (from dialog text): {cd.claimed_partner_count}")
+    if cd.partners:
+        lines.append(f"- Individually listed partners extracted: {len(cd.partners)}")
+    elif cd.claimed_partner_count:
+        lines.append("- Individually listed partners extracted: 0 (dialog states a count but does not list them individually)")
+    if cd.purposes:
+        lines.append(f"- Stated purposes: {len(cd.purposes)}")
+    return "\n".join(lines)
+
+
+def _build_metrics_facts(
+    ts: analysis.TrackingSummary,
+    pre_consent: analysis.PreConsentStats | None = None,
+) -> str:
+    """Build deterministic tracking metrics for the summary prompt.
+
+    Provides the LLM with ground-truth numbers so it uses
+    exact counts rather than approximations or hallucinated
+    figures from the streaming analysis text.
+
+    Args:
+        ts: Tracking data summary with counts and domains.
+        pre_consent: Optional pre-consent page-load stats.
+
+    Returns:
+        Formatted context string.
+    """
+    lines = [
+        "",
+        "",
+        "DETERMINISTIC TRACKING METRICS (use these exact numbers, do not guess or approximate):",
+        f"- Total cookies: {ts.total_cookies}",
+        f"- Total scripts: {ts.total_scripts}",
+        f"- Total network requests: {ts.total_network_requests}",
+        f"- localStorage items: {ts.local_storage_items}",
+        f"- sessionStorage items: {ts.session_storage_items}",
+        f"- Third-party domains: {len(ts.third_party_domains)}",
+    ]
+    if pre_consent:
+        lines.extend(
+            [
+                "",
+                "Activity on initial page load (before any dialogs were dismissed):",
+                "NOTE: We cannot confirm whether these scripts use the cookies listed,",
+                "whether any dialog is a consent dialog, or whether this activity",
+                "falls within the scope of what the user is asked to consent to.",
+                f"- Cookies on load: {pre_consent.total_cookies} ({pre_consent.tracking_cookies} matched tracking patterns)",
+                f"- Scripts on load: {pre_consent.total_scripts} ({pre_consent.tracking_scripts} matched tracking patterns)",
+                f"- Requests on load: {pre_consent.total_requests} ({pre_consent.tracker_requests} matched tracking patterns)",
+            ]
+        )
+    return "\n".join(lines)

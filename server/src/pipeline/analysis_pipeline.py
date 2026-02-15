@@ -75,6 +75,7 @@ async def run_ai_analysis(
         url,
         consent_details,
         analysis_chunks,
+        pre_consent_stats,
     )
 
     # Drain events as they arrive — this keeps SSE streaming
@@ -119,6 +120,7 @@ def _launch_concurrent_tasks(
     url: str,
     consent_details: consent.ConsentDetails | None,
     analysis_chunks: list[str],
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[None]]:
     """Create and launch the concurrent script + tracking tasks.
 
@@ -194,6 +196,7 @@ def _launch_concurrent_tasks(
                 final_scripts,
                 url,
                 consent_details,
+                pre_consent_stats,
             ):
                 analysis_chunks.append(chunk)
                 progress_queue.put_nowait(sse_helpers.format_sse_event("analysis-chunk", {"text": chunk}))
@@ -452,6 +455,9 @@ async def _score_and_summarise(
             full_text,
             score_breakdown,
             domain_knowledge,
+            consent_details,
+            tracking_summary,
+            pre_consent_stats,
         )
     )
 

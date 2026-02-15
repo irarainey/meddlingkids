@@ -11,7 +11,7 @@ from collections.abc import AsyncIterable
 
 from src import agents
 from src.analysis import tracking_summary as tracking_summary_mod
-from src.models import consent, tracking_data
+from src.models import analysis, consent, tracking_data
 from src.utils import logger
 
 log = logger.create_logger("AI-Analysis")
@@ -25,6 +25,7 @@ async def stream_tracking_analysis(
     scripts: list[tracking_data.TrackedScript],
     analyzed_url: str,
     consent_details: consent.ConsentDetails | None = None,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> AsyncIterable[str]:
     """Stream the main tracking analysis token-by-token.
 
@@ -41,6 +42,7 @@ async def stream_tracking_analysis(
         scripts: Tracked scripts.
         analyzed_url: The URL that was analysed.
         consent_details: Optional consent dialog info.
+        pre_consent_stats: Optional pre-consent page-load stats.
 
     Yields:
         Incremental text chunks of the analysis.
@@ -76,7 +78,7 @@ async def stream_tracking_analysis(
     )
 
     chunk_count = 0
-    async for update in tracking_agent.analyze_stream(tracking_summary, consent_details):
+    async for update in tracking_agent.analyze_stream(tracking_summary, consent_details, pre_consent_stats):
         if update.text:
             text = update.text if isinstance(update.text, str) else str(update.text)
             if text:

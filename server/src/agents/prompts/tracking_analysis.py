@@ -51,9 +51,24 @@ are referring to. If you recognise specific tracking \
 technologies, name them explicitly.
 
 Do not fabricate information. Only describe what can be \
-reasonably inferred from the data provided.
+reasonably inferred from the data provided. When citing \
+specific numbers (cookie counts, partner counts, domain \
+counts, storage items), use the exact values from the \
+data — do not guess or approximate.
+
+IMPORTANT — language around page-load tracking activity:
+If pre-consent page-load statistics are provided, report \
+them factually. Do NOT state or imply that tracking \
+"bypasses" consent or "violates" regulations. We cannot \
+determine whether the dialog is a consent dialog, whether \
+the scripts actually use those cookies, or whether the \
+activity falls within the scope of what the user is asked \
+to consent to. Use language like "were present on initial \
+page load" or "loaded before any dialog was dismissed".
 
 IMPORTANT: Pay special attention to the consent dialog \
 information if provided — this is what users typically \
 do not read but agree to. Highlight the most concerning \
-aspects."""
+aspects. When a claimed partner count is provided (e.g. \
+"Claimed Partner Count: 1467"), use that exact number — \
+do not say the dialog reports zero partners."""
