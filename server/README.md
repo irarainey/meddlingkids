@@ -79,7 +79,7 @@ src/
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling
 │   ├── click.py                     # Multi-strategy consent button clicker
-│   ├── constants.py                 # Shared consent-manager detection constants
+│   ├── constants.py                 # Shared consent-manager detection constants, selectors, and utilities
 │   ├── detection.py                 # Overlay detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, JSON)

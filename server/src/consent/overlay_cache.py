@@ -27,6 +27,7 @@ from typing import Any, Literal
 
 import pydantic
 
+from src.consent import constants
 from src.utils import logger
 
 log = logger.create_logger("OverlayCache")
@@ -244,12 +245,7 @@ def merge_and_save(
     """
     # Regex for reject-style button text that should be
     # dropped from cache when an accept alternative exists.
-    import re
-
-    _reject_re = re.compile(
-        r"reject|decline|deny|refuse|necessary only|essential only",
-        re.IGNORECASE,
-    )
+    _reject_re = constants.REJECT_BUTTON_RE
 
     seen_keys: set[str] = set()
     overlays: list[CachedOverlay] = []

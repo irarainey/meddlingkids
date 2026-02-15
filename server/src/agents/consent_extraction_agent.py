@@ -17,6 +17,7 @@ from playwright import async_api
 
 from src.agents import base, config
 from src.agents.prompts import consent_extraction
+from src.consent import constants
 from src.models import consent
 from src.utils import errors, json_parsing, logger
 
@@ -49,7 +50,6 @@ class _ConsentExtractionResponse(pydantic.BaseModel):
     """Schema pushed to the LLM via ``response_format``."""
 
     hasManageOptions: bool = False
-    manageOptionsSelector: str | None = None
     categories: list[_CategoryResponse] = pydantic.Field(default_factory=list)
     partners: list[_PartnerResponse] = pydantic.Field(default_factory=list)
     purposes: list[str] = pydantic.Field(default_factory=list)
@@ -246,7 +246,6 @@ def _to_domain(
     """
     return consent.ConsentDetails(
         has_manage_options=r.hasManageOptions,
-        manage_options_selector=r.manageOptionsSelector,
         categories=[
             consent.ConsentCategory(
                 name=c.name,
@@ -286,7 +285,6 @@ def _parse_text_fallback(
     if isinstance(raw, dict):
         return consent.ConsentDetails(
             has_manage_options=raw.get("hasManageOptions", False),
-            manage_options_selector=raw.get("manageOptionsSelector"),
             categories=[
                 consent.ConsentCategory(
                     name=c.get("name", ""),
@@ -327,29 +325,15 @@ async def _extract_consent_text(
     main_page_text: str = await page.evaluate(_EXTRACT_CONSENT_JS)
 
     iframe_texts: list[str] = []
-    consent_keywords = (
-        "consent",
-        "onetrust",
-        "cookiebot",
-        "sourcepoint",
-        "trustarc",
-        "didomi",
-        "quantcast",
-        "cmp",
-        "gdpr",
-        "privacy",
-    )
     for frame in page.frames:
-        if frame == page.main_frame:
+        if not constants.is_consent_frame(frame, page.main_frame):
             continue
-        frame_url = frame.url.lower()
-        if any(kw in frame_url for kw in consent_keywords):
-            try:
-                iframe_text: str = await frame.evaluate(_EXTRACT_IFRAME_JS)
-                if iframe_text:
-                    iframe_texts.append(f"[CONSENT IFRAME]:\n{iframe_text}")
-            except Exception as exc:
-                log.debug("Failed to extract iframe text", {"url": frame.url, "error": str(exc)})
+        try:
+            iframe_text: str = await frame.evaluate(_EXTRACT_IFRAME_JS)
+            if iframe_text:
+                iframe_texts.append(f"[CONSENT IFRAME]:\n{iframe_text}")
+        except Exception as exc:
+            log.debug("Failed to extract iframe text", {"url": frame.url, "error": str(exc)})
 
     all_texts = [t for t in [*iframe_texts, main_page_text] if t]
     log.debug(

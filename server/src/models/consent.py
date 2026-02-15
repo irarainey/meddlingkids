@@ -71,12 +71,10 @@ class ConsentDetails(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     has_manage_options: bool
-    manage_options_selector: str | None
     categories: list[ConsentCategory]
     partners: list[ConsentPartner]
     purposes: list[str]
     raw_text: str
-    expanded: bool | None = None
     claimed_partner_count: int | None = None
 
     @classmethod
@@ -88,7 +86,6 @@ class ConsentDetails(pydantic.BaseModel):
         """Return a default empty consent-details result."""
         return cls(
             has_manage_options=False,
-            manage_options_selector=None,
             categories=[],
             partners=[],
             purposes=[],

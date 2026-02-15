@@ -45,14 +45,23 @@ flowchart TD
         PHASE3 --> PHASE4
 
         subgraph PHASE4["Phase 4 — Overlay Detection & Handling"]
+            OC{"Cached overlay\nin DOM?"} -->|Yes| OCA["Click cached\noverlay"]
+            OCA --> OCC["Capture post-click\ncookies & screenshot"]
+            OC -->|No| O1
+            OCC --> O1
             O1["Take viewport\nscreenshot"] --> O2{"AI vision:\noverlay\ndetected?"}
             O2 -->|No| O7["Capture final\npage state"]
-            O2 -->|Yes| O3["Validate button\nin DOM"]
-            O3 --> O4["Try click strategies\n(role match → iframes\n→ heuristics)"]
+            O2 -->|Yes| O3["Validate button\nin DOM\n(retry for consent)"]
+            O3 --> OAB{"Reject-style\nbutton?"}
+            OAB -->|Yes| OACC["Find accept\nalternative"]
+            OAB -->|No| O4
+            OACC --> O4
+            O4["Try click strategies\n(role match → iframes\n→ heuristics)"]
             O4 --> O5["Capture post-click\ncookies & screenshot"]
             O5 --> O6["Cache overlay strategy\nfor domain"]
             O6 --> EXT{"First consent\noverlay?"}
-            EXT -->|Yes| EXTRACT["AI extraction\n(partners, categories,\npurposes) — concurrent"]
+            EXT -->|Yes| CAP["Read-only\ncontent capture"]
+            CAP --> EXTRACT["AI extraction\n(partners, categories,\npurposes) — concurrent"]
             EXT -->|No| O2
             EXTRACT --> O2
         end

@@ -123,7 +123,6 @@ export interface ConsentDetails {
   partners: ConsentPartner[]
   purposes: string[]
   hasManageOptions?: boolean
-  expanded?: boolean
   /** Number of partners claimed by the consent dialog text (e.g. "We and our 1467 partners") */
   claimedPartnerCount?: number | null
 }

@@ -33,9 +33,7 @@ def serialize_consent_details(
     """Serialize ConsentDetails to a camelCase dict for SSE transport."""
     data = details.model_dump(by_alias=True)
     # Exclude internal fields not needed by the client.
-    data.pop("manageOptionsSelector", None)
     data.pop("rawText", None)
-    data.pop("expanded", None)
     return data
 
 

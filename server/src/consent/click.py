@@ -9,7 +9,6 @@ import asyncio
 import dataclasses
 import re
 import time
-from urllib import parse
 
 from playwright import async_api
 
@@ -39,20 +38,6 @@ class ClickResult:
     frame_type: overlay_cache.FrameType | None = None
 
 
-def _is_consent_frame(frame: async_api.Frame, main_frame: async_api.Frame) -> bool:
-    """Return True if the frame looks like a consent-manager iframe."""
-    if frame == main_frame:
-        return False
-    try:
-        hostname = parse.urlparse(frame.url).hostname or ""
-    except Exception:
-        return False
-    hostname_lower = hostname.lower()
-    if any(ex in hostname_lower for ex in constants.CONSENT_HOST_EXCLUDE):
-        return False
-    return any(kw in hostname_lower for kw in constants.CONSENT_HOST_KEYWORDS)
-
-
 async def validate_element_exists(
     page: async_api.Page,
     selector: str | None,
@@ -64,7 +49,7 @@ async def validate_element_exists(
     iframes.  Returns the frame where the element was found, or
     ``None`` if not found anywhere.
     """
-    frames = [page.main_frame] + [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
+    frames = [page.main_frame] + [f for f in page.frames if constants.is_consent_frame(f, page.main_frame)]
 
     for frame in frames:
         if selector:
@@ -180,7 +165,7 @@ async def try_click_consent_button(
         return _fail
 
     # Phase 2: LLM suggestion on consent-manager iframes
-    consent_frames = [f for f in page.frames if _is_consent_frame(f, page.main_frame)]
+    consent_frames = [f for f in page.frames if constants.is_consent_frame(f, page.main_frame)]
     if consent_frames:
         log.debug("Trying consent iframes", {"count": len(consent_frames)})
         for frame in consent_frames:

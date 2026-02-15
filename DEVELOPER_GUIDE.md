@@ -152,41 +152,57 @@ Page loaded successfully
 
 ### Phase 4: Overlay Detection and Handling
 ```
-OverlayPipeline.run() loop (up to 5 iterations)
+OverlayPipeline.run()
    │
    │   Sub-step functions live in overlay_steps.py;
    │   OverlayPipeline orchestrates control flow only.
    │
-   ├── steps.detect_overlay(screenshot)
-   │   └── AI vision-only analysis (viewport screenshot, JPEG, max 1280px)
-   │       Returns: { found, overlay_type, button_text, certainty }
-   │   └── Runs concurrently with pending extraction via asyncio.gather
+   ├── 1. Try cached overlays first (_try_cached_overlays)
+   │   └── For each cached overlay in overlay_cache:
+   │       ├── Locate cached button in DOM (by locator strategy + text)
+   │       ├── _prefer_accept_button() → Replace reject-style with accept if available
+   │       ├── Click → capture_after_click()
+   │       └── On failure → mark as failed, fall through to vision
    │
-   ├── steps.validate_overlay_in_dom(page, detection)
-   │   └── Confirms button exists, returns Frame where found
-   │   └── Tracks failed signatures to avoid re-detecting unclickable elements
-   │
-   ├── steps.try_overlay_click(page, detection, found_in_frame)
-   │   └── Phase 0: Try validated frame first (skip main-frame scan)
-   │   └── Phase 1: Main frame button role match
-   │   └── Phase 2: Consent iframes
-   │   └── Phase 3: Generic heuristics
-   │   └── Tri-state safety check (is_safe_to_click)
-   │   └── Returns ClickResult (success, locator_strategy, frame_type)
-   │
-   ├── steps.capture_after_click(session, page, detection)
-   │   └── Waits for DOM, captures cookies, takes screenshot
-   │
-   ├── If first cookie-consent overlay:
-   │   └── Start extraction as asyncio.create_task (concurrent)
-   │       └── AI extracts partners, categories, purposes
-   │       └── Events yielded when both extraction and next detection complete
-   │
-   ├── capture_current_cookies() → New cookies after overlay dismissal
+   ├── 2. Vision detection loop (up to 5 iterations)
+   │   │
+   │   ├── steps.detect_overlay(screenshot)
+   │   │   └── AI vision-only analysis (viewport screenshot, JPEG, max 1280px)
+   │   │       Returns: { found, overlay_type, button_text, certainty }
+   │   │   └── Runs concurrently with pending extraction via asyncio.gather
+   │   │
+   │   ├── _retry_validate_in_dom(page, detection)
+   │   │   └── DOM validation with retry (4 × 1.5s) for first cookie-consent
+   │   │   └── Tracks failed signatures to avoid re-detecting unclickable elements
+   │   │
+   │   ├── _prefer_accept_button(page, detection, found_in_frame)
+   │   │   └── If button text matches reject pattern → search for accept alternative
+   │   │   └── Uses REJECT_BUTTON_RE from constants.py
+   │   │
+   │   ├── steps.try_overlay_click(page, detection, found_in_frame)
+   │   │   └── Phase 0: Try validated frame first (skip main-frame scan)
+   │   │   └── Phase 1: Main frame button role match
+   │   │   └── Phase 2: Consent iframes
+   │   │   └── Phase 3: Generic heuristics
+   │   │   └── Tri-state safety check (is_safe_to_click)
+   │   │   └── Returns ClickResult (success, locator_strategy, frame_type)
+   │   │
+   │   ├── steps.capture_after_click(session, page, detection)
+   │   │   └── Waits for DOM, captures cookies, takes screenshot
+   │   │
+   │   ├── If first cookie-consent overlay:
+   │   │   ├── steps.capture_consent_content() → Read-only pre-dismiss capture
+   │   │   │   └── Extracts text from consent iframes and main-frame containers
+   │   │   │   └── Uses constants.is_consent_frame() and CONSENT_CONTAINER_SELECTORS
+   │   │   └── Start extraction as asyncio.create_task (concurrent)
+   │   │       └── AI extracts partners, categories, purposes
+   │   │       └── Events yielded when both extraction and next detection complete
+   │   │
+   │   └── send_event('screenshot', {...}) → Post-dismissal screenshot
    │
    ├── overlay_cache.merge_and_save() → Persist cache for repeat visits
    │
-   └── send_event('screenshot', {...}) → Post-dismissal screenshot
+   └── If overlays dismissed → wait for network idle (post-consent settle)
 ```
 
 ### Phase 5: AI Analysis
@@ -391,7 +407,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `detection.py` | Overlay detection orchestration |
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons |
-| `constants.py` | Shared consent-manager host keywords and exclusion lists |
+| `constants.py` | Shared consent-manager host keywords, exclusion lists, container selectors, reject-button regex, and `is_consent_frame()` utility |
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, and frame type per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level |
 
@@ -423,8 +439,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|---------------|
 | `stream.py` | Top-level SSE endpoint orchestrator (6-phase workflow, cache clearing) |
 | `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
-| `overlay_pipeline.py` | Phase 4: overlay detect → click → extract (orchestrator) |
-| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, extract) |
+| `overlay_pipeline.py` | Phase 4: cached overlay → vision detect → click → extract (orchestrator) |
+| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract) |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting and serialization helpers |
 
@@ -566,12 +582,10 @@ class NetworkRequest(BaseModel):
 ```python
 class ConsentDetails(BaseModel):
     has_manage_options: bool
-    manage_options_selector: str | None
     categories: list[ConsentCategory]  # [{name, description, required}]
     partners: list[ConsentPartner]     # [{name, purpose, data_collected, ...}]
     purposes: list[str]
     raw_text: str
-    expanded: bool | None = None
     claimed_partner_count: int | None = None
 ```
 

@@ -18,7 +18,7 @@ import pydantic
 from playwright import async_api
 
 from src.browser import session as browser_session
-from src.consent import click, overlay_cache
+from src.consent import click, constants, overlay_cache
 from src.models import consent, tracking_data
 from src.pipeline import overlay_steps, sse_helpers
 from src.utils import logger
@@ -30,10 +30,7 @@ MAX_OVERLAYS = 5
 # Reject-style button text patterns.  When a cached overlay
 # uses one of these, we try to find an accept/allow
 # alternative first so the tool maximises consent for analysis.
-_REJECT_BUTTON_RE = re.compile(
-    r"reject|decline|deny|refuse|necessary only|essential only",
-    re.IGNORECASE,
-)
+_REJECT_BUTTON_RE = constants.REJECT_BUTTON_RE
 
 # Accept-style label regex used to locate the preferred button.
 _ACCEPT_BUTTON_RE = re.compile(
@@ -160,6 +157,93 @@ class OverlayPipeline:
         self._progress_hwm = base + 3  # click_and_capture emits up to base+3
         return base
 
+    # ── Shared helpers for vision + cached paths ────────────
+
+    async def _retry_validate_in_dom(
+        self,
+        detection: consent.CookieConsentDetection,
+        *,
+        is_first_cookie: bool,
+    ) -> async_api.Frame | None:
+        """Validate that *detection* exists in the DOM, retrying for first overlays.
+
+        For the first cookie-consent overlay, the dialog
+        container may be visible but buttons may still be
+        loading (iframe content).  Waits up to 6 s (4 × 1.5 s)
+        before giving up.
+
+        Returns the frame where the element was found, or
+        ``None`` if not found.
+        """
+        found = await overlay_steps.validate_overlay_in_dom(self._page, detection)
+        if found:
+            return found
+
+        if not is_first_cookie:
+            return None
+
+        log.info("Cookie-consent button not in DOM — waiting for dialog content to load")
+        for _retry in range(4):
+            await asyncio.sleep(1.5)
+            found = await overlay_steps.validate_overlay_in_dom(self._page, detection)
+            if found:
+                log.info("Consent button appeared after retry", {"retries": _retry + 1})
+                return found
+        return None
+
+    async def _prefer_accept_button(
+        self,
+        detection: consent.CookieConsentDetection,
+        found_in_frame: async_api.Frame,
+        *,
+        fallback_detection: consent.CookieConsentDetection | None = None,
+    ) -> tuple[consent.CookieConsentDetection, async_api.Frame | None]:
+        """Replace a reject-style detection with an accept alternative.
+
+        If *detection* has reject-style button text, searches
+        the DOM for an accept/allow button.  When found, returns
+        a new detection + validated frame.  When *not* found,
+        returns the provided *fallback_detection* (or the
+        original) unchanged.
+
+        Returns:
+            ``(detection, found_in_frame)`` — updated or original.
+            ``found_in_frame`` is ``None`` when the accept button
+            vanished during re-validation and no fallback is set.
+        """
+        if not (detection.overlay_type == "cookie-consent" and detection.button_text and _REJECT_BUTTON_RE.search(detection.button_text)):
+            return detection, found_in_frame
+
+        accept_alt = await _find_accept_button(found_in_frame)
+        if not accept_alt:
+            return detection, found_in_frame
+
+        log.info(
+            "Found accept button — overriding reject",
+            {
+                "rejectButton": detection.button_text,
+                "acceptButton": accept_alt,
+            },
+        )
+        accept_detection = consent.CookieConsentDetection(
+            found=True,
+            overlay_type="cookie-consent",
+            selector=None,
+            button_text=accept_alt,
+            confidence=detection.confidence,
+            reason="accept preferred over reject",
+        )
+        alt_frame = await overlay_steps.validate_overlay_in_dom(self._page, accept_detection)
+        if alt_frame:
+            return accept_detection, alt_frame
+
+        # Accept button vanished between search and validation —
+        # fall back to the original or caller-provided fallback.
+        log.warn("Accept button not found on re-validation — using original detection")
+        if fallback_detection:
+            return fallback_detection, found_in_frame
+        return detection, found_in_frame
+
     async def run(self) -> AsyncGenerator[str]:
         """Handle overlays, yielding SSE events.
 
@@ -273,69 +357,36 @@ class OverlayPipeline:
                 break
 
             # ── Validate in DOM ─────────────────────────────
-            found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
+            is_first_cookie = detection.overlay_type == "cookie-consent" and overlay_count == 0
+            found_in_frame = await self._retry_validate_in_dom(
+                detection,
+                is_first_cookie=is_first_cookie,
+            )
             if not found_in_frame:
-                # For cookie-consent overlays, the dialog
-                # container may be visible but buttons may
-                # still be loading (iframe content).  Wait
-                # and retry validation before giving up.
-                if detection.overlay_type == "cookie-consent" and overlay_count == 0:
-                    log.info("Cookie-consent detected but button not in DOM — waiting for dialog content to load")
-                    for _retry in range(4):
-                        await asyncio.sleep(1.5)
-                        found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
-                        if found_in_frame:
-                            log.info(
-                                "Consent button appeared after retry",
-                                {"retries": _retry + 1},
-                            )
-                            break
+                for event in overlay_steps.build_no_overlay_events(
+                    overlay_count,
+                    "Detection false positive — element not found in DOM",
+                ):
+                    yield event
+                break
+
+            # ── Prefer accept over LLM-detected reject ─────
+            detection, found_in_frame = await self._prefer_accept_button(detection, found_in_frame)
+            if not found_in_frame:
+                # Accept override failed and re-validation
+                # lost the element — re-detect from scratch.
+                detection = await overlay_steps.detect_overlay(session, overlay_count)
+                found_in_frame = await self._retry_validate_in_dom(
+                    detection,
+                    is_first_cookie=False,
+                )
                 if not found_in_frame:
                     for event in overlay_steps.build_no_overlay_events(
                         overlay_count,
-                        "Detection false positive — element not found in DOM",
+                        "Accept override failed and re-detection lost the element",
                     ):
                         yield event
                     break
-
-            # ── Prefer accept over LLM-detected reject ─────
-            # The LLM may return a reject button despite the
-            # prompt asking for accept.  Search the DOM for
-            # an accept alternative before proceeding.
-            if detection.overlay_type == "cookie-consent" and detection.button_text and _REJECT_BUTTON_RE.search(detection.button_text):
-                accept_alt = await _find_accept_button(found_in_frame)
-                if accept_alt:
-                    log.info(
-                        "Found accept button — overriding LLM-detected reject",
-                        {
-                            "llmButton": detection.button_text,
-                            "acceptButton": accept_alt,
-                        },
-                    )
-                    detection = consent.CookieConsentDetection(
-                        found=True,
-                        overlay_type="cookie-consent",
-                        selector=None,
-                        button_text=accept_alt,
-                        confidence=detection.confidence,
-                        reason="accept preferred over LLM-detected reject",
-                    )
-                    alt_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
-                    if alt_frame:
-                        found_in_frame = alt_frame
-                    else:
-                        log.warn(
-                            "Accept button not found on re-validation — using LLM detection",
-                        )
-                        detection = await overlay_steps.detect_overlay(session, overlay_count)
-                        found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
-                        if not found_in_frame:
-                            for event in overlay_steps.build_no_overlay_events(
-                                overlay_count,
-                                "Accept override failed and re-detection lost the element",
-                            ):
-                                yield event
-                            break
 
             overlay_count += 1
             progress_base = self._next_progress_base(overlay_count)
@@ -575,79 +626,29 @@ class OverlayPipeline:
             )
 
             # Validate element exists in DOM
-            found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
+            is_first_cookie = cached.overlay_type == "cookie-consent" and dismissed == 0
+            found_in_frame = await self._retry_validate_in_dom(
+                detection,
+                is_first_cookie=is_first_cookie,
+            )
             if not found_in_frame:
-                # For cookie-consent overlays, the dialog
-                # container may appear before its buttons
-                # load (iframe content).  Wait and retry.
-                if cached.overlay_type == "cookie-consent" and dismissed == 0:
-                    log.info("Cached cookie-consent button not in DOM — waiting for dialog content to load")
-                    for _retry in range(4):
-                        await asyncio.sleep(1.5)
-                        found_in_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
-                        if found_in_frame:
-                            log.info(
-                                "Cached consent button appeared after retry",
-                                {"retries": _retry + 1},
-                            )
-                            break
-                if not found_in_frame:
-                    # Not shown on this page — skip but keep
-                    # in cache for other pages on the domain.
-                    log.info(
-                        "Cached overlay not present on this page — skipping",
-                        {
-                            "type": cached.overlay_type,
-                            "buttonText": cached.button_text,
-                        },
-                    )
-                    continue
+                # Not shown on this page — skip but keep
+                # in cache for other pages on the domain.
+                log.info(
+                    "Cached overlay not present on this page — skipping",
+                    {
+                        "type": cached.overlay_type,
+                        "buttonText": cached.button_text,
+                    },
+                )
+                continue
 
             # ── Prefer accept over cached reject ───────
-            # The cache may store a "reject" button from a
-            # previous run.  Try to find an accept/allow
-            # alternative first so consent is maximised.
-            if cached.overlay_type == "cookie-consent" and cached.button_text and _REJECT_BUTTON_RE.search(cached.button_text):
-                accept_alt = await _find_accept_button(found_in_frame)
-                if accept_alt:
-                    log.info(
-                        "Found accept button — overriding cached reject",
-                        {
-                            "cachedButton": (cached.button_text),
-                            "acceptButton": accept_alt,
-                        },
-                    )
-                    detection = consent.CookieConsentDetection(
-                        found=True,
-                        overlay_type="cookie-consent",
-                        selector=None,
-                        button_text=accept_alt,
-                        confidence="high",
-                        reason=("accept preferred over cached reject"),
-                    )
-                    # Re-validate so found_in_frame points
-                    # at the frame containing the accept
-                    # button (usually the same frame).
-                    alt_frame = await overlay_steps.validate_overlay_in_dom(page, detection)
-                    if alt_frame:
-                        found_in_frame = alt_frame
-                    else:
-                        # Accept button vanished between
-                        # search and validation — fall back
-                        # to the original cached reject.
-                        log.info(
-                            "Accept button not found on re-validation — using cached reject",
-                        )
-                        detection = consent.CookieConsentDetection(
-                            found=True,
-                            overlay_type=(
-                                cached.overlay_type  # type: ignore[arg-type]
-                            ),
-                            selector=cached.css_selector,
-                            button_text=(cached.button_text),
-                            confidence="high",
-                            reason=("from overlay cache"),
-                        )
+            detection, found_in_frame = await self._prefer_accept_button(
+                detection,
+                found_in_frame,
+                fallback_detection=detection,
+            )
 
             overlay_number = result.overlay_count + dismissed + 1
             progress_base = self._next_progress_base(overlay_number)

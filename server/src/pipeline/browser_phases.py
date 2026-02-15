@@ -74,20 +74,6 @@ async def navigate(
 # Consent Dialog Readiness
 # ====================================================================
 
-# Consent-manager host constants imported from src.consent.constants.
-
-# Well-known container selectors for consent dialogs in the
-# main frame (not inside iframes).
-_CONSENT_CONTAINER_SELECTORS = (
-    "#qc-cmp2-ui",  # Quantcast
-    "#onetrust-banner-sdk",  # OneTrust
-    "#CybotCookiebotDialog",  # Cookiebot
-    '[class*="consent"]',  # Generic
-    '[id*="consent"]',  # Generic
-    '[class*="cookie-banner"]',  # Generic
-    '[id*="cookie-banner"]',  # Generic
-)
-
 # Poll interval and max wait for consent dialog readiness.
 _CONSENT_POLL_INTERVAL_MS = 500
 _CONSENT_MAX_WAIT_MS = 8000
@@ -111,23 +97,11 @@ async def _wait_for_consent_dialog_ready(
     Does nothing if no consent iframe/container is detected.
     """
     # Check for consent-manager iframes
-    consent_frames: list[async_api.Frame] = []
-    for frame in page.frames:
-        if frame == page.main_frame:
-            continue
-        try:
-            hostname = parse.urlparse(frame.url).hostname or ""
-        except Exception:
-            continue
-        hostname_lower = hostname.lower()
-        if any(ex in hostname_lower for ex in constants.CONSENT_HOST_EXCLUDE):
-            continue
-        if any(kw in hostname_lower for kw in constants.CONSENT_HOST_KEYWORDS):
-            consent_frames.append(frame)
+    consent_frames: list[async_api.Frame] = [f for f in page.frames if constants.is_consent_frame(f, page.main_frame)]
 
     # Also check for known containers in the main frame
     has_main_frame_container = False
-    for sel in _CONSENT_CONTAINER_SELECTORS:
+    for sel in constants.CONSENT_CONTAINER_SELECTORS:
         try:
             if await page.locator(sel).count() > 0:
                 has_main_frame_container = True

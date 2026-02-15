@@ -32,8 +32,4 @@ extract that number into the claimedPartnerCount field. \
 This is the number the dialog CLAIMS, regardless of how \
 many individual partner names you can find.
 
-Also identify if there is a "Manage Preferences", \
-"Cookie Settings", "More Options", or similar button that \
-reveals more details.
-
 Return ONLY a JSON object matching the required schema."""

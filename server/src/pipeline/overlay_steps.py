@@ -260,10 +260,9 @@ async def extract_and_classify_consent(
         pre_click_screenshot: Screenshot with dialog visible.
         result: Mutable overlay result to populate.
         pre_click_consent_text: DOM text captured while the
-            consent dialog was still visible (and possibly
-            expanded).  If provided, the extraction agent
-            uses this instead of re-extracting from the
-            (now-dismissed) page.
+            consent dialog was still visible.  If provided,
+            the extraction agent uses this instead of
+            re-extracting from the (now-dismissed) page.
     """
     log.start_timer("consent-extraction")
     yield sse_helpers.format_progress_event(
