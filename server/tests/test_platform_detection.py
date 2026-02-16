@@ -208,6 +208,13 @@ class TestProfileDataQuality:
         assert profile is not None
         assert len(profile.iframe_patterns) > 0
 
+    def test_consentmanager_has_iframe_patterns(self) -> None:
+        """consentmanager renders in an iframe — must have iframe patterns."""
+        profile = platform_detection.get_platform_profile("consentmanager")
+        assert profile is not None
+        assert len(profile.iframe_patterns) > 0
+        assert any("consentmanager" in p for p in profile.iframe_patterns)
+
     def test_onetrust_has_no_iframes(self) -> None:
         """OneTrust renders in the main frame — no iframe patterns."""
         profile = platform_detection.get_platform_profile("onetrust")
@@ -314,6 +321,12 @@ class TestDetectPlatformFromDomain:
         result = platform_detection.detect_platform_from_domain("dailymail.co.uk")
         assert result is not None
         assert result.key == "onetrust"
+
+    def test_bristol247_domain_returns_consentmanager(self) -> None:
+        """bristol247.com is an independent site using consentmanager."""
+        result = platform_detection.detect_platform_from_domain("bristol247.com")
+        assert result is not None
+        assert result.key == "consentmanager"
 
 
 # ────────────────────────────────────────────────────────────
@@ -434,3 +447,144 @@ class TestCachedOverlayConsentPlatform:
         }
         overlay = CachedOverlay.model_validate(data)
         assert overlay.consent_platform is None
+
+
+# ────────────────────────────────────────────────────────────
+# Page-based detection (DOM + iframes)
+# ────────────────────────────────────────────────────────────
+
+
+class TestDetectPlatformFromPage:
+    """Verify CMP detection from page DOM and iframes."""
+
+    @pytest.mark.asyncio
+    async def test_detects_main_frame_container(self) -> None:
+        """Detects a CMP from container selectors in the main frame."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        page = AsyncMock()
+        page.frames = [page.main_frame]
+
+        # Simulate a visible #onetrust-banner-sdk element
+        locator = AsyncMock()
+        locator.is_visible = AsyncMock(return_value=True)
+        first_mock = MagicMock()
+        first_mock.first = locator
+        page.locator = MagicMock(return_value=first_mock)
+
+        result = await platform_detection.detect_platform_from_page(page)
+        # Should match one of the profiles with that selector
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_detects_iframe_based_cmp(self) -> None:
+        """Detects a CMP by matching iframe URL to iframe_patterns."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        main_frame = MagicMock()
+        main_frame.url = "https://www.example.com/"
+
+        consent_frame = MagicMock()
+        consent_frame.url = "https://delivery.consentmanager.net/delivery/cmp.php"
+
+        # Set up a visible container inside the iframe
+        iframe_locator = AsyncMock()
+        iframe_locator.is_visible = AsyncMock(return_value=True)
+        iframe_first = MagicMock()
+        iframe_first.first = iframe_locator
+        consent_frame.locator = MagicMock(return_value=iframe_first)
+
+        page = AsyncMock()
+        page.main_frame = main_frame
+        page.frames = [main_frame, consent_frame]
+
+        # Main frame selectors should not be visible
+        main_locator = AsyncMock()
+        main_locator.is_visible = AsyncMock(return_value=False)
+        main_first = MagicMock()
+        main_first.first = main_locator
+        page.locator = MagicMock(return_value=main_first)
+
+        result = await platform_detection.detect_platform_from_page(page)
+        assert result is not None
+        assert result.key == "consentmanager"
+
+    @pytest.mark.asyncio
+    async def test_detects_iframe_url_without_container(self) -> None:
+        """Detects a CMP from iframe URL even when container selectors fail."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        main_frame = MagicMock()
+        main_frame.url = "https://www.example.com/"
+
+        consent_frame = MagicMock()
+        consent_frame.url = "https://delivery.consentmanager.net/delivery/cmp.php"
+
+        # Container selector raises exception in iframe
+        iframe_locator = AsyncMock()
+        iframe_locator.is_visible = AsyncMock(side_effect=Exception("timeout"))
+        iframe_first = MagicMock()
+        iframe_first.first = iframe_locator
+        consent_frame.locator = MagicMock(return_value=iframe_first)
+
+        page = AsyncMock()
+        page.main_frame = main_frame
+        page.frames = [main_frame, consent_frame]
+
+        # Main frame selectors not visible
+        main_locator = AsyncMock()
+        main_locator.is_visible = AsyncMock(return_value=False)
+        main_first = MagicMock()
+        main_first.first = main_locator
+        page.locator = MagicMock(return_value=main_first)
+
+        result = await platform_detection.detect_platform_from_page(page)
+        assert result is not None
+        assert result.key == "consentmanager"
+
+    @pytest.mark.asyncio
+    async def test_no_match_returns_none(self) -> None:
+        """Returns None when no CMP is detected in DOM or iframes."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        main_frame = MagicMock()
+        main_frame.url = "https://www.example.com/"
+
+        page = AsyncMock()
+        page.main_frame = main_frame
+        page.frames = [main_frame]
+
+        # All selectors fail
+        locator = AsyncMock()
+        locator.is_visible = AsyncMock(return_value=False)
+        first_mock = MagicMock()
+        first_mock.first = locator
+        page.locator = MagicMock(return_value=first_mock)
+
+        result = await platform_detection.detect_platform_from_page(page)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_ignores_non_matching_iframes(self) -> None:
+        """Iframes that don't match any platform's iframe_patterns are skipped."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        main_frame = MagicMock()
+        main_frame.url = "https://www.example.com/"
+
+        ad_frame = MagicMock()
+        ad_frame.url = "https://ads.example.com/banner"
+
+        page = AsyncMock()
+        page.main_frame = main_frame
+        page.frames = [main_frame, ad_frame]
+
+        # Main frame selectors not visible
+        locator = AsyncMock()
+        locator.is_visible = AsyncMock(return_value=False)
+        first_mock = MagicMock()
+        first_mock.first = locator
+        page.locator = MagicMock(return_value=first_mock)
+
+        result = await platform_detection.detect_platform_from_page(page)
+        assert result is None

@@ -285,6 +285,34 @@ class OverlayPipeline:
         else:
             log.info("No consent platform detected from domain", {"domain": self._domain})
 
+        # ── Fallback: detect from page DOM/iframes and cookies ──
+        if not self._detected_platform:
+            self._detected_platform = await platform_detection.detect_platform_from_page(
+                self._page,
+            )
+            if self._detected_platform:
+                log.info(
+                    "Consent platform detected from page DOM",
+                    {
+                        "platform": self._detected_platform.name,
+                        "key": self._detected_platform.key,
+                        "domain": self._domain,
+                    },
+                )
+
+        if not self._detected_platform:
+            cookies = await self._page.context.cookies()
+            self._detected_platform = platform_detection.detect_platform_from_cookies(cookies)
+            if self._detected_platform:
+                log.info(
+                    "Consent platform detected from cookies",
+                    {
+                        "platform": self._detected_platform.name,
+                        "key": self._detected_platform.key,
+                        "domain": self._domain,
+                    },
+                )
+
         # ── Try cached overlay strategy first ───────────
         cached_entry = overlay_cache.load(self._domain) if self._domain else None
         if cached_entry:

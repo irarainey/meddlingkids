@@ -218,8 +218,8 @@ async def detect_platform_from_page(
     """Detect which CMP is active by probing the page DOM.
 
     Tries each platform's ``container_selectors`` to see if
-    any are present and visible in the page.  Returns the
-    first match.
+    any are present and visible in the page or inside matching
+    consent iframes.  Returns the first match.
 
     This is fast (~50-100ms) compared to an LLM vision call
     (~3-5s) and can short-circuit the detection flow for
@@ -233,6 +233,7 @@ async def detect_platform_from_page(
     """
     profiles = get_platform_profiles()
 
+    # ── Check main frame first ──────────────────────────
     for profile in profiles.values():
         for selector in profile.container_selectors:
             try:
@@ -248,6 +249,47 @@ async def detect_platform_from_page(
                     return profile
             except Exception:
                 continue
+
+    # ── Check consent iframes for CMP containers ────────
+    # Some CMPs (e.g. consentmanager) render entirely inside
+    # an iframe, so their container selectors won't appear in
+    # the main frame.  Check iframes whose URL matches the
+    # platform's iframe_patterns.
+    for profile in profiles.values():
+        if not profile.iframe_patterns:
+            continue
+        for frame in page.frames:
+            if frame == page.main_frame:
+                continue
+            frame_url = frame.url or ""
+            if not any(pat in frame_url for pat in profile.iframe_patterns):
+                continue
+            # Found a matching consent iframe — check containers
+            for selector in profile.container_selectors:
+                try:
+                    locator = frame.locator(selector).first
+                    if await locator.is_visible(timeout=200):
+                        log.info(
+                            "CMP detected from iframe DOM selector",
+                            {
+                                "platform": profile.name,
+                                "selector": selector,
+                                "iframe": frame_url[:120],
+                            },
+                        )
+                        return profile
+                except Exception:
+                    continue
+            # Even if no container selector matched, the iframe
+            # URL itself is strong evidence of the platform.
+            log.info(
+                "CMP detected from consent iframe URL",
+                {
+                    "platform": profile.name,
+                    "iframe": frame_url[:120],
+                },
+            )
+            return profile
 
     return None
 

@@ -773,5 +773,27 @@
       "Collects device ID, IP address, browser information, clickstream data and ad interaction data",
       "Online Behavioural Advertising based on browsing patterns, page views and ad interactions across Bauer titles"
     ]
+  },
+  "bristol24/7": {
+    "parent": "Bristol24/7 CIC (Community Interest Company)",
+    "privacy_policy": "https://www.bristol247.com/privacy-policy/",
+    "properties": [
+      "Bristol24/7"
+    ],
+    "domains": [
+      "bristol247.com"
+    ],
+    "consent_platform": "consentmanager",
+    "key_vendors": [
+      "Google",
+      "consentmanager"
+    ],
+    "privacy_characteristics": [
+      "Independent community interest company — not owned by a large media corporation",
+      "consentmanager CMP implementing IAB GPP framework with IABGPP_HDR_GppString cookie",
+      "Lists 1566 advertising and data partners in consent dialog",
+      "Separate Google consent section alongside general vendor consent",
+      "Consent dialog rendered inside iframe from delivery.consentmanager.net"
+    ]
   }
 }
