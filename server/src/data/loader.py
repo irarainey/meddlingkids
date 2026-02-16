@@ -3,7 +3,7 @@ Data loader for tracker, partner, and GDPR/TCF reference databases.
 Loads JSON files and compiles patterns into regex objects.
 
 The JSON data files live alongside this module in partners/, trackers/,
-and gdpr/ subdirectories.
+and consent/ subdirectories.
 """
 
 from __future__ import annotations
@@ -102,6 +102,7 @@ def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
             concerns=val.get("concerns", []),
             aliases=val.get("aliases", []),
             url=val.get("url", ""),
+            privacy_url=val.get("privacy_url", ""),
         )
         for key, val in raw.items()
     }
@@ -196,7 +197,7 @@ def get_tcf_purposes() -> dict[str, Any]:
     """
     global _tcf_purposes_cache
     if _tcf_purposes_cache is None:
-        _tcf_purposes_cache = _load_json("gdpr/tcf-purposes.json")
+        _tcf_purposes_cache = _load_json("consent/tcf-purposes.json")
     return _tcf_purposes_cache
 
 
@@ -208,7 +209,7 @@ def get_consent_cookies() -> dict[str, Any]:
     """
     global _consent_cookies_cache
     if _consent_cookies_cache is None:
-        _consent_cookies_cache = _load_json("gdpr/consent-cookies.json")
+        _consent_cookies_cache = _load_json("consent/consent-cookies.json")
     return _consent_cookies_cache
 
 
@@ -221,7 +222,7 @@ def get_gdpr_reference() -> dict[str, Any]:
     """
     global _gdpr_reference_cache
     if _gdpr_reference_cache is None:
-        _gdpr_reference_cache = _load_json("gdpr/gdpr-reference.json")
+        _gdpr_reference_cache = _load_json("consent/gdpr-reference.json")
     return _gdpr_reference_cache
 
 
@@ -271,17 +272,61 @@ def get_media_groups() -> dict[str, partners.MediaGroupProfile]:
 def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupProfile] | None:
     """Look up a media group by one of its known domains.
 
+    Strips a leading ``www.`` prefix and also tries the
+    registrable base domain (e.g. ``example.co.uk`` from
+    ``sub.example.co.uk``) so callers don't need to
+    normalise beforehand.
+
     Args:
         domain: A domain name (e.g. 'thesun.co.uk') to search for.
 
     Returns:
         A tuple of (group_name, profile) if found, or None.
     """
+    from src.utils import url as url_mod  # Local import to avoid circular dependency
+
     domain_lower = domain.lower().strip()
+    # Build candidate set: original, without www., and base domain.
+    candidates = {domain_lower}
+    if domain_lower.startswith("www."):
+        candidates.add(domain_lower[4:])
+    candidates.add(url_mod.get_base_domain(domain_lower))
+
     for name, profile in get_media_groups().items():
-        if domain_lower in profile.domains:
+        if candidates & set(profile.domains):
             return (name, profile)
     return None
+
+
+# ============================================================================
+# Consent Platform Profile Loading
+# ============================================================================
+
+_consent_platforms_cache: dict[str, Any] | None = None
+
+
+def load_consent_platforms() -> dict[str, Any]:
+    """Load consent platform profiles (lazy loaded and cached).
+
+    Returns a dictionary mapping platform keys to
+    ``ConsentPlatformProfile`` instances.  The profiles are
+    constructed by the ``consent.platform_detection`` module;
+    this function returns the raw dict-based intermediate
+    representation to avoid circular imports.
+    """
+    global _consent_platforms_cache
+    if _consent_platforms_cache is None:
+        from src.consent.platform_detection import ConsentPlatformProfile
+
+        raw: dict[str, Any] = _load_json("consent/consent-platforms.json")
+        platforms: dict[str, Any] = raw.get("platforms", {})
+        _consent_platforms_cache = {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
+    return _consent_platforms_cache
+
+
+# ============================================================================
+# Media Group Context for LLM Prompts
+# ============================================================================
 
 
 def build_media_group_context(analyzed_url: str) -> str:

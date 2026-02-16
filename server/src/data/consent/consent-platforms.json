@@ -1,0 +1,737 @@
+{
+  "_description": "Detailed consent management platform (CMP) profiles with DOM selectors, iframe patterns, JavaScript APIs, cookie indicators, and common button strategies for deterministic overlay detection and dismissal.",
+  "_source": "Compiled from CMP documentation, IAB TCF CMP registry, and observed implementations across UK publisher sites.",
+  "platforms": {
+    "sourcepoint": {
+      "name": "Sourcepoint",
+      "vendor": "Sourcepoint Technologies, Inc.",
+      "privacy_url": "https://sourcepoint.com/privacy-notice/",
+      "tcf_registered": true,
+      "description": "Enterprise CMP used by major UK publishers including Reach plc, Guardian Media Group, Financial Times, and JPI Media. Renders consent dialogs inside cross-origin iframes served from sourcepoint.mgr.consensu.org or notice.sp-prod.net. Also provides adblock detection and messaging capabilities.",
+      "iframe_patterns": [
+        "sourcepoint.mgr.consensu.org",
+        "notice.sp-prod.net",
+        "cdn.privacy-mgmt.com",
+        "cmp.sky.com",
+        "sp-prod.net"
+      ],
+      "container_selectors": [
+        "div[id^='sp_message_container']",
+        "div.message-overlay",
+        "div.sp_message_container"
+      ],
+      "js_apis": [
+        "window.__tcfapi",
+        "window._sp_",
+        "window.__sp_messaging"
+      ],
+      "cookie_indicators": [
+        "consentUUID",
+        "sp_consent",
+        "sp_gdpr",
+        "sp_ccpa"
+      ],
+      "accept_button_patterns": [
+        "button[title='Accept']",
+        "button[title='Accept all']",
+        "button[title='Accept All']",
+        "button[title='Agree']",
+        "button[title='OK']",
+        "button.sp_choice_type_11",
+        "button.message-component[title*='Accept']",
+        "button.message-component[title*='Agree']"
+      ],
+      "reject_button_patterns": [
+        "button[title='Reject']",
+        "button[title='Reject all']",
+        "button[title='Reject All']",
+        "button.sp_choice_type_13",
+        "button.message-component[title*='Reject']"
+      ],
+      "manage_button_patterns": [
+        "button[title='Manage preferences']",
+        "button[title='Manage Preferences']",
+        "button[title='Options']",
+        "button.sp_choice_type_12"
+      ],
+      "notes": "Sourcepoint renders its dialog inside an iframe. The iframe URL hostname typically contains 'notice.sp-prod.net' or 'cdn.privacy-mgmt.com'. Buttons inside the iframe use title attributes and sp_choice_type_* classes. sp_choice_type_11 = accept, sp_choice_type_12 = show options, sp_choice_type_13 = reject."
+    },
+    "onetrust": {
+      "name": "OneTrust",
+      "vendor": "OneTrust, LLC",
+      "privacy_url": "https://www.onetrust.com/privacy-notice/",
+      "tcf_registered": true,
+      "description": "The most widely deployed CMP globally, used by DMG Media, News UK, Telegraph, Newsquest, and many others. Renders consent banners directly in the main frame DOM (not in iframes) using the #onetrust-banner-sdk container. Also known as Optanon (legacy brand).",
+      "iframe_patterns": [],
+      "container_selectors": [
+        "#onetrust-banner-sdk",
+        "#onetrust-consent-sdk",
+        "#onetrust-pc-sdk",
+        "div.onetrust-pc-dark-filter",
+        "div.ot-sdk-container"
+      ],
+      "js_apis": [
+        "window.OneTrust",
+        "window.Optanon",
+        "window.OptanonWrapper",
+        "window.__tcfapi",
+        "window.OTExternalConsent"
+      ],
+      "cookie_indicators": [
+        "OptanonConsent",
+        "OptanonAlertBoxClosed",
+        "OTGPPConsent"
+      ],
+      "accept_button_patterns": [
+        "#onetrust-accept-btn-handler",
+        "button#accept-recommended-btn-handler",
+        "button.onetrust-close-btn-handler",
+        "button[aria-label='Accept All Cookies']",
+        "#accept-recommended-btn-handler"
+      ],
+      "reject_button_patterns": [
+        "#onetrust-reject-all-handler",
+        "button.ot-pc-refuse-all-handler",
+        "button[aria-label='Reject All']"
+      ],
+      "manage_button_patterns": [
+        "#onetrust-pc-btn-handler",
+        "button.ot-sdk-show-settings",
+        "button[aria-label='Cookie Settings']",
+        "button[aria-label='Cookies Settings']"
+      ],
+      "notes": "OneTrust renders in the main frame — no iframe needed. The banner container is #onetrust-banner-sdk with accept/reject/settings buttons as direct children. Cookie categories use group IDs like C0001 (strictly necessary), C0002 (performance), C0003 (functional), C0004 (targeting). The OptanonConsent cookie encodes group consent states."
+    },
+    "quantcast_choice": {
+      "name": "Quantcast Choice",
+      "vendor": "Quantcast International Limited",
+      "privacy_url": "https://www.quantcast.com/privacy/",
+      "tcf_registered": true,
+      "description": "TCF-native CMP from the Quantcast advertising platform. Renders consent dialogs in the main frame using the #qc-cmp2-ui container. Common on mid-tier publishers and sites using Quantcast for audience measurement.",
+      "iframe_patterns": [
+        "quantcast.mgr.consensu.org"
+      ],
+      "container_selectors": [
+        "#qc-cmp2-ui",
+        "div.qc-cmp2-container",
+        "div[class*='qc-cmp2']"
+      ],
+      "js_apis": [
+        "window.__tcfapi",
+        "window.__cmpAPI",
+        "window.quantserve"
+      ],
+      "cookie_indicators": [
+        "euconsent-v2",
+        "addtl_consent",
+        "__qca"
+      ],
+      "accept_button_patterns": [
+        "button[mode='primary']",
+        "button.css-47sehv",
+        "button[class*='qc-cmp2-summary-buttons'] button:first-child"
+      ],
+      "reject_button_patterns": [
+        "button[mode='secondary']",
+        "button.css-1hy2vtq"
+      ],
+      "manage_button_patterns": [
+        "button.css-1x3sa6k",
+        "button[mode='link']"
+      ],
+      "notes": "Quantcast Choice renders in the main frame. Button classes are dynamically generated (css-*) so role/text-based locators are more reliable. The accept button typically has mode='primary' attribute. Recent versions use a two-step flow: summary → purposes."
+    },
+    "cookiebot": {
+      "name": "Cookiebot",
+      "vendor": "Usercentrics A/S (acquired Cookiebot/Cybot)",
+      "privacy_url": "https://www.cookiebot.com/en/privacy-policy/",
+      "tcf_registered": true,
+      "description": "Popular CMP especially for SMEs and mid-size publishers. Renders consent dialogs in the main frame using the #CybotCookiebotDialog container. Now part of the Usercentrics family. Provides automatic cookie scanning and categorisation.",
+      "iframe_patterns": [
+        "consent.cookiebot.com",
+        "consentcdn.cookiebot.com"
+      ],
+      "container_selectors": [
+        "#CybotCookiebotDialog",
+        "#CybotCookiebotDialogBody",
+        "div[id^='CybotCookiebot']"
+      ],
+      "js_apis": [
+        "window.Cookiebot",
+        "window.CookieConsent",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "CookieConsent",
+        "CookieConsentBulkTicket",
+        "CookieConsentBulkSetting"
+      ],
+      "accept_button_patterns": [
+        "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+        "#CybotCookiebotDialogBodyButtonAccept",
+        "a#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+        "button#CybotCookiebotDialogBodyButtonAccept"
+      ],
+      "reject_button_patterns": [
+        "#CybotCookiebotDialogBodyButtonDecline",
+        "a#CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll"
+      ],
+      "manage_button_patterns": [
+        "#CybotCookiebotDialogBodyLevelButtonCustomize",
+        "a#CybotCookiebotDialogBodyLevelButtonLevelOptinCustomize"
+      ],
+      "notes": "Cookiebot uses long predictable element IDs. The 'Allow all' button is #CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll. Some implementations use <a> tags rather than <button> so both should be tried. Cookie categories: necessary, preferences, statistics, marketing."
+    },
+    "didomi": {
+      "name": "Didomi",
+      "vendor": "Didomi SAS",
+      "privacy_url": "https://www.didomi.io/privacy-policy",
+      "tcf_registered": true,
+      "description": "European-focused CMP frequently used by French and Southern European publishers. Renders consent dialogs in the main frame using the #didomi-host container. Provides both TCF and custom consent frameworks.",
+      "iframe_patterns": [
+        "sdk.privacy-center.org"
+      ],
+      "container_selectors": [
+        "#didomi-host",
+        "#didomi-notice",
+        "#didomi-popup",
+        "div.didomi-popup-container"
+      ],
+      "js_apis": [
+        "window.Didomi",
+        "window.didomiOnReady",
+        "window.__tcfapi",
+        "window.gdprAppliesGlobally"
+      ],
+      "cookie_indicators": [
+        "didomi_token",
+        "euconsent-v2"
+      ],
+      "accept_button_patterns": [
+        "#didomi-notice-agree-button",
+        "button.didomi-components-button--color",
+        "button[aria-label*='Agree']"
+      ],
+      "reject_button_patterns": [
+        "#didomi-notice-disagree-button",
+        "button.didomi-button-highlight[aria-label*='Disagree']"
+      ],
+      "manage_button_patterns": [
+        "#didomi-notice-learn-more-button",
+        "button[aria-label*='options']"
+      ],
+      "notes": "Didomi uses a shadow DOM approach in some configurations. The primary container is #didomi-host. Buttons have consistent IDs: didomi-notice-agree-button, didomi-notice-disagree-button. The didomi_token cookie stores consent as a JWT-like structure."
+    },
+    "trustarc": {
+      "name": "TrustArc",
+      "vendor": "TrustArc Inc. (formerly TRUSTe)",
+      "privacy_url": "https://trustarc.com/privacy-policy/",
+      "tcf_registered": true,
+      "description": "Enterprise-grade CMP historically popular with US multinationals and financial services. Renders consent dialogs via a truste.com iframe or main-frame banner. Known for its preference manager (cookie preferences centre).",
+      "iframe_patterns": [
+        "consent.trustarc.com",
+        "consent-pref.trustarc.com",
+        "consent.truste.com"
+      ],
+      "container_selectors": [
+        "#truste-consent-track",
+        "#truste-consent-content",
+        "#consent_blackbar",
+        "div.truste_box_overlay"
+      ],
+      "js_apis": [
+        "window.truste",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "truste.eu.cookie.notice_gdpr_prefs",
+        "notice_behavior",
+        "notice_preferences",
+        "notice_gdpr_prefs"
+      ],
+      "accept_button_patterns": [
+        "#truste-consent-button",
+        "a.call",
+        "button.pdynamicbutton"
+      ],
+      "reject_button_patterns": [
+        "#truste-consent-required",
+        "button.pdynamicbutton[value='Decline']",
+        "a.rejectAll"
+      ],
+      "manage_button_patterns": [
+        "#truste-show-consent",
+        "a.manage-link"
+      ],
+      "notes": "TrustArc often renders inside a truste.com iframe. The consent-pref subdomain hosts the full preference manager. Some implementations use the legacy TRUSTe branding. The consent cookie names often include 'truste' or 'notice_'. Banner buttons typically use IDs like #truste-consent-button."
+    },
+    "usercentrics": {
+      "name": "Usercentrics",
+      "vendor": "Usercentrics GmbH (parent of Cookiebot)",
+      "privacy_url": "https://usercentrics.com/privacy-policy/",
+      "tcf_registered": true,
+      "description": "German CMP popular across DACH region and increasingly used by international brands. The Usercentrics CMP renders inside a shadow DOM element. Parent company also owns Cookiebot for the SME market.",
+      "iframe_patterns": [
+        "app.usercentrics.eu"
+      ],
+      "container_selectors": [
+        "#usercentrics-root",
+        "div[data-testid='uc-default-wall']",
+        "div[data-testid='uc-first-layer']"
+      ],
+      "js_apis": [
+        "window.UC_UI",
+        "window.usercentrics",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "usercentrics",
+        "uc_settings",
+        "uc_user_interaction"
+      ],
+      "accept_button_patterns": [
+        "button[data-testid='uc-accept-all-button']",
+        "button.sc-gsTEea"
+      ],
+      "reject_button_patterns": [
+        "button[data-testid='uc-deny-all-button']"
+      ],
+      "manage_button_patterns": [
+        "button[data-testid='uc-more-button']",
+        "a[data-testid='uc-more-link']"
+      ],
+      "notes": "Usercentrics uses a shadow DOM via #usercentrics-root. Buttons have stable data-testid attributes: uc-accept-all-button, uc-deny-all-button. Class names are dynamically generated (sc-*) so data-testid locators are preferred."
+    },
+    "complianz": {
+      "name": "Complianz",
+      "vendor": "Really Simple Plugins",
+      "privacy_url": "https://complianz.io/privacy-statement/",
+      "tcf_registered": false,
+      "description": "Popular WordPress consent plugin widely used by small to medium sites. Renders consent banners in the main frame using the .cmplz-cookiebanner class. Does not use iframes. Provides GDPR, ePrivacy, and CCPA compliance.",
+      "iframe_patterns": [],
+      "container_selectors": [
+        ".cmplz-cookiebanner",
+        "#cmplz-cookiebanner-container",
+        "div.cmplz-categories"
+      ],
+      "js_apis": [
+        "window.complianz",
+        "window.cmplz"
+      ],
+      "cookie_indicators": [
+        "cmplz_consented_services",
+        "cmplz_marketing",
+        "cmplz_statistics",
+        "cmplz_preferences",
+        "cmplz_functional",
+        "cmplz_banner-status"
+      ],
+      "accept_button_patterns": [
+        "button.cmplz-btn.cmplz-accept",
+        "a.cmplz-btn.cmplz-accept",
+        "button.cmplz-accept-all"
+      ],
+      "reject_button_patterns": [
+        "button.cmplz-btn.cmplz-deny",
+        "a.cmplz-btn.cmplz-deny"
+      ],
+      "manage_button_patterns": [
+        "button.cmplz-btn.cmplz-manage-consent",
+        "a.cmplz-btn.cmplz-view-preferences"
+      ],
+      "notes": "Complianz is a WordPress-specific CMP. Buttons use consistent CSS classes: cmplz-accept, cmplz-deny. Consent state is stored in multiple cookies prefixed with cmplz_. Some themes use <a> tags instead of <button>."
+    },
+    "consentmanager": {
+      "name": "consentmanager",
+      "vendor": "consentmanager AB",
+      "privacy_url": "https://www.consentmanager.net/privacy/",
+      "tcf_registered": true,
+      "description": "German-headquartered TCF-certified CMP used across European publishers. Renders consent dialogs inside an iframe from delivery.consentmanager.net. Provides detailed vendor-level consent management.",
+      "iframe_patterns": [
+        "delivery.consentmanager.net",
+        "cdn.consentmanager.net"
+      ],
+      "container_selectors": [
+        "#cmpbox",
+        "#cmpbox2",
+        "div.cmpboxBG"
+      ],
+      "js_apis": [
+        "window.__cmp",
+        "window.__tcfapi",
+        "window.cmp_cdm"
+      ],
+      "cookie_indicators": [
+        "cmpgdprcs",
+        "cmpgdprconsent",
+        "euconsent-v2"
+      ],
+      "accept_button_patterns": [
+        "#cmpbntyestxt",
+        "a.cmpboxbtn.cmpboxbtnyes",
+        "span#cmpbntyestxt"
+      ],
+      "reject_button_patterns": [
+        "#cmpbntnotxt",
+        "a.cmpboxbtn.cmpboxbtnno"
+      ],
+      "manage_button_patterns": [
+        "#cmpbntcptxt",
+        "a.cmpboxbtn.cmpboxbtncptxt"
+      ],
+      "notes": "consentmanager renders inside an iframe from delivery.consentmanager.net. The dialog uses #cmpbox as the main container. Accept/reject buttons have IDs #cmpbntyestxt and #cmpbntnotxt. Button text is wrapped in <span> inside <a> tags."
+    },
+    "iubenda": {
+      "name": "iubenda",
+      "vendor": "iubenda SRL",
+      "privacy_url": "https://www.iubenda.com/privacy-policy/252372",
+      "tcf_registered": true,
+      "description": "Italian CMP popular across Southern Europe and international sites. Generates privacy policies, cookie banners, and consent solutions. Renders consent banners in the main frame or via iubenda.com iframe.",
+      "iframe_patterns": [
+        "cdn.iubenda.com"
+      ],
+      "container_selectors": [
+        "#iubenda-cs-banner",
+        "div.iubenda-cs-container",
+        "div.iubenda-cs-content"
+      ],
+      "js_apis": [
+        "window._iub",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "_iub_cs-s",
+        "_iub_cs"
+      ],
+      "accept_button_patterns": [
+        "a.iubenda-cs-accept-btn",
+        "button.iubenda-cs-accept-btn",
+        "a.iubenda-cs-btn-primary"
+      ],
+      "reject_button_patterns": [
+        "a.iubenda-cs-reject-btn",
+        "button.iubenda-cs-reject-btn"
+      ],
+      "manage_button_patterns": [
+        "a.iubenda-cs-customize-btn"
+      ],
+      "notes": "iubenda renders in the main frame using #iubenda-cs-banner. Accept/reject buttons have consistent CSS classes. The _iub_cs cookie stores consent state. Some configurations use the Cookiebot-style category approach."
+    },
+    "funding_choices": {
+      "name": "Google Funding Choices",
+      "vendor": "Google LLC",
+      "privacy_url": "https://policies.google.com/privacy",
+      "tcf_registered": true,
+      "description": "Google's own CMP designed to recover ad revenue by managing GDPR/TCF consent. Used by sites monetising primarily through Google Ads/AdSense. Renders consent messages via Google's messaging infrastructure, typically inside an iframe from fundingchoicesmessages.google.com.",
+      "iframe_patterns": [
+        "fundingchoicesmessages.google.com",
+        "consent.google.com"
+      ],
+      "container_selectors": [
+        "div.fc-consent-root",
+        "#fc-dialog-container",
+        "div[data-nosnippet]"
+      ],
+      "js_apis": [
+        "window.__tcfapi",
+        "window.googlefc"
+      ],
+      "cookie_indicators": [
+        "euconsent-v2",
+        "FCNEC",
+        "FCCDCF"
+      ],
+      "accept_button_patterns": [
+        "button.fc-cta-consent",
+        "button.fc-button-background",
+        "button[aria-label='Consent']"
+      ],
+      "reject_button_patterns": [
+        "button.fc-cta-do-not-consent"
+      ],
+      "manage_button_patterns": [
+        "button.fc-cta-manage-options"
+      ],
+      "notes": "Google Funding Choices renders inside an iframe from fundingchoicesmessages.google.com. The fc- prefix classes are used for all elements. The FCNEC and FCCDCF cookies are set by Google's consent infrastructure. Often deployed alongside Google Ad Manager."
+    },
+    "osano": {
+      "name": "Osano",
+      "vendor": "Osano, Inc.",
+      "privacy_url": "https://www.osano.com/legal/privacy",
+      "tcf_registered": false,
+      "description": "US-focused CMP providing consent management, data mapping, and vendor monitoring. Renders a simple bottom-bar consent banner in the main frame. Popular with US-headquartered companies needing multi-regulation compliance.",
+      "iframe_patterns": [],
+      "container_selectors": [
+        "div.osano-cm-window",
+        "div.osano-cm-dialog"
+      ],
+      "js_apis": [
+        "window.Osano"
+      ],
+      "cookie_indicators": [
+        "osano_consentmanager",
+        "osano_consentmanager_uuid"
+      ],
+      "accept_button_patterns": [
+        "button.osano-cm-accept-all",
+        "button.osano-cm-button--type_accept"
+      ],
+      "reject_button_patterns": [
+        "button.osano-cm-deny-all",
+        "button.osano-cm-button--type_deny"
+      ],
+      "manage_button_patterns": [
+        "button.osano-cm-manage",
+        "button.osano-cm-button--type_manage"
+      ],
+      "notes": "Osano renders in the main frame with a bottom-bar style. Buttons use consistent osano-cm- prefixed classes. Not TCF registered — focuses on US privacy regulations (CCPA/CPRA, state laws)."
+    },
+    "termly": {
+      "name": "Termly",
+      "vendor": "Termly Inc.",
+      "privacy_url": "https://termly.io/our-privacy-policy/",
+      "tcf_registered": false,
+      "description": "Budget CMP and legal policy generator popular with small businesses and startups. Renders consent banners in the main frame. Provides auto-generated privacy policies, terms of service, and cookie consent.",
+      "iframe_patterns": [
+        "app.termly.io"
+      ],
+      "container_selectors": [
+        "#termly-code-snippet-support",
+        "div[data-tid]",
+        "div.t-consentPrompt"
+      ],
+      "js_apis": [
+        "window.Termly"
+      ],
+      "cookie_indicators": [
+        "T_CONSENT",
+        "termly"
+      ],
+      "accept_button_patterns": [
+        "button[data-tid='banner-accept']",
+        "button.t-acceptAllButton"
+      ],
+      "reject_button_patterns": [
+        "button[data-tid='banner-decline']",
+        "button.t-declineAllButton"
+      ],
+      "manage_button_patterns": [
+        "button[data-tid='banner-preferences']"
+      ],
+      "notes": "Termly renders in the main frame. Buttons use data-tid attributes for stable targeting. Not TCF registered. Primarily targets US small business market."
+    },
+    "cookie_law_info": {
+      "name": "CookieYes / Cookie Law Info",
+      "vendor": "CookieYes Limited (formerly WebToffee)",
+      "privacy_url": "https://www.cookieyes.com/privacy-policy/",
+      "tcf_registered": false,
+      "description": "Popular WordPress consent plugin (formerly GDPR Cookie Consent by WebToffee). Renders consent banners in the main frame using the #cookie-law-info-bar container. Provides basic category-based consent.",
+      "iframe_patterns": [],
+      "container_selectors": [
+        "#cookie-law-info-bar",
+        "#cookie-law-info-again",
+        "div.cli-modal-container",
+        "#cky-consent"
+      ],
+      "js_apis": [
+        "window.CLI",
+        "window.CookieLawInfo",
+        "window.ckyStore"
+      ],
+      "cookie_indicators": [
+        "cookielawinfo-checkbox-necessary",
+        "cookielawinfo-checkbox-analytics",
+        "cookielawinfo-checkbox-advertisement",
+        "cookielawinfo-checkbox-functional",
+        "CookieLawInfoConsent",
+        "cookieyes-consent"
+      ],
+      "accept_button_patterns": [
+        "#cookie_action_close_header",
+        "button.cli_action_button.cli-accept-all",
+        "#cky-btn-accept",
+        "button[data-cky-tag='accept-button']"
+      ],
+      "reject_button_patterns": [
+        "#cookie_action_close_header_reject",
+        "button.cli_action_button.cli-reject-all",
+        "#cky-btn-reject",
+        "button[data-cky-tag='reject-button']"
+      ],
+      "manage_button_patterns": [
+        "#cookie_action_open_detail",
+        "button.cli_action_button.cli-settings-btn",
+        "#cky-btn-customize"
+      ],
+      "notes": "Formerly known as GDPR Cookie Consent, now branded as CookieYes. Has two generations: legacy CLI (cli- prefixed) and modern CKY (cky- prefixed). Both may be encountered. Consent cookies are prefixed with cookielawinfo- (legacy) or cookieyes- (modern)."
+    },
+    "admiral": {
+      "name": "Admiral",
+      "vendor": "Admiral Inc.",
+      "privacy_url": "https://getadmiral.com/privacy/",
+      "tcf_registered": false,
+      "description": "Combined adblock recovery and consent management platform. Primarily focused on recovering ad revenue from users running ad blockers. Also provides GDPR/CCPA consent dialogs.",
+      "iframe_patterns": [],
+      "container_selectors": [
+        "div[id^='admiral-']",
+        "div.admiral-overlay"
+      ],
+      "js_apis": [
+        "window.__admiral"
+      ],
+      "cookie_indicators": [
+        "admiral_ssid"
+      ],
+      "accept_button_patterns": [
+        "div[id^='admiral-'] button.fc-cta-consent",
+        "div[id^='admiral-'] button[data-fc-action='accept']"
+      ],
+      "reject_button_patterns": [
+        "div[id^='admiral-'] button.fc-cta-do-not-consent",
+        "div[id^='admiral-'] button[data-fc-action='reject']"
+      ],
+      "manage_button_patterns": [
+        "div[id^='admiral-'] button.fc-cta-manage-options"
+      ],
+      "notes": "Admiral uses dynamically generated element IDs and classes, making many deterministic selectors unreliable. The selectors above target FC (FundingChoices-like) patterns observed on some Admiral deployments but may not work universally. Falls back to LLM vision detection. Primary purpose is adblock recovery rather than GDPR consent."
+    },
+    "axeptio": {
+      "name": "Axeptio",
+      "vendor": "Axeptio SAS",
+      "privacy_url": "https://www.axeptio.eu/en/privacy-policy",
+      "tcf_registered": true,
+      "description": "French CMP with a distinctive card-based UI design. Uses a gamified approach to consent collection. Popular in France and French-speaking markets.",
+      "iframe_patterns": [],
+      "container_selectors": [
+        "#axeptio_overlay",
+        "div.axeptio_widget",
+        "#axeptio_btn"
+      ],
+      "js_apis": [
+        "window.axeptioSDK",
+        "window.__axeptio",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "axeptio_cookies",
+        "axeptio_authorized_vendors"
+      ],
+      "accept_button_patterns": [
+        "button[data-reach-dialog-label='axeptio consent']",
+        "button.axeptio-widget__btn--accept"
+      ],
+      "reject_button_patterns": [
+        "button.axeptio-widget__btn--reject"
+      ],
+      "manage_button_patterns": [
+        "button.axeptio-widget__btn--configure"
+      ],
+      "notes": "Axeptio uses a distinctive card-based UI. The widget container is #axeptio_overlay. Consent is stored in the axeptio_cookies cookie. TCF registered for European publisher deployments."
+    },
+    "sirdata": {
+      "name": "Sirdata CMP",
+      "vendor": "Sirdata SAS",
+      "privacy_url": "https://www.sirdata.com/privacy-policy/",
+      "tcf_registered": true,
+      "description": "French CMP from the Sirdata data platform. TCF-certified CMP increasingly used by European publishers. Often deployed alongside Sirdata's own data marketplace services.",
+      "iframe_patterns": [
+        "sddan.com"
+      ],
+      "container_selectors": [
+        "#sd-cmp",
+        "div.sd-cmp-container"
+      ],
+      "js_apis": [
+        "window.__tcfapi",
+        "window.Sddan"
+      ],
+      "cookie_indicators": [
+        "euconsent-v2",
+        "sddan"
+      ],
+      "accept_button_patterns": [
+        "button.sd-cmp-JiJy",
+        "button[class*='sd-cmp'][class*='accept']"
+      ],
+      "reject_button_patterns": [
+        "button.sd-cmp-TiSV",
+        "button[class*='sd-cmp'][class*='refuse']"
+      ],
+      "manage_button_patterns": [
+        "button[class*='sd-cmp'][class*='param']"
+      ],
+      "notes": "Sirdata CMP uses dynamically generated class suffixes (sd-cmp-XXXX). Button class patterns are less stable than ID-based selectors. TCF consent is stored in the standard euconsent-v2 cookie."
+    },
+    "crownpeak": {
+      "name": "Crownpeak (Evidon)",
+      "vendor": "Crownpeak Technology, Inc.",
+      "privacy_url": "https://www.crownpeak.com/privacy",
+      "tcf_registered": true,
+      "description": "Enterprise CMP formerly known as Evidon (and before that, Betrad/Ghostery Enterprise). Part of the Crownpeak DXP platform. Used by large enterprises for tag governance and consent management.",
+      "iframe_patterns": [
+        "evidon.com",
+        "betrad.com"
+      ],
+      "container_selectors": [
+        "#_evidon_banner",
+        "#_evidon-barrier-wrapper",
+        "div._evidon-barrier"
+      ],
+      "js_apis": [
+        "window.evidon",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "_evidon_consent_cookie",
+        "_evidon_suppress_notification_cookie"
+      ],
+      "accept_button_patterns": [
+        "#_evidon-accept-button",
+        "button._evidon-banner-acceptbutton"
+      ],
+      "reject_button_patterns": [
+        "#_evidon-decline-button"
+      ],
+      "manage_button_patterns": [
+        "#_evidon-option-button",
+        "#_evidon-banner-settingsbutton"
+      ],
+      "notes": "Crownpeak/Evidon uses _evidon- prefixed IDs and classes. Legacy deployments may still use Betrad or Ghostery Enterprise branding. The consent cookie is _evidon_consent_cookie."
+    },
+    "commander_act": {
+      "name": "Commanders Act TrustCommander",
+      "vendor": "Commanders Act SA",
+      "privacy_url": "https://www.commandersact.com/en/privacy/",
+      "tcf_registered": true,
+      "description": "French enterprise CMP (TrustCommander module) from the Commanders Act tag management and customer data platform. Used by major French retailers and publishers.",
+      "iframe_patterns": [
+        "cdn.trustcommander.net"
+      ],
+      "container_selectors": [
+        "#tc-privacy-wrapper",
+        "div.tc-privacy-content"
+      ],
+      "js_apis": [
+        "window.tC",
+        "window.__tcfapi"
+      ],
+      "cookie_indicators": [
+        "TC_PRIVACY",
+        "TC_PRIVACY_CENTER"
+      ],
+      "accept_button_patterns": [
+        "button#tc-privacy-button-2",
+        "button.tc-privacy-button-accept-all"
+      ],
+      "reject_button_patterns": [
+        "button#tc-privacy-button-3",
+        "button.tc-privacy-button-refuse-all"
+      ],
+      "manage_button_patterns": [
+        "button#tc-privacy-button",
+        "button.tc-privacy-button-manage"
+      ],
+      "notes": "TrustCommander uses tc-privacy- prefixed IDs and classes. Part of the broader Commanders Act tag management ecosystem. Common on French e-commerce sites."
+    }
+  }
+}

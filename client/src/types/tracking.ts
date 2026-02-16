@@ -115,6 +115,8 @@ export interface ConsentPartner {
   concerns?: string[]
   /** Partner privacy policy or homepage URL */
   url?: string
+  /** Privacy policy page URL */
+  privacyUrl?: string
 }
 
 /**
@@ -127,6 +129,8 @@ export interface ConsentDetails {
   hasManageOptions?: boolean
   /** Number of partners claimed by the consent dialog text (e.g. "We and our 1467 partners") */
   claimedPartnerCount?: number | null
+  /** Detected consent management platform name (e.g. "Sourcepoint", "OneTrust") */
+  consentPlatform?: string | null
 }
 
 // ============================================================================
@@ -254,6 +258,10 @@ export interface ConsentAnalysisSection {
   partnersDisclosed: number
   discrepancies: ConsentDiscrepancy[]
   summary: string
+  /** Detected consent management platform name (e.g. "Sourcepoint", "OneTrust") */
+  consentPlatform?: string | null
+  /** Base URL of the consent management platform vendor */
+  consentPlatformUrl?: string | null
 }
 
 /** A key vendor/partner with privacy implications. */

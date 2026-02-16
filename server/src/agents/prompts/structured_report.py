@@ -339,8 +339,10 @@ or role descriptions. For example use "Comscore" not \
 same company, merge them into one entry.
 - role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
 - privacy_impact: One-sentence privacy impact description
-- url: The vendor's website URL if provided in the data (e.g. from \
-consent partner listings). Leave empty if no URL is available.
+- url: The vendor's own website URL (base domain only, e.g. \
+"https://www.google.com"). Do NOT use privacy policy pages, \
+cookie policy pages, or publisher privacy URLs. Leave empty \
+if you are not certain of the vendor's base website URL.
 
 Be specific and factual. Do not fabricate vendors not evidenced by the data. \
 Focus on those involved in cross-site tracking, identity resolution, \

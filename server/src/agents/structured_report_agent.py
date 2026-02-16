@@ -209,6 +209,12 @@ class StructuredReportAgent(base.BaseAgent):
             consent_analysis,
             report.ConsentAnalysisSection,
         )
+        # Always clear LLM-provided CMP fields — they are set
+        # deterministically below and the LLM may hallucinate
+        # incorrect URLs (e.g. using a publisher's privacy
+        # policy URL instead of the CMP's base URL).
+        consent_sec.consent_platform = None
+        consent_sec.consent_platform_url = None
         if consent_details:
             consent_sec.has_consent_dialog = True
             # Use the deterministic category count.
@@ -221,6 +227,16 @@ class StructuredReportAgent(base.BaseAgent):
                 consent_sec.partners_disclosed = consent_details.claimed_partner_count
             elif consent_details.partners:
                 consent_sec.partners_disclosed = len(consent_details.partners)
+            if consent_details.consent_platform:
+                consent_sec.consent_platform = consent_details.consent_platform
+                # Look up the CMP's base URL from the partner database.
+                cmp_db = loader.get_partner_database("consent-platforms.json")
+                cmp_lower = consent_details.consent_platform.lower().strip()
+                for key, entry in cmp_db.items():
+                    if key in cmp_lower or cmp_lower in key or any(a in cmp_lower for a in entry.aliases):
+                        if entry.url:
+                            consent_sec.consent_platform_url = entry.url
+                        break
 
         # ── Deterministic third-party domain count ─────────
         # The LLM inconsistently counts whether to include
@@ -386,6 +402,37 @@ def _extract[S: pydantic.BaseModel](
     return section_cls()
 
 
+# Path substrings that indicate a privacy/policy page
+# rather than a company's base URL.
+_PRIVACY_PATH_KEYWORDS = (
+    "/privacy",
+    "-privacy",
+    "/policy",
+    "-policy",
+    "/legal",
+    "/gdpr",
+    "/data-protection",
+    "/site-services",
+    "/terms-of-service",
+    "/terms-and-conditions",
+)
+
+
+def _is_base_url(url: str) -> bool:
+    """Return ``True`` if the URL looks like a company base URL.
+
+    Rejects URLs whose path contains privacy/policy keywords
+    — these are informational pages, not the company's primary
+    website.
+    """
+    from urllib.parse import urlparse
+
+    path = urlparse(url).path.lower()
+    if not path or path == "/":
+        return True
+    return not any(kw in path for kw in _PRIVACY_PATH_KEYWORDS)
+
+
 def _build_url_lookup(
     consent_details: consent.ConsentDetails | None = None,
 ) -> dict[str, str]:
@@ -408,7 +455,7 @@ def _build_url_lookup(
     for config in loader.PARTNER_CATEGORIES:
         database = loader.get_partner_database(config.file)
         for key, entry in database.items():
-            if entry.url and key not in urls:
+            if entry.url and _is_base_url(entry.url) and key not in urls:
                 urls[key] = entry.url
                 for alias in entry.aliases:
                     alias_lower = alias.lower().strip()
@@ -418,7 +465,7 @@ def _build_url_lookup(
     # Consent partners (fallback).
     if consent_details:
         for partner in consent_details.partners:
-            if partner.url:
+            if partner.url and _is_base_url(partner.url):
                 name_lower = partner.name.lower().strip()
                 if name_lower not in urls:
                     urls[name_lower] = partner.url
@@ -456,6 +503,11 @@ def _enrich_vendor_urls(
 ) -> report.VendorSection:
     """Populate vendor URLs from the shared lookup.
 
+    Authoritative URLs from the partner database always take
+    precedence over LLM-provided URLs (which may be
+    hallucinated or use privacy-policy pages instead of base
+    URLs).
+
     Args:
         vendor_section: Vendor section from LLM output.
         url_lookup: Pre-built name→URL mapping.
@@ -464,8 +516,9 @@ def _enrich_vendor_urls(
         Updated vendor section with URLs populated where found.
     """
     for vendor in vendor_section.vendors:
-        if not vendor.url:
-            vendor.url = _find_url(vendor.name, url_lookup)
+        authoritative_url = _find_url(vendor.name, url_lookup)
+        if authoritative_url:
+            vendor.url = authoritative_url
     return vendor_section
 
 
@@ -490,8 +543,9 @@ def _enrich_tracker_urls(
         tracking_section.other,
     ):
         for tracker in category:
-            if not tracker.url:
-                tracker.url = _find_url(tracker.name, url_lookup)
+            authoritative_url = _find_url(tracker.name, url_lookup)
+            if authoritative_url:
+                tracker.url = authoritative_url
     return tracking_section
 
 
@@ -506,8 +560,9 @@ def _enrich_named_entities(
         url_lookup: Pre-built name→URL mapping.
     """
     for entity in entities:
-        if not entity.url:
-            entity.url = _find_url(entity.name, url_lookup)
+        authoritative_url = _find_url(entity.name, url_lookup)
+        if authoritative_url:
+            entity.url = authoritative_url
 
 
 def _enrich_data_collection_urls(

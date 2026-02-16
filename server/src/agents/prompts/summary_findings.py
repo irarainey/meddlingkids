@@ -67,9 +67,9 @@ cookies that enable cross-session audience measurement."},
 three third-party analytics providers for media measurement."},
   {"type": "moderate", "text": "Scroll depth and time-on-page \
 metrics are collected for behavioural engagement analytics."},
-  {"type": "info", "text": "Consent dialog groups all optional \
-tracking under a single vague category with partner details \
-buried in secondary screens most users would not navigate to."},
+  {"type": "info", "text": "Consent dialog does not prominently \
+surface partner details, which are likely buried in secondary \
+screens most users would not navigate to."},
   {"type": "positive", "text": "No advertising networks, \
 retargeting, or data broker integrations are present."}
 ]}
@@ -106,6 +106,14 @@ list", "does not disclose", or "hides" individual partners. \
 You MAY note that partner details are not prominently surfaced \
 in the main dialog and are likely buried in secondary screens \
 that most users would not navigate to.
+
+IMPORTANT — consent categories and purposes:
+Do NOT mention or count consent categories (e.g. "six consent \
+categories") or stated purposes (e.g. "thirteen purposes") in \
+your findings. Category and purpose counts cannot be reliably \
+extracted because they are often buried in nested, collapsed, \
+or multi-step dialogs. Only reference the claimed partner \
+count and the consent platform name if provided.
 
 IMPORTANT — formatting: Write all text as plain text only. Do NOT \
 use markdown formatting such as **bold**, *italic*, `code`, or \

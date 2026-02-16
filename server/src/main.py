@@ -18,7 +18,7 @@ from starlette import responses
 
 from src.agents import observability_setup
 from src.pipeline import stream
-from src.utils import logger
+from src.utils import cache, logger
 
 
 def _bootstrap() -> None:
@@ -59,6 +59,14 @@ app.add_middleware(
 # ============================================================================
 # API Routes
 # ============================================================================
+
+
+@app.post("/api/clear-cache")
+async def clear_cache_endpoint() -> dict[str, object]:
+    """Delete all cached data (domain, overlay, scripts)."""
+    removed = cache.clear_all()
+    log.success("Cache cleared via API", {"filesRemoved": removed})
+    return {"success": True, "filesRemoved": removed}
 
 
 @app.get("/api/open-browser-stream")

@@ -248,6 +248,7 @@ async def extract_and_classify_consent(
     pre_click_screenshot: bytes,
     result: OverlayHandlingResult,
     pre_click_consent_text: str | None = None,
+    consent_platform: str | None = None,
 ) -> AsyncGenerator[str]:
     """Extract consent details and classify partner risk levels.
 
@@ -275,6 +276,8 @@ async def extract_and_classify_consent(
         pre_click_screenshot,
         pre_captured_text=pre_click_consent_text,
     )
+    if consent_platform:
+        result.consent_details.consent_platform = consent_platform
     log.end_timer("consent-extraction", "Consent details extracted")
     log.info(
         "Consent details",
@@ -331,6 +334,7 @@ async def collect_extraction_events(
     pre_click_screenshot: bytes,
     result: OverlayHandlingResult,
     pre_click_consent_text: str | None = None,
+    consent_platform: str | None = None,
 ) -> list[str]:
     """Run consent extraction, returning events for deferred yielding.
 
@@ -343,6 +347,7 @@ async def collect_extraction_events(
         pre_click_screenshot,
         result,
         pre_click_consent_text=pre_click_consent_text,
+        consent_platform=consent_platform,
     ):
         events.append(event)
     return events

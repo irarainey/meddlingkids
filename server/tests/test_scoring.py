@@ -23,7 +23,6 @@ from src.analysis.scoring import (
 from src.analysis.scoring import consent as consent_scoring
 from src.models import analysis, consent, tracking_data
 
-
 # ── Helpers ─────────────────────────────────────────────────────
 
 

@@ -92,7 +92,8 @@
       "Ipsos",
       "DotMetrics",
       "CACI",
-      "Atolls"
+      "Atolls",
+      "OneTrust"
     ],
     "privacy_characteristics": [
       "MailOnline is one of the world's most visited English-language newspaper websites",
@@ -123,7 +124,8 @@
       "Permutive",
       "LiveRamp",
       "Teads",
-      "Outbrain"
+      "Outbrain",
+      "OneTrust"
     ],
     "privacy_characteristics": [
       "Digital-only national newspaper since 2016",
@@ -304,7 +306,8 @@
       "Ozone Project",
       "Permutive",
       "LiveRamp",
-      "comScore"
+      "comScore",
+      "OneTrust"
     ],
     "privacy_characteristics": [
       "Founding member of Ozone Project publisher advertising alliance",
@@ -395,35 +398,6 @@
       "Participates in IAB TCF v2 framework"
     ]
   },
-  "channel 4": {
-    "parent": "Channel Four Television Corporation",
-    "privacy_policy": "https://www.channel4.com/privacy",
-    "properties": [
-      "Channel 4",
-      "E4",
-      "More4",
-      "Film4",
-      "Channel 4 News",
-      "All 4"
-    ],
-    "domains": [
-      "channel4.com"
-    ],
-    "consent_platform": "Custom CMP",
-    "key_vendors": [
-      "Google",
-      "comScore",
-      "Adobe Analytics",
-      "LiveRamp"
-    ],
-    "privacy_characteristics": [
-      "Publicly owned, commercially funded broadcaster",
-      "Requires registration for All 4 streaming — collects viewer profiles",
-      "Pioneered data-driven advertising in UK broadcasting",
-      "Contextual and addressable advertising via 4Sales",
-      "Participates in IAB TCF v2 framework"
-    ]
-  },
   "jpi media": {
     "parent": "National World plc (operating as Iconic Media Group Ltd)",
     "privacy_policy": "https://www.nationalworld.com/privacy-policy",
@@ -509,7 +483,8 @@
       "ZoomInfo",
       "InMobi",
       "Quantcast Choice",
-      "HubSpot"
+      "HubSpot",
+      "OneTrust"
     ],
     "privacy_characteristics": [
       "UK subsidiary of Gannett (US parent company owns USA Today)",
@@ -538,7 +513,8 @@
       "4seven",
       "Channel 4+",
       "All 4",
-      "4Sales"
+      "4Sales",
+      "Channel 4 News"
     ],
     "domains": [
       "channel4.com",
@@ -563,7 +539,9 @@
       "Dynata",
       "Nectar360",
       "YouView",
-      "MPP Global"
+      "MPP Global",
+      "LiveRamp",
+      "comScore"
     ],
     "privacy_characteristics": [
       "Publicly owned UK public service broadcaster (Channel Four Television Corporation)",
@@ -582,7 +560,12 @@
       "Social media CAPI integration for measuring advertising effectiveness on third-party platforms",
       "Channel 4+ subscription service uses MPP Global and Global Payments for payment processing",
       "Two-year account inactivity triggers deletion with prior email warnings",
-      "Processes most data under legitimate interests legal basis rather than consent"
+      "Processes most data under legitimate interests legal basis rather than consent",
+      "Contextual and addressable advertising via 4Sales",
+      "Participates in IAB TCF v2 framework",
+      "Pioneered data-driven advertising in UK broadcasting",
+      "Publicly owned, commercially funded broadcaster",
+      "Requires registration for All 4 streaming — collects viewer profiles"
     ]
   },
   "itv plc": {
@@ -605,8 +588,7 @@
       "itv.com",
       "itvx.com",
       "itvmedia.co.uk",
-      "planetv.tv",
-      "4sales.com"
+      "planetv.tv"
     ],
     "consent_platform": "Custom (Data Permissions settings in ITVX account)",
     "key_vendors": [
@@ -678,7 +660,7 @@
       "Nielsen",
       "Meta",
       "Snap",
-      "X"
+      "X (Twitter)"
     ],
     "privacy_characteristics": [
       "US-headquartered global media conglomerate applying a single worldwide privacy policy across all properties",

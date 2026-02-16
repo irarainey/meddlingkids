@@ -34,6 +34,16 @@ export function useTrackingAnalysis() {
   const deviceType = ref('ipad')
   /** Whether to clear all server caches before analysis (read from ?clear-cache=true in the page URL) */
   const clearCache = new URLSearchParams(window.location.search).get('clear-cache') === 'true'
+
+  // Immediately clear server caches when the page loads with ?clear-cache=true
+  if (clearCache) {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    fetch(`${apiBase}/api/clear-cache`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => console.warn('[CacheClear] Server caches cleared:', data))
+      .catch(err => console.warn('[CacheClear] Failed to clear caches:', err))
+  }
+
   /** Whether analysis is in progress */
   const isLoading = ref(false)
   /** Whether analysis has completed */

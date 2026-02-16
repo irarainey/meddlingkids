@@ -162,9 +162,22 @@ OverlayPipeline.run()
    │       ├── Locate cached button in DOM (by locator strategy + text)
    │       ├── _prefer_accept_button() → Replace reject-style with accept if available
    │       ├── Click → capture_after_click()
-   │       └── On failure → mark as failed, fall through to vision
+   │       └── On failure → mark as failed, fall through to CMP / vision
    │
-   ├── 2. Vision detection loop (up to 5 iterations)
+   ├── 2. CMP platform detection (_try_cmp_specific_dismiss)
+   │   ├── Only runs when cache missed (no overlays dismissed)
+   │   ├── Detect CMP from domain (media group lookup → consent_platform field)
+   │   ├── Probe DOM via platform container selectors (fast, ~50-100ms)
+   │   ├── If known CMP found → try deterministic accept button click
+   │   ├── Authoritative platform identity: if the domain lookup identifies
+   │   │   one CMP (e.g. Sourcepoint) but the DOM contains a different
+   │   │   CMP’s selectors (e.g. Quantcast Choice embedded via
+   │   │   Sourcepoint), the media-group identity is preserved for
+   │   │   reporting while the DOM CMP’s selectors are used for button
+   │   │   click
+   │   └── Skips LLM vision entirely if successful
+   │
+   ├── 3. Vision detection loop (up to 5 iterations)
    │   │
    │   ├── steps.detect_overlay(screenshot)
    │   │   └── AI vision-only analysis (viewport screenshot, JPEG, max 1280px)
@@ -427,8 +440,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons (per-strategy deadline checking to prevent timeout cascades) |
 | `constants.py` | Shared consent-manager host keywords, exclusion lists, container selectors, reject-button regex, and `is_consent_frame()` utility |
-| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, and frame type per overlay (JSON) |
+| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
+| `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
 
 **`analysis/`** — Tracking analysis and scoring
 
@@ -458,7 +472,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|---------------|
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
 | `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
-| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_run_vision_loop()` (detection iterations) and `_click_and_capture()` (click + post-click capture) |
+| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract) |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting and serialization helpers |
@@ -468,13 +482,14 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Content |
 |--------|--------|
 | `data/loader.py` | JSON data loader with lazy loading and caching |
-| `data/trackers/tracking-scripts.json` | 523 regex patterns for known trackers |
+| `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
-| `data/gdpr/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
-| `data/gdpr/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
-| `data/gdpr/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
-| `data/publishers/media-groups.json` | 16 UK media group profiles (vendors, ad tech partners, data practices) |
+| `data/consent/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
+| `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
+| `data/consent/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
+| `data/consent/consent-platforms.json` | 19 CMP profiles with DOM selectors, iframe patterns, cookie indicators, and button strategies |
+| `data/publishers/media-groups.json` | 15 UK media group profiles (vendors, ad tech partners, data practices) |
 
 **`utils/`** — Cross-cutting utilities
 
@@ -741,7 +756,8 @@ repeat visits skip the LLM vision detection step.
 
 - **Stored:** Overlay type, button text, CSS selector, Playwright
   locator strategy (`role-button`, `text-exact`, `css`, etc.),
-  frame type (`main` or `consent-iframe`).
+  frame type (`main` or `consent-iframe`), consent platform key
+  (e.g. `sourcepoint`, `onetrust`).
 - **Hit:** Cached overlay is found in the DOM → click it directly.
 - **Miss:** Not found in DOM → skipped but kept in cache for other
   pages on the domain.
@@ -755,9 +771,13 @@ repeat visits skip the LLM vision detection step.
 All caches can be cleared before analysis:
 
 - **Page URL:** Add `?clear-cache=true` to the browser URL
-  (e.g. `http://localhost:5173/?clear-cache=true`). The client
-  reads this query parameter on load and forwards it to the API.
-- **API:** Pass `?clear-cache=true` in the API query string.
+  (e.g. `http://localhost:5173/?clear-cache=true`). On page load the
+  client immediately calls `POST /api/clear-cache` to wipe all cached
+  data, then forwards the flag to the SSE analysis stream as a query
+  parameter.
+- **POST endpoint:** Call `POST /api/clear-cache` directly (returns
+  `{"success": true, "filesRemoved": N}`).
+- **API query param:** Pass `?clear-cache=true` in the SSE stream URL.
 - **Code:** Call `src.utils.cache.clear_all()`.
 
 The `clear_all()` function removes every JSON file in all three
@@ -949,14 +969,15 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
 - Vision API calls (detection, extraction) convert PNG to JPEG and downscale to max 1280px wide
 - Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads
-- Overlay cache stores successful dismiss strategies per domain (Playwright locator strategy, button text, frame type), skipping LLM vision detection on repeat visits
+- Overlay cache stores successful dismiss strategies per domain (Playwright locator strategy, button text, frame type, consent platform), skipping LLM vision detection on repeat visits
+- CMP platform detection identifies 19 known consent platforms by cookies, media group profile, or DOM selectors; when matched, the pipeline attempts a deterministic button click before falling back to LLM vision
 - Domain knowledge cache stores LLM-generated classifications (tracker categories, cookie groupings, vendor roles) per domain, anchoring subsequent analyses to established labels for consistency. New findings are **merged** with the existing cache rather than overwriting it; items not seen for 3 consecutive scans are automatically pruned
 - Consent extraction runs concurrently with the next detection call via `asyncio.create_task`
 - Cookie capture uses O(1) dict index for upserts instead of linear scan
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance) via 8 decomposed category scorers
-- Tracker classification patterns (523 tracking + 51 benign) are merged into combined alternation regexes for single-pass matching per URL/cookie
+- Tracker classification patterns (493 tracking + 51 benign) are merged into combined alternation regexes for single-pass matching per URL/cookie
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
 ### LLM Usage Tracking

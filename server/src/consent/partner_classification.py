@@ -28,6 +28,8 @@ def _classify_against_database(
             # Enrich partner URL from the database entry.
             if data.url and not partner.url:
                 partner.url = data.url
+            if data.privacy_url and not partner.privacy_url:
+                partner.privacy_url = data.privacy_url
             return partners_mod.PartnerClassification(
                 name=partner.name,
                 risk_level=config.risk_level,

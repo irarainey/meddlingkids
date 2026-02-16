@@ -64,6 +64,7 @@ class ConsentPartner(pydantic.BaseModel):
     risk_score: int | None = None
     concerns: list[str] | None = None
     url: str = ""
+    privacy_url: str = ""
 
 
 class ConsentDetails(pydantic.BaseModel):
@@ -77,6 +78,7 @@ class ConsentDetails(pydantic.BaseModel):
     purposes: list[str]
     raw_text: str
     claimed_partner_count: int | None = None
+    consent_platform: str | None = None
 
     @classmethod
     def empty(

@@ -6,14 +6,11 @@ Covers ``_is_retryable``, ``EmptyResponseError``, and
 
 from __future__ import annotations
 
-import pytest
-
 from src.agents.middleware import (
     EmptyResponseError,
     RetryChatMiddleware,
     _is_retryable,
 )
-
 
 # ── _is_retryable ──────────────────────────────────────────────
 

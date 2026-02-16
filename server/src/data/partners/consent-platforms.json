@@ -9,7 +9,8 @@
       "one trust",
       "onetrust llc"
     ],
-    "url": "https://www.onetrust.com"
+    "url": "https://www.onetrust.com",
+    "privacy_url": "https://www.onetrust.com/privacy-notice/"
   },
   "cookiebot": {
     "concerns": [
@@ -21,7 +22,8 @@
       "cybot",
       "usercentrics cookiebot"
     ],
-    "url": "https://www.cookiebot.com"
+    "url": "https://www.cookiebot.com",
+    "privacy_url": "https://www.cookiebot.com/en/privacy-policy/"
   },
   "usercentrics": {
     "concerns": [
@@ -32,7 +34,8 @@
     "aliases": [
       "user centrics"
     ],
-    "url": "https://usercentrics.com"
+    "url": "https://usercentrics.com",
+    "privacy_url": "https://usercentrics.com/privacy-policy/"
   },
   "trustarc": {
     "concerns": [
@@ -44,7 +47,8 @@
       "trust arc",
       "truste"
     ],
-    "url": "https://trustarc.com"
+    "url": "https://trustarc.com",
+    "privacy_url": "https://trustarc.com/privacy-policy/"
   },
   "quantcast choice": {
     "concerns": [
@@ -55,7 +59,8 @@
     "aliases": [
       "quantcast cmp"
     ],
-    "url": "https://www.quantcast.com"
+    "url": "https://www.quantcast.com",
+    "privacy_url": "https://www.quantcast.com/privacy/"
   },
   "didomi": {
     "concerns": [
@@ -66,7 +71,8 @@
     "aliases": [
       "didomi inc"
     ],
-    "url": "https://www.didomi.io"
+    "url": "https://www.didomi.io",
+    "privacy_url": "https://www.didomi.io/privacy-policy"
   },
   "sourcepoint": {
     "concerns": [
@@ -81,7 +87,8 @@
       "sourcepoint technologies",
       "sourcepoint technologies inc"
     ],
-    "url": "https://www.sourcepoint.com"
+    "url": "https://www.sourcepoint.com",
+    "privacy_url": "https://sourcepoint.com/privacy-notice/"
   },
   "termly": {
     "concerns": [
@@ -92,7 +99,8 @@
     "aliases": [
       "termly inc"
     ],
-    "url": "https://termly.io"
+    "url": "https://termly.io",
+    "privacy_url": "https://termly.io/our-privacy-policy/"
   },
   "cookiefirst": {
     "concerns": [
@@ -103,7 +111,8 @@
     "aliases": [
       "cookie first"
     ],
-    "url": "https://cookiefirst.com"
+    "url": "https://cookiefirst.com",
+    "privacy_url": "https://cookiefirst.com/legal/privacy-policy/"
   },
   "consentmanager": {
     "concerns": [
@@ -114,7 +123,8 @@
     "aliases": [
       "consent manager"
     ],
-    "url": "https://www.consentmanager.net"
+    "url": "https://www.consentmanager.net",
+    "privacy_url": "https://www.consentmanager.net/privacy/"
   },
   "iubenda": {
     "concerns": [
@@ -125,7 +135,8 @@
     "aliases": [
       "iubenda srl"
     ],
-    "url": "https://www.iubenda.com"
+    "url": "https://www.iubenda.com",
+    "privacy_url": "https://www.iubenda.com/privacy-policy/252372"
   },
   "osano": {
     "concerns": [
@@ -136,7 +147,8 @@
     "aliases": [
       "osano inc"
     ],
-    "url": "https://www.osano.com"
+    "url": "https://www.osano.com",
+    "privacy_url": "https://www.osano.com/legal/privacy"
   },
   "liveramp privacy": {
     "concerns": [
@@ -147,7 +159,8 @@
     "aliases": [
       "liveramp cmp"
     ],
-    "url": "https://liveramp.com"
+    "url": "https://liveramp.com",
+    "privacy_url": "https://liveramp.com/privacy/"
   },
   "securiti": {
     "concerns": [
@@ -158,7 +171,8 @@
     "aliases": [
       "securiti.ai"
     ],
-    "url": "https://securiti.ai"
+    "url": "https://securiti.ai",
+    "privacy_url": "https://securiti.ai/privacy-policy/"
   },
   "bigid": {
     "concerns": [
@@ -169,7 +183,8 @@
     "aliases": [
       "big id"
     ],
-    "url": "https://bigid.com"
+    "url": "https://bigid.com",
+    "privacy_url": "https://bigid.com/privacy-policy/"
   },
   "wirewheel": {
     "concerns": [
@@ -180,7 +195,8 @@
     "aliases": [
       "wire wheel"
     ],
-    "url": "https://wirewheel.io"
+    "url": "https://wirewheel.io",
+    "privacy_url": "https://wirewheel.io/privacy-policy/"
   },
   "transcend": {
     "concerns": [
@@ -191,7 +207,8 @@
     "aliases": [
       "transcend.io"
     ],
-    "url": "https://transcend.io"
+    "url": "https://transcend.io",
+    "privacy_url": "https://transcend.io/privacy"
   },
   "ketch": {
     "concerns": [
@@ -202,7 +219,8 @@
     "aliases": [
       "ketch.com"
     ],
-    "url": "https://www.ketch.com"
+    "url": "https://www.ketch.com",
+    "privacy_url": "https://www.ketch.com/privacy-policy"
   },
   "ethyca": {
     "concerns": [
@@ -214,7 +232,8 @@
       "ethyca inc",
       "fides"
     ],
-    "url": "https://ethyca.com"
+    "url": "https://ethyca.com",
+    "privacy_url": "https://ethyca.com/privacy-policy/"
   },
   "privacera": {
     "concerns": [
@@ -225,7 +244,8 @@
     "aliases": [
       "privacera inc"
     ],
-    "url": "https://privacera.com"
+    "url": "https://privacera.com",
+    "privacy_url": "https://privacera.com/privacy-policy/"
   },
   "complianz": {
     "concerns": [
@@ -236,7 +256,8 @@
     "aliases": [
       "complianz gdpr"
     ],
-    "url": "https://complianz.io"
+    "url": "https://complianz.io",
+    "privacy_url": "https://complianz.io/privacy-statement/"
   },
   "cookie notice": {
     "concerns": [
@@ -247,7 +268,8 @@
     "aliases": [
       "cookie notice by hu-manity"
     ],
-    "url": "https://hu-manity.co"
+    "url": "https://hu-manity.co",
+    "privacy_url": "https://developer.wordpress.org/plugins/cookie-notice/"
   },
   "cookie law info": {
     "concerns": [
@@ -259,7 +281,8 @@
       "cookielawinfo",
       "webtoffee"
     ],
-    "url": "https://www.cookieyes.com"
+    "url": "https://www.cookieyes.com",
+    "privacy_url": "https://www.cookieyes.com/privacy-policy/"
   },
   "borlabs": {
     "concerns": [
@@ -270,7 +293,8 @@
     "aliases": [
       "borlabs cookie"
     ],
-    "url": "https://borlabs.io"
+    "url": "https://borlabs.io",
+    "privacy_url": "https://borlabs.io/privacy/"
   },
   "real cookie banner": {
     "concerns": [
@@ -282,7 +306,8 @@
       "realcookiebanner",
       "devowl"
     ],
-    "url": "https://devowl.io/wordpress-real-cookie-banner/"
+    "url": "https://devowl.io/wordpress-real-cookie-banner/",
+    "privacy_url": "https://devowl.io/privacy-policy/"
   },
   "axeptio": {
     "concerns": [
@@ -293,7 +318,8 @@
     "aliases": [
       "axeptio sas"
     ],
-    "url": "https://www.axeptio.eu"
+    "url": "https://www.axeptio.eu",
+    "privacy_url": "https://www.axeptio.eu/en/privacy-policy"
   },
   "sirdata cmp": {
     "concerns": [
@@ -304,7 +330,8 @@
     "aliases": [
       "sirdata consent"
     ],
-    "url": "https://www.sirdata.com"
+    "url": "https://www.sirdata.com",
+    "privacy_url": "https://www.sirdata.com/privacy-policy/"
   },
   "crownpeak": {
     "concerns": [
@@ -317,7 +344,8 @@
       "evidon",
       "betrad"
     ],
-    "url": "https://www.crownpeak.com"
+    "url": "https://www.crownpeak.com",
+    "privacy_url": "https://www.crownpeak.com/privacy"
   },
   "commander act cmp": {
     "concerns": [
@@ -328,7 +356,8 @@
     "aliases": [
       "trustcommander"
     ],
-    "url": "https://www.commandersact.com"
+    "url": "https://www.commandersact.com",
+    "privacy_url": "https://www.commandersact.com/en/privacy/"
   },
   "appconsent": {
     "concerns": [
@@ -340,7 +369,8 @@
       "app consent",
       "sfbx"
     ],
-    "url": "https://www.appconsent.io"
+    "url": "https://www.appconsent.io",
+    "privacy_url": "https://www.appconsent.io/en/privacy-policy"
   },
   "funding choices": {
     "concerns": [
@@ -352,7 +382,8 @@
     "aliases": [
       "google funding choices"
     ],
-    "url": "https://fundingchoices.google.com"
+    "url": "https://fundingchoices.google.com",
+    "privacy_url": "https://policies.google.com/privacy"
   },
   "admiral": {
     "concerns": [
@@ -364,7 +395,8 @@
       "admiral inc",
       "getadmiral"
     ],
-    "url": "https://getadmiral.com"
+    "url": "https://getadmiral.com",
+    "privacy_url": "https://getadmiral.com/privacy/"
   },
   "blockthrough": {
     "concerns": [
@@ -376,7 +408,8 @@
       "block through",
       "eyeo partner"
     ],
-    "url": "https://www.blockthrough.com"
+    "url": "https://www.blockthrough.com",
+    "privacy_url": "https://blockthrough.com/privacy-policy/"
   },
   "mpp global": {
     "concerns": [
@@ -389,6 +422,7 @@
       "mpp global solutions",
       "esuite"
     ],
-    "url": "https://www.mppglobal.com"
+    "url": "https://www.mppglobal.com",
+    "privacy_url": "https://www.mppglobal.com/privacy-policy/"
   }
 }

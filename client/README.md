@@ -256,7 +256,7 @@ The client communicates with the server using Server-Sent Events:
 // production serves both client and API on the same origin.
 const apiBase = import.meta.env.VITE_API_URL || ''
 const eventSource = new EventSource(
-  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${deviceType}`
+  `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${deviceType}&clear-cache=${clearCache}`
 )
 
 eventSource.addEventListener('progress', (event) => { /* Update status */ })

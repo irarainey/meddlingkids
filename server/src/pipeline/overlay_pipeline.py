@@ -18,7 +18,7 @@ import pydantic
 from playwright import async_api
 
 from src.browser import session as browser_session
-from src.consent import click, constants, overlay_cache
+from src.consent import click, constants, overlay_cache, platform_detection
 from src.models import consent, tracking_data
 from src.pipeline import overlay_steps, sse_helpers
 from src.utils import logger
@@ -133,6 +133,7 @@ class OverlayPipeline:
         self._storage: dict = {}
         self._failed_signatures: set[str] = set()
         self._pending_extract: asyncio.Task[list[str]] | None = None
+        self._detected_platform: platform_detection.ConsentPlatformProfile | None = None
         # High-water mark for progress values.  Ensures that
         # progress events emitted by the overlay pipeline are
         # monotonically increasing regardless of how many
@@ -268,6 +269,22 @@ class OverlayPipeline:
             {"maxOverlays": MAX_OVERLAYS},
         )
 
+        # ── Detect consent platform ────────────────────
+        if self._domain:
+            self._detected_platform = platform_detection.detect_platform_from_domain(self._domain)
+
+        if self._detected_platform:
+            log.info(
+                "Consent platform detected from domain",
+                {
+                    "platform": self._detected_platform.name,
+                    "key": self._detected_platform.key,
+                    "domain": self._domain,
+                },
+            )
+        else:
+            log.info("No consent platform detected from domain", {"domain": self._domain})
+
         # ── Try cached overlay strategy first ───────────
         cached_entry = overlay_cache.load(self._domain) if self._domain else None
         if cached_entry:
@@ -291,8 +308,14 @@ class OverlayPipeline:
                             ext_screenshot,
                             result,
                             pre_click_consent_text=ext_text,
+                            consent_platform=self._detected_platform.name if self._detected_platform else None,
                         )
                     )
+
+        # ── Try CMP-specific dismiss (no LLM) ──────────
+        if self._detected_platform and result.overlay_count == 0 and self._cache_dismissed == 0:
+            async for event in self._try_cmp_specific_dismiss():
+                yield event
 
         # ── Vision detection loop ───────────────────────
         async for event in self._run_vision_loop():
@@ -507,6 +530,7 @@ class OverlayPipeline:
                             pre_click_screenshot,
                             result,
                             pre_click_consent_text=pre_click_consent_text,
+                            consent_platform=self._detected_platform.name if self._detected_platform else None,
                         )
                     )
 
@@ -541,6 +565,7 @@ class OverlayPipeline:
                     css_selector=detection.selector,
                     locator_strategy=click_result.strategy or "role-button",
                     frame_type=click_result.frame_type or "main",
+                    consent_platform=self._detected_platform.key if self._detected_platform else None,
                 )
             )
 
@@ -562,6 +587,7 @@ class OverlayPipeline:
                         pre_click_screenshot,
                         result,
                         pre_click_consent_text=pre_click_consent_text,
+                        consent_platform=self._detected_platform.name if self._detected_platform else None,
                     )
                 )
 
@@ -596,8 +622,182 @@ class OverlayPipeline:
                     pre_click_screenshot,
                     result,
                     pre_click_consent_text=pre_click_consent_text,
+                    consent_platform=self._detected_platform.name if self._detected_platform else None,
                 )
             )
+
+    # ── CMP-specific dismiss (no LLM) ────────────────────────
+
+    async def _try_cmp_specific_dismiss(self) -> AsyncGenerator[str]:
+        """Try to dismiss a consent overlay using CMP-specific selectors.
+
+        When the domain's media group profile identifies a known
+        consent platform, this method tries the platform's
+        accept-button selectors *deterministically* — no LLM
+        vision call required.
+
+        Falls through silently if:
+        - No platform was detected
+        - No accept button was found in the DOM
+        - The click failed
+
+        On success, yields SSE events, captures post-click
+        state, and queues consent extraction.
+        """
+        profile = self._detected_platform
+        if profile is None:
+            return
+
+        # Check if the CMP's container is even visible
+        cmp_on_page = await platform_detection.detect_platform_from_page(
+            self._page,
+        )
+        if cmp_on_page is None:
+            # DOM doesn't show this CMP — fall through
+            log.debug(
+                "CMP container not found in DOM — skipping deterministic dismiss",
+                {"expected": profile.name},
+            )
+            return
+
+        # If DOM detection found a *different* CMP, use that
+        # CMP's selectors for button finding, but keep the media
+        # group profile's identity as the authoritative CMP name
+        # for reporting (e.g. Sourcepoint delegates to Quantcast
+        # Choice for the UI, but the CMP is still Sourcepoint).
+        authoritative_platform = self._detected_platform
+        if cmp_on_page.key != profile.key:
+            log.info(
+                "DOM detection found different CMP than media group profile",
+                {"expected": profile.name, "found": cmp_on_page.name},
+            )
+            profile = cmp_on_page
+
+        # Try to find the accept button
+        accept_result = await platform_detection.find_accept_button(
+            self._page,
+            profile,
+        )
+        if accept_result is None:
+            log.debug(
+                "CMP accept button not found — falling through to vision",
+                {"platform": profile.name},
+            )
+            return
+
+        locator, frame, selector = accept_result
+        button_text = ""
+        try:
+            button_text = (await locator.inner_text()).strip()
+        except Exception:
+            button_text = selector
+
+        log.info(
+            "CMP-specific accept button found — attempting deterministic dismiss",
+            {
+                "platform": profile.name,
+                "selector": selector,
+                "buttonText": button_text,
+                "frame": "iframe" if frame != self._page.main_frame else "main",
+            },
+        )
+
+        overlay_number = 1
+        progress_base = self._next_progress_base(overlay_number)
+
+        yield self._progress(
+            "overlay-1-found",
+            f"Cookie consent detected ({profile.name})...",
+            progress_base,
+        )
+
+        # Capture consent content before clicking (for extraction)
+        pre_click_screenshot: bytes | None = None
+        pre_click_consent_text: str | None = None
+        try:
+            consent_text, consent_screenshot = await overlay_steps.capture_consent_content(
+                self._page,
+                self._session,
+            )
+            pre_click_consent_text = consent_text
+            pre_click_screenshot = consent_screenshot
+        except Exception:
+            log.debug("Pre-click consent capture failed")
+
+        # Attempt the click
+        try:
+            yield self._progress(
+                "overlay-1-click",
+                f"Dismissing {profile.name} consent banner...",
+                progress_base + 1,
+            )
+            await locator.click(timeout=5000)
+            await self._page.wait_for_timeout(1500)
+
+            # Capture post-click state
+            detection = consent.CookieConsentDetection(
+                found=True,
+                overlay_type="cookie-consent",
+                selector=selector,
+                button_text=button_text,
+                confidence="high",
+                reason=f"CMP-specific dismiss ({profile.name})",
+            )
+
+            async for event in overlay_steps.capture_after_click(
+                self._session,
+                self._page,
+                detection,
+                overlay_number,
+                progress_base,
+            ):
+                yield event
+
+            self.result.overlay_count += 1
+            self.result.dismissed_overlays.append(detection)
+            frame_type: overlay_cache.FrameType = "consent-iframe" if frame != self._page.main_frame else "main"
+            self._new_overlays.append(
+                overlay_cache.CachedOverlay(
+                    overlay_type="cookie-consent",
+                    button_text=button_text,
+                    css_selector=selector,
+                    locator_strategy="css",
+                    frame_type=frame_type,
+                    consent_platform=profile.key,
+                ),
+            )
+
+            self._screenshot = await self._session.take_screenshot(full_page=False)
+            self._storage = await self._session.capture_storage()
+
+            # Queue consent extraction concurrently
+            if pre_click_screenshot:
+                self._pending_extract = asyncio.create_task(
+                    overlay_steps.collect_extraction_events(
+                        self._page,
+                        pre_click_screenshot,
+                        self.result,
+                        pre_click_consent_text=pre_click_consent_text,
+                        consent_platform=authoritative_platform.name,
+                    )
+                )
+
+            log.success(
+                "CMP-specific dismiss succeeded — LLM vision skipped",
+                {"platform": authoritative_platform.name, "button": button_text},
+            )
+
+        except Exception as exc:
+            log.debug(
+                "CMP-specific click failed — falling through to vision",
+                {"platform": profile.name, "error": str(exc)},
+            )
+            # Clean up: if click failed, still preserve consent data
+            if pre_click_screenshot:
+                self._deferred_extraction = (
+                    pre_click_screenshot,
+                    pre_click_consent_text,
+                )
 
     # ── Cached overlay helpers ──────────────────────────────
 
@@ -742,6 +942,13 @@ class OverlayPipeline:
                 dismissed += 1
                 result.dismissed_overlays.append(detection)
 
+                # Recover platform from cache when domain lookup missed
+                cached_platform_key = cached.consent_platform
+                if cached_platform_key and not self._detected_platform:
+                    self._detected_platform = platform_detection.get_platform_profile(
+                        cached_platform_key,
+                    )
+
                 self._new_overlays.append(
                     overlay_cache.CachedOverlay(
                         overlay_type=detection.overlay_type or "other",
@@ -749,6 +956,7 @@ class OverlayPipeline:
                         css_selector=detection.selector,
                         locator_strategy=click_result.strategy or "role-button",
                         frame_type=click_result.frame_type or "main",
+                        consent_platform=self._detected_platform.key if self._detected_platform else cached_platform_key,
                     )
                 )
 

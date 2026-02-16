@@ -199,16 +199,12 @@ def _build_consent_facts(
         "",
         "DETERMINISTIC CONSENT FACTS (use these numbers, do not guess):",
     ]
-    if cd.categories:
-        lines.append(f"- Consent categories disclosed: {len(cd.categories)}")
     if cd.claimed_partner_count:
         lines.append(f"- Claimed partner count (from dialog text): {cd.claimed_partner_count}")
     if cd.partners:
         lines.append(f"- Individually listed partners extracted: {len(cd.partners)}")
     elif cd.claimed_partner_count:
         lines.append("- Individually listed partners extracted: 0 (dialog states a count but does not list them individually)")
-    if cd.purposes:
-        lines.append(f"- Stated purposes: {len(cd.purposes)}")
     return "\n".join(lines)
 
 

@@ -62,6 +62,7 @@ class CachedOverlay(pydantic.BaseModel):
     css_selector: str | None = None
     locator_strategy: LocatorStrategy = "role-button"
     frame_type: FrameType = "main"
+    consent_platform: str | None = None
 
     @pydantic.model_validator(mode="before")
     @classmethod

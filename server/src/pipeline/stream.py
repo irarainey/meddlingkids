@@ -200,6 +200,11 @@ async def analyze_url_stream(
     usage_tracking.reset()
     log.section(f"Analyzing: {url}")
     log.info("Request received", {"url": url, "device": device_type})
+
+    if clear_cache:
+        log.success("All caches cleared by user request")
+        yield sse_helpers.format_progress_event("cache-cleared", "Caches cleared!", 2)
+
     log.start_timer("total-analysis")
 
     try:
@@ -365,6 +370,17 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
         session.get_tracked_network_requests(),
         ctx.storage,
     )
+    log.info(
+        "Pre-consent stats captured",
+        {
+            "cookies": ctx.pre_consent_stats.total_cookies,
+            "trackingCookies": ctx.pre_consent_stats.tracking_cookies,
+            "scripts": ctx.pre_consent_stats.total_scripts,
+            "trackingScripts": ctx.pre_consent_stats.tracking_scripts,
+            "requests": ctx.pre_consent_stats.total_requests,
+            "trackerRequests": ctx.pre_consent_stats.tracker_requests,
+        },
+    )
 
     # Tag every request captured so far as pre-consent.
     for req in session.get_tracked_network_requests():
@@ -409,6 +425,18 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
             "hasConsentDetails": ctx.consent_details is not None,
         },
     )
+
+    if ctx.consent_details:
+        log.info(
+            "Consent details summary",
+            {
+                "categories": len(ctx.consent_details.categories),
+                "partners": len(ctx.consent_details.partners),
+                "purposes": len(ctx.consent_details.purposes),
+                "claimedPartnerCount": ctx.consent_details.claimed_partner_count,
+                "consentPlatform": ctx.consent_details.consent_platform,
+            },
+        )
 
     # Post-overlay capture — only emit a new screenshot when no
     # overlays were dismissed (the overlay pipeline already emits

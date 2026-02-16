@@ -83,8 +83,9 @@ src/
 │   ├── constants.py                 # Shared consent-manager detection constants, selectors, and utilities
 │   ├── detection.py                 # Overlay detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
-│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, JSON)
-│   └── partner_classification.py    # Consent partner risk classification and URL enrichment
+│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON)
+│   ├── partner_classification.py    # Consent partner risk classification and URL enrichment
+│   └── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
@@ -107,7 +108,7 @@ src/
 ├── pipeline/                        # SSE streaming orchestration
 │   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators)
 │   ├── browser_phases.py            # Phases 1-3: setup, navigate, initial capture
-│   ├── overlay_pipeline.py          # Phase 4: run() → _run_vision_loop() → _click_and_capture()
+│   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture()
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
 │   └── sse_helpers.py               # SSE formatting & serialization helpers
@@ -120,13 +121,14 @@ src/
 │   └── browser.py                   # Navigation, access denial & device models
 ├── data/                            # Static data and reference databases
 │   ├── loader.py                    # JSON data loader with caching
-│   ├── gdpr/                        # GDPR/TCF reference data for LLM context
+│   ├── consent/                     # Consent and GDPR/TCF reference data
+│   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
+│   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
 │   │   ├── gdpr-reference.json      # GDPR lawful bases, principles, and ePrivacy cookie categories
-│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
-│   │   └── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
+│   │   └── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
-│   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
+│   │   └── media-groups.json        # 15 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear all caches)

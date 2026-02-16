@@ -152,7 +152,7 @@
     "description": "Bootstrap CDN - does not track users"
   },
   {
-    "pattern": "recaptcha|grecaptcha",
+    "pattern": "recaptcha\\/api|grecaptcha",
     "description": "Google reCAPTCHA - bot detection (not user tracking)"
   },
   {
@@ -180,20 +180,20 @@
     "description": "Google Maps - displays maps (minimal tracking)"
   },
   {
-    "pattern": "mapbox",
-    "description": "Mapbox - displays maps (minimal tracking)"
+    "pattern": "mapbox\\.com\\/mapbox-gl|api\\.mapbox\\.com\\/styles|api\\.mapbox\\.com\\/v4",
+    "description": "Mapbox - map display (not telemetry)"
   },
   {
     "pattern": "youtube\\.com\\/iframe_api|youtube\\.com\\/player",
     "description": "YouTube player - video playback"
   },
   {
-    "pattern": "vimeo\\.com\\/player|player\\.vimeo",
-    "description": "Vimeo player - video playback"
+    "pattern": "player\\.vimeo\\.com\\/api|vimeo\\.com\\/player\\/.*\\.js",
+    "description": "Vimeo player - video playback library (not analytics)"
   },
   {
-    "pattern": "jwplayer",
-    "description": "JW Player - video playback"
+    "pattern": "cdn\\.jwplayer\\.com|ssl\\.p\\.jwpcdn\\.com",
+    "description": "JW Player - video playback library (not ad serving)"
   },
   {
     "pattern": "videojs|video\\.js",

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 
 from src import agents
 from src.analysis import domain_cache, scripts, tracking
@@ -215,21 +216,53 @@ def _render_report_text(
     score_summary: str,
     summary_findings: list[analysis.SummaryFinding],
     report: report_models.StructuredReport,
+    score_breakdown: analysis.ScoreBreakdown | None = None,
+    consent_details: consent.ConsentDetails | None = None,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> str:
     """Render the structured report as a plain-text file.
 
     Produces a human-readable text version of the complete
     analysis for archival purposes.
     """
+    now = datetime.now(UTC)
     lines: list[str] = [
         "=" * 72,
         f"  Privacy Analysis Report — {url}",
+        f"  Generated: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC",
         "=" * 72,
         "",
         f"Privacy Score: {score}/100",
         score_summary,
         "",
     ]
+
+    # Score category breakdown
+    if score_breakdown and score_breakdown.categories:
+        lines.append("─" * 40)
+        lines.append("SCORE BREAKDOWN")
+        lines.append("─" * 40)
+        for cat_name, cat_score in score_breakdown.categories.items():
+            lines.append(f"  {cat_name}: {cat_score.points}/{cat_score.max_points}")
+            for issue in cat_score.issues:
+                lines.append(f"    - {issue}")
+        if score_breakdown.factors:
+            lines.append("\n  Key factors:")
+            for factor in score_breakdown.factors:
+                lines.append(f"    • {factor}")
+        lines.append("")
+
+    # Pre-consent tracking stats
+    if pre_consent_stats:
+        lines.append("─" * 40)
+        lines.append("PRE-CONSENT TRACKING")
+        lines.append("─" * 40)
+        lines.append(f"  Cookies: {pre_consent_stats.total_cookies} (tracking: {pre_consent_stats.tracking_cookies})")
+        lines.append(f"  Scripts: {pre_consent_stats.total_scripts} (tracking: {pre_consent_stats.tracking_scripts})")
+        lines.append(f"  Requests: {pre_consent_stats.total_requests} (tracker: {pre_consent_stats.tracker_requests})")
+        lines.append(f"  localStorage: {pre_consent_stats.total_local_storage} items")
+        lines.append(f"  sessionStorage: {pre_consent_stats.total_session_storage} items")
+        lines.append("")
 
     # Summary findings
     if summary_findings:
@@ -339,10 +372,32 @@ def _render_report_text(
         lines.append("CONSENT ANALYSIS")
         lines.append("─" * 40)
         lines.append(f"  Consent dialog: {'Yes' if consent_sec.has_consent_dialog else 'No'}")
+        if consent_sec.consent_platform:
+            platform_line = f"  Consent platform: {consent_sec.consent_platform}"
+            if consent_sec.consent_platform_url:
+                platform_line += f" ({consent_sec.consent_platform_url})"
+            lines.append(platform_line)
         if consent_sec.categories_disclosed:
             lines.append(f"  Categories disclosed: {consent_sec.categories_disclosed}")
         if consent_sec.partners_disclosed:
             lines.append(f"  Partners disclosed: {consent_sec.partners_disclosed}")
+        # Include consent dialog extraction details if available
+        if consent_details:
+            if consent_details.categories:
+                lines.append(f"  Consent categories: {len(consent_details.categories)}")
+                for cat in consent_details.categories[:10]:
+                    lines.append(f"    • {cat.name}")
+                if len(consent_details.categories) > 10:
+                    lines.append(f"    ... and {len(consent_details.categories) - 10} more")
+            if consent_details.partners:
+                lines.append(f"  Consent partners: {len(consent_details.partners)}")
+                for partner in consent_details.partners[:10]:
+                    risk_tag = f" [{partner.risk_level}]" if partner.risk_level else ""
+                    lines.append(f"    • {partner.name}{risk_tag}")
+                if len(consent_details.partners) > 10:
+                    lines.append(f"    ... and {len(consent_details.partners) - 10} more")
+            if consent_details.claimed_partner_count is not None:
+                lines.append(f"  Claimed partner count: {consent_details.claimed_partner_count}")
         for disc in consent_sec.discrepancies:
             lines.append(f"  [{disc.severity.upper()}] Claimed: {disc.claimed}")
             lines.append(f"    Actual: {disc.actual}")
@@ -485,6 +540,9 @@ async def _score_and_summarise(
             score_breakdown.summary,
             summary_findings,
             structured_report,
+            score_breakdown=score_breakdown,
+            consent_details=consent_details,
+            pre_consent_stats=pre_consent_stats,
         )
         logger.save_report_file(domain, report_text)
 

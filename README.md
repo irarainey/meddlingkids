@@ -9,10 +9,12 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 ![Vue](https://img.shields.io/badge/vue-3.x-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
 
+> **Note:** This tool is primarily focused on UK-based media publishers. Its built-in databases of media group profiles, consent platforms, and partner risk classifications are curated for the UK publishing landscape. While it can analyze any publicly accessible URL, the deepest insights — including CMP detection, known-vendor enrichment, and media-group-specific context — target UK news and media sites.
+
 ## Features
 
 - 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
-- 📱 **Device Emulation** — Test as iPhone, iPad, Android, Windows Chrome, or macOS Safari
+- 📱 **Device Emulation** — Test as iPhone, iPad, Android Phone, Android Tablet, Windows Chrome, or macOS Safari
 - 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
@@ -101,16 +103,16 @@ meddlingkids/
 │       │   ├── prompts/       # System prompts (one module per agent)
 │       │   └── gdpr_context.py # Shared GDPR/TCF reference builder for agent prompts
 │       ├── browser/           # Browser automation (Playwright session, device configs)
-│       ├── consent/           # Consent handling (detect, click, extract, classify, cache)
+│       ├── consent/           # Consent handling (detect, click, extract, classify, cache, CMP platform detection)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
 │       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
-│       │   ├── gdpr/          # GDPR/TCF reference data (lawful bases, consent cookies, purposes, ePrivacy categories)
+│       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
-│       │   ├── publishers/    # Media group profiles (16 UK media groups)
+│       │   ├── publishers/    # Media group profiles (15 UK media groups)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
@@ -133,7 +135,7 @@ JSON, created automatically, and gitignored.
 |-------|-----------|---------------|-------|
 | **Script analysis** | `.cache/scripts/` | LLM-generated descriptions of unknown scripts, keyed by URL and MD5 content hash | LLM calls for every previously analysed script whose content has not changed |
 | **Domain knowledge** | `.cache/domain/` | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
-| **Overlay dismissal** | `.cache/overlay/` | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type) | LLM vision calls for overlay detection on repeat visits |
+| **Overlay dismissal** | `.cache/overlay/` | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type, consent platform) | LLM vision calls for overlay detection on repeat visits |
 
 ### How It Helps
 
@@ -160,7 +162,17 @@ page URL in the browser:
 http://localhost:5173/?clear-cache=true
 ```
 
-Or pass it directly in the API URL:
+When the page loads with this parameter, the client immediately
+calls `POST /api/clear-cache` to wipe all cached data. The flag
+is also forwarded to the SSE analysis stream as a query parameter.
+
+You can also call the cache-clearing endpoint directly:
+
+```
+POST /api/clear-cache
+```
+
+Or pass it as a query parameter in the API URL:
 
 ```
 /api/open-browser-stream?url=https://example.com&device=ipad&clear-cache=true

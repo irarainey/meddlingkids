@@ -9,11 +9,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from src.analysis import domain_cache
 from src.models import report
-
 
 # ── Name normalisation ──────────────────────────────────────────
 

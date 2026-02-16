@@ -320,14 +320,21 @@ function findingLabel(type: SummaryFindingType): string {
         </h2>
         <div class="consent-stats">
           <div class="stat-card">
-            <span class="stat-value">{{ structuredReport.consentAnalysis.categoriesDisclosed }}</span>
-            <span class="stat-label">Categories Disclosed</span>
-          </div>
-          <div class="stat-card">
             <span class="stat-value">{{ structuredReport.consentAnalysis.partnersDisclosed }}</span>
             <span class="stat-label">Partners Disclosed</span>
           </div>
         </div>
+        <p v-if="structuredReport.consentAnalysis.consentPlatform" class="consent-platform-note">
+          Consent is managed by
+          <a
+            v-if="structuredReport.consentAnalysis.consentPlatformUrl"
+            :href="structuredReport.consentAnalysis.consentPlatformUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="consent-platform-link"
+          >{{ structuredReport.consentAnalysis.consentPlatform }}</a>
+          <template v-else>{{ structuredReport.consentAnalysis.consentPlatform }}</template>.
+        </p>
         <p v-if="structuredReport.consentAnalysis.summary" class="section-summary">
           {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
         </p>
@@ -958,6 +965,21 @@ function findingLabel(type: SummaryFindingType): string {
 }
 
 /* ── Consent discrepancies ───────────────────────────── */
+
+.consent-platform-note {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.consent-platform-link {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.consent-platform-link:hover {
+  text-decoration: underline;
+}
 
 .discrepancies {
   margin-top: 0.75rem;

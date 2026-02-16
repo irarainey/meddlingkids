@@ -30,6 +30,7 @@ class PartnerEntry(pydantic.BaseModel):
     concerns: list[str]
     aliases: list[str]
     url: str = ""
+    privacy_url: str = ""
 
 
 class ScriptPattern(pydantic.BaseModel):

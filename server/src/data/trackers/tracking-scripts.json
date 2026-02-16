@@ -605,7 +605,7 @@
   },
   {
     "pattern": "leanplum\\.com",
-    "description": "Leanplum: Mobile marketing automation tracking in-app behavior."
+    "description": "Leanplum: Mobile marketing automation tracking in-app behavior and A/B tests."
   },
   {
     "pattern": "onesignal\\.com",
@@ -620,7 +620,7 @@
     "description": "Airship: Mobile engagement tracking push notifications and in-app behavior."
   },
   {
-    "pattern": "onetrust\\.com|cookielaw\\.org|optanon",
+    "pattern": "onetrust\\.com|cookielaw\\.org|optanon\\.blob\\.core",
     "description": "OneTrust: Consent management platform logging user consent choices and preferences."
   },
   {
@@ -657,7 +657,7 @@
   },
   {
     "pattern": "securiti\\.ai",
-    "description": "Securiti: Privacy management platform with consent tracking."
+    "description": "Securiti: Privacy automation tracking consent and data discovery."
   },
   {
     "pattern": "consentmanager\\.net",
@@ -1001,7 +1001,7 @@
   },
   {
     "pattern": "okendo\\.io",
-    "description": "Okendo: Reviews platform tracking customer purchases."
+    "description": "Okendo: Reviews platform tracking purchases and attributes."
   },
   {
     "pattern": "stamped\\.io",
@@ -1009,7 +1009,7 @@
   },
   {
     "pattern": "judge\\.me",
-    "description": "Judge.me: Product reviews tracking purchases."
+    "description": "Judge.me: Reviews tracking purchase verification."
   },
   {
     "pattern": "loox\\.io",
@@ -1137,15 +1137,15 @@
   },
   {
     "pattern": "kochava\\.com",
-    "description": "Kochava: Mobile attribution and measurement platform."
+    "description": "Kochava: Mobile attribution and fraud prevention tracking installs."
   },
   {
     "pattern": "singular\\.net",
-    "description": "Singular: Marketing analytics and attribution platform."
+    "description": "Singular: Mobile attribution aggregating data from multiple ad networks."
   },
   {
     "pattern": "tenjin\\.io",
-    "description": "Tenjin: Mobile attribution and analytics."
+    "description": "Tenjin: Mobile attribution and analytics for games."
   },
   {
     "pattern": "attribution\\.com|convertro",
@@ -1192,10 +1192,6 @@
     "description": "CleverTap: Mobile engagement tracking user behavior, retention, and messaging."
   },
   {
-    "pattern": "leanplum\\.com",
-    "description": "Leanplum: Mobile marketing automation tracking in-app behavior and A/B tests."
-  },
-  {
     "pattern": "gameanalytics\\.com",
     "description": "GameAnalytics: Gaming SDK tracking player behavior, retention, and monetization."
   },
@@ -1206,10 +1202,6 @@
   {
     "pattern": "countly\\.com",
     "description": "Countly: Mobile and web analytics tracking sessions, events, and crashes."
-  },
-  {
-    "pattern": "uxcam\\.com",
-    "description": "UXCam: Mobile session recording capturing touches, gestures, and screen recordings."
   },
   {
     "pattern": "embrace\\.io",
@@ -1298,18 +1290,6 @@
   {
     "pattern": "adjust\\.com|adjust\\.io",
     "description": "Adjust: Mobile attribution tracking installs and in-app events."
-  },
-  {
-    "pattern": "kochava\\.com",
-    "description": "Kochava: Mobile attribution and fraud prevention tracking installs."
-  },
-  {
-    "pattern": "singular\\.net",
-    "description": "Singular: Mobile attribution aggregating data from multiple ad networks."
-  },
-  {
-    "pattern": "tenjin\\.io",
-    "description": "Tenjin: Mobile attribution and analytics for games."
   },
   {
     "pattern": "tune\\.com|hasoffers",
@@ -1516,10 +1496,6 @@
     "description": "LoginRadius: Social login tracking user identity across sites."
   },
   {
-    "pattern": "addtoany\\.com",
-    "description": "AddToAny: Social sharing buttons tracking shares and referrals."
-  },
-  {
     "pattern": "shareaholic\\.com",
     "description": "Shareaholic: Social sharing and content recommendations with tracking."
   },
@@ -1720,14 +1696,6 @@
     "description": "Usermaven: Privacy-first analytics with auto-capture and attribution."
   },
   {
-    "pattern": "demandbase\\.com",
-    "description": "Demandbase: B2B account identification tracking company visitors."
-  },
-  {
-    "pattern": "6sense\\.com",
-    "description": "6sense: B2B intent data tracking buyer research signals."
-  },
-  {
     "pattern": "terminus\\.com",
     "description": "Terminus: ABM platform tracking account engagement."
   },
@@ -1744,10 +1712,6 @@
     "description": "Engagio (Demandbase): Account engagement tracking for B2B."
   },
   {
-    "pattern": "nosto\\.com",
-    "description": "Nosto: E-commerce personalization tracking browsing and purchases."
-  },
-  {
     "pattern": "klevu\\.com",
     "description": "Klevu: E-commerce search tracking queries and clicks."
   },
@@ -1760,24 +1724,12 @@
     "description": "SearchSpring: E-commerce search tracking product discovery."
   },
   {
-    "pattern": "barilliance\\.com",
-    "description": "Barilliance: E-commerce personalization tracking shopping behavior."
-  },
-  {
     "pattern": "richrelevance\\.com|algonomy",
     "description": "RichRelevance/Algonomy: Product recommendations tracking behavior."
   },
   {
-    "pattern": "dynamicyield\\.com",
-    "description": "Dynamic Yield: Personalization engine tracking behavior patterns."
-  },
-  {
     "pattern": "monetate\\.com",
     "description": "Monetate: Personalization platform tracking user segments and testing."
-  },
-  {
-    "pattern": "certona\\.com",
-    "description": "Certona: Personalization tracking behavior for recommendations."
   },
   {
     "pattern": "coveo\\.com",
@@ -1786,18 +1738,6 @@
   {
     "pattern": "constructor\\.io",
     "description": "Constructor: E-commerce search tracking queries and conversions."
-  },
-  {
-    "pattern": "onesignal\\.com",
-    "description": "OneSignal: Push notifications tracking user devices and engagement."
-  },
-  {
-    "pattern": "pushwoosh\\.com",
-    "description": "Pushwoosh: Push notifications tracking user segments and delivery."
-  },
-  {
-    "pattern": "airship\\.com|urbanairship",
-    "description": "Airship: Push and in-app messaging tracking engagement."
   },
   {
     "pattern": "pushengage\\.com",
@@ -1814,38 +1754,6 @@
   {
     "pattern": "subscribers\\.com",
     "description": "Subscribers: Push platform tracking user engagement."
-  },
-  {
-    "pattern": "yotpo\\.com",
-    "description": "Yotpo: Reviews and UGC platform tracking purchases and engagement."
-  },
-  {
-    "pattern": "trustpilot\\.com",
-    "description": "Trustpilot: Reviews platform tracking purchase verification."
-  },
-  {
-    "pattern": "bazaarvoice\\.com",
-    "description": "Bazaarvoice: Reviews network tracking purchases and UGC."
-  },
-  {
-    "pattern": "powerreviews\\.com",
-    "description": "PowerReviews: Reviews platform tracking customer feedback."
-  },
-  {
-    "pattern": "okendo\\.io",
-    "description": "Okendo: Reviews platform tracking purchases and attributes."
-  },
-  {
-    "pattern": "stamped\\.io",
-    "description": "Stamped: Reviews and loyalty tracking customer behavior."
-  },
-  {
-    "pattern": "judge\\.me",
-    "description": "Judge.me: Reviews tracking purchase verification."
-  },
-  {
-    "pattern": "loox\\.io",
-    "description": "Loox: Photo reviews tracking purchases and UGC."
   },
   {
     "pattern": "feefo\\.com",
@@ -1880,10 +1788,6 @@
     "description": "BigID: Data intelligence tracking PII and consent status."
   },
   {
-    "pattern": "securiti\\.ai",
-    "description": "Securiti: Privacy automation tracking consent and data discovery."
-  },
-  {
     "pattern": "complianz\\.io",
     "description": "Complianz: WordPress consent plugin logging cookie preferences."
   },
@@ -1916,48 +1820,28 @@
     "description": "Google Funding Choices: Consent recovery for ad blocking."
   },
   {
-    "pattern": "fingerprintjs\\.com|fpjs\\.io",
-    "description": "FingerprintJS: Browser fingerprinting for device identification."
+    "pattern": "cookieyes\\.com|cookie-law-info",
+    "description": "CookieYes: WordPress consent plugin logging cookie preferences."
   },
   {
-    "pattern": "iovation\\.com",
-    "description": "Iovation: Device fingerprinting and fraud detection network."
+    "pattern": "sirdata\\.com|sddan\\.com",
+    "description": "Sirdata: Consent management and data marketplace tracking."
+  },
+  {
+    "pattern": "commandersact\\.com|trustcommander",
+    "description": "Commanders Act: Tag management and consent logging platform."
+  },
+  {
+    "pattern": "fingerprintjs\\.com|fpjs\\.io",
+    "description": "FingerprintJS: Browser fingerprinting for device identification."
   },
   {
     "pattern": "threatmetrix\\.com",
     "description": "ThreatMetrix: Device fingerprinting with behavioral biometrics."
   },
   {
-    "pattern": "forter\\.com",
-    "description": "Forter: Fraud prevention tracking device and behavior signals."
-  },
-  {
     "pattern": "sift\\.com|siftscience",
     "description": "Sift: Fraud prevention using machine learning on user behavior."
-  },
-  {
-    "pattern": "kount\\.com",
-    "description": "Kount: Fraud prevention with device fingerprinting and AI."
-  },
-  {
-    "pattern": "riskified\\.com",
-    "description": "Riskified: E-commerce fraud prevention tracking device signals."
-  },
-  {
-    "pattern": "signifyd\\.com",
-    "description": "Signifyd: Fraud protection using behavioral fingerprinting."
-  },
-  {
-    "pattern": "castle\\.io",
-    "description": "Castle: Account security tracking devices and behavior."
-  },
-  {
-    "pattern": "seon\\.io",
-    "description": "SEON: Fraud prevention with email and device analysis."
-  },
-  {
-    "pattern": "socure\\.com",
-    "description": "Socure: Identity verification using device and behavioral data."
   },
   {
     "pattern": "arkose\\.com|arkoselabs",
@@ -2010,10 +1894,6 @@
   {
     "pattern": "rubiconproject\\.com|rubicon\\.com",
     "description": "Rubicon Project: Programmatic advertising exchange."
-  },
-  {
-    "pattern": "smartadserver\\.com",
-    "description": "Smart AdServer: Ad serving platform with tracking."
   },
   {
     "pattern": "prebid\\.js|pbjs",
