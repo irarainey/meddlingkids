@@ -99,6 +99,31 @@ function findingLabel(type: SummaryFindingType): string {
     default: return type
   }
 }
+
+/** Well-known social media platform URLs. */
+const PLATFORM_URLS: Record<string, string> = {
+  facebook: 'https://www.facebook.com',
+  meta: 'https://www.facebook.com',
+  instagram: 'https://www.instagram.com',
+  twitter: 'https://www.twitter.com',
+  'x/twitter': 'https://www.x.com',
+  'x (twitter)': 'https://www.x.com',
+  x: 'https://www.x.com',
+  linkedin: 'https://www.linkedin.com',
+  pinterest: 'https://www.pinterest.com',
+  tiktok: 'https://www.tiktok.com',
+  snapchat: 'https://www.snapchat.com',
+  reddit: 'https://www.reddit.com',
+  youtube: 'https://www.youtube.com',
+  addthis: 'https://www.addthis.com',
+  sharethis: 'https://www.sharethis.com',
+  addtoany: 'https://www.addtoany.com',
+}
+
+/** Resolve a platform name to its website URL. */
+function platformUrl(name: string): string {
+  return PLATFORM_URLS[name.toLowerCase().trim()] ?? '#'
+}
 </script>
 
 <template>
@@ -173,7 +198,43 @@ function findingLabel(type: SummaryFindingType): string {
         </ul>
       </section>
 
-      <!-- ── Section 2: Tracking Technologies ───────────────── -->
+      <!-- ── Section 2: Social Media Implications ────────────── -->
+      <section v-if="structuredReport.socialMediaImplications.platformsDetected.length" class="report-section">
+        <h2>
+          <span class="section-icon">📱</span>
+          Social Media Implications
+          <span
+            class="risk-badge"
+            :class="severityClass(structuredReport.socialMediaImplications.identityLinkingRisk)"
+          >{{ riskLabel(structuredReport.socialMediaImplications.identityLinkingRisk) }}</span>
+        </h2>
+        <div class="social-platforms">
+          <a
+            v-for="platform in structuredReport.socialMediaImplications.platformsDetected"
+            :key="platform"
+            :href="platformUrl(platform)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="platform-tag"
+          >{{ platform }}</a>
+        </div>
+        <p v-if="structuredReport.socialMediaImplications.summary" class="section-summary">
+          {{ stripMarkdown(structuredReport.socialMediaImplications.summary) }}
+        </p>
+        <ul v-if="structuredReport.socialMediaImplications.risks.length" class="factor-list">
+          <li
+            v-for="(r, i) in structuredReport.socialMediaImplications.risks"
+            :key="i"
+            class="factor-item"
+          >
+            <span class="severity-dot" :class="severityClass(r.severity)"></span>
+            <span class="factor-text"><strong>{{ r.platform }}:</strong> {{ stripMarkdown(r.risk) }}</span>
+            <span class="badge" :class="severityClass(r.severity)">{{ riskLabel(r.severity) }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ── Section 3: Tracking Technologies ───────────────── -->
       <section class="report-section">
         <h2>
           <span class="section-icon">📡</span>
@@ -360,7 +421,7 @@ function findingLabel(type: SummaryFindingType): string {
         </div>
       </section>
 
-      <!-- ── Section 8: Top Vendors ──────────────────────────── -->
+      <!-- ── Section 9: Top Vendors ──────────────────────────── -->
       <section v-if="structuredReport.keyVendors.vendors.length" class="report-section">
         <h2>
           <span class="section-icon">🏢</span>
@@ -385,7 +446,7 @@ function findingLabel(type: SummaryFindingType): string {
         </div>
       </section>
 
-      <!-- ── Section 9: Recommendations ──────────────────────── -->
+      <!-- ── Section 10: Recommendations ──────────────────────── -->
       <section v-if="structuredReport.recommendations.groups.length" class="report-section recommendations-section">
         <h2>
           <span class="section-icon">✅</span>
@@ -1062,6 +1123,33 @@ function findingLabel(type: SummaryFindingType): string {
   color: #b0bcd5;
   font-size: 0.88rem;
   margin: 0.35rem 0 0 0;
+}
+
+/* ── Social Media Implications ────────────────────────── */
+
+.social-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.platform-tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #1e3a5f;
+  color: #7CB8E4;
+  border: 1px solid #2a4a6f;
+  text-decoration: none;
+}
+
+.platform-tag:hover {
+  background: #264a73;
+  color: #a0d0ff;
+  text-decoration: underline;
 }
 
 /* ── Recommendations ─────────────────────────────────── */

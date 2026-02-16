@@ -128,7 +128,7 @@ src/
 │   │   └── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
-│   │   └── media-groups.json        # 15 UK media group profiles (vendors, ad tech, data practices)
+│   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear all caches)
@@ -179,7 +179,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons |
 | `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
-| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 9 concurrent section LLM calls, deterministic overrides, and vendor URL enrichment |
+| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run_stream()`) |
 

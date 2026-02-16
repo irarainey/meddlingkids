@@ -253,7 +253,7 @@ All data captured
    │   │   └── Domain knowledge context                        │
    │   │                                                       │
    │   │  build_structured_report(tracking_summary, consent)   │
-   │   │   ├── 9 concurrent section LLM calls                  │
+   │   │   ├── 10 concurrent section LLM calls                 │
    │   │   ├── GDPR/TCF reference data                         │
    │   │   ├── Deterministic overrides (partner count,         │
    │   │   │   domain count, cookie count, storage counts)      │
@@ -425,7 +425,7 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls, deterministic overrides, and vendor URL enrichment |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context |
 
 | Infrastructure | Module | Responsibility |
@@ -507,7 +507,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
 | `data/consent/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
 | `data/consent/consent-platforms.json` | 19 CMP profiles with DOM selectors, iframe patterns, cookie indicators, and button strategies |
-| `data/publishers/media-groups.json` | 15 UK media group profiles (vendors, ad tech partners, data practices) |
+| `data/publishers/media-groups.json` | 16 UK media group profiles (vendors, ad tech partners, data practices) |
 
 **`utils/`** — Cross-cutting utilities
 

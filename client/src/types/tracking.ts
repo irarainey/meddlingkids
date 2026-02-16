@@ -288,6 +288,21 @@ export interface RecommendationsSection {
   groups: RecommendationGroup[]
 }
 
+/** A specific social media privacy risk. */
+export interface SocialMediaRisk {
+  platform: string
+  risk: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/** Analysis of social media tracking implications. */
+export interface SocialMediaImplicationsSection {
+  platformsDetected: string[]
+  identityLinkingRisk: 'none' | 'low' | 'medium' | 'high'
+  risks: SocialMediaRisk[]
+  summary: string
+}
+
 /** Complete structured privacy analysis report. */
 export interface StructuredReport {
   trackingTechnologies: TrackingTechnologiesSection
@@ -297,6 +312,7 @@ export interface StructuredReport {
   cookieAnalysis: CookieAnalysisSection
   storageAnalysis: StorageAnalysisSection
   consentAnalysis: ConsentAnalysisSection
+  socialMediaImplications: SocialMediaImplicationsSection
   keyVendors: VendorSection
   recommendations: RecommendationsSection
 }

@@ -233,7 +233,48 @@ class ConsentAnalysisSection(pydantic.BaseModel):
     consent_platform_url: str | None = None
 
 
-# ── Section 8: Key Vendors ──────────────────────────────────────
+# ── Section 8: Social Media Implications ────────────────────────
+
+
+class SocialMediaRisk(pydantic.BaseModel):
+    """A specific social media privacy risk."""
+
+    model_config = pydantic.ConfigDict(
+        alias_generator=serialization.snake_to_camel,
+        populate_by_name=True,
+    )
+
+    platform: str
+    risk: str
+    severity: Literal["low", "medium", "high", "critical"]
+
+
+class SocialMediaImplicationsSection(pydantic.BaseModel):
+    """Analysis of social media tracking implications.
+
+    Explains how detected social media integrations can
+    link browsing activity to real identities when users
+    are logged into those platforms.
+    """
+
+    model_config = pydantic.ConfigDict(
+        alias_generator=serialization.snake_to_camel,
+        populate_by_name=True,
+    )
+
+    platforms_detected: list[str] = pydantic.Field(
+        default_factory=list,
+    )
+    identity_linking_risk: Literal[
+        "none", "low", "medium", "high"
+    ] = "none"
+    risks: list[SocialMediaRisk] = pydantic.Field(
+        default_factory=list,
+    )
+    summary: str = ""
+
+
+# ── Section 9: Key Vendors ──────────────────────────────────────
 
 
 class VendorEntry(pydantic.BaseModel):
@@ -255,7 +296,7 @@ class VendorSection(pydantic.BaseModel):
     vendors: list[VendorEntry] = pydantic.Field(default_factory=list)
 
 
-# ── Section 9: Recommendations ──────────────────────────────────
+# ── Section 10: Recommendations ─────────────────────────────────
 
 
 class RecommendationGroup(pydantic.BaseModel):
@@ -294,5 +335,8 @@ class StructuredReport(pydantic.BaseModel):
     cookie_analysis: CookieAnalysisSection = pydantic.Field(default_factory=CookieAnalysisSection)
     storage_analysis: StorageAnalysisSection = pydantic.Field(default_factory=StorageAnalysisSection)
     consent_analysis: ConsentAnalysisSection = pydantic.Field(default_factory=ConsentAnalysisSection)
+    social_media_implications: SocialMediaImplicationsSection = pydantic.Field(
+        default_factory=SocialMediaImplicationsSection,
+    )
     key_vendors: VendorSection = pydantic.Field(default_factory=VendorSection)
     recommendations: RecommendationsSection = pydantic.Field(default_factory=RecommendationsSection)

@@ -201,6 +201,8 @@ Located in `types/tracking.ts`:
 | `VendorSection` | Collection of vendor entries with total count |
 | `RecommendationGroup` | Group of recommendations by priority |
 | `RecommendationsSection` | Collection of recommendation groups |
+| `SocialMediaRisk` | Per-platform social media privacy risk with severity |
+| `SocialMediaImplicationsSection` | Social media tracking implications analysis (platforms, identity linking risk, risks, summary) |
 | `StructuredReport` | Per-section structured privacy report |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |

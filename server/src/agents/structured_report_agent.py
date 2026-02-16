@@ -66,6 +66,10 @@ class _VendorResponse(pydantic.BaseModel):
     section: report.VendorSection
 
 
+class _SocialMediaImplicationsResponse(pydantic.BaseModel):
+    section: report.SocialMediaImplicationsSection
+
+
 class _RecommendationsResponse(pydantic.BaseModel):
     section: report.RecommendationsSection
 
@@ -100,8 +104,9 @@ class StructuredReportAgent(base.BaseAgent):
         Runs section LLM calls concurrently in two waves:
         1. Core sections (tracking, data, third-party, cookies,
            storage, risk) — all independent
-        2. Derived sections (consent, vendors, recommendations)
-           — benefit from earlier context
+        2. Derived sections (consent, social media implications,
+           vendors, recommendations) — benefit from earlier
+           context
 
         Args:
             tracking_summary: Collected tracking data summary.
@@ -185,7 +190,7 @@ class StructuredReportAgent(base.BaseAgent):
             else _noop_section(report.ConsentAnalysisSection())
         )
 
-        vendors, consent_analysis, recommendations = await asyncio.gather(
+        vendors, consent_analysis, social_media_implications, recommendations = await asyncio.gather(
             self._build_section(
                 structured_report.VENDOR,
                 context,
@@ -193,6 +198,12 @@ class StructuredReportAgent(base.BaseAgent):
                 "key-vendors",
             ),
             consent_section_coro,
+            self._build_section(
+                structured_report.SOCIAL_MEDIA_IMPLICATIONS,
+                context,
+                _SocialMediaImplicationsResponse,
+                "social-media-implications",
+            ),
             self._build_section(
                 structured_report.RECOMMENDATIONS,
                 context,
@@ -295,6 +306,10 @@ class StructuredReportAgent(base.BaseAgent):
             cookie_analysis=cookie_sec,
             storage_analysis=storage_sec,
             consent_analysis=consent_sec,
+            social_media_implications=_extract(
+                social_media_implications,
+                report.SocialMediaImplicationsSection,
+            ),
             key_vendors=_enrich_vendor_urls(
                 _extract(
                     vendors,

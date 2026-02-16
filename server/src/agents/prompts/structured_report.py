@@ -325,6 +325,73 @@ covered by the consent dialog.
 Write all text as plain text only. Do NOT use markdown formatting \
 such as **bold**, *italic*, `code`, or [links](url)."""
 
+SOCIAL_MEDIA_IMPLICATIONS = """\
+You are a privacy expert. Analyse the social media tracking \
+integrations found on this page and explain their real-world \
+implications for users who are logged into those platforms.
+
+Key concepts to evaluate:
+1. Identity linking: Social media pixels and SDKs can associate \
+a user's visit to this site with their real identity (name, \
+email, profile) on the social platform, because most people \
+remain permanently logged in. This transforms what would \
+otherwise be anonymous browsing into fully identified tracking.
+2. Cross-site profiling: Each site that embeds a platform's \
+pixel contributes to a comprehensive browsing profile. A single \
+Facebook Pixel here is low-risk in isolation, but combined with \
+millions of other sites it builds a detailed interest graph.
+3. Social graph enrichment: Platforms like LinkedIn or Facebook \
+can infer professional interests, social connections, and \
+demographic information from browsing patterns across sites \
+that embed their trackers.
+4. Embedded content risks: YouTube embeds, Twitter/X cards, \
+LinkedIn share buttons, and Instagram embeds all send data \
+to the parent platform when the page loads, even without user \
+interaction.
+5. Data aggregation: Social platforms combine data from their \
+pixels, SDKs, embedded content, and login buttons across the \
+web to build advertising profiles that extend far beyond their \
+own platform.
+
+Provide:
+- platforms_detected: List of social media platform names found \
+on this page (e.g. "Facebook", "LinkedIn", "X/Twitter"). Only \
+list platforms evidenced by the tracking data.
+- identity_linking_risk: Overall risk that browsing this page \
+will be linked to a user's real identity via social media \
+logins. Apply these rules:
+  "none" — no social media integrations detected.
+  "low" — only passive share buttons or lightweight embeds \
+with no tracking pixels or SDKs.
+  "medium" — one or two social media tracking pixels or SDKs \
+present.
+  "high" — multiple social media platforms with tracking \
+pixels, SDKs, or login integrations that can cross-reference \
+identity.
+- risks: List of specific risks, one per detected platform or \
+cross-platform concern, each with:
+  - platform: The social media platform name (or "Cross-Platform" \
+for risks spanning multiple platforms)
+  - risk: One-sentence description of the specific privacy \
+implication
+  - severity: "low", "medium", "high", or "critical"
+- summary: A concise, plain-language explanation of what social \
+media tracking on this page means for ordinary users who stay \
+logged into their social accounts. Focus on practical impact \
+rather than technical detail. Address the user directly.
+
+If NO social media integrations are detected, set \
+platforms_detected to an empty list, identity_linking_risk \
+to "none", risks to an empty list, and provide a brief \
+positive summary noting the absence.
+
+Be specific and factual. Only describe platforms and risks \
+evidenced by the data provided. Do not fabricate integrations \
+or exaggerate risks.
+
+Write all text as plain text only. Do NOT use markdown formatting \
+such as **bold**, *italic*, `code`, or [links](url)."""
+
 VENDOR = """\
 You are a privacy expert. Identify the most significant vendors/partners \
 from a privacy perspective.

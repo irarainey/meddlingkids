@@ -110,7 +110,7 @@ meddlingkids/
 │       ├── data/              # Static data and reference databases (JSON)
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
-│       │   ├── publishers/    # Media group profiles (15 UK media groups)
+│       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Script pattern databases (2 JSON files)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
