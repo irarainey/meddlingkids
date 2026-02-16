@@ -257,15 +257,25 @@ async def analyze_url_stream(
             with contextlib.suppress(asyncio.CancelledError):
                 await ctx.refresher_task
         log.debug("Cleaning up browser resources...")
-        logger.end_log_file()
+
+        # Close the browser with a hard timeout so a hung
+        # Chrome process cannot block the server indefinitely.
+        # BrowserSession.close() has its own per-step timeouts,
+        # but this outer guard covers the aggregate case.
         try:
-            await session.close()
+            await asyncio.wait_for(session.close(), timeout=30)
+        except (TimeoutError, asyncio.TimeoutError):
+            log.error(
+                "Browser cleanup timed out after 30s"
+                " — resources may have leaked",
+            )
         except Exception as err:
             log.warn(
                 "Error during browser cleanup",
                 {"error": errors.get_error_message(err)},
             )
         log.debug("Browser cleanup complete")
+        logger.end_log_file()
 
 
 # ====================================================================

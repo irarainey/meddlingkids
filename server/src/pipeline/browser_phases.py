@@ -38,15 +38,72 @@ def prepare_session(
     session.set_current_page_url(url)
 
 
+# Maximum number of browser launch attempts before giving up.
+_MAX_LAUNCH_ATTEMPTS = 2
+
+# Delay (seconds) between retry attempts, giving transient
+# resource issues (zombie processes, display server recovery)
+# time to resolve.
+_RETRY_DELAY_SECONDS = 2
+
+
 async def launch_browser(
     session: browser_session.BrowserSession,
     device_type: browser.DeviceType,
 ) -> None:
-    """Launch the browser with *device_type* emulation."""
+    """Launch the browser with *device_type* emulation.
+
+    Retries up to ``_MAX_LAUNCH_ATTEMPTS`` times with cleanup
+    between attempts.  Transient failures (crashed display
+    server, zombie Chrome processes, resource exhaustion) are
+    often resolved by tearing down partial state and trying
+    again after a short delay.
+    """
     log.start_timer("browser-launch")
     log.info("Launching browser", {"deviceType": device_type})
-    await session.launch_browser(device_type)
-    log.end_timer("browser-launch", "Browser launched")
+
+    last_error: Exception | None = None
+    for attempt in range(1, _MAX_LAUNCH_ATTEMPTS + 1):
+        try:
+            await session.launch_browser(device_type)
+            log.end_timer("browser-launch", "Browser launched")
+            return
+        except Exception as exc:
+            last_error = exc
+            if attempt < _MAX_LAUNCH_ATTEMPTS:
+                log.warn(
+                    "Browser launch failed, cleaning up"
+                    " before retry",
+                    {
+                        "attempt": attempt,
+                        "maxAttempts": _MAX_LAUNCH_ATTEMPTS,
+                        "error": str(exc),
+                    },
+                )
+                # Tear down any partial state so the next
+                # attempt starts cleanly.
+                try:
+                    await asyncio.wait_for(
+                        session.close(), timeout=10,
+                    )
+                except Exception:
+                    log.debug(
+                        "Cleanup between retries failed"
+                        " (non-fatal)",
+                    )
+                await asyncio.sleep(_RETRY_DELAY_SECONDS)
+            else:
+                log.error(
+                    "Browser launch failed after all"
+                    " attempts",
+                    {
+                        "attempts": _MAX_LAUNCH_ATTEMPTS,
+                        "error": str(exc),
+                    },
+                )
+
+    # All attempts exhausted — propagate the last error.
+    raise last_error  # type: ignore[misc]
 
 
 async def navigate(

@@ -9,8 +9,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import signal
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Literal, Self
 
 from playwright import async_api
 
@@ -28,6 +29,17 @@ log = logger.create_logger("BrowserSession")
 MAX_TRACKED_REQUESTS = 5000
 MAX_TRACKED_SCRIPTS = 1000
 
+# Per-operation timeout (seconds) for graceful browser cleanup.
+# If any single close/stop call exceeds this, we abandon it and
+# move on to the next step so the server doesn't hang.
+_CLOSE_TIMEOUT_SECONDS = 5
+
+# Timeout (seconds) for Playwright startup.  If the Playwright
+# server process doesn't respond within this window (e.g. due
+# to a crashed display server or resource exhaustion), we fail
+# fast rather than hanging.
+_PLAYWRIGHT_START_TIMEOUT_SECONDS = 15
+
 
 class BrowserSession:
     """
@@ -41,6 +53,7 @@ class BrowserSession:
         self._context: async_api.BrowserContext | None = None
         self._page: async_api.Page | None = None
         self._current_page_url: str = ""
+        self._browser_pid: int | None = None
 
         self._tracked_cookies: list[tracking_data.TrackedCookie] = []
         self._tracked_scripts: list[tracking_data.TrackedScript] = []
@@ -118,7 +131,21 @@ class BrowserSession:
             self._playwright = None
         self._page = None
 
-        pw = await async_api.async_playwright().start()
+        try:
+            pw = await asyncio.wait_for(
+                async_api.async_playwright().start(),
+                timeout=_PLAYWRIGHT_START_TIMEOUT_SECONDS,
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            log.error(
+                "Playwright startup timed out",
+                {"timeoutSeconds": _PLAYWRIGHT_START_TIMEOUT_SECONDS},
+            )
+            raise RuntimeError(
+                "Playwright failed to start within "
+                f"{_PLAYWRIGHT_START_TIMEOUT_SECONDS}s — the display "
+                "server may be unresponsive"
+            )
         self._playwright = pw
 
         # Prefer real Chrome over Playwright's bundled Chromium.
@@ -153,6 +180,19 @@ class BrowserSession:
                 **launch_kwargs  # type: ignore[arg-type]
             )
         self._browser = br
+
+        # Track the browser process PID so we can force-kill
+        # it as a last resort if graceful shutdown hangs.
+        # Uses Playwright internals — deliberately untyped.
+        try:
+            bproc = getattr(br, '_impl_obj', None)  # type: ignore[union-attr]
+            conn = getattr(bproc, '_connection', None)  # type: ignore[union-attr]
+            transport = getattr(conn, '_transport', None)  # type: ignore[union-attr]
+            server_proc = getattr(transport, '_proc', None)  # type: ignore[union-attr]
+            if server_proc and hasattr(server_proc, 'pid'):
+                self._browser_pid = server_proc.pid
+        except Exception:
+            self._browser_pid = None
 
         # Do NOT override user_agent here.  When using real
         # Chrome (channel="chrome"), the browser generates its
@@ -534,34 +574,131 @@ class BrowserSession:
     # Cleanup
     # ==========================================================================
 
+    async def __aenter__(self) -> Self:
+        """Enter the async context manager (no-op; launch separately)."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Ensure browser resources are released on exit."""
+        await self.close()
+
     async def close(self) -> None:
-        """Close the browser and clean up all resources."""
+        """Close the browser and clean up all resources.
+
+        Each cleanup step is wrapped in a per-operation timeout
+        so that a hung Chrome process cannot block the server
+        indefinitely.  If all graceful steps fail, a SIGKILL
+        is sent to the browser process as a last resort.
+        """
         log.debug("Closing browser session")
+        graceful_ok = True
+
         if self._page:
             self._page.remove_listener("request", self._on_request)
-            self._page.remove_listener("response", self._on_response)
+            self._page.remove_listener(
+                "response", self._on_response,
+            )
             self._page = None
 
         if self._context:
             try:
-                await self._context.close()
+                await asyncio.wait_for(
+                    self._context.close(),
+                    timeout=_CLOSE_TIMEOUT_SECONDS,
+                )
+            except (TimeoutError, asyncio.TimeoutError):
+                log.warn(
+                    "Context close timed out",
+                    {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
+                )
+                graceful_ok = False
             except Exception as exc:
-                log.debug("Context close error (non-fatal)", {"error": str(exc)})
+                log.debug(
+                    "Context close error (non-fatal)",
+                    {"error": str(exc)},
+                )
             self._context = None
 
         if self._browser:
             try:
-                await self._browser.close()
+                await asyncio.wait_for(
+                    self._browser.close(),
+                    timeout=_CLOSE_TIMEOUT_SECONDS,
+                )
+            except (TimeoutError, asyncio.TimeoutError):
+                log.warn(
+                    "Browser close timed out",
+                    {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
+                )
+                graceful_ok = False
             except Exception as exc:
-                log.debug("Browser close error (non-fatal)", {"error": str(exc)})
+                log.debug(
+                    "Browser close error (non-fatal)",
+                    {"error": str(exc)},
+                )
             self._browser = None
 
         if self._playwright:
             try:
-                await self._playwright.stop()
+                await asyncio.wait_for(
+                    self._playwright.stop(),
+                    timeout=_CLOSE_TIMEOUT_SECONDS,
+                )
+            except (TimeoutError, asyncio.TimeoutError):
+                log.warn(
+                    "Playwright stop timed out",
+                    {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
+                )
+                graceful_ok = False
             except Exception as exc:
-                log.debug("Playwright stop error (non-fatal)", {"error": str(exc)})
+                log.debug(
+                    "Playwright stop error (non-fatal)",
+                    {"error": str(exc)},
+                )
             self._playwright = None
 
+        # Last-resort: force-kill the browser process tree
+        # when graceful shutdown failed.  This prevents
+        # zombie Chrome processes from accumulating across
+        # runs and exhausting system resources.
+        if not graceful_ok:
+            self._force_kill_browser_process()
+
         self.clear_tracking_data()
+        self._browser_pid = None
         log.debug("Browser session closed")
+
+    def _force_kill_browser_process(self) -> None:
+        """Send SIGKILL to the browser process as a last resort.
+
+        Called only when graceful close timed out or failed.
+        Uses the PID captured at launch time.
+        """
+        pid = self._browser_pid
+        if not pid:
+            log.debug(
+                "No browser PID available for force-kill"
+            )
+            return
+
+        try:
+            os.kill(pid, signal.SIGKILL)
+            log.warn(
+                "Force-killed browser process",
+                {"pid": pid},
+            )
+        except ProcessLookupError:
+            log.debug(
+                "Browser process already exited",
+                {"pid": pid},
+            )
+        except OSError as exc:
+            log.warn(
+                "Failed to force-kill browser process",
+                {"pid": pid, "error": str(exc)},
+            )

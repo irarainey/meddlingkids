@@ -431,25 +431,31 @@ export function useTrackingAnalysis() {
         }
       })
 
+      // Tracks whether the server already sent a specific error
+      // via the SSE 'error' event.  When it did, the native
+      // onerror (which fires when the stream subsequently closes)
+      // must not overwrite the more specific message.
+      let hasServerError = false
+
       eventSource.addEventListener('error', (event) => {
         clearTimeout(connectionTimeout)
+        hasServerError = true
         if (event instanceof MessageEvent) {
           try {
             const data = JSON.parse(event.data)
             const error = data.error || 'An error occurred'
-            
-            // Check if this is a configuration error
+
+            // Categorise the server error for a more helpful title
+            let title = 'Error'
             if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
-              errorDialog.value = {
-                title: 'Configuration Error',
-                message: error,
-              }
-            } else {
-              errorDialog.value = {
-                title: 'Error',
-                message: error,
-              }
+              title = 'Configuration Error'
+            } else if (error.includes('timed out')) {
+              title = 'Analysis Timed Out'
+            } else if (error.includes('failed to start') || error.includes('display server')) {
+              title = 'Browser Error'
             }
+
+            errorDialog.value = { title, message: error }
             showErrorDialog.value = true
           } catch {
             errorDialog.value = {
@@ -479,9 +485,41 @@ export function useTrackingAnalysis() {
         if (isComplete.value) {
           return
         }
+
+        // If the server already sent a specific error message via
+        // the SSE 'error' event, the stream closing is expected.
+        // Don't overwrite the specific message with a generic one.
+        if (hasServerError) {
+          return
+        }
+
+        // Build a contextual message based on how far analysis
+        // progressed before the connection dropped.
+        const step = progressStep.value
+        let message: string
+        if (!step || step === 'init') {
+          message = 'The server connection was lost before analysis could begin. '
+            + 'Please check the server is running and try again.'
+        } else if (step === 'browser' || step === 'navigate') {
+          message = 'The connection was lost while launching the browser. '
+            + 'The browser process may have crashed — please try again.'
+        } else if (step === 'wait-network' || step === 'wait-content') {
+          message = 'The connection was lost while loading the page. '
+            + 'The target site may be unresponsive — please try again.'
+        } else if (step === 'overlay-detect' || step === 'overlay-dismiss') {
+          message = 'The connection was lost while handling cookie consent. '
+            + 'Please try again.'
+        } else if (step === 'analysis-start') {
+          message = 'The connection was lost during AI analysis. '
+            + 'This may indicate a timeout — please try again.'
+        } else {
+          message = 'The server connection was lost unexpectedly. '
+            + 'Please try again.'
+        }
+
         errorDialog.value = {
           title: 'Connection Lost',
-          message: 'Connection to server lost. Please try again.',
+          message,
         }
         showErrorDialog.value = true
         isLoading.value = false

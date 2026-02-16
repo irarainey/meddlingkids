@@ -75,7 +75,7 @@ src/
 │       ├── extract_consent_text.js  # Extract consent dialog text from DOM
 │       └── extract_iframe_text.js   # Extract text from consent iframes
 ├── browser/                         # Browser automation
-│   ├── session.py                   # Playwright async browser session
+│   ├── session.py                   # Playwright async browser session (cleanup timeouts, force-kill, context manager)
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling
@@ -107,7 +107,7 @@ src/
 │       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
 │   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators)
-│   ├── browser_phases.py            # Phases 1-3: setup, navigate, initial capture
+│   ├── browser_phases.py            # Phases 1-3: setup (with browser launch retry), navigate, initial capture
 │   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture()
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring

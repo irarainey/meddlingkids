@@ -14,6 +14,7 @@ This guide explains the architecture, workflow, and data flow of the Meddling Ki
 8. [SSE Events Reference](#sse-events-reference)
 9. [Caching](#caching)
 10. [Adding New Features](#adding-new-features)
+11. [Browser Resilience](#browser-resilience)
 
 ---
 
@@ -108,8 +109,10 @@ analyze_url_stream() in pipeline/stream.py
    ├── validate_openai_config() → Check env vars
    ├── BrowserSession() → Create isolated session
    ├── session.clear_tracking_data() → Reset tracking arrays
-   ├── await session.launch_browser(device_type) → Start real Chrome (Chromium fallback)
-   │   └── Anti-bot hardening: webdriver removal, plugins, WebGL, AudioContext, MediaDevices
+   ├── await launch_browser(session, device_type) → Start real Chrome (Chromium fallback)
+   │   ├── Anti-bot hardening: webdriver removal, plugins, WebGL, AudioContext, MediaDevices
+   │   ├── Playwright startup timeout (15s) prevents indefinite hangs
+   │   └── Retry: up to 2 attempts with cleanup between retries (see Browser Resilience)
    └── await session.navigate_to(url) → Load target page
 ```
 
@@ -284,6 +287,9 @@ Analysis complete
        })
    │
    └── await session.close() → Cleanup Playwright (in finally block)
+       ├── Per-step timeouts (5s each): context.close → browser.close → playwright.stop
+       ├── Force-kills browser process (SIGKILL) if graceful close fails
+       └── Outer 30s timeout in stream.py prevents indefinite cleanup hangs
 ```
 
 ---
@@ -362,8 +368,16 @@ eventSource.addEventListener('complete', (e) => {
 })
 
 eventSource.addEventListener('error', (e) => {
-  // Show error dialog
+  // Show error dialog with categorized title:
+  //   "Analysis Timed Out"  — timeout errors
+  //   "Browser Error"       — Playwright / display failures
+  //   "Configuration Error" — missing API keys or setup issues
+  //   "Analysis Error"      — all other server errors
 })
+
+// onerror handler provides contextual messages based on the
+// current progress step (browser launch, page load, AI analysis, etc.).
+// Server-sent error events take priority — onerror will not overwrite them.
 ```
 
 ### Component Hierarchy
@@ -428,7 +442,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening) |
+| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager) |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -471,7 +485,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Responsibility |
 |--------|---------------|
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
-| `browser_phases.py` | Phases 1-3: setup, navigate, initial capture |
+| `browser_phases.py` | Phases 1-3: setup (with browser launch retry), navigate, initial capture |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract) |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
@@ -800,6 +814,69 @@ Every cache operation is logged:
 
 ---
 
+## Browser Resilience
+
+The browser lifecycle includes several safeguards to handle crashes, hangs, and resource leaks.
+
+### Browser Launch Retry
+
+`browser_phases.launch_browser()` retries browser startup on failure:
+
+- **Max attempts:** 2
+- **Delay between retries:** 2 seconds
+- **Cleanup between attempts:** `session.close()` is called (with a 10-second timeout) to tear down any partially-initialized Playwright state before the next attempt
+- **Cleanup failures are non-fatal:** If cleanup between attempts fails, the retry still proceeds
+- **Final failure:** If all attempts fail, the last exception is raised to the caller
+
+```
+launch_browser()
+   │
+   ├── Attempt 1: session.launch_browser(device_type)
+   │   └── Success → return
+   │
+   ├── On failure:
+   │   ├── Log warning
+   │   ├── session.close() (10s timeout, errors swallowed)
+   │   └── Sleep 2s
+   │
+   └── Attempt 2: session.launch_browser(device_type)
+       └── Success → return
+       └── Failure → raise
+```
+
+### Playwright Startup Timeout
+
+`session.launch_browser()` wraps the `async_playwright().start()` call in a 15-second timeout. This prevents indefinite hangs when Playwright or Xvfb is unresponsive. The browser PID is captured after launch for force-kill fallback.
+
+### Session Cleanup
+
+`session.close()` performs a layered teardown with per-step timeouts:
+
+1. **Remove event listeners** — prevents callbacks from firing during teardown
+2. **Close browser context** — 5-second timeout
+3. **Close browser** — 5-second timeout
+4. **Stop Playwright** — 5-second timeout
+
+If any step times out, the remaining steps still execute. After all steps complete, `_force_kill_browser_process()` sends `SIGKILL` to the browser PID if it was captured during launch. Tracking data arrays are cleared at the end regardless of errors.
+
+### Stream-Level Timeout
+
+The top-level orchestrator in `stream.py` wraps `session.close()` in a 30-second outer timeout within the `finally` block. This prevents the entire SSE connection from hanging if cleanup itself gets stuck. Log file finalization (`logger.end_log_file()`) runs after cleanup so that teardown activity is captured in the log.
+
+### Client Error Reporting
+
+The client (`useTrackingAnalysis.ts`) provides context-aware error messages:
+
+- **Server-sent errors take priority** — a `hasServerError` flag prevents the SSE `onerror` handler from overwriting specific error messages sent by the server
+- **Categorized error titles:**
+  - "Analysis Timed Out" for timeout errors
+  - "Browser Error" for Playwright or display failures
+  - "Configuration Error" for missing API keys or setup issues
+- **Contextual connection-loss messages** — when the SSE connection drops, the error message reflects the current progress step (e.g., "lost while launching the browser", "lost while loading the page", "lost during AI analysis")
+- **Completed analyses are not interrupted** — connection drops after the `complete` event are silently ignored
+
+---
+
 ## Adding New Features
 
 ### Adding a New Tab
@@ -955,7 +1032,10 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Sessions are fully isolated — no shared state between requests
 - Logger state (timers, log buffer, file handle) uses `contextvars.ContextVar` for async-safe per-session isolation
 - Multiple users can analyze different URLs simultaneously
-- Browser cleanup happens in `finally` block to prevent leaks
+- Browser cleanup happens in `finally` block to prevent leaks:
+  - Each cleanup step (`context.close`, `browser.close`, `playwright.stop`) has a 5-second timeout
+  - If the browser process does not exit gracefully, it is force-killed via `SIGKILL`
+  - The outer `finally` block in `stream.py` wraps `session.close()` in a 30-second timeout
 
 ### Performance
 

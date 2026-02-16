@@ -86,7 +86,8 @@ Error dialog for blocked pages:
 
 Generic error dialog for displaying error messages:
 - Configuration errors (missing OpenAI keys)
-- Connection errors
+- Connection errors with contextual messages based on progress step
+- Browser and timeout errors with categorized titles
 - General error handling
 
 ### ScreenshotGallery
@@ -116,6 +117,7 @@ The core of the application logic, managing:
 - **Reactive State**: All UI state including loading status, error messages, and collected data
 - **SSE Connection**: Establishes and manages the EventSource connection to the server
 - **Event Handlers**: Processes `progress`, `screenshot`, `consentDetails`, `pageError`, `complete`, and `error` events
+- **Error Handling**: Categorized error titles (timeout, browser, configuration), contextual connection-loss messages based on progress step, and server-error priority to prevent overwriting specific error messages
 - **Computed Properties**: Derived data like grouped cookies/scripts by domain, filtered network requests
 
 ```typescript
