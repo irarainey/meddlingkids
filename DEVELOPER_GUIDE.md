@@ -355,6 +355,10 @@ eventSource.addEventListener('screenshot', (e) => {
   // Add screenshot, update data arrays
 })
 
+eventSource.addEventListener('screenshotUpdate', (e) => {
+  // Replace most recent screenshot (background refresh)
+})
+
 eventSource.addEventListener('pageError', (e) => {
   // Show error dialog
 })
@@ -641,6 +645,7 @@ class ConsentPartner(BaseModel):
     risk_score: int | None = None      # Set during partner classification
     concerns: list[str] | None = None  # Set during partner classification
     url: str = ""                      # Enriched from partner databases
+    privacy_url: str = ""              # Partner's privacy policy URL
 ```
 
 ### ConsentDetails
@@ -652,6 +657,7 @@ class ConsentDetails(BaseModel):
     purposes: list[str]
     raw_text: str
     claimed_partner_count: int | None = None
+    consent_platform: str | None = None  # Detected CMP platform name
 ```
 
 ### NamedEntity (Report Model)
@@ -692,12 +698,10 @@ class DataCollectionItem(BaseModel):
 ### ThirdPartyGroup (Report Model)
 ```python
 class ThirdPartyGroup(BaseModel):
-    """A group of third-party services."""
+    """A categorised group of third-party services."""
     category: str
-    purpose: str
     services: list[NamedEntity] = []     # Services with optional URLs for clickable links
-    risk: Literal["low", "medium", "high", "critical"]
-    concerns: list[str] = []
+    privacy_impact: str
 ```
 
 ---
@@ -1021,7 +1025,8 @@ Set `WRITE_TO_FILE=true` in your environment to write logs and reports to files.
 
 ```bash
 # Enable file output
-WRITE_TO_FILE=true npm run dev:server
+cd server
+WRITE_TO_FILE=true uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 ```
 
 Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions (e.g., `example.com_2026-01-29_11-32-57.log`).

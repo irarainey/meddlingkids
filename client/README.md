@@ -195,6 +195,12 @@ Located in `types/tracking.ts`:
 | `CookieGroup` | Cookie analysis group |
 | `CookieAnalysisSection` | Cookie analysis details |
 | `StorageAnalysisSection` | Storage analysis details |
+| `ConsentDiscrepancy` | Discrepancy between consent claims and observed tracking |
+| `ConsentAnalysisSection` | Consent analysis with discrepancies and summary |
+| `VendorEntry` | Vendor with name, category, and tracking details |
+| `VendorSection` | Collection of vendor entries with total count |
+| `RecommendationGroup` | Group of recommendations by priority |
+| `RecommendationsSection` | Collection of recommendation groups |
 | `StructuredReport` | Per-section structured privacy report |
 | `ScreenshotModal` | Modal display state |
 | `TabId` | Union type for tab identifiers |
