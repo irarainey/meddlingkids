@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from src.utils.errors import get_error_message
+from src.utils.errors import get_error_message, get_safe_client_message
+from src.utils.url import UnsafeURLError
 
 
 class TestGetErrorMessage:
@@ -25,3 +26,25 @@ class TestGetErrorMessage:
             pass
 
         assert get_error_message(CustomError("custom")) == "custom"
+
+
+class TestGetSafeClientMessage:
+    """Tests for get_safe_client_message()."""
+
+    def test_generic_exception_returns_safe_message(self) -> None:
+        result = get_safe_client_message(RuntimeError("/home/user/.config/secrets.yaml"))
+        assert "internal error" in result.lower()
+        assert "secrets" not in result
+
+    def test_value_error_returns_safe_message(self) -> None:
+        result = get_safe_client_message(ValueError("some internal detail"))
+        assert "internal error" in result.lower()
+
+    def test_unsafe_url_error_passes_through(self) -> None:
+        msg = "Only http and https URLs are supported"
+        result = get_safe_client_message(UnsafeURLError(msg))
+        assert result == msg
+
+    def test_timeout_error_passes_through(self) -> None:
+        result = get_safe_client_message(TimeoutError("timed out"))
+        assert result == "timed out"

@@ -35,6 +35,9 @@ class TestBrowserSessionClose:
         """Page event listeners must be removed before closing."""
         session = session_mod.BrowserSession()
         page = mock.AsyncMock()
+        # remove_listener is synchronous in Playwright; use a plain Mock
+        # so the call doesn't return an unawaited coroutine.
+        page.remove_listener = mock.Mock()
         session._page = page
 
         await session.close()

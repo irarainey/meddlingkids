@@ -18,6 +18,7 @@ import asyncio
 import contextlib
 import dataclasses
 import hashlib
+import os
 from collections.abc import AsyncGenerator
 from typing import cast
 from urllib import parse
@@ -38,6 +39,12 @@ log = logger.create_logger("Analyze")
 # indefinitely.  Individual phases may finish faster; this is
 # the outer safety net.
 STREAM_TIMEOUT_SECONDS = 600  # 10 minutes
+
+# Maximum number of concurrent browser sessions.  Each session
+# runs a full Chromium instance + LLM calls, so this prevents
+# resource exhaustion under burst traffic.
+_MAX_CONCURRENT_SESSIONS = int(os.environ.get("MAX_CONCURRENT_SESSIONS", "3"))
+_session_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_SESSIONS)
 
 # How often (seconds) the background refresher checks for
 # visual changes on the page.  Keeping this short enough
@@ -183,6 +190,34 @@ async def analyze_url_stream(
         yield sse_helpers.format_sse_event("error", {"error": "URL is required"})
         return
 
+    # ── SSRF prevention ─────────────────────────────────────
+    try:
+        url_mod.validate_analysis_url(url)
+    except url_mod.UnsafeURLError as exc:
+        log.error("URL rejected by safety check", {"url": url, "reason": str(exc)})
+        yield sse_helpers.format_sse_event("error", {"error": str(exc)})
+        return
+
+    # ── Concurrency gate ────────────────────────────────────
+    if _session_semaphore.locked():
+        log.warn("Concurrent session limit reached", {"limit": _MAX_CONCURRENT_SESSIONS})
+        yield sse_helpers.format_sse_event(
+            "error",
+            {"error": f"Server is busy — maximum {_MAX_CONCURRENT_SESSIONS} concurrent analyses. Please try again shortly."},
+        )
+        return
+
+    async with _session_semaphore:
+        async for event in _run_analysis(url, device_type, clear_cache):
+            yield event
+
+
+async def _run_analysis(
+    url: str,
+    device_type: browser.DeviceType,
+    clear_cache: bool,
+) -> AsyncGenerator[str]:
+    """Core analysis loop — runs inside the concurrency semaphore."""
     session = browser_session.BrowserSession()
     domain = url_mod.extract_domain(url)
     hostname = parse.urlparse(url).hostname or url
@@ -249,7 +284,7 @@ async def analyze_url_stream(
         )
         yield sse_helpers.format_sse_event(
             "error",
-            {"error": errors.get_error_message(error)},
+            {"error": errors.get_safe_client_message(error)},
         )
     finally:
         if ctx.refresher_task and not ctx.refresher_task.done():
@@ -264,10 +299,9 @@ async def analyze_url_stream(
         # but this outer guard covers the aggregate case.
         try:
             await asyncio.wait_for(session.close(), timeout=30)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             log.error(
-                "Browser cleanup timed out after 30s"
-                " — resources may have leaked",
+                "Browser cleanup timed out after 30s — resources may have leaked",
             )
         except Exception as err:
             log.warn(

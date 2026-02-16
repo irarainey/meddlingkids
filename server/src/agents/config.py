@@ -41,7 +41,10 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
     """
 
     endpoint: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
-    api_key: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_API_KEY")
+    api_key: pydantic.SecretStr = pydantic.Field(
+        default_factory=lambda: pydantic.SecretStr(""),
+        validation_alias="AZURE_OPENAI_API_KEY",
+    )
     api_version: str = pydantic.Field(
         default="2024-12-01-preview",
         validation_alias="OPENAI_API_VERSION",
@@ -54,7 +57,7 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
         Returns:
             True when endpoint, api_key, and deployment are set.
         """
-        return bool(self.endpoint and self.api_key and self.deployment)
+        return bool(self.endpoint and self.api_key.get_secret_value() and self.deployment)
 
 
 class OpenAIConfig(pydantic_settings.BaseSettings):
@@ -68,7 +71,10 @@ class OpenAIConfig(pydantic_settings.BaseSettings):
         base_url: Optional custom base URL.
     """
 
-    api_key: str = pydantic.Field(default="", validation_alias="OPENAI_API_KEY")
+    api_key: pydantic.SecretStr = pydantic.Field(
+        default_factory=lambda: pydantic.SecretStr(""),
+        validation_alias="OPENAI_API_KEY",
+    )
     model: str = pydantic.Field(default="", validation_alias="OPENAI_MODEL")
     base_url: str | None = pydantic.Field(default=None, validation_alias="OPENAI_BASE_URL")
 
@@ -78,7 +84,7 @@ class OpenAIConfig(pydantic_settings.BaseSettings):
         Returns:
             True when the API key is set.
         """
-        return bool(self.api_key)
+        return bool(self.api_key.get_secret_value())
 
 
 def validate_llm_config() -> str | None:

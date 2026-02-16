@@ -58,6 +58,11 @@ def _identify_benign_script(url: str) -> str | None:
 _FETCH_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SecurityAnalyzer/1.0)"}
 _FETCH_TIMEOUT = aiohttp.ClientTimeout(total=5)
 
+# Limit redirects to prevent secondary SSRF via 302 chains
+# from malicious pages.  Scripts should rarely redirect more
+# than once (CDN → origin).
+_MAX_REDIRECTS = 3
+
 
 # Maximum bytes to read from a single script fetch.  Large
 # scripts (e.g. bundled vendor files) can exceed 10 MB; there
@@ -81,7 +86,11 @@ async def _fetch_script_content(
     """
     for attempt in range(retries + 1):
         try:
-            async with http_session.get(url, headers=_FETCH_HEADERS) as response:
+            async with http_session.get(
+                url,
+                headers=_FETCH_HEADERS,
+                max_redirects=_MAX_REDIRECTS,
+            ) as response:
                 if response.status >= 400:
                     if attempt < retries and (response.status >= 500 or response.status == 429):
                         await asyncio.sleep(0.5 * (attempt + 1))
@@ -305,7 +314,9 @@ async def _analyze_unknowns(
             )
         return script.url, content
 
-    async with aiohttp.ClientSession(timeout=_FETCH_TIMEOUT) as http_session:
+    async with aiohttp.ClientSession(
+        timeout=_FETCH_TIMEOUT,
+    ) as http_session:
         script_contents = await asyncio.gather(*(fetch_one(s, http_session) for s, _ in unknown_scripts))
 
     # Build a lookup from URL → (content, result_index)

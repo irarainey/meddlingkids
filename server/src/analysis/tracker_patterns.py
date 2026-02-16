@@ -373,3 +373,44 @@ TCF_INDICATORS: list[re.Pattern[str]] = [
 ]
 
 TCF_INDICATORS_COMBINED: re.Pattern[str] = _combine(TCF_INDICATORS)
+
+
+# ============================================================================
+# Name Resolution Tables
+# ============================================================================
+# Centralised human-readable labels for known tracker patterns.
+# Scoring modules import these instead of maintaining parallel tables.
+
+AD_NETWORK_NAMES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"doubleclick|googlesyndication|googleadservices", re.I), "Google Ads"),
+    (re.compile(r"facebook|fbevents", re.I), "Facebook Ads"),
+    (re.compile(r"amazon-adsystem", re.I), "Amazon Ads"),
+    (re.compile(r"criteo", re.I), "Criteo"),
+    (re.compile(r"adnxs|appnexus", re.I), "Xandr/AppNexus"),
+    (re.compile(r"taboola", re.I), "Taboola"),
+    (re.compile(r"outbrain", re.I), "Outbrain"),
+    (re.compile(r"thetradedesk|adsrvr", re.I), "The Trade Desk"),
+    (re.compile(r"linkedin", re.I), "LinkedIn Ads"),
+    (re.compile(r"twitter|ads-twitter", re.I), "Twitter Ads"),
+    (re.compile(r"tiktok", re.I), "TikTok Ads"),
+    (re.compile(r"pinterest", re.I), "Pinterest Ads"),
+    (re.compile(r"snapchat|sc-static", re.I), "Snapchat Ads"),
+]
+
+SOCIAL_TRACKER_NAMES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"facebook|fbcdn", re.I), "Facebook"),
+    (re.compile(r"twitter", re.I), "Twitter/X"),
+    (re.compile(r"linkedin", re.I), "LinkedIn"),
+    (re.compile(r"pinterest", re.I), "Pinterest"),
+    (re.compile(r"tiktok", re.I), "TikTok"),
+    (re.compile(r"instagram", re.I), "Instagram"),
+    (re.compile(r"snapchat", re.I), "Snapchat"),
+    (re.compile(r"reddit", re.I), "Reddit"),
+    (re.compile(r"addthis|sharethis|addtoany", re.I), "Social sharing widgets"),
+]
+
+IDENTITY_RESOLUTION_RE: re.Pattern[str] = re.compile(
+    r"liveramp|unified.?id|id5|lotame"
+    r"|thetradedesk.*unified",
+    re.I,
+)

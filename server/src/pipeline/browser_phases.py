@@ -72,8 +72,7 @@ async def launch_browser(
             last_error = exc
             if attempt < _MAX_LAUNCH_ATTEMPTS:
                 log.warn(
-                    "Browser launch failed, cleaning up"
-                    " before retry",
+                    "Browser launch failed, cleaning up before retry",
                     {
                         "attempt": attempt,
                         "maxAttempts": _MAX_LAUNCH_ATTEMPTS,
@@ -84,18 +83,17 @@ async def launch_browser(
                 # attempt starts cleanly.
                 try:
                     await asyncio.wait_for(
-                        session.close(), timeout=10,
+                        session.close(),
+                        timeout=10,
                     )
                 except Exception:
                     log.debug(
-                        "Cleanup between retries failed"
-                        " (non-fatal)",
+                        "Cleanup between retries failed (non-fatal)",
                     )
                 await asyncio.sleep(_RETRY_DELAY_SECONDS)
             else:
                 log.error(
-                    "Browser launch failed after all"
-                    " attempts",
+                    "Browser launch failed after all attempts",
                     {
                         "attempts": _MAX_LAUNCH_ATTEMPTS,
                         "error": str(exc),

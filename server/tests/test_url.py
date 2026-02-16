@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from src.utils.url import extract_domain, get_base_domain, is_third_party
+from src.utils.url import (
+    UnsafeURLError,
+    extract_domain,
+    get_base_domain,
+    is_third_party,
+    validate_analysis_url,
+)
 
 # ── extract_domain ──────────────────────────────────────────────
 
@@ -103,3 +109,64 @@ class TestIsThirdParty:
 
     def test_empty_urls_are_same_party(self) -> None:
         assert is_third_party("", "") is False
+
+
+# ── validate_analysis_url ─────────────────────────────────────────
+
+
+class TestValidateAnalysisUrl:
+    """Tests for SSRF prevention via validate_analysis_url()."""
+
+    def test_https_url_allowed(self) -> None:
+        validate_analysis_url("https://example.com")
+
+    def test_http_url_allowed(self) -> None:
+        validate_analysis_url("http://example.com")
+
+    def test_ftp_scheme_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="Only http and https"):
+            validate_analysis_url("ftp://example.com/file")
+
+    def test_file_scheme_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="Only http and https"):
+            validate_analysis_url("file:///etc/passwd")
+
+    def test_javascript_scheme_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="Only http and https"):
+            validate_analysis_url("javascript:alert(1)")
+
+    def test_no_hostname_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="no hostname"):
+            validate_analysis_url("http://")
+
+    def test_localhost_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="Blocked hostname"):
+            validate_analysis_url("http://localhost/admin")
+
+    def test_metadata_hostname_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="Blocked hostname"):
+            validate_analysis_url("http://metadata.google.internal/computeMetadata/v1/")
+
+    def test_loopback_ip_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="non-public address"):
+            validate_analysis_url("http://127.0.0.1/")
+
+    def test_private_ip_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="non-public address"):
+            validate_analysis_url("http://192.168.1.1/")
+
+    def test_link_local_ip_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="non-public address"):
+            validate_analysis_url("http://169.254.169.254/latest/meta-data/")
+
+    def test_private_10_range_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="non-public address"):
+            validate_analysis_url("http://10.0.0.1/")
+
+    def test_private_172_range_rejected(self) -> None:
+        with pytest.raises(UnsafeURLError, match="non-public address"):
+            validate_analysis_url("http://172.16.0.1/")
+
+    def test_unresolvable_hostname_allowed(self) -> None:
+        # DNS failures are fine — browser will handle them
+        validate_analysis_url("https://this-domain-definitely-does-not-exist-xyz123abc.com")

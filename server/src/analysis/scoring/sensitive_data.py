@@ -177,15 +177,7 @@ def calculate(
         issues.append("IP-based geolocation tracking detected")
 
     # ── Identity resolution ─────────────────────────────────
-    if any(
-        re.search(
-            r"liveramp|unified.?id|id5|lotame"
-            r"|thetradedesk.*unified",
-            url,
-            re.I,
-        )
-        for url in all_urls
-    ):
+    if any(tracker_patterns.IDENTITY_RESOLUTION_RE.search(url) for url in all_urls):
         points += 4
         issues.append("Cross-site identity tracking (identity resolution service)")
 

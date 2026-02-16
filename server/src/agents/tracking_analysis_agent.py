@@ -11,7 +11,7 @@ import json
 
 import agent_framework
 
-from src.agents import base, config
+from src.agents import base, config, gdpr_context
 from src.agents.prompts import tracking_analysis
 from src.data import loader
 from src.models import analysis, consent
@@ -244,6 +244,5 @@ def _build_gdpr_reference() -> str:
     Returns:
         Formatted reference section string.
     """
-    from src.agents import gdpr_context
 
     return gdpr_context.build_gdpr_reference(heading="## GDPR / TCF Reference")

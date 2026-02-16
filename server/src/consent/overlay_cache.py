@@ -28,7 +28,7 @@ from typing import Any, Literal
 import pydantic
 
 from src.consent import constants
-from src.utils import logger
+from src.utils import cache, logger
 
 log = logger.create_logger("OverlayCache")
 
@@ -129,9 +129,11 @@ def _domain_path(domain: str) -> pathlib.Path:
 def load(domain: str) -> OverlayCacheEntry | None:
     """Load cached overlay info for *domain*.
 
-    Returns ``None`` if no cache file exists or the file
-    is malformed.
+    Returns ``None`` if no cache file exists, the file
+    is malformed, or *domain* is the ``"unknown"`` sentinel.
     """
+    if domain == "unknown":
+        return None
     path = _domain_path(domain)
     if not path.exists():
         log.debug(
@@ -168,15 +170,15 @@ def load(domain: str) -> OverlayCacheEntry | None:
 def save(entry: OverlayCacheEntry) -> None:
     """Persist an overlay cache entry to disk.
 
+    Skips saving when the domain is the ``"unknown"`` sentinel.
     Creates the cache directory if it does not exist.
     """
+    if entry.domain == "unknown":
+        return
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = _domain_path(entry.domain)
     try:
-        path.write_text(
-            entry.model_dump_json(indent=2),
-            encoding="utf-8",
-        )
+        cache.atomic_write_text(path, entry.model_dump_json(indent=2))
         log.info(
             "Overlay cache saved",
             {

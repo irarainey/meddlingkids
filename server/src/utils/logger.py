@@ -10,6 +10,7 @@ analysis tasks do not interfere with each other.
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import io
 import os
@@ -37,6 +38,11 @@ def _get_timers() -> dict[str, tuple[float, str]]:
         timers: dict[str, tuple[float, str]] = {}
         _timers_var.set(timers)
         return timers
+
+
+# Maximum number of log lines retained in the in-memory buffer.
+# Prevents unbounded growth during verbose analyses.
+_MAX_LOG_BUFFER_LINES = 2000
 
 
 def _get_log_buffer() -> list[str]:
@@ -86,15 +92,17 @@ def start_log_file(domain: str) -> None:
 
     try:
         stream = open(log_file_path, "a", encoding="utf-8")  # noqa: SIM115
+        header = f"\n{'=' * 80}\n  Analysis Log - {domain}\n  Started: {now.isoformat()}\n{'=' * 80}\n"
+        stream.write(header)
     except OSError as exc:
-        print(f"\033[31m✗ [Logger] Failed to open log file: {exc}\033[0m")
+        # Close the handle if it was opened but the write failed.
+        with contextlib.suppress(Exception):
+            stream.close()  # type: ignore[possibly-undefined]
+        print(f"\033[31m✗ [Logger] Failed to open/write log file: {exc}\033[0m")
         return
 
     _log_file_stream_var.set(stream)
     _log_file_path_var.set(log_file_path)
-
-    header = f"\n{'=' * 80}\n  Analysis Log - {domain}\n  Started: {now.isoformat()}\n{'=' * 80}\n"
-    stream.write(header)
     print(f"\033[36mℹ [Logger] Writing logs to: {log_file_path}\033[0m")
 
 
@@ -261,7 +269,9 @@ class Logger:
         print(log_line, file=sys.stderr)
         _write_to_log_file(log_line)
         # Keep an ANSI-stripped copy for the client debug tab.
-        _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", log_line))
+        buf = _get_log_buffer()
+        if len(buf) < _MAX_LOG_BUFFER_LINES:
+            buf.append(re.sub(r"\033\[[0-9;]*m", "", log_line))
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
         """Log an informational message."""

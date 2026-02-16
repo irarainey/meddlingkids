@@ -70,7 +70,7 @@ def _create_azure_client(
     )
 
     return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
-        api_key=cfg.api_key,
+        api_key=cfg.api_key.get_secret_value(),
         api_version=cfg.api_version,
         endpoint=cfg.endpoint,
         deployment_name=cfg.deployment,
@@ -99,7 +99,7 @@ def _create_openai_client(
     )
 
     return openai.OpenAIChatClient(  # type: ignore[return-value]
-        api_key=cfg.api_key,
+        api_key=cfg.api_key.get_secret_value(),
         model_id=cfg.model or None,
         base_url=cfg.base_url,
     )

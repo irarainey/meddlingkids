@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+from urllib import parse
 
 import pydantic
 
-from src.agents import base
+from src.agents import base, gdpr_context
 from src.agents.prompts import structured_report
 from src.analysis import domain_cache
 from src.data import loader
@@ -440,9 +441,8 @@ def _is_base_url(url: str) -> bool:
     — these are informational pages, not the company's primary
     website.
     """
-    from urllib.parse import urlparse
 
-    path = urlparse(url).path.lower()
+    path = parse.urlparse(url).path.lower()
     if not path or path == "/":
         return True
     return not any(kw in path for kw in _PRIVACY_PATH_KEYWORDS)
@@ -759,7 +759,6 @@ def _build_gdpr_context() -> str:
     Returns:
         Formatted reference section string.
     """
-    from src.agents import gdpr_context
 
     return "\n" + gdpr_context.build_gdpr_reference(
         heading="## GDPR / TCF Reference Data",

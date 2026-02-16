@@ -15,26 +15,14 @@ from src.utils import logger
 
 log = logger.create_logger("Score-Advertising")
 
-
-# ── Table-driven ad network name resolution ─────────────────
-# Each entry maps a URL regex to a human-readable network name.
-# Checked in order; the first match wins.
-
-_AD_NETWORK_NAMES: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"doubleclick|googlesyndication|googleadservices", re.I), "Google Ads"),
-    (re.compile(r"facebook|fbevents", re.I), "Facebook Ads"),
-    (re.compile(r"amazon-adsystem", re.I), "Amazon Ads"),
-    (re.compile(r"criteo", re.I), "Criteo"),
-    (re.compile(r"adnxs|appnexus", re.I), "Xandr/AppNexus"),
-    (re.compile(r"taboola", re.I), "Taboola"),
-    (re.compile(r"outbrain", re.I), "Outbrain"),
-    (re.compile(r"thetradedesk|adsrvr", re.I), "The Trade Desk"),
-    (re.compile(r"linkedin", re.I), "LinkedIn Ads"),
-    (re.compile(r"twitter|ads-twitter", re.I), "Twitter Ads"),
-    (re.compile(r"tiktok", re.I), "TikTok Ads"),
-    (re.compile(r"pinterest", re.I), "Pinterest Ads"),
-    (re.compile(r"snapchat|sc-static", re.I), "Snapchat Ads"),
-]
+# Pre-compiled patterns for hot-path matching
+_RETARGETING_NAME_RE = re.compile(r"criteo|adroll|retarget", re.I)
+_RETARGETING_DOMAIN_RE = re.compile(r"criteo|adroll", re.I)
+_RTB_RE = re.compile(
+    r"prebid|bidswitch|openx|pubmatic|magnite"
+    r"|rubicon|indexexchange|casalemedia",
+    re.I,
+)
 
 
 def _resolve_network_name(url: str) -> str:
@@ -48,7 +36,7 @@ def _resolve_network_name(url: str) -> str:
     Returns:
         Human-readable network name or hostname.
     """
-    for pattern, name in _AD_NETWORK_NAMES:
+    for pattern, name in tracker_patterns.AD_NETWORK_NAMES:
         if pattern.search(url):
             return name
     m = re.search(r"https?://([^/]+)", url)
@@ -122,7 +110,7 @@ def calculate(
         issues.append(f"Ad network detected: {next(iter(ad_networks))}")
 
     # ── Retargeting ─────────────────────────────────────────
-    retargeting = [c for c in cookies if re.search(r"criteo|adroll|retarget", c.name, re.I) or re.search(r"criteo|adroll", c.domain, re.I)]
+    retargeting = [c for c in cookies if _RETARGETING_NAME_RE.search(c.name) or _RETARGETING_DOMAIN_RE.search(c.domain)]
     if retargeting:
         points += 4
         log.debug(
@@ -134,16 +122,7 @@ def calculate(
         issues.append("Retargeting cookies present (ads follow you)")
 
     # ── Real-time bidding ───────────────────────────────────
-    bidding = [
-        url
-        for url in all_urls
-        if re.search(
-            r"prebid|bidswitch|openx|pubmatic|magnite"
-            r"|rubicon|indexexchange|casalemedia",
-            url,
-            re.I,
-        )
-    ]
+    bidding = [url for url in all_urls if _RTB_RE.search(url)]
     if bidding:
         points += 4
         log.debug(

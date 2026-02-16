@@ -11,6 +11,8 @@ The platform profiles are loaded from ``data/consent/consent-platforms.json``.
 
 from __future__ import annotations
 
+import functools
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from playwright import async_api
@@ -67,15 +69,11 @@ class ConsentPlatformProfile:
 # Profile cache
 # ────────────────────────────────────────────────────────────
 
-_profiles_cache: dict[str, ConsentPlatformProfile] | None = None
 
-
+@functools.cache
 def get_platform_profiles() -> dict[str, ConsentPlatformProfile]:
     """Load and cache all consent platform profiles."""
-    global _profiles_cache
-    if _profiles_cache is None:
-        _profiles_cache = loader.load_consent_platforms()
-    return _profiles_cache
+    return loader.load_consent_platforms()
 
 
 def get_platform_profile(key: str) -> ConsentPlatformProfile | None:
@@ -90,7 +88,7 @@ def get_platform_profile(key: str) -> ConsentPlatformProfile | None:
 
 
 def detect_platform_from_cookies(
-    cookies: list[dict[str, Any]],
+    cookies: Sequence[Mapping[str, Any]],
 ) -> ConsentPlatformProfile | None:
     """Identify the active CMP from page cookies.
 

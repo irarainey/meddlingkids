@@ -11,6 +11,7 @@ module focused on orchestration.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import re
 from collections.abc import AsyncGenerator
 
@@ -260,6 +261,19 @@ class OverlayPipeline:
         failed to click so we don't re-detect and waste time
         on the same unclickable element.
         """
+        try:
+            async for event in self._run_overlay_pipeline():
+                yield event
+        finally:
+            # Cancel any orphaned extraction task that was never awaited.
+            if self._pending_extract is not None and not self._pending_extract.done():
+                self._pending_extract.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._pending_extract
+                self._pending_extract = None
+
+    async def _run_overlay_pipeline(self) -> AsyncGenerator[str]:
+        """Core overlay pipeline logic, wrapped by ``run()`` for cleanup."""
         result = self.result
         self._storage = await self._session.capture_storage()
         result.final_storage = self._storage
@@ -693,7 +707,7 @@ class OverlayPipeline:
         # group profile's identity as the authoritative CMP name
         # for reporting (e.g. Sourcepoint delegates to Quantcast
         # Choice for the UI, but the CMP is still Sourcepoint).
-        authoritative_platform = self._detected_platform
+        authoritative_platform = profile
         if cmp_on_page.key != profile.key:
             log.info(
                 "DOM detection found different CMP than media group profile",

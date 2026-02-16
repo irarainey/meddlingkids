@@ -8,12 +8,14 @@ and consent/ subdirectories.
 
 from __future__ import annotations
 
+import functools
 import json
 import pathlib
 import re
 from typing import Any
 
 from src.models import partners
+from src.utils import url as url_mod
 
 # Resolve path to the data directory (same directory as this module)
 _DATA_DIR = pathlib.Path(__file__).resolve().parent
@@ -29,8 +31,11 @@ def _load_json(relative_path: str) -> Any:
     Raises:
         FileNotFoundError: If the JSON file does not exist.
         json.JSONDecodeError: If the file contains invalid JSON.
+        ValueError: If the path escapes the data directory.
     """
-    full_path = _DATA_DIR / relative_path
+    full_path = (_DATA_DIR / relative_path).resolve()
+    if not full_path.is_relative_to(_DATA_DIR):
+        raise ValueError(f"Path escapes data directory: {relative_path}")
     if not full_path.exists():
         raise FileNotFoundError(f"Data file not found: {relative_path}")
     with open(full_path, encoding="utf-8") as f:
@@ -66,32 +71,21 @@ def _load_script_patterns(filename: str) -> list[partners.ScriptPattern]:
     ]
 
 
-_tracking_scripts: list[partners.ScriptPattern] | None = None
-_benign_scripts: list[partners.ScriptPattern] | None = None
-
-
+@functools.cache
 def get_tracking_scripts() -> list[partners.ScriptPattern]:
-    """Get tracking scripts database (lazy loaded and cached)."""
-    global _tracking_scripts
-    if _tracking_scripts is None:
-        _tracking_scripts = _load_script_patterns("tracking-scripts.json")
-    return _tracking_scripts
+    """Get tracking scripts database (loaded once and cached)."""
+    return _load_script_patterns("tracking-scripts.json")
 
 
+@functools.cache
 def get_benign_scripts() -> list[partners.ScriptPattern]:
-    """Get benign scripts database (lazy loaded and cached)."""
-    global _benign_scripts
-    if _benign_scripts is None:
-        _benign_scripts = _load_script_patterns("benign-scripts.json")
-    return _benign_scripts
+    """Get benign scripts database (loaded once and cached)."""
+    return _load_script_patterns("benign-scripts.json")
 
 
 # ============================================================================
 # Partner Data Loading
 # ============================================================================
-
-
-_partner_database_cache: dict[str, dict[str, partners.PartnerEntry]] = {}
 
 
 def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
@@ -108,11 +102,10 @@ def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
     }
 
 
+@functools.cache
 def get_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
-    """Get a partner database by filename (lazy loaded and cached)."""
-    if filename not in _partner_database_cache:
-        _partner_database_cache[filename] = _load_partner_database(filename)
-    return _partner_database_cache[filename]
+    """Get a partner database by filename (loaded once per filename and cached)."""
+    return _load_partner_database(filename)
 
 
 # ============================================================================
@@ -183,47 +176,40 @@ PARTNER_CATEGORIES: list[partners.PartnerCategoryConfig] = [
 # GDPR / TCF Reference Data Loading
 # ============================================================================
 
-_tcf_purposes_cache: dict[str, Any] | None = None
-_consent_cookies_cache: dict[str, Any] | None = None
-_gdpr_reference_cache: dict[str, Any] | None = None
 
-
+@functools.cache
 def get_tcf_purposes() -> dict[str, Any]:
-    """Get TCF purpose taxonomy (lazy loaded and cached).
+    """Get TCF purpose taxonomy (loaded once and cached).
 
     Returns the IAB TCF v2.2 purpose definitions including
     purposes, special purposes, features, special features,
     and data declarations.
     """
-    global _tcf_purposes_cache
-    if _tcf_purposes_cache is None:
-        _tcf_purposes_cache = _load_json("consent/tcf-purposes.json")
-    return _tcf_purposes_cache
+    result: dict[str, Any] = _load_json("consent/tcf-purposes.json")
+    return result
 
 
+@functools.cache
 def get_consent_cookies() -> dict[str, Any]:
-    """Get known consent-state cookie definitions (lazy loaded and cached).
+    """Get known consent-state cookie definitions (loaded once and cached).
 
     Returns data about TCF cookies, CMP-specific consent cookies,
     and patterns for identifying consent-related cookies.
     """
-    global _consent_cookies_cache
-    if _consent_cookies_cache is None:
-        _consent_cookies_cache = _load_json("consent/consent-cookies.json")
-    return _consent_cookies_cache
+    result: dict[str, Any] = _load_json("consent/consent-cookies.json")
+    return result
 
 
+@functools.cache
 def get_gdpr_reference() -> dict[str, Any]:
-    """Get GDPR and ePrivacy reference data (lazy loaded and cached).
+    """Get GDPR and ePrivacy reference data (loaded once and cached).
 
     Returns comprehensive reference information about GDPR lawful
     bases, key principles, data subject rights, ePrivacy cookie
     categories, and TCF overview.
     """
-    global _gdpr_reference_cache
-    if _gdpr_reference_cache is None:
-        _gdpr_reference_cache = _load_json("consent/gdpr-reference.json")
-    return _gdpr_reference_cache
+    result: dict[str, Any] = _load_json("consent/gdpr-reference.json")
+    return result
 
 
 def get_tcf_purpose_name(purpose_id: int) -> str:
@@ -252,21 +238,17 @@ def get_consent_cookie_names() -> list[str]:
 # Media Group Profile Loading
 # ============================================================================
 
-_media_groups_cache: dict[str, partners.MediaGroupProfile] | None = None
 
-
+@functools.cache
 def get_media_groups() -> dict[str, partners.MediaGroupProfile]:
-    """Get media group profiles (lazy loaded and cached).
+    """Get media group profiles (loaded once and cached).
 
     Returns a dictionary mapping lowercase group names to
     their MediaGroupProfile containing ownership, properties,
     domains, key vendors, and privacy characteristics.
     """
-    global _media_groups_cache
-    if _media_groups_cache is None:
-        raw: dict[str, dict[str, Any]] = _load_json("publishers/media-groups.json")
-        _media_groups_cache = {key: partners.MediaGroupProfile(**val) for key, val in raw.items()}
-    return _media_groups_cache
+    raw: dict[str, dict[str, Any]] = _load_json("publishers/media-groups.json")
+    return {key: partners.MediaGroupProfile(**val) for key, val in raw.items()}
 
 
 def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupProfile] | None:
@@ -283,8 +265,6 @@ def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupPro
     Returns:
         A tuple of (group_name, profile) if found, or None.
     """
-    from src.utils import url as url_mod  # Local import to avoid circular dependency
-
     domain_lower = domain.lower().strip()
     # Build candidate set: original, without www., and base domain.
     candidates = {domain_lower}
@@ -302,11 +282,10 @@ def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupPro
 # Consent Platform Profile Loading
 # ============================================================================
 
-_consent_platforms_cache: dict[str, Any] | None = None
 
-
+@functools.cache
 def load_consent_platforms() -> dict[str, Any]:
-    """Load consent platform profiles (lazy loaded and cached).
+    """Load consent platform profiles (loaded once and cached).
 
     Returns a dictionary mapping platform keys to
     ``ConsentPlatformProfile`` instances.  The profiles are
@@ -314,14 +293,11 @@ def load_consent_platforms() -> dict[str, Any]:
     this function returns the raw dict-based intermediate
     representation to avoid circular imports.
     """
-    global _consent_platforms_cache
-    if _consent_platforms_cache is None:
-        from src.consent.platform_detection import ConsentPlatformProfile
+    from src.consent.platform_detection import ConsentPlatformProfile
 
-        raw: dict[str, Any] = _load_json("consent/consent-platforms.json")
-        platforms: dict[str, Any] = raw.get("platforms", {})
-        _consent_platforms_cache = {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
-    return _consent_platforms_cache
+    raw: dict[str, Any] = _load_json("consent/consent-platforms.json")
+    platforms: dict[str, Any] = raw.get("platforms", {})
+    return {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
 
 
 # ============================================================================
@@ -343,8 +319,6 @@ def build_media_group_context(analyzed_url: str) -> str:
     Returns:
         Formatted media group context section, or ``""``.
     """
-    from src.utils import url as url_mod  # Local import to avoid circular dependency
-
     hostname = url_mod.extract_domain(analyzed_url)
     base_domain = url_mod.get_base_domain(hostname)
     result = find_media_group_by_domain(base_domain)

@@ -64,7 +64,7 @@ def calculate(
     tracking_scripts = loader.get_tracking_scripts()
     for url in all_urls:
         for ts in tracking_scripts:
-            if re.search(ts.pattern, url, re.IGNORECASE):
+            if ts.compiled.search(url):
                 m = re.search(r"https?://([^/]+)", url)
                 if m:
                     known_trackers.add(m.group(1))

@@ -24,7 +24,7 @@ import pathlib
 
 import pydantic
 
-from src.utils import logger
+from src.utils import cache, logger
 
 log = logger.create_logger("ScriptCache")
 
@@ -84,9 +84,11 @@ def compute_hash(content: str) -> str:
 def load(domain: str) -> ScriptCacheEntry | None:
     """Load the cached script analysis for *domain*.
 
-    Returns ``None`` when no cache exists or the file is
-    malformed.
+    Returns ``None`` when no cache exists, the file is
+    malformed, or *domain* is the ``"unknown"`` sentinel.
     """
+    if domain == "unknown":
+        return None
     path = _domain_path(domain)
     if not path.exists():
         log.debug("No script cache", {"domain": domain})
@@ -150,11 +152,17 @@ def save(
 ) -> None:
     """Merge newly analysed scripts into the cache and persist.
 
+    Skips saving when *domain* is the ``"unknown"`` sentinel.
+
     New entries replace any existing entry with the same URL
     (the caller already verified the hash changed).  Existing
     entries whose URLs were not re-analysed are carried
     forward.
     """
+    if domain == "unknown":
+        log.debug("Skipping script cache save for unknown domain")
+        return
+
     new_urls = {s.url for s in analyzed}
 
     # Carry forward entries that weren't re-analysed this run.
@@ -169,7 +177,7 @@ def save(
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = _domain_path(domain)
     try:
-        path.write_text(entry.model_dump_json(indent=2), encoding="utf-8")
+        cache.atomic_write_text(path, entry.model_dump_json(indent=2))
         log.info(
             "Script cache saved",
             {

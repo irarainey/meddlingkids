@@ -30,7 +30,7 @@ from collections.abc import Callable
 import pydantic
 
 from src.models import report
-from src.utils import logger
+from src.utils import cache, logger
 
 log = logger.create_logger("DomainCache")
 
@@ -117,9 +117,11 @@ def _domain_path(domain: str) -> pathlib.Path:
 def load(domain: str) -> DomainKnowledge | None:
     """Load cached domain knowledge.
 
-    Returns ``None`` when no cache exists or the file is
-    malformed.
+    Returns ``None`` when no cache exists, the file is
+    malformed, or *domain* is the ``"unknown"`` sentinel.
     """
+    if domain == "unknown":
+        return None
     path = _domain_path(domain)
     if not path.exists():
         log.debug("No domain cache", {"domain": domain})
@@ -153,6 +155,9 @@ def save_from_report(
 ) -> None:
     """Extract classifications from a report and merge with the cache.
 
+    Skips saving when *domain* is the ``"unknown"`` sentinel to
+    prevent unrelated analyses from sharing a single cache file.
+
     Rather than overwriting the entire cache, this function:
 
     1. Loads the existing cache (if any).
@@ -166,6 +171,10 @@ def save_from_report(
        ``_STALE_SCAN_THRESHOLD`` scans old.
     5. Writes the merged result to disk.
     """
+    if domain == "unknown":
+        log.debug("Skipping domain cache save for unknown domain")
+        return
+
     existing = load(domain)
     scan_count = (existing.scan_count if existing else 0) + 1
 
@@ -207,7 +216,7 @@ def save_from_report(
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = _domain_path(domain)
     try:
-        path.write_text(entry.model_dump_json(indent=2), encoding="utf-8")
+        cache.atomic_write_text(path, entry.model_dump_json(indent=2))
         log.info(
             "Domain cache saved",
             {

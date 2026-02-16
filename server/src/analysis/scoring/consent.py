@@ -18,6 +18,13 @@ from src.utils import logger
 
 log = logger.create_logger("Score-Consent")
 
+# Pre-compiled pattern for vague consent language detection
+_VAGUE_CONSENT_RE = re.compile(
+    r"legitimate interest|necessary|essential"
+    r"|basic|functional",
+    re.I,
+)
+
 
 def calculate(
     consent_details: consent.ConsentDetails | None,
@@ -57,7 +64,7 @@ def calculate(
     )
 
     tracking_patterns = loader.get_tracking_scripts()
-    tracking_scripts = [s for s in scripts if any(re.search(t.pattern, s.url, re.IGNORECASE) for t in tracking_patterns)]
+    tracking_scripts = [s for s in scripts if any(t.compiled.search(s.url) for t in tracking_patterns)]
 
     log.debug(
         "Tracking script detection",
@@ -180,12 +187,7 @@ def calculate(
             points += 2
 
     # ── Vague consent language ──────────────────────────────
-    vague_re = re.compile(
-        r"legitimate interest|necessary|essential"
-        r"|basic|functional",
-        re.I,
-    )
-    vague_purposes = [p for p in consent_details.purposes if vague_re.search(p)]
+    vague_purposes = [p for p in consent_details.purposes if _VAGUE_CONSENT_RE.search(p)]
     if len(vague_purposes) > 2:
         points += 3
         issues.append("Consent uses vague terms to justify tracking")

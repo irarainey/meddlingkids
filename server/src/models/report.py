@@ -265,9 +265,7 @@ class SocialMediaImplicationsSection(pydantic.BaseModel):
     platforms_detected: list[str] = pydantic.Field(
         default_factory=list,
     )
-    identity_linking_risk: Literal[
-        "none", "low", "medium", "high"
-    ] = "none"
+    identity_linking_risk: Literal["none", "low", "medium", "high"] = "none"
     risks: list[SocialMediaRisk] = pydantic.Field(
         default_factory=list,
     )

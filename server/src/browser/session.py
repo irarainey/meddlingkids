@@ -107,9 +107,12 @@ class BrowserSession:
 
     async def launch_browser(self, device_type: browser.DeviceType = "ipad") -> None:
         """Launch a new Chromium browser instance with device emulation."""
-        # Ensure virtual display is available for headed mode.
-        if not os.environ.get("DISPLAY") or os.environ.get("DISPLAY") in (":0", ":1"):
-            os.environ["DISPLAY"] = os.environ.get("XVFB_DISPLAY", ":99")
+        # Determine the display for headed mode without mutating
+        # the process-global environment (which would race with
+        # concurrent sessions).
+        display = os.environ.get("DISPLAY", "")
+        if not display or display in (":0", ":1"):
+            display = os.environ.get("XVFB_DISPLAY", ":99")
 
         log.info("Launching browser", {"deviceType": device_type})
         if device_type not in device_configs.DEVICE_CONFIGS:
@@ -136,16 +139,14 @@ class BrowserSession:
                 async_api.async_playwright().start(),
                 timeout=_PLAYWRIGHT_START_TIMEOUT_SECONDS,
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             log.error(
                 "Playwright startup timed out",
                 {"timeoutSeconds": _PLAYWRIGHT_START_TIMEOUT_SECONDS},
             )
             raise RuntimeError(
-                "Playwright failed to start within "
-                f"{_PLAYWRIGHT_START_TIMEOUT_SECONDS}s — the display "
-                "server may be unresponsive"
-            )
+                f"Playwright failed to start within {_PLAYWRIGHT_START_TIMEOUT_SECONDS}s — the display server may be unresponsive"
+            ) from None
         self._playwright = pw
 
         # Prefer real Chrome over Playwright's bundled Chromium.
@@ -157,6 +158,11 @@ class BrowserSession:
         # Install real Chrome via: playwright install chrome
         # Falls back to bundled Chromium if Chrome is not
         # available.
+        # Pass the display env to Playwright so each session
+        # uses the correct virtual display without mutating
+        # the process-global environment.
+        launch_env = {**os.environ, "DISPLAY": display}
+
         launch_kwargs: dict[str, object] = {
             "headless": False,
             "args": [
@@ -166,6 +172,7 @@ class BrowserSession:
                 "--disable-infobars",
                 "--disable-extensions",
             ],
+            "env": launch_env,
         }
 
         try:
@@ -185,11 +192,11 @@ class BrowserSession:
         # it as a last resort if graceful shutdown hangs.
         # Uses Playwright internals — deliberately untyped.
         try:
-            bproc = getattr(br, '_impl_obj', None)  # type: ignore[union-attr]
-            conn = getattr(bproc, '_connection', None)  # type: ignore[union-attr]
-            transport = getattr(conn, '_transport', None)  # type: ignore[union-attr]
-            server_proc = getattr(transport, '_proc', None)  # type: ignore[union-attr]
-            if server_proc and hasattr(server_proc, 'pid'):
+            bproc = getattr(br, "_impl_obj", None)  # type: ignore[union-attr]
+            conn = getattr(bproc, "_connection", None)  # type: ignore[union-attr]
+            transport = getattr(conn, "_transport", None)  # type: ignore[union-attr]
+            server_proc = getattr(transport, "_proc", None)  # type: ignore[union-attr]
+            if server_proc and hasattr(server_proc, "pid"):
                 self._browser_pid = server_proc.pid
         except Exception:
             self._browser_pid = None
@@ -308,6 +315,13 @@ class BrowserSession:
 
     def _on_request(self, request: async_api.Request) -> None:
         """Handle intercepted network requests."""
+        try:
+            self._on_request_inner(request)
+        except Exception as exc:
+            log.debug("Request handler error", {"error": str(exc)})
+
+    def _on_request_inner(self, request: async_api.Request) -> None:
+        """Inner request handler — separated so _on_request can guard exceptions."""
         resource_type = request.resource_type
         request_url = request.url
         domain = url_mod.extract_domain(request_url)
@@ -359,13 +373,16 @@ class BrowserSession:
 
     def _on_response(self, response: async_api.Response) -> None:
         """Handle intercepted responses to capture status codes."""
-        request_url = response.url
-        indices = self._pending_responses.get(request_url)
-        if indices:
-            idx = indices.pop()
-            self._tracked_network_requests[idx].status_code = response.status
-            if not indices:
-                del self._pending_responses[request_url]
+        try:
+            request_url = response.url
+            indices = self._pending_responses.get(request_url)
+            if indices:
+                idx = indices.pop()
+                self._tracked_network_requests[idx].status_code = response.status
+                if not indices:
+                    del self._pending_responses[request_url]
+        except Exception as exc:
+            log.debug("Response handler error", {"error": str(exc)})
 
     # ==========================================================================
     # Navigation
@@ -601,7 +618,8 @@ class BrowserSession:
         if self._page:
             self._page.remove_listener("request", self._on_request)
             self._page.remove_listener(
-                "response", self._on_response,
+                "response",
+                self._on_response,
             )
             self._page = None
 
@@ -611,7 +629,7 @@ class BrowserSession:
                     self._context.close(),
                     timeout=_CLOSE_TIMEOUT_SECONDS,
                 )
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 log.warn(
                     "Context close timed out",
                     {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
@@ -630,7 +648,7 @@ class BrowserSession:
                     self._browser.close(),
                     timeout=_CLOSE_TIMEOUT_SECONDS,
                 )
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 log.warn(
                     "Browser close timed out",
                     {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
@@ -649,7 +667,7 @@ class BrowserSession:
                     self._playwright.stop(),
                     timeout=_CLOSE_TIMEOUT_SECONDS,
                 )
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 log.warn(
                     "Playwright stop timed out",
                     {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
@@ -681,9 +699,7 @@ class BrowserSession:
         """
         pid = self._browser_pid
         if not pid:
-            log.debug(
-                "No browser PID available for force-kill"
-            )
+            log.debug("No browser PID available for force-kill")
             return
 
         try:

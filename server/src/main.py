@@ -48,10 +48,15 @@ app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)
 # Middleware
 # ============================================================================
 
+_ALLOWED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:4173",
+).split(",")
+
 app.add_middleware(
     cors.CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -90,7 +95,6 @@ async def analyze_endpoint(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -108,7 +112,7 @@ if IS_PRODUCTION and dist_path.exists():
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str) -> responses.FileResponse:
         """SPA fallback - serve index.html for all non-API routes."""
-        file_path = dist_path / full_path
-        if file_path.exists() and file_path.is_file():
+        file_path = (dist_path / full_path).resolve()
+        if file_path.is_relative_to(dist_path) and file_path.exists() and file_path.is_file():
             return responses.FileResponse(str(file_path))
         return responses.FileResponse(str(dist_path / "index.html"))

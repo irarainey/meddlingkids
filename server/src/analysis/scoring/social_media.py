@@ -14,20 +14,12 @@ from src.utils import logger
 
 log = logger.create_logger("Score-SocialMedia")
 
-
-# ── Table-driven social tracker name resolution ─────────────
-
-_SOCIAL_TRACKER_NAMES: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"facebook|fbcdn", re.I), "Facebook"),
-    (re.compile(r"twitter", re.I), "Twitter/X"),
-    (re.compile(r"linkedin", re.I), "LinkedIn"),
-    (re.compile(r"pinterest", re.I), "Pinterest"),
-    (re.compile(r"tiktok", re.I), "TikTok"),
-    (re.compile(r"instagram", re.I), "Instagram"),
-    (re.compile(r"snapchat", re.I), "Snapchat"),
-    (re.compile(r"reddit", re.I), "Reddit"),
-    (re.compile(r"addthis|sharethis|addtoany", re.I), "Social sharing widgets"),
-]
+# Pre-compiled pattern for social plugin detection
+_SOCIAL_PLUGIN_RE = re.compile(
+    r"platform\.(twitter|facebook|linkedin)"
+    r"|widgets\.(twitter|facebook)",
+    re.I,
+)
 
 
 def _resolve_tracker_name(url: str) -> str:
@@ -41,7 +33,7 @@ def _resolve_tracker_name(url: str) -> str:
     Returns:
         Human-readable tracker name or hostname.
     """
-    for pattern, name in _SOCIAL_TRACKER_NAMES:
+    for pattern, name in tracker_patterns.SOCIAL_TRACKER_NAMES:
         if pattern.search(url):
             return name
     m = re.search(r"https?://([^/]+)", url)
@@ -107,16 +99,7 @@ def calculate(
         issues.append(f"{', '.join(social_trackers)} tracking present")
 
     # ── Embedded plugins ────────────────────────────────────
-    social_plugins = [
-        url
-        for url in all_urls
-        if re.search(
-            r"platform\.(twitter|facebook|linkedin)"
-            r"|widgets\.(twitter|facebook)",
-            url,
-            re.I,
-        )
-    ]
+    social_plugins = [url for url in all_urls if _SOCIAL_PLUGIN_RE.search(url)]
     if social_plugins:
         points += 3
         log.debug(
