@@ -34,6 +34,8 @@ uv run playwright install chromium
 - `UVICORN_HOST` - Server host (default: `0.0.0.0`)
 - `UVICORN_PORT` - Server port (default: `3001`)
 - `WRITE_TO_FILE` - Set to `true` to write logs and reports to files
+- `MAX_CONCURRENT_SESSIONS` - Maximum number of concurrent analysis sessions (default: `3`)
+- `ENVIRONMENT` - Set to `production` to suppress debug log output in SSE responses
 
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
@@ -131,14 +133,14 @@ src/
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Script pattern databases (2 JSON files)
 └── utils/                           # Cross-cutting utilities
-    ├── cache.py                     # Cross-cache management (clear all caches)
-    ├── errors.py                    # Error message extraction
+    ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
+    ├── errors.py                    # Error message extraction and client-safe error sanitisation
     ├── image.py                     # Screenshot optimisation & JPEG conversion
     ├── json_parsing.py              # LLM response JSON parsing
     ├── logger.py                    # Structured logger with colour output (contextvars isolation)
     ├── risk.py                      # Shared risk-scoring helpers (risk_label)
     ├── serialization.py             # Pydantic model serialization helpers
-    ├── url.py                       # URL / domain utilities
+    ├── url.py                       # URL / domain utilities and SSRF prevention (validate_analysis_url)
     └── usage_tracking.py            # Per-session LLM call count and token usage tracking
 ```
 

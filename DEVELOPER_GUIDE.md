@@ -513,15 +513,15 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `cache.py` | Cross-cache management — `clear_all()` deletes every file in all cache sub-directories |
-| `errors.py` | Error message extraction |
+| `cache.py` | Cross-cache management — `clear_all()` and `atomic_write_text()` for crash-safe file writes |
+| `errors.py` | Error message extraction and client-safe error sanitisation (`get_safe_client_message()`) |
 | `usage_tracking.py` | Per-session LLM call count and token usage tracking (`contextvars` isolation) |
 | `image.py` | Screenshot optimisation and JPEG conversion |
 | `json_parsing.py` | LLM response JSON parsing |
 | `logger.py` | Structured logger with colour output (`contextvars` isolation) |
 | `risk.py` | Shared risk-scoring helpers (`risk_label`) |
 | `serialization.py` | Pydantic model serialization helpers |
-| `url.py` | URL and domain utilities |
+| `url.py` | URL and domain utilities, SSRF prevention (`validate_analysis_url()`) |
 
 ---
 

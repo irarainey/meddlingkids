@@ -233,9 +233,9 @@ Located in `utils/formatters.ts`:
 3. **Progress Banner**: Shows current analysis step with animated Mystery Machine van
 4. **Privacy Score Dialog**: Displays final privacy score with Scooby-Doo themed rating
 5. **Page Error Dialog**: Displays access denied or server error information
-3. **Screenshot Gallery**: Thumbnails of captured screenshots (clickable for fullscreen)
-4. **Tab Navigation**: Switch between different data views
-5. **Data Panels**: Display collected tracking information
+6. **Screenshot Gallery**: Thumbnails of captured screenshots (clickable for fullscreen)
+7. **Tab Navigation**: Switch between different data views
+8. **Data Panels**: Display collected tracking information
 
 ### Available Tabs
 
