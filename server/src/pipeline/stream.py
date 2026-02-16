@@ -448,17 +448,15 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
             },
         )
 
-    # Post-overlay capture — only emit a new screenshot when no
-    # overlays were dismissed (the overlay pipeline already emits
-    # one after every successful dismiss).
-    if ctx.overlay_count == 0:
-        log.info("No overlays dismissed — capturing final page state")
-        await session.capture_current_cookies()
-        event_str, _, ctx.storage = await sse_helpers.take_screenshot_event(session)
-        yield event_str
-    else:
+    # Post-overlay capture — re-capture page state only when
+    # overlays *were* dismissed, since the page will have changed.
+    # When no overlays were found the page is unchanged from the
+    # initial capture (Phase 3), so we skip the redundant work.
+    if ctx.overlay_count > 0:
         await session.capture_current_cookies()
         ctx.storage = await session.capture_storage()
+    else:
+        log.info("No overlays dismissed — page state unchanged, skipping re-capture")
 
     if page and ctx.overlay_result.failed:
         if ctx.consent_details:
@@ -515,10 +513,18 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
     session = ctx.session
 
     # ── Stage 2 screenshot refresher ────────────────
-    remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
-    current_hash = ""
+    # Only start a post-overlay screenshot refresher when overlays
+    # were actually dismissed — the page may still be settling as
+    # deferred scripts/ads load.  When no overlay was found the
+    # page visual is unchanged; skipping avoids an unnecessary
+    # screenshot capture, optimise-and-send cycle, and background task.
+    refresh_queue: asyncio.Queue[str] = asyncio.Queue()
+    ctx.refresh_queue = refresh_queue
 
-    if remaining_refreshes > 0:
+    if ctx.overlay_count > 0:
+        remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
+        current_hash = ""
+
         try:
             png = await session.take_screenshot(full_page=False)
             current_hash = hashlib.md5(png).hexdigest()
@@ -529,23 +535,24 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
         except Exception:
             log.debug("Pre-analysis screenshot refresh failed — skipping")
 
-    refresh_queue: asyncio.Queue[str] = asyncio.Queue()
-    ctx.refresh_queue = refresh_queue
-    if remaining_refreshes > 0:
-        ctx.refresher_task = asyncio.create_task(
-            _screenshot_refresher(
-                session,
-                refresh_queue,
-                current_hash,
-                remaining=remaining_refreshes,
-            ),
-        )
-        log.debug(
-            "Stage 2 screenshot refresher started",
-            {"remaining": remaining_refreshes},
-        )
+        if remaining_refreshes > 0:
+            ctx.refresher_task = asyncio.create_task(
+                _screenshot_refresher(
+                    session,
+                    refresh_queue,
+                    current_hash,
+                    remaining=remaining_refreshes,
+                ),
+            )
+            log.debug(
+                "Stage 2 screenshot refresher started",
+                {"remaining": remaining_refreshes},
+            )
+        else:
+            ctx.refresher_task = None
     else:
         ctx.refresher_task = None
+        log.debug("Stage 2 screenshot refresher skipped (no overlays dismissed)")
 
     # ── AI Analysis ────────────────────────────────────
     log.subsection("Phase 5: AI Analysis")
