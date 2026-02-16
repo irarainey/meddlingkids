@@ -17,7 +17,6 @@ class TestBlockedTitlePatterns:
         for expected in ("access denied", "403 forbidden", "captcha", "cloudflare"):
             assert expected in BLOCKED_TITLE_PATTERNS, f"Missing {expected!r}"
 
-
     def test_no_false_positive_on_content_words(self) -> None:
         """Legitimate article titles must not trigger blocking."""
         safe_titles = [
@@ -29,9 +28,7 @@ class TestBlockedTitlePatterns:
         for title in safe_titles:
             title_lower = title.lower()
             matches = [p for p in BLOCKED_TITLE_PATTERNS if p in title_lower]
-            assert matches == [], (
-                f"Title {title!r} falsely matched patterns: {matches}"
-            )
+            assert matches == [], f"Title {title!r} falsely matched patterns: {matches}"
 
 
 class TestBlockedBodyPatterns:

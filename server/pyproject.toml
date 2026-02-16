@@ -48,19 +48,19 @@ sequence = ["lint:ruff", "lint:mypy"]
 [tool.poe.tasks."lint:ruff"]
 help = "Run ruff linter and formatter check"
 sequence = [
-    { cmd = "ruff check src/" },
-    { cmd = "ruff format --check src/" },
+    { cmd = "ruff check src/ tests/" },
+    { cmd = "ruff format --check src/ tests/" },
 ]
 
 [tool.poe.tasks."lint:mypy"]
 help = "Run mypy type checking"
-cmd = "mypy src/"
+cmd = "mypy src/ tests/"
 
 [tool.poe.tasks.format]
 help = "Auto-fix ruff lint issues and format code"
 sequence = [
-    { cmd = "ruff check --fix src/" },
-    { cmd = "ruff format src/" },
+    { cmd = "ruff check --fix src/ tests/" },
+    { cmd = "ruff format src/ tests/" },
 ]
 
 [tool.poe.tasks.test]
@@ -76,7 +76,7 @@ cmd = "pytest tests/ -v --tb=short"
 [tool.ruff]
 target-version = "py313"
 line-length = 140
-src = ["src"]
+src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -115,7 +115,7 @@ asyncio_mode = "auto"
 [tool.mypy]
 python_version = "3.13"
 mypy_path = "src"
-packages = ["src"]
+packages = ["src", "tests"]
 ignore_missing_imports = true
 warn_return_any = true
 warn_unused_configs = true

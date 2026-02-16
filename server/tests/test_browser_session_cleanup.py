@@ -43,10 +43,12 @@ class TestBrowserSessionClose:
         await session.close()
 
         page.remove_listener.assert_any_call(
-            "request", session._on_request,
+            "request",
+            session._on_request,
         )
         page.remove_listener.assert_any_call(
-            "response", session._on_response,
+            "response",
+            session._on_response,
         )
         assert session._page is None
 
@@ -140,7 +142,8 @@ class TestBrowserSessionClose:
                 timeout=session_mod._CLOSE_TIMEOUT_SECONDS * 3 + 10,
             )
             mock_kill.assert_called_once_with(
-                99999, signal.SIGKILL,
+                99999,
+                signal.SIGKILL,
             )
 
     @pytest.mark.asyncio()
@@ -207,7 +210,9 @@ class TestBrowserSessionContextManager:
         """Exiting the context manager must call close()."""
         session = session_mod.BrowserSession()
         with mock.patch.object(
-            session, "close", new_callable=mock.AsyncMock,
+            session,
+            "close",
+            new_callable=mock.AsyncMock,
         ) as mock_close:
             async with session:
                 pass
@@ -218,7 +223,9 @@ class TestBrowserSessionContextManager:
         """close() must be called even when the body raises."""
         session = session_mod.BrowserSession()
         with mock.patch.object(
-            session, "close", new_callable=mock.AsyncMock,
+            session,
+            "close",
+            new_callable=mock.AsyncMock,
         ) as mock_close:
             with pytest.raises(ValueError, match="boom"):
                 async with session:
@@ -262,10 +269,13 @@ class TestBrowserLaunchRetry:
 
         # Patch the delay so the test doesn't wait.
         with mock.patch.object(
-            browser_phases, "_RETRY_DELAY_SECONDS", 0,
+            browser_phases,
+            "_RETRY_DELAY_SECONDS",
+            0,
         ):
             await browser_phases.launch_browser(
-                session, "ipad",
+                session,
+                "ipad",
             )
 
         assert session.launch_browser.await_count == 2
@@ -280,20 +290,23 @@ class TestBrowserLaunchRetry:
             side_effect=RuntimeError("display dead"),
         )
 
-        with mock.patch.object(
-            browser_phases, "_RETRY_DELAY_SECONDS", 0,
+        with (
+            mock.patch.object(
+                browser_phases,
+                "_RETRY_DELAY_SECONDS",
+                0,
+            ),
+            pytest.raises(
+                RuntimeError,
+                match="display dead",
+            ),
         ):
-            with pytest.raises(
-                RuntimeError, match="display dead",
-            ):
-                await browser_phases.launch_browser(
-                    session, "ipad",
-                )
+            await browser_phases.launch_browser(
+                session,
+                "ipad",
+            )
 
-        assert (
-            session.launch_browser.await_count
-            == browser_phases._MAX_LAUNCH_ATTEMPTS
-        )
+        assert session.launch_browser.await_count == browser_phases._MAX_LAUNCH_ATTEMPTS
 
     @pytest.mark.asyncio()
     async def test_cleanup_failure_between_retries_is_non_fatal(
@@ -309,10 +322,13 @@ class TestBrowserLaunchRetry:
         )
 
         with mock.patch.object(
-            browser_phases, "_RETRY_DELAY_SECONDS", 0,
+            browser_phases,
+            "_RETRY_DELAY_SECONDS",
+            0,
         ):
             await browser_phases.launch_browser(
-                session, "ipad",
+                session,
+                "ipad",
             )
 
         # Second attempt must succeed despite cleanup failure.

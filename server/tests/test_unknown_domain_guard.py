@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from src.analysis import domain_cache, script_cache
 from src.consent import overlay_cache
-
+from src.models import report
 
 # ── domain_cache ────────────────────────────────────────────────
 
@@ -27,7 +27,6 @@ class TestDomainCacheUnknownGuard:
             assert domain_cache.load("unknown") is None
 
     def test_save_is_noop(self, tmp_path) -> None:
-        from src.models import report
 
         sr = report.StructuredReport(
             tracking_technologies=report.TrackingTechnologiesSection(

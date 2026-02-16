@@ -263,10 +263,7 @@ class TestDataCollectionScoring:
         assert any("beacon" in issue or "pixel" in issue for issue in result.issues)
 
     def test_third_party_posts(self) -> None:
-        reqs = [
-            _request(f"https://collector.com/e{i}", "collector.com", is_third_party=True, method="POST")
-            for i in range(6)
-        ]
+        reqs = [_request(f"https://collector.com/e{i}", "collector.com", is_third_party=True, method="POST") for i in range(6)]
         result = data_collection.calculate([], [], reqs)
         assert result.points >= 3
         assert any("submissions" in issue for issue in result.issues)
@@ -479,10 +476,7 @@ class TestCalculatePrivacyScore:
             _script("https://www.google-analytics.com/analytics.js", "google-analytics.com"),
             _script("https://connect.facebook.net/sdk.js", "facebook.net"),
         ]
-        requests_list = [
-            _request(f"https://doubleclick.net/pixel{i}", "doubleclick.net", is_third_party=True)
-            for i in range(30)
-        ]
+        requests_list = [_request(f"https://doubleclick.net/pixel{i}", "doubleclick.net", is_third_party=True) for i in range(30)]
         result = calculator.calculate_privacy_score(
             cookies_list=cookies_list,
             scripts=scripts_list,

@@ -171,36 +171,26 @@ class TestProfileDataQuality:
     def test_platform_has_container_selectors(self, key: str) -> None:
         profile = platform_detection.get_platform_profile(key)
         assert profile is not None
-        assert len(profile.container_selectors) > 0, (
-            f"Platform '{key}' has no container_selectors"
-        )
+        assert len(profile.container_selectors) > 0, f"Platform '{key}' has no container_selectors"
 
-    @pytest.mark.parametrize("key", [
-        k for k in EXPECTED_PLATFORMS if k != "admiral"
-    ])
+    @pytest.mark.parametrize("key", [k for k in EXPECTED_PLATFORMS if k != "admiral"])
     def test_platform_has_accept_patterns(self, key: str) -> None:
         profile = platform_detection.get_platform_profile(key)
         assert profile is not None
-        assert len(profile.accept_button_patterns) > 0, (
-            f"Platform '{key}' has no accept_button_patterns"
-        )
+        assert len(profile.accept_button_patterns) > 0, f"Platform '{key}' has no accept_button_patterns"
 
     def test_admiral_has_partial_accept_patterns(self) -> None:
         """Admiral has best-effort selectors for FC-style deployments."""
         profile = platform_detection.get_platform_profile("admiral")
         assert profile is not None
         assert len(profile.accept_button_patterns) > 0
-        assert all(
-            "admiral" in s for s in profile.accept_button_patterns
-        ), "Admiral selectors must be scoped under div[id^='admiral-']"
+        assert all("admiral" in s for s in profile.accept_button_patterns), "Admiral selectors must be scoped under div[id^='admiral-']"
 
     @pytest.mark.parametrize("key", EXPECTED_PLATFORMS)
     def test_platform_has_cookie_indicators(self, key: str) -> None:
         profile = platform_detection.get_platform_profile(key)
         assert profile is not None
-        assert len(profile.cookie_indicators) > 0, (
-            f"Platform '{key}' has no cookie_indicators"
-        )
+        assert len(profile.cookie_indicators) > 0, f"Platform '{key}' has no cookie_indicators"
 
     def test_sourcepoint_has_iframe_patterns(self) -> None:
         """Sourcepoint is iframe-based — must have iframe patterns."""
@@ -350,10 +340,7 @@ class TestMediaGroupCmpMap:
     def test_all_values_are_valid_profile_keys(self) -> None:
         profiles = platform_detection.get_platform_profiles()
         for label, key in platform_detection._MEDIA_GROUP_CMP_MAP.items():
-            assert key in profiles, (
-                f"CMP map value '{key}' (from label '{label}') "
-                f"is not a valid profile key"
-            )
+            assert key in profiles, f"CMP map value '{key}' (from label '{label}') is not a valid profile key"
 
     def test_all_media_group_cmps_resolve(self) -> None:
         """Every non-custom consent_platform in media-groups.json must resolve
@@ -374,13 +361,11 @@ class TestMediaGroupCmpMap:
                         key = pk
                         break
             assert key is not None, (
-                f"Media group '{group_name}' has consent_platform "
-                f"'{profile.consent_platform}' which is not in _MEDIA_GROUP_CMP_MAP"
+                f"Media group '{group_name}' has consent_platform '{profile.consent_platform}' which is not in _MEDIA_GROUP_CMP_MAP"
             )
             resolved = platform_detection.get_platform_profile(key)
             assert resolved is not None, (
-                f"Media group '{group_name}' maps to profile key '{key}' "
-                f"which does not exist in consent-platforms.json"
+                f"Media group '{group_name}' maps to profile key '{key}' which does not exist in consent-platforms.json"
             )
 
     def test_media_group_cmp_names_match_profile_names(self) -> None:
@@ -399,8 +384,7 @@ class TestMediaGroupCmpMap:
             key = cmp_map.get(cmp)
             if key and key in profiles:
                 assert profile.consent_platform == profiles[key].name, (
-                    f"Media group '{group_name}' uses '{profile.consent_platform}' "
-                    f"but consent profile uses '{profiles[key].name}'"
+                    f"Media group '{group_name}' uses '{profile.consent_platform}' but consent profile uses '{profiles[key].name}'"
                 )
 
 
