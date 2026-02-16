@@ -68,6 +68,7 @@ ADVERTISING_TRACKERS: list[re.Pattern[str]] = [
     re.compile(r"media\.net", re.I),
     re.compile(r"33across", re.I),
     re.compile(r"sharethrough", re.I),
+    re.compile(r"hurra\.com|hurra.*communications", re.I),
 ]
 
 SOCIAL_MEDIA_TRACKERS: list[re.Pattern[str]] = [
@@ -97,6 +98,11 @@ ANALYTICS_TRACKERS: list[re.Pattern[str]] = [
     re.compile(r"newrelic", re.I),
     re.compile(r"datadog", re.I),
     re.compile(r"sentry\.io", re.I),
+    re.compile(r"etracker\.com|etracker\.de", re.I),
+    re.compile(r"rudderstack|rudderlabs", re.I),
+    re.compile(r"leadinfo", re.I),
+    re.compile(r"plausible\.io", re.I),
+    re.compile(r"hubspot.*analytics|hs-analytics", re.I),
 ]
 
 # ============================================================================
@@ -154,7 +160,7 @@ CONSENT_STATE_COOKIE_PATTERNS: list[re.Pattern[str]] = [
     # Complianz (WordPress)
     re.compile(r"^cmplz_", re.I),
     # Generic CMP
-    re.compile(r"^__cmpcc$", re.I),
+    re.compile(r"^__cmpcc", re.I),
     # Cookie Law Info (WordPress)
     re.compile(r"^cookielawinfo", re.I),
     # Sourcepoint
@@ -362,6 +368,8 @@ TCF_INDICATORS: list[re.Pattern[str]] = [
     re.compile(r"transparencyandconsent|transparency.?consent", re.I),
     re.compile(r"cmpapi|__cmp\b", re.I),
     re.compile(r"gdpr.?consent|consent.?gdpr", re.I),
+    # IAB GPP (Global Privacy Platform)
+    re.compile(r"__gpp\b|gpp.?consent|IABGPP", re.I),
 ]
 
 TCF_INDICATORS_COMBINED: re.Pattern[str] = _combine(TCF_INDICATORS)

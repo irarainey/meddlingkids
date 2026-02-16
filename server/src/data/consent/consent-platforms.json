@@ -344,42 +344,52 @@
     "consentmanager": {
       "name": "consentmanager",
       "vendor": "consentmanager AB",
-      "privacy_url": "https://www.consentmanager.net/privacy/",
+      "privacy_url": "https://www.consentmanager.net/en/privacy/",
       "tcf_registered": true,
-      "description": "German-headquartered TCF-certified CMP used across European publishers. Renders consent dialogs inside an iframe from delivery.consentmanager.net. Provides detailed vendor-level consent management.",
+      "cmp_id": 31,
+      "tcf_domain": "consentmanager.mgr.consensu.org",
+      "description": "Swedish-headquartered TCF-certified CMP (IAB CMP ID 31) with offices in Hamburg, Berlin, Paris, and Zurich. Used by 100,000+ websites across European publishers, online shops, and agencies. Renders consent dialogs inside an iframe from delivery.consentmanager.net. Supports IAB TCF v2, IAB GPP, Google Consent Mode v2, Facebook Consent Mode, and Microsoft UET Consent Mode. Provides vendor-level consent management with 2,500+ vendor database, integrated cookie crawler (3M+ cookies), A/B testing, and 35+ languages.",
       "iframe_patterns": [
         "delivery.consentmanager.net",
-        "cdn.consentmanager.net"
+        "cdn.consentmanager.net",
+        "app.consentmanager.net",
+        "consentmanager.mgr.consensu.org"
       ],
       "container_selectors": [
         "#cmpbox",
         "#cmpbox2",
-        "div.cmpboxBG"
+        "div.cmpboxBG",
+        "div.cmpboxBGcf"
       ],
       "js_apis": [
         "window.__cmp",
         "window.__tcfapi",
-        "window.cmp_cdm"
+        "window.cmp_cdm",
+        "window.__gpp"
       ],
       "cookie_indicators": [
         "cmpgdprcs",
         "cmpgdprconsent",
-        "euconsent-v2"
+        "euconsent-v2",
+        "__cmpcccu"
       ],
       "accept_button_patterns": [
         "#cmpbntyestxt",
         "a.cmpboxbtn.cmpboxbtnyes",
-        "span#cmpbntyestxt"
+        "span#cmpbntyestxt",
+        "a.cmpboxbtnyes"
       ],
       "reject_button_patterns": [
         "#cmpbntnotxt",
-        "a.cmpboxbtn.cmpboxbtnno"
+        "a.cmpboxbtn.cmpboxbtnno",
+        "a.cmpboxbtnno"
       ],
       "manage_button_patterns": [
         "#cmpbntcptxt",
-        "a.cmpboxbtn.cmpboxbtncptxt"
+        "a.cmpboxbtn.cmpboxbtncptxt",
+        "a.cmpboxbtncptxt"
       ],
-      "notes": "consentmanager renders inside an iframe from delivery.consentmanager.net. The dialog uses #cmpbox as the main container. Accept/reject buttons have IDs #cmpbntyestxt and #cmpbntnotxt. Button text is wrapped in <span> inside <a> tags."
+      "notes": "consentmanager (IAB CMP ID 31) renders inside an iframe from delivery.consentmanager.net or cdn.consentmanager.net. The dialog uses #cmpbox as the main container with div.cmpboxBG as the background overlay. Accept/reject buttons have IDs #cmpbntyestxt and #cmpbntnotxt. Button text is wrapped in <span> inside <a> tags. The __cmpcccu cookie stores compact consent choices. Consent validity is 12 months by default. Supports cross-domain and cross-device consent sharing. Hosting exclusively on EU servers (PlusServer GmbH, Cologne, Germany)."
     },
     "iubenda": {
       "name": "iubenda",
