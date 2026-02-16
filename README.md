@@ -101,13 +101,11 @@ meddlingkids/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       │   ├── prompts/       # System prompts (one module per agent)
-│       │   └── gdpr_context.py # Shared GDPR/TCF reference builder for agent prompts
 │       ├── browser/           # Browser automation (Playwright session, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache, CMP platform detection)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
-│       │   └── overlay_steps.py  # Sub-step functions for overlay pipeline
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
