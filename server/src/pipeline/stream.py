@@ -274,7 +274,6 @@ async def _run_analysis(
                 yield event
 
             # ── Phase 6: Complete ───────────────────────────────
-            usage_tracking.log_summary()
             total_time = log.end_timer("total-analysis", "Analysis complete")
             log.success(
                 "Investigation complete!",
@@ -303,6 +302,7 @@ async def _run_analysis(
             {"error": errors.get_safe_client_message(error)},
         )
     finally:
+        usage_tracking.log_summary()
         if ctx.refresher_task and not ctx.refresher_task.done():
             ctx.refresher_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
