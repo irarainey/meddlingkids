@@ -99,9 +99,12 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 # Install real Chrome (preferred — genuine TLS fingerprints
 # bypass CDN-level bot detectors like Tollbit) and bundled
-# Chromium as fallback.
+# Chromium as fallback. Chrome is only available on x86_64,
+# so ARM64 builds use Chromium only.
 RUN cd server && \
-    .venv/bin/playwright install chrome && \
+    if [ "$(uname -m)" = "x86_64" ]; then \
+        .venv/bin/playwright install chrome; \
+    fi && \
     .venv/bin/playwright install chromium && \
     chmod -R 755 /opt/playwright-browsers
 
