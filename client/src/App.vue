@@ -376,7 +376,7 @@ function onUrlMouseUp(event: Event): void {
   color: #9ca3af;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 1.0rem;
   transition: all 0.2s;
   white-space: nowrap;
 }
