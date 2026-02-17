@@ -1,15 +1,26 @@
-"""Domain-level cache for script analysis results.
+"""Script-domain-level cache for script analysis results.
 
 Caches the LLM-generated descriptions of unknown scripts so
-that subsequent scans of the same domain can skip the LLM
-call when the same script (by URL and content hash) is
-encountered again.
+that subsequent scans can skip the LLM call when the same
+script (by base URL and content hash) is encountered again.
 
 Cache files are JSON stored under ``server/.cache/scripts/``.
-Each file is named by the base domain (``www.`` stripped).
+Each file is keyed by the **script's own domain** (e.g.
+``s0.2mdn.net.json``, ``cdn.flashtalking.com.json``), not by
+the website being scanned.  This means that once a Google Ads
+script is analysed while scanning *site-A.com*, it is
+automatically a cache hit when *site-B.com* uses the same
+script — eliminating redundant LLM calls across sites.
+
+**URL normalisation:** Query strings and fragments are
+stripped from script URLs before comparison.  The underlying
+JavaScript file does not change based on query parameters
+(commonly ad-targeting metadata or cache-busters), so using
+only the base URL as the cache key avoids redundant LLM
+calls for the same file.
 
 **Invalidation:** A cached entry is only reused when the
-script URL **and** its MD5 content hash both match.  If a
+base URL **and** its MD5 content hash both match.  If a
 URL is found in the cache but the hash has changed, the
 stale entry is removed and the script is re-analysed via
 the LLM.
@@ -21,6 +32,7 @@ import contextlib
 import hashlib
 import json
 import pathlib
+from urllib.parse import urlparse, urlunparse
 
 import pydantic
 
@@ -44,7 +56,12 @@ class CachedScript(pydantic.BaseModel):
 
 
 class ScriptCacheEntry(pydantic.BaseModel):
-    """Per-domain script analysis cache."""
+    """Per-script-domain analysis cache.
+
+    Each entry groups scripts served from the same domain
+    (e.g. ``cdn.flashtalking.com``) regardless of which
+    website triggered the analysis.
+    """
 
     domain: str
     scripts: list[CachedScript] = pydantic.Field(default_factory=list)
@@ -76,6 +93,24 @@ def _remove(path: pathlib.Path) -> None:
 def compute_hash(content: str) -> str:
     """Return the MD5 hex digest of *content*."""
     return hashlib.md5(content.encode("utf-8", errors="replace")).hexdigest()
+
+
+def strip_query_string(url: str) -> str:
+    """Strip query string and fragment from a URL.
+
+    The underlying JavaScript file does not change based on
+    query parameters (commonly ad-targeting metadata, cache-
+    busters, or impression IDs), so this returns only the
+    scheme + netloc + path for use as a stable cache key.
+
+    Examples:
+        >>> strip_query_string("https://cdn.example.com/tracker.js?v=1.2&cb=123")
+        'https://cdn.example.com/tracker.js'
+        >>> strip_query_string("https://cdn.example.com/tracker.js")
+        'https://cdn.example.com/tracker.js'
+    """
+    parsed = urlparse(url)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
 
 
 # ── Public API ──────────────────────────────────────────────────
@@ -116,18 +151,23 @@ def lookup(
     url: str,
     content_hash: str,
 ) -> str | None:
-    """Look up a script in the cache by URL and content hash.
+    """Look up a script in the cache by base URL and content hash.
 
-    Returns the cached description if both the URL and hash
-    match.  Returns ``None`` (cache miss) if:
-    - The URL is not in the cache, or
-    - The URL is present but the hash differs (content changed).
+    Query strings and fragments are stripped before comparison
+    so that the same script served with different ad-targeting
+    or cache-buster parameters hits the cache.
+
+    Returns the cached description if both the base URL and
+    hash match.  Returns ``None`` (cache miss) if:
+    - The base URL is not in the cache, or
+    - The base URL is present but the hash differs (content changed).
 
     A hash mismatch also removes the stale entry so it will
     be replaced on save.
     """
+    base = strip_query_string(url)
     for i, cached in enumerate(entry.scripts):
-        if cached.url != url:
+        if cached.url != base:
             continue
 
         if cached.content_hash == content_hash:
@@ -136,12 +176,12 @@ def lookup(
         # URL matches but hash differs — invalidate.
         log.info(
             "Script content changed, invalidating cache entry",
-            {"url": url, "oldHash": cached.content_hash, "newHash": content_hash},
+            {"url": base, "oldHash": cached.content_hash, "newHash": content_hash},
         )
         entry.scripts.pop(i)
         return None
 
-    log.debug("Script cache miss", {"url": url})
+    log.debug("Script cache miss", {"url": base})
     return None
 
 
@@ -162,6 +202,26 @@ def save(
     if domain == "unknown":
         log.debug("Skipping script cache save for unknown domain")
         return
+
+    # Normalise URLs before merging so that query-string
+    # variants don't create duplicate cache entries.
+    normalized = [
+        CachedScript(
+            url=strip_query_string(s.url),
+            content_hash=s.content_hash,
+            description=s.description,
+        )
+        for s in analyzed
+    ]
+
+    # Deduplicate by base URL — keep the first occurrence.
+    seen: set[str] = set()
+    deduped: list[CachedScript] = []
+    for s in normalized:
+        if s.url not in seen:
+            seen.add(s.url)
+            deduped.append(s)
+    analyzed = deduped
 
     new_urls = {s.url for s in analyzed}
 

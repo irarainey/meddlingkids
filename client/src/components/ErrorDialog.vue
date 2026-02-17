@@ -21,7 +21,7 @@ const emit = defineEmits<{
   <Teleport to="body">
     <div v-if="isOpen" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="error-dialog-title" @click.self="emit('close')" @keydown.escape="emit('close')">
       <div class="dialog-content">
-        <button class="dialog-close" aria-label="Close dialog" @click="emit('close')">&times;</button>
+        <button class="dialog-close" aria-label="Close dialog" @click="emit('close')">&#10005;</button>
         
         <div class="error-icon">
           <span>⚠️</span>
@@ -72,15 +72,17 @@ const emit = defineEmits<{
   right: 1rem;
   width: 32px;
   height: 32px;
+  padding: 0;
+  margin: 0;
   border: none;
+  box-sizing: border-box;
   background: #2a2f45;
   color: #9ca3af;
-  font-size: 1.25rem;
+  font-size: 1rem;
+  line-height: 32px;
+  text-align: center;
   border-radius: 50%;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: all 0.2s;
 }
 

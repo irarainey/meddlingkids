@@ -19,6 +19,8 @@ import contextlib
 import dataclasses
 import hashlib
 import os
+import pathlib
+import tomllib
 from collections.abc import AsyncGenerator
 from typing import cast
 from urllib import parse
@@ -33,6 +35,19 @@ from src.utils import cache, errors, logger, usage_tracking
 from src.utils import url as url_mod
 
 log = logger.create_logger("Analyze")
+
+
+def _read_version() -> str:
+    """Read the server version from ``pyproject.toml``."""
+    try:
+        pyproject = pathlib.Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
+        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        return str(data["project"]["version"])
+    except Exception:
+        return "unknown"
+
+
+_SERVER_VERSION = _read_version()
 
 # Maximum wall-clock time (seconds) for a single analysis run.
 # Prevents runaway sessions from holding browser resources
@@ -234,6 +249,7 @@ async def _run_analysis(
 
     usage_tracking.reset()
     log.section(f"Analyzing: {url}")
+    log.info("Server version", {"version": _SERVER_VERSION})
     log.info("Request received", {"url": url, "device": device_type})
 
     if clear_cache:

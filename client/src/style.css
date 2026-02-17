@@ -67,9 +67,8 @@ button:focus-visible {
   border: 1px solid #3d4663;
   border-radius: 0 0 8px 8px;
   margin-top: -1px;
-  max-height: 500px;
-  overflow-y: auto;
   background: #1e2235;
+  padding: 1rem;
 }
 
 /* Empty state message shown when no data */

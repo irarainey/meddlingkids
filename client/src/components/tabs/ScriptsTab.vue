@@ -1,6 +1,18 @@
 <script setup lang="ts">
 import type { TrackedScript, ScriptGroup } from '../../types'
 
+/** Return the URL without query string or fragment for display purposes. */
+function baseUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.origin + u.pathname
+  } catch {
+    const noQuery = url.indexOf('?') >= 0 ? url.substring(0, url.indexOf('?')) : url
+    const noFrag = noQuery.indexOf('#') >= 0 ? noQuery.substring(0, noQuery.indexOf('#')) : noQuery
+    return noFrag
+  }
+}
+
 /**
  * Tab panel displaying scripts grouped by domain.
  * Also shows script groups for similar scripts (e.g., application chunks).
@@ -33,7 +45,7 @@ defineProps<{
             <summary>Show examples</summary>
             <ul>
               <li v-for="url in group.exampleUrls" :key="url" class="example-url">
-                <a :href="url" target="_blank">{{ url }}</a>
+                <a :href="url" target="_blank" :title="url">{{ baseUrl(url) }}</a>
               </li>
             </ul>
           </details>
@@ -48,7 +60,7 @@ defineProps<{
           <h3 class="domain-header">{{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})</h3>
           <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
             <div class="script-main">
-              <a :href="script.url" target="_blank" class="script-url">{{ script.url }}</a>
+              <a :href="script.url" target="_blank" class="script-url" :title="script.url">{{ baseUrl(script.url) }}</a>
               <span v-if="script.description" class="script-description">{{ script.description }}</span>
             </div>
           </div>

@@ -23,7 +23,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
 - 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
-- ⚡ **Smart Caching** — Caches script analysis, domain knowledge, and overlay strategies to reduce LLM calls and speed up repeat analyses
+- ⚡ **Smart Caching** — Caches script analysis by script domain (cross-site), domain knowledge, and overlay strategies to reduce LLM calls and speed up repeat analyses
 
 ## How It Works
 
@@ -118,25 +118,34 @@ meddlingkids/
 ├── .cache/                    # Analysis caches (auto-created)
 │   ├── domain/                # Domain knowledge cache for cross-run consistency
 │   ├── overlay/               # Overlay dismissal cache per domain
-│   └── scripts/               # Script analysis cache (URL + content hash)
+│   └── scripts/               # Script analysis cache per script domain (URL + content hash)
 ├── Dockerfile                 # Multi-stage production build
 └── vite.config.ts             # Vite build configuration
 ```
 
 ## Caching
 
-Meddling Kids uses three per-domain caches stored in `server/.cache/`
-to speed up repeat analyses and reduce LLM calls. Cache files are
-JSON, created automatically, and gitignored.
+Meddling Kids uses three caches stored in `server/.cache/` to speed up
+repeat analyses and reduce LLM calls. Cache files are JSON, created
+automatically, and gitignored.
 
-| Cache | Directory | What It Stores | Saves |
-|-------|-----------|---------------|-------|
-| **Script analysis** | `.cache/scripts/` | LLM-generated descriptions of unknown scripts, keyed by URL and MD5 content hash | LLM calls for every previously analysed script whose content has not changed |
-| **Domain knowledge** | `.cache/domain/` | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
-| **Overlay dismissal** | `.cache/overlay/` | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type, consent platform) | LLM vision calls for overlay detection on repeat visits |
+| Cache | Directory | Keyed By | What It Stores | Saves |
+|-------|-----------|----------|---------------|-------|
+| **Script analysis** | `.cache/scripts/` | Script domain (e.g. `s0.2mdn.net.json`) | LLM-generated descriptions of unknown scripts, keyed by base URL (query strings stripped) and MD5 content hash | LLM calls for every previously analysed script — even across different site scans |
+| **Domain knowledge** | `.cache/domain/` | Scanned site domain | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
+| **Overlay dismissal** | `.cache/overlay/` | Scanned site domain | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type, consent platform) | LLM vision calls for overlay detection on repeat visits |
 
 ### How It Helps
 
+- **Cross-site cache hits** — The script cache is keyed by the
+  script's own domain (e.g. `cdn.flashtalking.com`), not the site
+  being scanned. A Google Ads script analysed during a scan of
+  site A is an immediate cache hit when site B loads the same
+  script.
+- **Query string normalisation** — Query strings and fragments are
+  stripped from script URLs before cache lookup. Ad-targeting
+  parameters, cache-busters, and impression IDs no longer cause
+  redundant LLM calls for the same underlying file.
 - **Fewer LLM calls** — On a warm run the script analysis cache
   serves all previously seen scripts from disk. In testing against
   a large news site, a cold run made 72 LLM script calls while

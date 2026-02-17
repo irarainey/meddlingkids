@@ -479,7 +479,6 @@ function platformUrl(name: string): string {
 
 <style scoped>
 .analysis-content {
-  max-height: 600px;
   padding: 1rem;
 }
 

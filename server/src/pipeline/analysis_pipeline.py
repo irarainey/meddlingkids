@@ -182,8 +182,7 @@ def _launch_concurrent_tasks(
 
     async def _run_scripts() -> scripts.ScriptAnalysisResult:
         try:
-            domain = url_mod.extract_domain(url)
-            result = await scripts.analyze_scripts(final_scripts, _script_progress, domain=domain)
+            result = await scripts.analyze_scripts(final_scripts, _script_progress)
             log.end_timer(
                 "script-analysis",
                 f"Script analysis complete... ({len(result.scripts)} scripts, {len(result.groups)} groups)",
