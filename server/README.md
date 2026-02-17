@@ -64,12 +64,16 @@ src/
 │   ├── structured_report_agent.py   # Structured privacy report agent
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
+│   ├── cookie_info_agent.py         # Cookie information lookup agent (LLM fallback)
+│   ├── storage_info_agent.py        # Storage key information lookup agent (LLM fallback)
 │   ├── observability_setup.py       # Azure Monitor / App Insights telemetry setup
 │   ├── gdpr_context.py              # Shared GDPR/TCF reference builder for agent prompts
 │   ├── prompts/                     # System prompts (one module per agent)
 │   │   ├── consent_detection.py     # Consent detection prompt
 │   │   ├── consent_extraction.py    # Consent extraction prompt
+│   │   ├── cookie_info.py           # Cookie information lookup prompt
 │   │   ├── script_analysis.py       # Script analysis prompt
+│   │   ├── storage_info.py          # Storage key information lookup prompt
 │   │   ├── structured_report.py     # Structured report section prompts
 │   │   ├── summary_findings.py      # Summary findings prompt
 │   │   └── tracking_analysis.py     # Tracking analysis prompt
@@ -97,6 +101,8 @@ src/
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
 │   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
 │   ├── domain_cache.py              # Domain knowledge cache for cross-run consistency (merge-on-save, JSON)
+│   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
+│   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
@@ -131,7 +137,7 @@ src/
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
-│   └── trackers/                    # Script pattern databases (2 JSON files)
+│   └── trackers/                    # Tracking pattern databases (4 JSON files)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
     ├── errors.py                    # Error message extraction and client-safe error sanitisation
@@ -184,6 +190,8 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run_stream()`) |
+| `CookieInfoAgent` | Cookie name + domain + value | `CookieInfoResult` | Explains individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not found in known databases |
+| `StorageInfoAgent` | Storage key + type + value | `StorageInfoResult` | Explains individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not found in known databases |
 
 ### Infrastructure
 

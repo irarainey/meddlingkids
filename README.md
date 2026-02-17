@@ -18,10 +18,10 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
-- 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers
+- 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
-- 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage
+- 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
 - ⚡ **Smart Caching** — Caches script analysis by script domain (cross-site), domain knowledge, and overlay strategies to reduce LLM calls and speed up repeat analyses
 
@@ -111,7 +111,7 @@ meddlingkids/
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
-│       │   └── trackers/      # Script pattern databases (2 JSON files)
+│       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
 ├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)

@@ -428,6 +428,8 @@ Key framework types used:
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context |
+| `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
+| `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
@@ -474,6 +476,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
 | `domain_cache.py` | Domain-level knowledge cache — persists LLM classifications (tracker categories, cookie groupings, vendor roles, severity levels) for consistency across repeat analyses of the same domain. Uses merge-on-save with scan-count-based staleness pruning |
+| `cookie_lookup.py` | Cookie information lookup service — checks consent cookie database and tracking cookie patterns first, falls back to `CookieInfoAgent` LLM for unrecognised cookies. Main function: `get_cookie_info()` |
+| `storage_lookup.py` | Storage key information lookup service — checks tracking storage patterns first, falls back to `StorageInfoAgent` LLM for unrecognised keys. Main function: `get_storage_info()` |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
@@ -503,6 +507,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `data/loader.py` | JSON data loader with lazy loading and caching |
 | `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
+| `data/trackers/tracking-cookies.json` | Known tracking cookie definitions with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracking-storage.json` | Known tracking storage key definitions (localStorage/sessionStorage) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
 | `data/consent/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
 | `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
