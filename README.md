@@ -39,25 +39,25 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 
 ## Example Analysis Walkthrough
 
-Let's take a look at a page from the Daily Mail (a site known for heavy tracking). Here's what the original page looks like. Wowzers! I wonder what is going on behind the scenes...
+Let's take a look at a page from Bristol Live (a Reach Media news site known for heavy tracking). Here's what the original page looks like. Wowzers! That's a lot of screen estate taken up by ads. What is going on behind the scenes here I wonder...
 
 ![Original Site](./images/examples/001.png)
 
 ---
 
-So let's run an analysis and see what Meddling Kids uncovers!
+So let's run an analysis scan and see what those Meddling Kids can uncover!
 
 ![Start Analysis](./images/examples/002.png)
 
 ---
 
-First we load up the initial page and see if it has any overlays such as consent dialogs, sign-in prompts, or newsletter popups. If so we will attempt to dismiss them and track the changes.
+First we load up the initial page and see if it has any overlays such as consent dialogs, sign-in prompts, or paywall popups. If so we will attempt to dismiss them and then track the changes.
 
 ![Detect Overlay](./images/examples/003.png)
 
 ---
 
-Once we've detected and dismissed any overlays, we can see the final loaded page and we can start the analysis. If there are multiple stages, the screenshots will show each step.
+Once we've detected and dismissed any overlays, we get to see the final loaded page and we can then start analysis. If there are multiple dialog stages, the screenshots will show each step.
 
 ![Final Page](./images/examples/004.png)
 
