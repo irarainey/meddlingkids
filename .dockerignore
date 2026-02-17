@@ -39,6 +39,7 @@ README.md
 LICENSE
 *.md
 !client/README.md
+!server/README.md
 
 # Test files
 tests/
