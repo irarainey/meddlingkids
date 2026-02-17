@@ -224,8 +224,8 @@ WRITE_TO_FILE=true
 # Optional: Limit concurrent analysis sessions (default: 3)
 # MAX_CONCURRENT_SESSIONS=3
 
-# Optional: Set to "production" to suppress debug log in SSE responses
-# ENVIRONMENT=production
+# Optional: Serve the built client UI from the server (default: false)
+# SHOW_UI=true
 ```
 
 ### 3. Run Development Server

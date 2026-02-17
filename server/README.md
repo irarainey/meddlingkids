@@ -35,7 +35,7 @@ uv run playwright install chromium
 - `UVICORN_PORT` - Server port (default: `3001`)
 - `WRITE_TO_FILE` - Set to `true` to write logs and reports to files
 - `MAX_CONCURRENT_SESSIONS` - Maximum number of concurrent analysis sessions (default: `3`)
-- `ENVIRONMENT` - Set to `production` to suppress debug log output in SSE responses
+- `SHOW_UI` - Set to `true` to serve the built client UI from the server (default: `false`)
 
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)

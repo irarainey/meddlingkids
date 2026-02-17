@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
@@ -762,6 +761,6 @@ def _build_complete_payload(
             "consentDetails": consent_dict,
             "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
             "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
-            "debugLog": logger.get_log_buffer() if os.environ.get("ENVIRONMENT") != "production" else [],
+            "debugLog": logger.get_log_buffer(),
         },
     )

@@ -31,14 +31,14 @@ _bootstrap()
 
 log = logger.create_logger("Server")
 
-IS_PRODUCTION = os.environ.get("ENVIRONMENT", "development") == "production"
+SHOW_UI = os.environ.get("SHOW_UI", "false").lower() == "true"
 
 
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
     """Log server start on startup."""
     log.section("Meddling Kids Server Started")
-    log.info("Environment", {"env": "production" if IS_PRODUCTION else "development"})
+    log.info("Configuration", {"showUi": SHOW_UI})
     yield
 
 
@@ -105,7 +105,7 @@ async def analyze_endpoint(
 
 dist_path = pathlib.Path(__file__).resolve().parent.parent.parent / "dist"
 
-if IS_PRODUCTION and dist_path.exists():
+if SHOW_UI and dist_path.exists():
     log.info("Serving static files", {"path": str(dist_path)})
     app.mount("/assets", staticfiles.StaticFiles(directory=str(dist_path / "assets")), name="assets")
 

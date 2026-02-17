@@ -122,7 +122,7 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 # Environment variables with defaults
-ENV ENVIRONMENT=production
+ENV SHOW_UI=true
 ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=3001
 ENV DISPLAY=:99
