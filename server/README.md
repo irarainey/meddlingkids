@@ -92,7 +92,7 @@ src/
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
 │   │                                #   _match_known_patterns() + _analyze_unknowns()
-│   ├── script_cache.py              # Script analysis cache (URL + MD5 content hash, JSON)
+│   ├── script_cache.py              # Script analysis cache per script domain (base URL + MD5 hash, cross-site, JSON)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
 │   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats

@@ -1,8 +1,13 @@
 """Shared cache management utilities.
 
-All per-domain caches (domain knowledge, overlay strategies,
-script analysis) live under ``server/.cache/``.  This module
-provides helpers that operate across all cache directories.
+Caches live under ``server/.cache/``:
+
+- ``domain/`` — per-site domain knowledge (tracker labels, etc.)
+- ``overlay/`` — per-site overlay dismissal strategies
+- ``scripts/`` — per-script-domain analysis results (cross-site)
+
+This module provides helpers that operate across all cache
+directories.
 """
 
 from __future__ import annotations

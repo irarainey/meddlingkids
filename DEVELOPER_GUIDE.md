@@ -227,11 +227,12 @@ All data captured
    │
    ├── ┌─────────────────── Run concurrently ──────────────────┐
    │   │                                                       │
-   │   │  analyze_scripts(scripts, domain)                    │
+   │   │  analyze_scripts(scripts)                          │
    │   │   ├── Group similar scripts (chunks, vendor bundles)  │
    │   │   ├── Match against tracking patterns (JSON)          │
    │   │   ├── Match against benign patterns (JSON)            │
-   │   │   ├── Check script cache (URL + MD5 content hash)     │
+   │   │   ├── Deduplicate by base URL (strip query strings)  │
+   │   │   ├── Check per-script-domain cache (URL + MD5 hash) │
    │   │   └── LLM analysis for uncached unknown scripts       │
    │   │       (concurrent with semaphore, max 10 at a time)   │
    │   │                                                       │
@@ -468,7 +469,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|---------------|
 | `tracking.py` | Main tracking analysis orchestration (streaming LLM) |
 | `scripts.py` | Script identification — `analyze_scripts()` delegates to `_match_known_patterns()` (regex) and `_analyze_unknowns()` (cache + LLM) |
-| `script_cache.py` | Script analysis cache — caches LLM-generated descriptions by URL + MD5 content hash. Invalidates on hash mismatch |
+| `script_cache.py` | Script analysis cache — caches LLM-generated descriptions per **script domain** (e.g. `s0.2mdn.net.json`) by base URL (query strings stripped) + MD5 content hash. Enables cross-site cache hits. Invalidates on hash mismatch |
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
@@ -723,24 +724,39 @@ class ThirdPartyGroup(BaseModel):
 
 ## Caching
 
-Three per-domain caches live under `server/.cache/` (gitignored).
-They reduce LLM calls and improve analysis speed on repeat visits
-to the same domain.
+Three caches live under `server/.cache/` (gitignored).
+They reduce LLM calls and improve analysis speed on repeat
+visits — and, for scripts, across different sites.
 
 ### Script Analysis Cache (`script_cache.py`)
 
 Caches the LLM-generated description for each unknown script.
 
-- **Key:** Script URL + MD5 hex digest of its fetched content.
-- **Hit:** URL and hash both match → cached description is used,
-  no LLM call.
-- **Miss:** URL is not in the cache → script is sent to the LLM.
-- **Invalidation:** URL is found but the hash differs (content
-  changed) → the stale entry is removed and the script is
-  re-analysed.
+- **Keyed by script domain:** Each cache file is named after the
+  script’s own domain (e.g. `s0.2mdn.net.json`,
+  `cdn.flashtalking.com.json`), not the website being scanned.
+  This means a Google Ads script analysed during a scan of
+  site-A.com is an immediate cache hit when site-B.com loads the
+  same script.
+- **URL normalisation:** Query strings and fragments are stripped
+  before comparison. The same `.js` file served with different
+  ad-targeting parameters, cache-busters, or impression IDs is
+  treated as a single cache entry.
+- **Content hash:** Each entry stores the MD5 hex digest of the
+  fetched script content.
+- **Hit:** Base URL and hash both match → cached description is
+  used, no LLM call.
+- **Miss:** Base URL is not in the cache → script is sent to the
+  LLM.
+- **Invalidation:** Base URL is found but the hash differs
+  (content changed) → the stale entry is removed and the script
+  is re-analysed.
 - **Merge:** On save, newly analysed entries are merged with
   existing entries whose URLs were not re-analysed this run
   (carried forward).
+- **Deduplication:** Within a single scan, scripts sharing the
+  same base URL (different query strings) are fetched and
+  analysed only once. The result is applied to all variants.
 
 ```
 Cold run:  72 LLM script calls,  24.6s script analysis
@@ -1048,7 +1064,7 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Script patterns are pre-compiled to regex at load time (no re-compilation per match)
 - Scripts are grouped (chunks, vendor bundles) to reduce noise and LLM calls
 - Unknown scripts are analyzed individually with bounded concurrency (semaphore, max 10 at a time)
-- Script analysis results are cached per domain by URL + MD5 content hash; warm runs skip LLM calls entirely for unchanged scripts
+- Script analysis results are cached per **script domain** (not per site) by base URL (query strings stripped) + MD5 content hash; a script analysed on one site is an immediate cache hit on any other site that loads it. Within a single scan, scripts sharing the same base URL are deduplicated (fetched and analysed once)
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
 - Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
