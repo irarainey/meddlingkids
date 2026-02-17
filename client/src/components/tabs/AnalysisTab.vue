@@ -199,7 +199,7 @@ function platformUrl(name: string): string {
       </section>
 
       <!-- ── Section 2: Social Media Implications ────────────── -->
-      <section v-if="structuredReport.socialMediaImplications.platformsDetected.length" class="report-section">
+      <section v-if="structuredReport.socialMediaImplications.platformsDetected.length > 0" class="report-section">
         <h2>
           <span class="section-icon">📱</span>
           Social Media Implications
@@ -235,7 +235,7 @@ function platformUrl(name: string): string {
       </section>
 
       <!-- ── Section 3: Tracking Technologies ───────────────── -->
-      <section class="report-section">
+      <section v-if="allTrackers(structuredReport).length > 0" class="report-section">
         <h2>
           <span class="section-icon">📡</span>
           Tracking Technologies
@@ -249,8 +249,8 @@ function platformUrl(name: string): string {
         <TrackerCategorySection title="🔧 Other Technologies" :trackers="structuredReport.trackingTechnologies.other" />
       </section>
 
-      <!-- ── Section 3: Data Collection ──────────────────────── -->
-      <section v-if="structuredReport.dataCollection.items.length" class="report-section">
+      <!-- ── Section 4: Data Collection ──────────────────────── -->
+      <section v-if="structuredReport.dataCollection.items.length > 0" class="report-section">
         <h2>
           <span class="section-icon">📥</span>
           Data Collection
@@ -279,8 +279,8 @@ function platformUrl(name: string): string {
         </div>
       </section>
 
-      <!-- ── Section 4: Third-Party Services ─────────────────── -->
-      <section v-if="structuredReport.thirdPartyServices.groups.length" class="report-section">
+      <!-- ── Section 5: Third-Party Services ─────────────────── -->
+      <section v-if="structuredReport.thirdPartyServices.groups.length > 0" class="report-section">
         <h2>
           <span class="section-icon">🌐</span>
           Third-Party Services
@@ -305,8 +305,8 @@ function platformUrl(name: string): string {
         </div>
       </section>
 
-      <!-- ── Section 5: Cookie Analysis ──────────────────────── -->
-      <section v-if="structuredReport.cookieAnalysis.groups.length" class="report-section">
+      <!-- ── Section 6: Cookie Analysis ──────────────────────── -->
+      <section v-if="structuredReport.cookieAnalysis.groups.length > 0" class="report-section">
         <h2>
           <span class="section-icon">🍪</span>
           Cookie Analysis
@@ -336,7 +336,7 @@ function platformUrl(name: string): string {
         </div>
       </section>
 
-      <!-- ── Section 6: Storage Analysis ─────────────────────── -->
+      <!-- ── Section 7: Storage Analysis ─────────────────────── -->
       <section
         v-if="structuredReport.storageAnalysis.localStorageCount > 0
           || structuredReport.storageAnalysis.sessionStorageCount > 0"
@@ -359,13 +359,13 @@ function platformUrl(name: string): string {
         <p v-if="structuredReport.storageAnalysis.summary" class="section-summary">
           {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
         </p>
-        <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length" class="storage-concerns">
+        <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="storage-concerns">
           <h3>localStorage Concerns</h3>
           <ul>
             <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
           </ul>
         </div>
-        <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length" class="storage-concerns">
+        <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-concerns">
           <h3>sessionStorage Concerns</h3>
           <ul>
             <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
@@ -373,7 +373,7 @@ function platformUrl(name: string): string {
         </div>
       </section>
 
-      <!-- ── Section 7: Consent Analysis ─────────────────────── -->
+      <!-- ── Section 8: Consent Analysis ─────────────────────── -->
       <section v-if="structuredReport.consentAnalysis.hasConsentDialog" class="report-section">
         <h2>
           <span class="section-icon">🎯</span>
@@ -422,7 +422,7 @@ function platformUrl(name: string): string {
       </section>
 
       <!-- ── Section 9: Top Vendors ──────────────────────────── -->
-      <section v-if="structuredReport.keyVendors.vendors.length" class="report-section">
+      <section v-if="structuredReport.keyVendors.vendors.length > 0" class="report-section">
         <h2>
           <span class="section-icon">🏢</span>
           Top Vendors and Partners
@@ -447,7 +447,7 @@ function platformUrl(name: string): string {
       </section>
 
       <!-- ── Section 10: Recommendations ──────────────────────── -->
-      <section v-if="structuredReport.recommendations.groups.length" class="report-section recommendations-section">
+      <section v-if="structuredReport.recommendations.groups.length > 0" class="report-section recommendations-section">
         <h2>
           <span class="section-icon">✅</span>
           Recommendations

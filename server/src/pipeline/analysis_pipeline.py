@@ -20,7 +20,7 @@ from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
 from src.models import report as report_models
 from src.pipeline import sse_helpers
-from src.utils import logger
+from src.utils import logger, usage_tracking
 from src.utils import url as url_mod
 
 log = logger.create_logger("Analysis")
@@ -498,6 +498,24 @@ def _render_recommendations(
     return lines
 
 
+def _render_llm_usage() -> list[str]:
+    """Render the LLM usage summary section."""
+    summary = usage_tracking.get_summary()
+    if summary.total_calls == 0:
+        return []
+    lines = [
+        _SECTION_DIVIDER,
+        "LLM USAGE",
+        _SECTION_DIVIDER,
+        f"  Total LLM calls: {summary.total_calls}",
+        f"  Input tokens:    {summary.total_input_tokens:,}",
+        f"  Output tokens:   {summary.total_output_tokens:,}",
+        f"  Total tokens:    {summary.total_tokens:,}",
+        "",
+    ]
+    return lines
+
+
 def _render_report_text(
     url: str,
     score: int,
@@ -526,6 +544,7 @@ def _render_report_text(
     lines += _render_consent_analysis(report, consent_details)
     lines += _render_key_vendors(report)
     lines += _render_recommendations(report)
+    lines += _render_llm_usage()
     lines.append("=" * 72)
     return "\n".join(lines)
 

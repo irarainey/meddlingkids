@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextvars
 import dataclasses
+from typing import NamedTuple
 
 from src.utils import logger
 
@@ -87,6 +88,30 @@ def record(
             "runningCalls": usage.total_calls,
             "runningTokens": usage.total_tokens,
         },
+    )
+
+
+class UsageSummary(NamedTuple):
+    """Immutable snapshot of LLM usage for the current session."""
+
+    total_calls: int
+    total_input_tokens: int
+    total_output_tokens: int
+    total_tokens: int
+
+
+def get_summary() -> UsageSummary:
+    """Return a snapshot of the current session's LLM usage.
+
+    Returns:
+        UsageSummary with call count and token totals.
+    """
+    usage = _get_usage()
+    return UsageSummary(
+        total_calls=usage.total_calls,
+        total_input_tokens=usage.total_input_tokens,
+        total_output_tokens=usage.total_output_tokens,
+        total_tokens=usage.total_tokens,
     )
 
 

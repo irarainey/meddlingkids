@@ -52,3 +52,26 @@ class TestUsageTracking:
         usage_tracking.record("Agent1", input_tokens=100, output_tokens=50)
         # Should not raise
         usage_tracking.log_summary()
+
+    def test_get_summary_empty(self) -> None:
+        summary = usage_tracking.get_summary()
+        assert summary.total_calls == 0
+        assert summary.total_input_tokens == 0
+        assert summary.total_output_tokens == 0
+        assert summary.total_tokens == 0
+
+    def test_get_summary_with_usage(self) -> None:
+        usage_tracking.record("Agent1", input_tokens=100, output_tokens=50)
+        usage_tracking.record("Agent2", input_tokens=200, output_tokens=100, total_tokens=350)
+        summary = usage_tracking.get_summary()
+        assert summary.total_calls == 2
+        assert summary.total_input_tokens == 300
+        assert summary.total_output_tokens == 150
+        assert summary.total_tokens == 500
+
+    def test_get_summary_is_snapshot(self) -> None:
+        usage_tracking.record("Agent1", input_tokens=50, output_tokens=25)
+        summary = usage_tracking.get_summary()
+        usage_tracking.record("Agent2", input_tokens=100, output_tokens=50)
+        assert summary.total_calls == 1
+        assert summary.total_tokens == 75
