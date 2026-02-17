@@ -64,6 +64,8 @@ const {
 const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
 
+const appVersion = __APP_VERSION__
+
 /** Show the Debug Log tab only when ?debug=true is in the URL. */
 const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
 
@@ -248,6 +250,10 @@ function onUrlMouseUp(event: Event): void {
           :log-lines="debugLog"
         />
     </div>
+
+    <footer class="app-footer">
+      This is an experimental application. Results are AI-generated and may be inaccurate or incomplete, and should not be relied upon as definitive assessments. Version {{ appVersion }}
+    </footer>
   </div>
 </template>
 
@@ -391,6 +397,20 @@ function onUrlMouseUp(event: Event): void {
   font-weight: 600;
   color: #e0e7ff;
   border-bottom: 1px solid #1e2235;
+}
+
+.app-footer {
+  position: fixed;
+  bottom: 0.5rem;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #4b5563;
+  font-size: 0.7rem;
+  padding: 0.25rem 1rem;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1.4;
 }
 
 @media (max-width: 900px) {

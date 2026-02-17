@@ -25,6 +25,8 @@ export default tseslint.config(
         parser: tseslint.parser,
       },
       globals: {
+        // Build-time constants injected by Vite
+        __APP_VERSION__: 'readonly',
         // Browser globals for Vue components
         Event: 'readonly',
         EventSource: 'readonly',
