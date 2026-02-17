@@ -14,6 +14,7 @@ import pydantic
 
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
+from src.utils import serialization
 
 # ====================================================================
 # camelCase Serialization
@@ -22,9 +23,8 @@ from src.models import analysis, consent, tracking_data
 
 def to_camel_case_dict(obj: pydantic.BaseModel) -> dict[str, Any]:
     """Convert a Pydantic model instance to a dict with camelCase keys."""
-    from src.utils.serialization import snake_to_camel
 
-    return {snake_to_camel(k): v for k, v in obj.model_dump().items()}
+    return {serialization.snake_to_camel(k): v for k, v in obj.model_dump().items()}
 
 
 def serialize_consent_details(
