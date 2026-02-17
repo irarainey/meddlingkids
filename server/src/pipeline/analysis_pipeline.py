@@ -46,11 +46,12 @@ async def run_ai_analysis(
     become available, then yields scoring, summary, and the
     final ``complete`` event.
     """
-    # Capture the latest cookies from the browser context.
-    # Earlier phases capture cookies at specific checkpoints
+    # Capture the latest cookies and storage from the browser
+    # context.  Earlier phases capture at specific checkpoints
     # (initial load, after overlay click) but deferred scripts
     # and post-consent tracking may have added more since then.
     await session.capture_current_cookies()
+    storage = await session.capture_storage()
 
     # Snapshot the live tracking lists so that scripts
     # arriving during analysis (ad networks, deferred
@@ -66,6 +67,8 @@ async def run_ai_analysis(
             "cookies": len(final_cookies),
             "scripts": len(final_scripts),
             "requests": len(final_requests),
+            "localStorage": len(storage["local_storage"]),
+            "sessionStorage": len(storage["session_storage"]),
         },
     )
     yield sse_helpers.format_progress_event(
