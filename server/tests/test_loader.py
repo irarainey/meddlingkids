@@ -267,3 +267,37 @@ class TestBuildMediaGroupContext:
     def test_includes_cross_reference_instruction(self) -> None:
         ctx = loader.build_media_group_context("https://www.bbc.co.uk/news")
         assert "cross-reference" in ctx.lower()
+
+
+class TestBuildTrackingCookieContext:
+    """Tests for the known tracking cookie reference context builder."""
+
+    def test_returns_non_empty_string(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert isinstance(ctx, str)
+        assert len(ctx) > 0
+
+    def test_contains_heading(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert "## Known Tracking Cookie Reference" in ctx
+
+    def test_contains_platform_sections(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert "### Google Analytics" in ctx
+        assert "### Facebook" in ctx or "### Meta" in ctx
+
+    def test_contains_known_cookies(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert "_ga" in ctx
+        assert "_fbp" in ctx
+        assert "_hjid" in ctx
+
+    def test_contains_purpose_labels(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert "analytics" in ctx
+        assert "advertising" in ctx
+
+    def test_contains_risk_level_section(self) -> None:
+        ctx = loader.build_tracking_cookie_context()
+        assert "### Cookie Purpose Risk Levels" in ctx
+        assert "analytics:" in ctx or "advertising:" in ctx

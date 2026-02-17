@@ -26,6 +26,17 @@ export interface TrackedCookie {
 }
 
 /**
+ * AI-generated explanation of what a cookie does.
+ */
+export interface CookieInfo {
+  description: string
+  setBy: string
+  purpose: string
+  riskLevel: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  privacyNote: string
+}
+
+/**
  * A JavaScript script loaded by the page.
  */
 export interface TrackedScript {

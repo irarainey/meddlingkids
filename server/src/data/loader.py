@@ -83,6 +83,113 @@ def get_benign_scripts() -> list[partners.ScriptPattern]:
     return _load_script_patterns("benign-scripts.json")
 
 
+@functools.cache
+def get_tracking_cookies() -> dict[str, Any]:
+    """Get known tracking cookie definitions (loaded once and cached).
+
+    Returns the full JSON structure containing cookie entries,
+    risk levels, and privacy notes.
+    """
+    result: dict[str, Any] = _load_json("trackers/tracking-cookies.json")
+    return result
+
+
+def get_tracking_cookie_patterns() -> list[tuple[re.Pattern[str], str, str, str]]:
+    """Build compiled regex patterns from the tracking cookies data.
+
+    Returns a list of tuples: ``(pattern, description, set_by, purpose)``.
+    The result is not cached because ``get_tracking_cookies`` is already
+    cached, and compiling twenty patterns is cheap.
+    """
+    data = get_tracking_cookies()
+    entries: dict[str, dict[str, str]] = data.get("cookies", {})
+    return [
+        (
+            re.compile(entry["pattern"], re.I),
+            entry["description"],
+            entry["setBy"],
+            entry["purpose"],
+        )
+        for key, entry in entries.items()
+        if isinstance(entry, dict)
+    ]
+
+
+def get_tracking_cookie_risk_map() -> dict[str, str]:
+    """Return purpose → risk-level mapping from the tracking cookies data."""
+    data = get_tracking_cookies()
+    result: dict[str, str] = data.get("risk_levels", {})
+    return result
+
+
+def get_tracking_cookie_privacy_map() -> dict[str, str]:
+    """Return purpose → privacy-note mapping from the tracking cookies data."""
+    data = get_tracking_cookies()
+    result: dict[str, str] = data.get("privacy_notes", {})
+    return result
+
+
+def build_tracking_cookie_context() -> str:
+    """Build an LLM-friendly reference section from the known tracking cookies database.
+
+    Groups cookies by ``setBy`` (platform) and lists each cookie's
+    name, purpose, and description so the LLM can classify observed
+    cookies accurately without relying solely on training data.
+
+    Returns:
+        Formatted reference section string, or empty string if
+        the database is empty.
+    """
+    data = get_tracking_cookies()
+    entries: dict[str, Any] = data.get("cookies", {})
+
+    # Group cookie entries by platform (setBy).
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for key, entry in entries.items():
+        if not isinstance(entry, dict):
+            continue
+        platform = entry.get("setBy", "Unknown")
+        grouped.setdefault(platform, []).append(
+            {
+                "name": key,
+                "pattern": entry.get("pattern", ""),
+                "purpose": entry.get("purpose", ""),
+                "description": entry.get("description", ""),
+            }
+        )
+
+    if not grouped:
+        return ""
+
+    lines = [
+        "",
+        "## Known Tracking Cookie Reference",
+        "The following is a database of known tracking cookies. "
+        "Use this to accurately classify cookies observed on the page. "
+        "When a cookie matches an entry below, use the stated purpose "
+        "and platform rather than guessing. Cookies not listed here "
+        "should be classified based on your expert knowledge.",
+        "",
+    ]
+
+    for platform, cookies in sorted(grouped.items()):
+        lines.append(f"### {platform}")
+        for cookie in cookies:
+            desc = f" — {cookie['description']}" if cookie["description"] else ""
+            lines.append(f"- {cookie['name']} ({cookie['purpose']}){desc}")
+        lines.append("")
+
+    # Include risk-level mapping.
+    risk_map = data.get("risk_levels", {})
+    if risk_map:
+        lines.append("### Cookie Purpose Risk Levels")
+        for purpose, level in risk_map.items():
+            lines.append(f"- {purpose}: {level}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 # ============================================================================
 # Partner Data Loading
 # ============================================================================

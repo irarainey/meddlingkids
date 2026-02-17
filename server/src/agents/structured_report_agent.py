@@ -741,6 +741,11 @@ def _build_data_context(
     # Append GDPR/TCF reference data for informed analysis.
     sections.append(_build_gdpr_context())
 
+    # Append known tracking cookie reference data.
+    cookie_ctx = loader.build_tracking_cookie_context()
+    if cookie_ctx:
+        sections.append(cookie_ctx)
+
     # Append media group context when the domain is recognised.
     media_ctx = loader.build_media_group_context(tracking_summary.analyzed_url)
     if media_ctx:

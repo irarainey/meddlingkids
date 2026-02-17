@@ -252,7 +252,7 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      This is an experimental application. Results are AI-generated and may be inaccurate or incomplete, and should not be relied upon as definitive assessments. Version {{ appVersion }}
+      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version {{ appVersion }}
     </footer>
   </div>
 </template>

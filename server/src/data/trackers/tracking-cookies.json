@@ -1,0 +1,749 @@
+{
+  "_description": "Known tracking cookie definitions with descriptions, set-by information, purpose categories, risk levels, and privacy notes. Used by the cookie information lookup service to identify well-known cookies without requiring an LLM call. Sources include the Open Cookie Database (jkwakman/Open-Cookie-Database), vendor documentation, and Cookiepedia.",
+  "cookies": {
+
+    "_comment_google_analytics": "--- Google Analytics ---",
+
+    "_ga": {
+      "pattern": "^_ga$",
+      "description": "Google Analytics client ID — tracks unique visitors across sessions.",
+      "setBy": "Google Analytics",
+      "purpose": "analytics"
+    },
+    "_ga_": {
+      "pattern": "^_ga_",
+      "description": "Google Analytics 4 session cookie — maintains session state for the GA4 measurement ID.",
+      "setBy": "Google Analytics (GA4)",
+      "purpose": "analytics"
+    },
+    "_gid": {
+      "pattern": "^_gid$",
+      "description": "Google Analytics session ID — distinguishes users within a 24-hour window.",
+      "setBy": "Google Analytics",
+      "purpose": "analytics"
+    },
+    "_gat": {
+      "pattern": "^_gat",
+      "description": "Google Analytics throttling cookie — limits request rate.",
+      "setBy": "Google Analytics",
+      "purpose": "analytics"
+    },
+    "__utm": {
+      "pattern": "^__utm",
+      "description": "Google Analytics legacy tracking cookie — records traffic source and campaign data.",
+      "setBy": "Google Analytics (Legacy)",
+      "purpose": "analytics"
+    },
+    "_gac_": {
+      "pattern": "^_gac_",
+      "description": "Google Ads conversion cookie — stores campaign information for linking ad clicks to website activity.",
+      "setBy": "Google Ads",
+      "purpose": "advertising"
+    },
+
+    "_comment_google_ads": "--- Google Ads / DoubleClick ---",
+
+    "_gcl": {
+      "pattern": "^_gcl",
+      "description": "Google Ads conversion linker — connects ad clicks to website actions.",
+      "setBy": "Google Ads",
+      "purpose": "advertising"
+    },
+    "IDE": {
+      "pattern": "^IDE$",
+      "description": "DoubleClick ad-serving cookie — tracks conversions and retargets ads across sites.",
+      "setBy": "Google (DoubleClick)",
+      "purpose": "advertising"
+    },
+    "DSID": {
+      "pattern": "^DSID$",
+      "description": "DoubleClick session ad cookie — links signed-in Google users to ad interactions.",
+      "setBy": "Google (DoubleClick)",
+      "purpose": "advertising"
+    },
+    "FLC": {
+      "pattern": "^FLC$",
+      "description": "DoubleClick Floodlight cookie — tracks conversions from display and video ads.",
+      "setBy": "Google (DoubleClick)",
+      "purpose": "advertising"
+    },
+    "NID": {
+      "pattern": "^NID$",
+      "description": "Google preferences/advertising cookie — stores settings and ad personalisation data.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "ANID": {
+      "pattern": "^ANID$",
+      "description": "Google advertising ID — remembers ad preference settings and delivers personalised ads.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "1P_JAR": {
+      "pattern": "^1P_JAR$",
+      "description": "Google advertising cookie — gathers website statistics and tracks conversion rates.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "DV": {
+      "pattern": "^DV$",
+      "description": "Google advertising cookie — collects website statistics and tracks ad personalisation.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "__gads": {
+      "pattern": "^__gads$",
+      "description": "DoubleClick for Publishers — monitors ad impressions and measures ad revenue.",
+      "setBy": "Google (DoubleClick)",
+      "purpose": "advertising"
+    },
+    "test_cookie": {
+      "pattern": "^test_cookie$",
+      "description": "DoubleClick test cookie — checks whether the browser supports third-party cookies for ad delivery.",
+      "setBy": "Google (DoubleClick)",
+      "purpose": "advertising"
+    },
+    "GoogleAdServingTest": {
+      "pattern": "^GoogleAdServingTest$",
+      "description": "Google ad test cookie — registers which ads have been displayed to the user.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "SID": {
+      "pattern": "^SID$",
+      "description": "Google session ID — used for security, ad targeting, and fraud prevention across Google services.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "HSID": {
+      "pattern": "^HSID$",
+      "description": "Google HTTP session ID — used for security and advertising across Google services.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "SSID": {
+      "pattern": "^SSID$",
+      "description": "Google secure session ID — collects visitor information for ads and security.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "APISID": {
+      "pattern": "^APISID$",
+      "description": "Google API session ID — used to personalise Google ads on non-Google sites.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+    "SAPISID": {
+      "pattern": "^SAPISID$",
+      "description": "Google secure API session ID — enables ad personalisation on partner websites.",
+      "setBy": "Google",
+      "purpose": "advertising"
+    },
+
+    "_comment_facebook": "--- Facebook / Meta ---",
+
+    "_fbp": {
+      "pattern": "^_fbp$",
+      "description": "Facebook Pixel browser ID — tracks visits for ad targeting across the web.",
+      "setBy": "Facebook (Meta)",
+      "purpose": "advertising"
+    },
+    "_fbc": {
+      "pattern": "^_fbc$",
+      "description": "Facebook click identifier — links ad clicks to on-site conversions.",
+      "setBy": "Facebook (Meta)",
+      "purpose": "advertising"
+    },
+    "fr": {
+      "pattern": "^fr$",
+      "description": "Facebook primary advertising cookie — enables ad delivery, measurement, and cross-site tracking.",
+      "setBy": "Facebook (Meta)",
+      "purpose": "advertising"
+    },
+    "datr": {
+      "pattern": "^datr$",
+      "description": "Facebook browser identification cookie — identifies the browser for security, integrity, and advertising.",
+      "setBy": "Facebook (Meta)",
+      "purpose": "advertising"
+    },
+    "usida": {
+      "pattern": "^usida$",
+      "description": "Facebook user identification for advertising — collects browser and unique identifier data for ad targeting.",
+      "setBy": "Facebook (Meta)",
+      "purpose": "advertising"
+    },
+
+    "_comment_microsoft": "--- Microsoft / Bing ---",
+
+    "_uet": {
+      "pattern": "^_uet",
+      "description": "Microsoft Bing UET tag — tracks conversions from Bing Ads.",
+      "setBy": "Microsoft Advertising",
+      "purpose": "advertising"
+    },
+    "MUID": {
+      "pattern": "^MUID$",
+      "description": "Microsoft unique ID — identifies unique browsers visiting Microsoft sites for advertising and analytics.",
+      "setBy": "Microsoft",
+      "purpose": "advertising"
+    },
+    "MUIDB": {
+      "pattern": "^MUIDB$",
+      "description": "Microsoft unique ID backup — secondary browser identifier for advertising and analytics.",
+      "setBy": "Microsoft",
+      "purpose": "advertising"
+    },
+    "MR": {
+      "pattern": "^MR$",
+      "description": "Microsoft analytics cookie — collects information for analytics and advertising purposes.",
+      "setBy": "Microsoft",
+      "purpose": "advertising"
+    },
+    "SRM_B": {
+      "pattern": "^SRM_B$",
+      "description": "Microsoft tracking cookie — collects data on user behaviour across sites for ad targeting.",
+      "setBy": "Microsoft",
+      "purpose": "advertising"
+    },
+    "MSPTC": {
+      "pattern": "^MSPTC$",
+      "description": "Microsoft click tracking cookie — registers data on visitors to optimise ad relevance.",
+      "setBy": "Microsoft",
+      "purpose": "advertising"
+    },
+    "_clck": {
+      "pattern": "^_clck$",
+      "description": "Microsoft Clarity user ID — persists visitor identity for behaviour recording.",
+      "setBy": "Microsoft Clarity",
+      "purpose": "fingerprinting"
+    },
+    "_clsk": {
+      "pattern": "^_clsk$",
+      "description": "Microsoft Clarity session cookie — groups interactions into session replays.",
+      "setBy": "Microsoft Clarity",
+      "purpose": "fingerprinting"
+    },
+    "CLID": {
+      "pattern": "^CLID$",
+      "description": "Microsoft Clarity persistent ID — identifies returning users for session replay analytics.",
+      "setBy": "Microsoft Clarity",
+      "purpose": "fingerprinting"
+    },
+
+    "_comment_hotjar": "--- Hotjar ---",
+
+    "_hjid": {
+      "pattern": "^_hjid$",
+      "description": "Hotjar user ID — identifies returning visitors for session replay and heatmaps.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjSession": {
+      "pattern": "^_hjSession",
+      "description": "Hotjar session cookie — groups page views into a single session recording.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjAbsoluteSessionInProgress": {
+      "pattern": "^_hjAbsoluteSessionInProgress$",
+      "description": "Hotjar session tracking — detects the beginning of a user's journey for total session count.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjFirstSeen": {
+      "pattern": "^_hjFirstSeen$",
+      "description": "Hotjar first visit cookie — identifies the start of a new user session.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjIncludedInSessionSample": {
+      "pattern": "^_hjIncludedIn",
+      "description": "Hotjar sampling cookie — determines if the visitor is included in data sampling for session recording.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjHasCachedUserAttributes": {
+      "pattern": "^_hjHasCachedUserAttributes$",
+      "description": "Hotjar attribute cache — tracks whether cached user attributes are current.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+    "_hjDonePolls": {
+      "pattern": "^_hjDonePolls$",
+      "description": "Hotjar poll completion cookie — prevents re-showing of completed feedback polls.",
+      "setBy": "Hotjar",
+      "purpose": "fingerprinting"
+    },
+
+    "_comment_twitter": "--- X (Twitter) ---",
+
+    "personalization_id": {
+      "pattern": "^personalization_id$",
+      "description": "Twitter/X personalisation cookie — enables targeted ads based on browsing activity.",
+      "setBy": "X (Twitter)",
+      "purpose": "advertising"
+    },
+    "guest_id": {
+      "pattern": "^guest_id$",
+      "description": "Twitter/X guest identifier — tracks unauthenticated users across sites with Twitter widgets.",
+      "setBy": "X (Twitter)",
+      "purpose": "social-media"
+    },
+    "guest_id_marketing": {
+      "pattern": "^guest_id_marketing$",
+      "description": "Twitter/X marketing cookie — enables advertising tracking when the user is logged out.",
+      "setBy": "X (Twitter)",
+      "purpose": "advertising"
+    },
+    "guest_id_ads": {
+      "pattern": "^guest_id_ads$",
+      "description": "Twitter/X advertising cookie — enables ad targeting based on cross-site browsing behaviour.",
+      "setBy": "X (Twitter)",
+      "purpose": "advertising"
+    },
+    "muc_ads": {
+      "pattern": "^muc_ads$",
+      "description": "Twitter/X ad cookie — collects advertising data across partner sites.",
+      "setBy": "X (Twitter)",
+      "purpose": "advertising"
+    },
+
+    "_comment_linkedin": "--- LinkedIn ---",
+
+    "lidc": {
+      "pattern": "^lidc$",
+      "description": "LinkedIn data centre routing cookie — also used for analytics.",
+      "setBy": "LinkedIn",
+      "purpose": "social-media"
+    },
+    "bcookie": {
+      "pattern": "^bcookie$",
+      "description": "LinkedIn browser identifier — tracks unique browsers for security and analytics.",
+      "setBy": "LinkedIn",
+      "purpose": "social-media"
+    },
+    "bscookie": {
+      "pattern": "^bscookie$",
+      "description": "LinkedIn secure browser cookie — browser identifier used with the secure flag for tracking.",
+      "setBy": "LinkedIn",
+      "purpose": "social-media"
+    },
+    "UserMatchHistory": {
+      "pattern": "^UserMatchHistory$",
+      "description": "LinkedIn Ads audience matching — syncs ad targeting data to identify users for campaign delivery.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+    "AnalyticsSyncHistory": {
+      "pattern": "^AnalyticsSyncHistory$",
+      "description": "LinkedIn analytics sync — stores data about the time a sync took place for analytics purposes.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+    "li_sugr": {
+      "pattern": "^li_sugr$",
+      "description": "LinkedIn browser ID for non-members — identifies browsers without a LinkedIn account for ad targeting.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+    "li_oatml": {
+      "pattern": "^li_oatml$",
+      "description": "LinkedIn member data — collects information about how visitors use the site for advertising.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+
+    "_comment_adobe": "--- Adobe ---",
+
+    "s_vi": {
+      "pattern": "^s_vi$",
+      "description": "Adobe Analytics unique visitor ID — identifies unique visitors across sessions.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_fid": {
+      "pattern": "^s_fid$",
+      "description": "Adobe Analytics fallback visitor ID — used when standard visitor ID methods fail.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_cc": {
+      "pattern": "^s_cc$",
+      "description": "Adobe Analytics cookie check — determines whether cookies are enabled in the browser.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_sq": {
+      "pattern": "^s_sq$",
+      "description": "Adobe Analytics click tracking — records the previous link clicked by the visitor.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_ppv": {
+      "pattern": "^s_ppv$",
+      "description": "Adobe Analytics page view — stores information on the percentage of the page displayed.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_ecid": {
+      "pattern": "^s_ecid$",
+      "description": "Adobe Experience Cloud ID — first-party persistent ID tracking for marketing attribution.",
+      "setBy": "Adobe Experience Cloud",
+      "purpose": "advertising"
+    },
+    "AMCV_": {
+      "pattern": "^AMCV_",
+      "description": "Adobe Experience Cloud visitor ID — unique cross-solution visitor identifier for Adobe marketing tools.",
+      "setBy": "Adobe Experience Cloud",
+      "purpose": "advertising"
+    },
+    "aam_uuid": {
+      "pattern": "^aam_uuid$",
+      "description": "Adobe Audience Manager user ID — assigns a unique visitor ID for audience segmentation and ad targeting.",
+      "setBy": "Adobe Audience Manager",
+      "purpose": "advertising"
+    },
+    "demdex": {
+      "pattern": "^demdex$",
+      "description": "Adobe Audience Manager domain cookie — identifies unique visitors across Adobe DMP-enabled sites.",
+      "setBy": "Adobe Audience Manager",
+      "purpose": "advertising"
+    },
+
+    "_comment_tiktok": "--- TikTok ---",
+
+    "_ttp": {
+      "pattern": "^_ttp$",
+      "description": "TikTok tracking pixel — identifies visitors for ad attribution and conversion measurement.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+    "_tt_enable_cookie": {
+      "pattern": "^_tt_enable_cookie$",
+      "description": "TikTok cookie support check — determines whether the browser accepts tracking cookies.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+    "ttwid": {
+      "pattern": "^ttwid$",
+      "description": "TikTok widget ID — tracks usage of embedded TikTok content across partner sites.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+    "msToken": {
+      "pattern": "^msToken$",
+      "description": "TikTok multi-site token — collects user behaviour data across websites for ad optimisation.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+
+    "_comment_hubspot": "--- HubSpot ---",
+
+    "__hstc": {
+      "pattern": "^__hstc$",
+      "description": "HubSpot main tracking cookie — tracks visitors across sessions with a unique ID and session timestamps.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+    "hubspotutk": {
+      "pattern": "^hubspotutk$",
+      "description": "HubSpot visitor ID — keeps track of a visitor's identity and is passed to HubSpot on form submission.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+    "__hssc": {
+      "pattern": "^__hssc$",
+      "description": "HubSpot session cookie — tracks the current session number and page views for analytics.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+    "__hssrc": {
+      "pattern": "^__hssrc$",
+      "description": "HubSpot session reset — determines if the visitor has restarted their browser to begin a new session.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+
+    "_comment_pinterest": "--- Pinterest ---",
+
+    "_pin_unauth": {
+      "pattern": "^_pin_unauth$",
+      "description": "Pinterest ad tracking — registers unauthenticated visitors for ad retargeting and remarketing.",
+      "setBy": "Pinterest",
+      "purpose": "advertising"
+    },
+    "_pinterest_sess": {
+      "pattern": "^_pinterest_sess$",
+      "description": "Pinterest session cookie — collects anonymous visit data for analytics and ad personalisation.",
+      "setBy": "Pinterest",
+      "purpose": "social-media"
+    },
+
+    "_comment_criteo": "--- Criteo ---",
+
+    "cto_bundle": {
+      "pattern": "^cto_bundle$",
+      "description": "Criteo retargeting bundle — stores browsing and product data for personalised ad retargeting.",
+      "setBy": "Criteo",
+      "purpose": "advertising"
+    },
+    "cto_bidid": {
+      "pattern": "^cto_bidid$",
+      "description": "Criteo bid ID — manages real-time bidding data for programmatic advertising.",
+      "setBy": "Criteo",
+      "purpose": "advertising"
+    },
+    "cto_tld_test": {
+      "pattern": "^cto_tld_test$",
+      "description": "Criteo top-level domain test — identifies the broadest domain for setting tracking cookies.",
+      "setBy": "Criteo",
+      "purpose": "advertising"
+    },
+
+    "_comment_matomo": "--- Matomo / Piwik ---",
+
+    "_pk_id": {
+      "pattern": "^_pk_id",
+      "description": "Matomo visitor ID — stores a unique visitor identifier for web analytics across sessions.",
+      "setBy": "Matomo (Piwik)",
+      "purpose": "analytics"
+    },
+    "_pk_ses": {
+      "pattern": "^_pk_ses",
+      "description": "Matomo session cookie — short-lived cookie used to track active visitor sessions.",
+      "setBy": "Matomo (Piwik)",
+      "purpose": "analytics"
+    },
+    "_pk_ref": {
+      "pattern": "^_pk_ref",
+      "description": "Matomo referrer cookie — stores the referral source used to initially visit the website.",
+      "setBy": "Matomo (Piwik)",
+      "purpose": "analytics"
+    },
+
+    "_comment_youtube": "--- YouTube ---",
+
+    "VISITOR_INFO1_LIVE": {
+      "pattern": "^VISITOR_INFO1_LIVE$",
+      "description": "YouTube visitor cookie — estimates user bandwidth and tracks video interactions for marketing.",
+      "setBy": "Google (YouTube)",
+      "purpose": "advertising"
+    },
+    "YSC": {
+      "pattern": "^YSC$",
+      "description": "YouTube session cookie — tracks views of embedded YouTube videos on third-party sites.",
+      "setBy": "Google (YouTube)",
+      "purpose": "analytics"
+    },
+    "GPS": {
+      "pattern": "^GPS$",
+      "description": "YouTube geolocation cookie — registers a unique ID on mobile devices for tracking based on GPS location.",
+      "setBy": "Google (YouTube)",
+      "purpose": "advertising"
+    },
+
+    "_comment_reddit": "--- Reddit ---",
+
+    "_rdt_uuid": {
+      "pattern": "^_rdt_uuid$",
+      "description": "Reddit conversion tracking — identifies visitors for ad remarketing and conversion measurement.",
+      "setBy": "Reddit",
+      "purpose": "advertising"
+    },
+
+    "_comment_snapchat": "--- Snapchat ---",
+
+    "_scid": {
+      "pattern": "^_scid$",
+      "description": "Snapchat Pixel cookie ID — tracks visitors across sites for ad attribution and conversion measurement.",
+      "setBy": "Snapchat",
+      "purpose": "advertising"
+    },
+    "_scid_r": {
+      "pattern": "^_scid_r$",
+      "description": "Snapchat Pixel referrer cookie — supplements the Snap Pixel ID with additional session context.",
+      "setBy": "Snapchat",
+      "purpose": "advertising"
+    },
+
+    "_comment_taboola": "--- Taboola ---",
+
+    "t_gid": {
+      "pattern": "^t_gid$",
+      "description": "Taboola global visitor ID — assigns a unique ID for content recommendation tracking and ad targeting.",
+      "setBy": "Taboola",
+      "purpose": "advertising"
+    },
+    "taboola_fp_td_user_id": {
+      "pattern": "^taboola_fp_td_user_id$",
+      "description": "Taboola first-party user ID — tracks users for personalised content recommendations and advertising.",
+      "setBy": "Taboola",
+      "purpose": "advertising"
+    },
+
+    "_comment_outbrain": "--- Outbrain ---",
+
+    "obuid": {
+      "pattern": "^obuid$",
+      "description": "Outbrain user ID — holds an anonymous user identifier for tracking clicks on content recommendations.",
+      "setBy": "Outbrain",
+      "purpose": "advertising"
+    },
+
+    "_comment_amplitude": "--- Amplitude ---",
+
+    "AMP_": {
+      "pattern": "^AMP_",
+      "description": "Amplitude analytics ID — registers statistical data on user behaviour for product analytics.",
+      "setBy": "Amplitude",
+      "purpose": "analytics"
+    },
+
+    "_comment_segment": "--- Segment ---",
+
+    "ajs_anonymous_id": {
+      "pattern": "^ajs_anonymous_id$",
+      "description": "Segment anonymous visitor ID — assigns a UUID to unauthenticated visitors for analytics across tools.",
+      "setBy": "Segment (Twilio)",
+      "purpose": "analytics"
+    },
+    "ajs_user_id": {
+      "pattern": "^ajs_user_id$",
+      "description": "Segment authenticated user ID — ties analytics events to a known user identity across platforms.",
+      "setBy": "Segment (Twilio)",
+      "purpose": "analytics"
+    },
+
+    "_comment_adform": "--- Adform ---",
+
+    "uid": {
+      "pattern": "^uid$",
+      "description": "Adform unique user ID — contains a unique identifier to track users for ad retargeting.",
+      "setBy": "Adform",
+      "purpose": "advertising"
+    },
+    "C": {
+      "pattern": "^C$",
+      "description": "Adform cookie check — determines whether the user's browser supports cookies for ad serving.",
+      "setBy": "Adform",
+      "purpose": "advertising"
+    },
+
+    "_comment_quantcast": "--- Quantcast ---",
+
+    "cref": {
+      "pattern": "^cref$",
+      "description": "Quantcast content reference — contains data on user navigation for ad optimisation and statistics.",
+      "setBy": "Quantcast",
+      "purpose": "advertising"
+    },
+
+    "_comment_rubicon_magnite": "--- Magnite (Rubicon Project) ---",
+
+    "khaos": {
+      "pattern": "^khaos$",
+      "description": "Magnite (Rubicon Project) campaign tracking — tracks advertising campaigns and collects anonymised user statistics.",
+      "setBy": "Magnite (Rubicon Project)",
+      "purpose": "advertising"
+    },
+    "put_": {
+      "pattern": "^put_",
+      "description": "Magnite user sync cookie — records anonymised user data for ad optimisation across partner networks.",
+      "setBy": "Magnite (Rubicon Project)",
+      "purpose": "advertising"
+    },
+
+    "_comment_pubmatic": "--- PubMatic ---",
+
+    "KRTBCOOKIE_": {
+      "pattern": "^KRTBCOOKIE_",
+      "description": "PubMatic user ID sync — registers an identifier for real-time ad bidding across exchanges.",
+      "setBy": "PubMatic",
+      "purpose": "advertising"
+    },
+    "KADUSERCOOKIE": {
+      "pattern": "^KADUSERCOOKIE$",
+      "description": "PubMatic user cookie — assigns a unique user ID for targeted ad delivery.",
+      "setBy": "PubMatic",
+      "purpose": "advertising"
+    },
+
+    "_comment_crazy_egg": "--- Crazy Egg ---",
+
+    "_ceir": {
+      "pattern": "^_ceir$",
+      "description": "Crazy Egg returning visitor check — tracks whether a visitor has visited the site before.",
+      "setBy": "Crazy Egg",
+      "purpose": "fingerprinting"
+    },
+    "_ce.s": {
+      "pattern": "^_ce\\.s$",
+      "description": "Crazy Egg session recording — tracks the visitor session unique ID, host, and start time.",
+      "setBy": "Crazy Egg",
+      "purpose": "fingerprinting"
+    },
+
+    "_comment_content_square": "--- ContentSquare ---",
+
+    "_cs_id": {
+      "pattern": "^_cs_id$",
+      "description": "ContentSquare user ID — contains user ID, creation timestamp, and visit count for analytics.",
+      "setBy": "ContentSquare",
+      "purpose": "fingerprinting"
+    },
+    "_cs_s": {
+      "pattern": "^_cs_s$",
+      "description": "ContentSquare session cookie — records the number of page views and recording state for the current session.",
+      "setBy": "ContentSquare",
+      "purpose": "fingerprinting"
+    },
+
+    "_comment_yahoo": "--- Yahoo ---",
+
+    "A3": {
+      "pattern": "^A3$",
+      "description": "Yahoo advertising targeting cookie — collects data for ad retargeting and personalisation.",
+      "setBy": "Yahoo",
+      "purpose": "advertising"
+    },
+
+    "_comment_active_campaign": "--- Active Campaign ---",
+
+    "prism_": {
+      "pattern": "^prism_",
+      "description": "ActiveCampaign site tracking — tracks visitor behaviour for marketing automation and email targeting.",
+      "setBy": "ActiveCampaign",
+      "purpose": "advertising"
+    },
+
+    "_comment_klaviyo": "--- Klaviyo ---",
+
+    "__kla_id": {
+      "pattern": "^__kla_id$",
+      "description": "Klaviyo visitor ID — tracks site visitors and can hold personally identifiable information once identified.",
+      "setBy": "Klaviyo",
+      "purpose": "advertising"
+    },
+
+    "_comment_salesforce": "--- Salesforce ---",
+
+    "_mkto_trk": {
+      "pattern": "^_mkto_trk$",
+      "description": "Marketo (Salesforce) tracking cookie — tracks visitor behaviour for lead scoring and marketing automation.",
+      "setBy": "Marketo (Salesforce)",
+      "purpose": "advertising"
+    }
+  },
+  "risk_levels": {
+    "analytics": "medium",
+    "advertising": "high",
+    "fingerprinting": "critical",
+    "social-media": "high"
+  },
+  "privacy_notes": {
+    "analytics": "Collects usage data that can profile browsing behaviour over time.",
+    "advertising": "Enables cross-site tracking and ad targeting based on your browsing history.",
+    "fingerprinting": "Records detailed interaction data including mouse movements, clicks, and scrolling.",
+    "social-media": "Allows social platforms to track your activity on third-party sites."
+  }
+}
