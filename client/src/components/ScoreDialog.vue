@@ -83,10 +83,17 @@ const emit = defineEmits<{
   right: 1rem;
   width: 32px;
   height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  padding: 0;
   border: none;
+  box-sizing: border-box;
   background: #2a2f45;
   color: #9ca3af;
   font-size: 1.25rem;
+  line-height: 1;
   border-radius: 50%;
   cursor: pointer;
   display: flex;

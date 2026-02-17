@@ -87,6 +87,20 @@ function handleViewReport(): void {
   closeScoreDialog()
   tabsRef.value?.scrollIntoView({ behavior: 'smooth' })
 }
+
+/** Select all text in the URL input on focus, preventing mouseup deselection. */
+let selectOnNextMouseUp = false
+function onUrlFocus(event: Event): void {
+  const input = event.target as HTMLInputElement
+  input.select()
+  selectOnNextMouseUp = true
+}
+function onUrlMouseUp(event: Event): void {
+  if (selectOnNextMouseUp) {
+    event.preventDefault()
+    selectOnNextMouseUp = false
+  }
+}
 </script>
 
 <template>
@@ -107,7 +121,8 @@ function handleViewReport(): void {
         placeholder="Enter a suspicious URL to investigate..."
         :disabled="isLoading"
         @keyup.enter="analyzeUrl"
-        @focus="($event.target as HTMLInputElement).select()"
+        @focus="onUrlFocus"
+        @mouseup="onUrlMouseUp"
       />
       <select v-model="deviceType" class="device-select" :disabled="isLoading">
         <option value="iphone">iPhone</option>
