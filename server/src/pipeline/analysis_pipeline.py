@@ -46,6 +46,12 @@ async def run_ai_analysis(
     become available, then yields scoring, summary, and the
     final ``complete`` event.
     """
+    # Capture the latest cookies from the browser context.
+    # Earlier phases capture cookies at specific checkpoints
+    # (initial load, after overlay click) but deferred scripts
+    # and post-consent tracking may have added more since then.
+    await session.capture_current_cookies()
+
     # Snapshot the live tracking lists so that scripts
     # arriving during analysis (ad networks, deferred
     # pixels) don't create inconsistent counts between
@@ -710,6 +716,9 @@ async def _score_and_summarise(
         consent_details,
         script_result,
         overlay_count,
+        final_cookies=final_cookies,
+        final_requests=final_requests,
+        storage=storage,
     )
 
 
@@ -722,6 +731,9 @@ def _build_complete_payload(
     consent_details: consent.ConsentDetails | None,
     script_result: scripts.ScriptAnalysisResult,
     overlay_count: int,
+    final_cookies: list[tracking_data.TrackedCookie] | None = None,
+    final_requests: list[tracking_data.NetworkRequest] | None = None,
+    storage: dict[str, list[tracking_data.StorageItem]] | None = None,
 ) -> str:
     """Build the final SSE ``complete`` event payload.
 
@@ -777,6 +789,10 @@ def _build_complete_payload(
             ),
             "analysisError": (None if analysis_success else "Analysis produced no output"),
             "consentDetails": consent_dict,
+            "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
+            "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
+            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["local_storage"]] if storage else None),
+            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["session_storage"]] if storage else None),
             "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
             "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
             "debugLog": logger.get_log_buffer(),

@@ -106,8 +106,7 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
-  <div>
-    <header class="header">
+  <header class="header">
       <img :src="logo" alt="Meddling Kids" class="logo" />
       <p class="tagline">
         Feed any URL to these meddling kids and watch them unmask sneaky trackers, 
@@ -254,7 +253,6 @@ function onUrlMouseUp(event: Event): void {
     <footer class="app-footer">
       Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version {{ appVersion }}
     </footer>
-  </div>
 </template>
 
 <style scoped>
@@ -400,14 +398,11 @@ function onUrlMouseUp(event: Event): void {
 }
 
 .app-footer {
-  position: fixed;
-  bottom: 0.5rem;
-  left: 0;
-  width: 100%;
+  margin-top: auto;
   text-align: center;
   color: #4b5563;
   font-size: 0.7rem;
-  padding: 0.25rem 1rem;
+  padding: 1.5rem 1rem 0.5rem;
   user-select: none;
   pointer-events: none;
   line-height: 1.4;
