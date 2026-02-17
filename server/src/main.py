@@ -16,8 +16,8 @@ from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
 
-from src.agents import get_cookie_info_agent, observability_setup
-from src.analysis import cookie_lookup
+from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
+from src.analysis import cookie_lookup, storage_lookup
 from src.pipeline import stream
 from src.utils import cache, logger
 
@@ -107,6 +107,29 @@ async def cookie_info_endpoint(
 
     agent = get_cookie_info_agent()
     result = await cookie_lookup.get_cookie_info(name, domain, value, agent)
+
+    return result.model_dump(by_alias=True)
+
+
+@app.post("/api/storage-info")
+async def storage_info_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Look up information about a specific storage key.
+
+    Checks known databases first and falls back to LLM for
+    unrecognised keys.
+    """
+    body = await request.json()
+    key: str = body.get("key", "")
+    storage_type: str = body.get("storageType", "localStorage")
+    value: str = body.get("value", "")
+
+    if not key:
+        raise fastapi.HTTPException(status_code=400, detail="Storage key is required")
+
+    agent = get_storage_info_agent()
+    result = await storage_lookup.get_storage_info(key, storage_type, value, agent)
 
     return result.model_dump(by_alias=True)
 

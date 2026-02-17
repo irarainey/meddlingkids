@@ -191,6 +191,55 @@ def build_tracking_cookie_context() -> str:
 
 
 # ============================================================================
+# Tracking Storage Key Loading
+# ============================================================================
+
+
+@functools.cache
+def get_tracking_storage_keys() -> dict[str, Any]:
+    """Get known tracking storage key definitions (loaded once and cached).
+
+    Returns the full JSON structure containing storage key entries,
+    risk levels, and privacy notes.
+    """
+    result: dict[str, Any] = _load_json("trackers/tracking-storage.json")
+    return result
+
+
+def get_tracking_storage_patterns() -> list[tuple[re.Pattern[str], str, str, str]]:
+    """Build compiled regex patterns from the tracking storage keys data.
+
+    Returns a list of tuples: ``(pattern, description, set_by, purpose)``.
+    """
+    data = get_tracking_storage_keys()
+    entries: dict[str, dict[str, str]] = data.get("keys", {})
+    return [
+        (
+            re.compile(entry["pattern"], re.I),
+            entry["description"],
+            entry["setBy"],
+            entry["purpose"],
+        )
+        for key, entry in entries.items()
+        if isinstance(entry, dict)
+    ]
+
+
+def get_tracking_storage_risk_map() -> dict[str, str]:
+    """Return purpose → risk-level mapping from the tracking storage data."""
+    data = get_tracking_storage_keys()
+    result: dict[str, str] = data.get("risk_levels", {})
+    return result
+
+
+def get_tracking_storage_privacy_map() -> dict[str, str]:
+    """Return purpose → privacy-note mapping from the tracking storage data."""
+    data = get_tracking_storage_keys()
+    result: dict[str, str] = data.get("privacy_notes", {})
+    return result
+
+
+# ============================================================================
 # Partner Data Loading
 # ============================================================================
 

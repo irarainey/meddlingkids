@@ -37,6 +37,17 @@ export interface CookieInfo {
 }
 
 /**
+ * AI-generated explanation of what a storage key does.
+ */
+export interface StorageInfo {
+  description: string
+  setBy: string
+  purpose: string
+  riskLevel: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  privacyNote: string
+}
+
+/**
  * A JavaScript script loaded by the page.
  */
 export interface TrackedScript {

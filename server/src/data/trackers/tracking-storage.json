@@ -1,0 +1,574 @@
+{
+  "_description": "Known tracking storage key definitions with descriptions, set-by information, purpose categories, risk levels, and privacy notes. Used by the storage information lookup service to identify well-known localStorage and sessionStorage keys without requiring an LLM call. Sources include vendor documentation and reverse-engineering of common analytics/advertising SDKs.",
+  "keys": {
+
+    "_comment_google_analytics": "--- Google Analytics ---",
+
+    "_ga": {
+      "pattern": "^_ga$",
+      "description": "Google Analytics client ID stored in localStorage — mirrors the _ga cookie for cross-storage tracking.",
+      "setBy": "Google Analytics",
+      "purpose": "analytics"
+    },
+    "_ga_": {
+      "pattern": "^_ga_",
+      "description": "Google Analytics 4 measurement data stored in localStorage.",
+      "setBy": "Google Analytics (GA4)",
+      "purpose": "analytics"
+    },
+    "gaClientId": {
+      "pattern": "ga[Cc]lient[Ii]d",
+      "description": "Cached Google Analytics client identifier.",
+      "setBy": "Google Analytics",
+      "purpose": "analytics"
+    },
+    "_gac_": {
+      "pattern": "^_gac_",
+      "description": "Google Ads conversion cookie data mirrored to localStorage.",
+      "setBy": "Google Ads",
+      "purpose": "advertising"
+    },
+
+    "_comment_amplitude": "--- Amplitude ---",
+
+    "amplitude_id": {
+      "pattern": "amplitude_id",
+      "description": "Amplitude analytics device identifier — persists a unique device ID for behavioural analytics.",
+      "setBy": "Amplitude",
+      "purpose": "analytics"
+    },
+    "amp_": {
+      "pattern": "^amp_",
+      "description": "Amplitude analytics storage — session data, user properties, or event metadata.",
+      "setBy": "Amplitude",
+      "purpose": "analytics"
+    },
+    "AMP_TOKEN": {
+      "pattern": "^AMP_TOKEN$",
+      "description": "AMP (Accelerated Mobile Pages) linker token — used for cross-domain identity linking.",
+      "setBy": "Google AMP",
+      "purpose": "identity-resolution"
+    },
+    "AMP_MKTG_": {
+      "pattern": "^AMP_MKTG_",
+      "description": "AMP marketing attribution token — captures campaign source data.",
+      "setBy": "Google AMP",
+      "purpose": "advertising"
+    },
+
+    "_comment_segment": "--- Segment ---",
+
+    "ajs_anonymous_id": {
+      "pattern": "ajs_anonymous_id",
+      "description": "Segment anonymous visitor ID — assigns a unique identifier before login.",
+      "setBy": "Segment",
+      "purpose": "analytics"
+    },
+    "ajs_user_id": {
+      "pattern": "ajs_user_id",
+      "description": "Segment known user ID — stores the identified user's ID after authentication.",
+      "setBy": "Segment",
+      "purpose": "analytics"
+    },
+    "ajs_group_id": {
+      "pattern": "ajs_group_id",
+      "description": "Segment group (company/account) ID for B2B analytics.",
+      "setBy": "Segment",
+      "purpose": "analytics"
+    },
+    "ajs_user_traits": {
+      "pattern": "ajs_user_traits",
+      "description": "Segment cached user traits/properties (name, email, plan, etc.).",
+      "setBy": "Segment",
+      "purpose": "analytics"
+    },
+
+    "_comment_mixpanel": "--- Mixpanel ---",
+
+    "mp_": {
+      "pattern": "^mp_",
+      "description": "Mixpanel analytics storage — stores distinct ID, device ID, and super properties.",
+      "setBy": "Mixpanel",
+      "purpose": "analytics"
+    },
+    "mixpanel": {
+      "pattern": "^mixpanel",
+      "description": "Mixpanel analytics tracker data — event queue, user identity, or configuration.",
+      "setBy": "Mixpanel",
+      "purpose": "analytics"
+    },
+
+    "_comment_facebook": "--- Facebook / Meta ---",
+
+    "_fbp": {
+      "pattern": "^_fbp$",
+      "description": "Facebook Pixel browser ID stored in localStorage — identifies the browser for ad targeting.",
+      "setBy": "Meta (Facebook)",
+      "purpose": "advertising"
+    },
+    "_fbc": {
+      "pattern": "^_fbc$",
+      "description": "Facebook click ID stored in localStorage — captures the fbclid parameter from ad clicks.",
+      "setBy": "Meta (Facebook)",
+      "purpose": "advertising"
+    },
+    "fb_": {
+      "pattern": "^fb_",
+      "description": "Facebook SDK storage — authentication tokens, session state, or pixel data.",
+      "setBy": "Meta (Facebook)",
+      "purpose": "social-media"
+    },
+
+    "_comment_hotjar": "--- Hotjar ---",
+
+    "_hjSessionUser_": {
+      "pattern": "_hjSessionUser_",
+      "description": "Hotjar session user identifier — links recordings and heatmaps to a returning visitor.",
+      "setBy": "Hotjar",
+      "purpose": "analytics"
+    },
+    "_hjSession_": {
+      "pattern": "_hjSession_",
+      "description": "Hotjar session state — tracks the current browsing session for heatmaps and recordings.",
+      "setBy": "Hotjar",
+      "purpose": "analytics"
+    },
+    "hjViewportId": {
+      "pattern": "hjViewportId",
+      "description": "Hotjar viewport identifier for heatmap rendering.",
+      "setBy": "Hotjar",
+      "purpose": "analytics"
+    },
+    "_hjLocalStorageTest": {
+      "pattern": "_hjLocalStorageTest",
+      "description": "Hotjar feature detection — tests whether localStorage is available.",
+      "setBy": "Hotjar",
+      "purpose": "functional"
+    },
+
+    "_comment_hubspot": "--- HubSpot ---",
+
+    "__hs": {
+      "pattern": "^__hs",
+      "description": "HubSpot tracking storage — visitor identity, session, or form data.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+    "hubspotutk": {
+      "pattern": "hubspotutk",
+      "description": "HubSpot user tracking key — identifies a visitor across sessions for CRM correlation.",
+      "setBy": "HubSpot",
+      "purpose": "analytics"
+    },
+    "hs-messages-": {
+      "pattern": "hs-messages-",
+      "description": "HubSpot chat widget state — stores conversation history and widget preferences.",
+      "setBy": "HubSpot",
+      "purpose": "functional"
+    },
+
+    "_comment_intercom": "--- Intercom ---",
+
+    "intercom-": {
+      "pattern": "intercom-",
+      "description": "Intercom messenger state — stores session data, user identity, or widget configuration.",
+      "setBy": "Intercom",
+      "purpose": "analytics"
+    },
+    "intercom.intercom-state": {
+      "pattern": "intercom\\.intercom-state",
+      "description": "Intercom full application state — visitor identity, conversation history, and session data.",
+      "setBy": "Intercom",
+      "purpose": "analytics"
+    },
+
+    "_comment_tiktok": "--- TikTok ---",
+
+    "_ttp": {
+      "pattern": "^_ttp$",
+      "description": "TikTok Pixel tracking parameter stored in localStorage.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+    "tt_": {
+      "pattern": "^tt_",
+      "description": "TikTok SDK storage — pixel data, session state, or attribution parameters.",
+      "setBy": "TikTok",
+      "purpose": "advertising"
+    },
+
+    "_comment_linkedin": "--- LinkedIn ---",
+
+    "li_": {
+      "pattern": "^li_",
+      "description": "LinkedIn Insight Tag storage — campaign attribution or visitor identity data.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+    "ln_or": {
+      "pattern": "^ln_or$",
+      "description": "LinkedIn origin referrer — tracks the referral source for LinkedIn ad attribution.",
+      "setBy": "LinkedIn",
+      "purpose": "advertising"
+    },
+
+    "_comment_twitter": "--- Twitter / X ---",
+
+    "twid": {
+      "pattern": "^twid$",
+      "description": "Twitter/X identity token stored in localStorage.",
+      "setBy": "Twitter (X)",
+      "purpose": "social-media"
+    },
+    "twtr_pixel_": {
+      "pattern": "twtr_pixel_",
+      "description": "Twitter/X conversion pixel storage — tracks ad conversion events.",
+      "setBy": "Twitter (X)",
+      "purpose": "advertising"
+    },
+
+    "_comment_pinterest": "--- Pinterest ---",
+
+    "_pin_": {
+      "pattern": "^_pin_",
+      "description": "Pinterest Tag storage — conversion tracking and audience building data.",
+      "setBy": "Pinterest",
+      "purpose": "advertising"
+    },
+    "_pinterest_": {
+      "pattern": "_pinterest_",
+      "description": "Pinterest SDK or embed storage — session state or user preferences.",
+      "setBy": "Pinterest",
+      "purpose": "social-media"
+    },
+
+    "_comment_snapchat": "--- Snapchat ---",
+
+    "_scid": {
+      "pattern": "^_scid$",
+      "description": "Snapchat Pixel client ID — identifies the browser for Snap ad attribution.",
+      "setBy": "Snapchat",
+      "purpose": "advertising"
+    },
+    "sc_": {
+      "pattern": "^sc_",
+      "description": "Snapchat SDK storage — pixel events, session data, or attribution tokens.",
+      "setBy": "Snapchat",
+      "purpose": "advertising"
+    },
+
+    "_comment_criteo": "--- Criteo ---",
+
+    "cto_": {
+      "pattern": "^cto_",
+      "description": "Criteo retargeting storage — product feeds, visitor segments, or bid data.",
+      "setBy": "Criteo",
+      "purpose": "advertising"
+    },
+
+    "_comment_adobe": "--- Adobe ---",
+
+    "s_cc": {
+      "pattern": "^s_cc$",
+      "description": "Adobe Analytics cookie check flag mirrored to localStorage.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "s_sq": {
+      "pattern": "^s_sq$",
+      "description": "Adobe Analytics ClickMap data — stores the last link clicked.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+    "AMCV_": {
+      "pattern": "^AMCV_",
+      "description": "Adobe Experience Cloud visitor ID — uniquely identifies users across Adobe services.",
+      "setBy": "Adobe Experience Cloud",
+      "purpose": "identity-resolution"
+    },
+    "AMCVS_": {
+      "pattern": "^AMCVS_",
+      "description": "Adobe Experience Cloud session flag — indicates an active ECID session.",
+      "setBy": "Adobe Experience Cloud",
+      "purpose": "analytics"
+    },
+    "s_fid": {
+      "pattern": "^s_fid$",
+      "description": "Adobe Analytics fallback visitor ID — used when third-party cookies are blocked.",
+      "setBy": "Adobe Analytics",
+      "purpose": "analytics"
+    },
+
+    "_comment_optimizely": "--- Optimizely ---",
+
+    "optimizelyEndUserId": {
+      "pattern": "optimizelyEndUserId",
+      "description": "Optimizely experiment visitor ID — identifies the user for A/B test bucketing.",
+      "setBy": "Optimizely",
+      "purpose": "analytics"
+    },
+    "optimizely_data": {
+      "pattern": "optimizely_data",
+      "description": "Optimizely experiment configuration and variation assignments.",
+      "setBy": "Optimizely",
+      "purpose": "analytics"
+    },
+
+    "_comment_fullstory": "--- FullStory ---",
+
+    "fs_uid": {
+      "pattern": "fs_uid",
+      "description": "FullStory session recording user ID — links session replays to a user identity.",
+      "setBy": "FullStory",
+      "purpose": "analytics"
+    },
+    "_fs_": {
+      "pattern": "^_fs_",
+      "description": "FullStory session recording storage — device ID, session data, or replay metadata.",
+      "setBy": "FullStory",
+      "purpose": "analytics"
+    },
+
+    "_comment_heap": "--- Heap ---",
+
+    "_hp2_id": {
+      "pattern": "_hp2_id",
+      "description": "Heap Analytics user identity — stores a persistent visitor ID.",
+      "setBy": "Heap Analytics",
+      "purpose": "analytics"
+    },
+    "_hp2_ses_props": {
+      "pattern": "_hp2_ses_props",
+      "description": "Heap Analytics session properties — captures session-level metadata.",
+      "setBy": "Heap Analytics",
+      "purpose": "analytics"
+    },
+    "_hp2_props": {
+      "pattern": "_hp2_props",
+      "description": "Heap Analytics user properties — stores user-level attributes.",
+      "setBy": "Heap Analytics",
+      "purpose": "analytics"
+    },
+
+    "_comment_matomo": "--- Matomo (Piwik) ---",
+
+    "_pk_id": {
+      "pattern": "^_pk_id",
+      "description": "Matomo (Piwik) visitor ID stored in localStorage — identifies returning visitors.",
+      "setBy": "Matomo",
+      "purpose": "analytics"
+    },
+    "_pk_ses": {
+      "pattern": "^_pk_ses",
+      "description": "Matomo session indicator stored in localStorage.",
+      "setBy": "Matomo",
+      "purpose": "analytics"
+    },
+
+    "_comment_quantcast": "--- Quantcast ---",
+
+    "__qca": {
+      "pattern": "^__qca$",
+      "description": "Quantcast audience measurement ID stored in localStorage.",
+      "setBy": "Quantcast",
+      "purpose": "analytics"
+    },
+    "quantcast": {
+      "pattern": "quantcast",
+      "description": "Quantcast audience segmentation or consent data.",
+      "setBy": "Quantcast",
+      "purpose": "analytics"
+    },
+
+    "_comment_consent": "--- Consent Management ---",
+
+    "CookieConsent": {
+      "pattern": "^CookieConsent$",
+      "description": "Cookiebot consent state — stores the visitor's cookie consent preferences.",
+      "setBy": "Cookiebot",
+      "purpose": "consent"
+    },
+    "CookieConsentBulkSetting": {
+      "pattern": "CookieConsentBulkSetting",
+      "description": "Cookiebot bulk consent preferences for multiple cookie categories.",
+      "setBy": "Cookiebot",
+      "purpose": "consent"
+    },
+    "eupubconsent": {
+      "pattern": "eupubconsent",
+      "description": "IAB Europe Transparency & Consent Framework (TCF) consent string.",
+      "setBy": "IAB TCF CMP",
+      "purpose": "consent"
+    },
+    "addtl_consent": {
+      "pattern": "addtl_consent",
+      "description": "Google Additional Consent Mode string — lists ad-tech vendors consented to beyond TCF.",
+      "setBy": "Google Consent Mode",
+      "purpose": "consent"
+    },
+    "OTZ": {
+      "pattern": "^OTZ$",
+      "description": "OneTrust consent zone identifier.",
+      "setBy": "OneTrust",
+      "purpose": "consent"
+    },
+    "OptanonConsent": {
+      "pattern": "OptanonConsent",
+      "description": "OneTrust cookie consent preferences — stores category-level opt-in/opt-out state.",
+      "setBy": "OneTrust",
+      "purpose": "consent"
+    },
+    "OptanonAlertBoxClosed": {
+      "pattern": "OptanonAlertBoxClosed",
+      "description": "OneTrust consent banner dismissed timestamp.",
+      "setBy": "OneTrust",
+      "purpose": "consent"
+    },
+
+    "_comment_fingerprinting": "--- Fingerprinting / Device ID ---",
+
+    "fingerprint": {
+      "pattern": "fingerprint",
+      "description": "Browser fingerprint hash — a unique identifier derived from device and browser characteristics.",
+      "setBy": "Fingerprinting service",
+      "purpose": "fingerprinting"
+    },
+    "fpjs_": {
+      "pattern": "^fpjs_",
+      "description": "FingerprintJS visitor ID or session data — persistent device fingerprint.",
+      "setBy": "FingerprintJS",
+      "purpose": "fingerprinting"
+    },
+    "device_id": {
+      "pattern": "device.?id",
+      "description": "Persistent device identifier — used to recognise the same device across sessions.",
+      "setBy": "Unknown",
+      "purpose": "fingerprinting"
+    },
+    "visitor_id": {
+      "pattern": "visitor.?id",
+      "description": "Persistent visitor identifier — used to track the same visitor across sessions.",
+      "setBy": "Unknown",
+      "purpose": "analytics"
+    },
+    "session_id": {
+      "pattern": "session.?id",
+      "description": "Session identifier — groups page views and events into a single browsing session.",
+      "setBy": "Unknown",
+      "purpose": "session"
+    },
+    "user_id": {
+      "pattern": "user.?id",
+      "description": "User identifier — associates browsing activity with a known or anonymous user profile.",
+      "setBy": "Unknown",
+      "purpose": "analytics"
+    },
+
+    "_comment_misc": "--- Miscellaneous ---",
+
+    "drift": {
+      "pattern": "^drift",
+      "description": "Drift live chat widget state — stores conversation data, visitor identity, or widget preferences.",
+      "setBy": "Drift",
+      "purpose": "analytics"
+    },
+    "crisp-client": {
+      "pattern": "crisp-client",
+      "description": "Crisp chat widget session data — visitor identity and chat history.",
+      "setBy": "Crisp",
+      "purpose": "functional"
+    },
+    "loglevel": {
+      "pattern": "^loglevel",
+      "description": "JavaScript logging level configuration — controls client-side debug output. Not a tracker.",
+      "setBy": "loglevel.js",
+      "purpose": "functional"
+    },
+    "debug": {
+      "pattern": "^debug$",
+      "description": "JavaScript debug mode flag (e.g., for the debug npm package). Not a tracker.",
+      "setBy": "debug",
+      "purpose": "functional"
+    },
+    "__storejs_": {
+      "pattern": "__storejs_",
+      "description": "store.js feature detection — tests which storage backends are available. Not a tracker.",
+      "setBy": "store.js",
+      "purpose": "functional"
+    },
+    "i18n": {
+      "pattern": "^i18n",
+      "description": "Internationalisation preference — stores the user's selected language or locale.",
+      "setBy": "Website",
+      "purpose": "functional"
+    },
+    "theme": {
+      "pattern": "^theme$",
+      "description": "UI theme preference — stores dark/light mode or colour scheme selection.",
+      "setBy": "Website",
+      "purpose": "functional"
+    },
+    "chartbeat": {
+      "pattern": "chartbeat",
+      "description": "Chartbeat real-time analytics — engagement metrics and scroll depth tracking.",
+      "setBy": "Chartbeat",
+      "purpose": "analytics"
+    },
+    "parsely": {
+      "pattern": "parsely|_parsely",
+      "description": "Parse.ly content analytics — tracks page views, engaged time, and referral sources.",
+      "setBy": "Parse.ly",
+      "purpose": "analytics"
+    },
+    "permutive": {
+      "pattern": "permutive",
+      "description": "Permutive audience segmentation — stores cohort assignments built on-device.",
+      "setBy": "Permutive",
+      "purpose": "analytics"
+    },
+    "lotame": {
+      "pattern": "lotame",
+      "description": "Lotame data management platform — audience segments and cross-domain identity data.",
+      "setBy": "Lotame",
+      "purpose": "advertising"
+    },
+    "taboola": {
+      "pattern": "taboola",
+      "description": "Taboola content recommendation storage — session ID, click data, or A/B test state.",
+      "setBy": "Taboola",
+      "purpose": "advertising"
+    },
+    "outbrain": {
+      "pattern": "outbrain",
+      "description": "Outbrain content recommendation storage — click tracking and campaign attribution.",
+      "setBy": "Outbrain",
+      "purpose": "advertising"
+    },
+    "pbjs": {
+      "pattern": "^pbjs",
+      "description": "Prebid.js header bidding — cached bid responses, timeout settings, or ad-unit configuration.",
+      "setBy": "Prebid.js",
+      "purpose": "advertising"
+    }
+  },
+  "risk_levels": {
+    "analytics": "medium",
+    "advertising": "high",
+    "fingerprinting": "critical",
+    "social-media": "high",
+    "identity-resolution": "high",
+    "session": "low",
+    "consent": "none",
+    "functional": "none"
+  },
+  "privacy_notes": {
+    "analytics": "Collects usage data that can profile browsing behaviour over time.",
+    "advertising": "Enables cross-site tracking and ad targeting based on your browsing history.",
+    "fingerprinting": "Creates a persistent device fingerprint that is difficult to opt out of.",
+    "social-media": "Allows social platforms to track your activity on third-party sites.",
+    "identity-resolution": "Links your identity across multiple sites and devices.",
+    "session": "Tracks your current browsing session — typically short-lived and low risk.",
+    "consent": "Stores your privacy preferences — not used for tracking.",
+    "functional": "Stores UI preferences or feature state — not used for tracking."
+  }
+}

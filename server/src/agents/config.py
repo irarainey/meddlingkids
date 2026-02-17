@@ -26,6 +26,7 @@ AGENT_CONSENT_EXTRACTION = "ConsentExtractionAgent"
 AGENT_SCRIPT_ANALYSIS = "ScriptAnalysisAgent"
 AGENT_STRUCTURED_REPORT = "StructuredReportAgent"
 AGENT_COOKIE_INFO = "CookieInfoAgent"
+AGENT_STORAGE_INFO = "StorageInfoAgent"
 
 
 class AzureOpenAIConfig(pydantic_settings.BaseSettings):
