@@ -428,10 +428,12 @@ async def _analyze_unknowns(
         return result
 
     if bases_needing_llm:
-        llm_results = await asyncio.gather(*(
-            analyze_with_progress(fetch_url, content, len(result_indices))
-            for _base, (_sd, fetch_url, content, result_indices) in bases_needing_llm.items()
-        ))
+        llm_results = await asyncio.gather(
+            *(
+                analyze_with_progress(fetch_url, content, len(result_indices))
+                for _base, (_sd, fetch_url, content, result_indices) in bases_needing_llm.items()
+            )
+        )
 
         for llm_url, description in llm_results:
             base = script_cache.strip_query_string(llm_url)

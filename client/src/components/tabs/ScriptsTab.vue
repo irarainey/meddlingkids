@@ -6,7 +6,7 @@ function baseUrl(url: string): string {
   try {
     const u = new URL(url)
     return u.origin + u.pathname
-  } catch (_e: unknown) {
+  } catch {
     const noQuery = url.indexOf('?') >= 0 ? url.substring(0, url.indexOf('?')) : url
     const noFrag = noQuery.indexOf('#') >= 0 ? noQuery.substring(0, noQuery.indexOf('#')) : noQuery
     return noFrag

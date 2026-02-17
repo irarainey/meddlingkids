@@ -42,7 +42,7 @@ def _read_version() -> str:
     try:
         pyproject = pathlib.Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-        return data["project"]["version"]
+        return str(data["project"]["version"])
     except Exception:
         return "unknown"
 
