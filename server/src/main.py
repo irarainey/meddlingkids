@@ -61,6 +61,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def disable_static_cache(
+    request: fastapi.Request,
+    call_next,
+) -> fastapi.Response:
+    """Prevent browsers from serving stale static assets from the Docker build."""
+    response = await call_next(request)
+    if request.url.path.startswith("/assets"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # ============================================================================
 # API Routes
 # ============================================================================
