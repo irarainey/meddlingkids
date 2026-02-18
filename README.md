@@ -42,37 +42,37 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 
 Let's take a look at a page from Bristol Live (a Reach Media news site known for heavy tracking). Here's what the original page looks like. Wowzers! That's a lot of screen estate taken up by ads. What is going on behind the scenes here I wonder...
 
-![Original Site](./images/examples/001.png)
+![Original Site](./images/examples/001.jpg)
 
 ---
 
 So let's run an analysis scan and see what those Meddling Kids can uncover!
 
-![Start Analysis](./images/examples/002.png)
+![Start Analysis](./images/examples/002.jpg)
 
 ---
 
 First we load up the initial page and see if it has any overlays such as consent dialogs, sign-in prompts, or paywall popups. If so we will attempt to dismiss them and then track the changes.
 
-![Detect Overlay](./images/examples/003.png)
+![Detect Overlay](./images/examples/003.jpg)
 
 ---
 
 Once we've detected and dismissed any overlays, we get to see the final loaded page and we can then start analysis. If there are multiple dialog stages, the screenshots will show each step.
 
-![Final Page](./images/examples/004.png)
+![Final Page](./images/examples/004.jpg)
 
 ---
 
 After the analysis is complete, we get a privacy score out of 100 based on the tracking detected. The score ranges from "Zoinks!" for poor privacy to "Scoob-tastic!" for excellent privacy.
 
-![Score](./images/examples/005.png)
+![Score](./images/examples/005.jpg)
 
 ---
 
 If you want to dive deeper, we get a full report showing all cookies, scripts, network requests, storage items, and AI analysis.
 
-![Full Report](./images/examples/006.png)
+![Full Report](./images/examples/006.jpg)
 
 ---
 

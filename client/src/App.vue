@@ -213,7 +213,7 @@ function onUrlMouseUp(event: Event): void {
           <button class="tab" :class="{ active: activeTab === 'cookies' }" @click="activeTab = 'cookies'">
             🍪 Cookies ({{ cookies.length }})
           </button>
-          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">`
+          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">
             💾 Storage ({{ localStorage.length + sessionStorage.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
