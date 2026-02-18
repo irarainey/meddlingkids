@@ -176,64 +176,91 @@ class StructuredReportAgent(base.BaseAgent):
             social_media_implications,
             recommendations,
         ) = await asyncio.gather(
-            _tracked(self._build_section(
-                structured_report.TRACKING_TECH,
-                context,
-                _TrackingTechResponse,
+            _tracked(
+                self._build_section(
+                    structured_report.TRACKING_TECH,
+                    context,
+                    _TrackingTechResponse,
+                    "tracking-technologies",
+                ),
                 "tracking-technologies",
-            ), "tracking-technologies"),
-            _tracked(self._build_section(
-                structured_report.DATA_COLLECTION,
-                context,
-                _DataCollectionResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.DATA_COLLECTION,
+                    context,
+                    _DataCollectionResponse,
+                    "data-collection",
+                ),
                 "data-collection",
-            ), "data-collection"),
-            _tracked(self._build_section(
-                structured_report.THIRD_PARTY,
-                context,
-                _ThirdPartyResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.THIRD_PARTY,
+                    context,
+                    _ThirdPartyResponse,
+                    "third-party-services",
+                ),
                 "third-party-services",
-            ), "third-party-services"),
-            _tracked(self._build_section(
-                structured_report.COOKIE_ANALYSIS,
-                context,
-                _CookieAnalysisResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.COOKIE_ANALYSIS,
+                    context,
+                    _CookieAnalysisResponse,
+                    "cookie-analysis",
+                ),
                 "cookie-analysis",
-            ), "cookie-analysis"),
-            _tracked(self._build_section(
-                structured_report.STORAGE_ANALYSIS,
-                context,
-                _StorageAnalysisResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.STORAGE_ANALYSIS,
+                    context,
+                    _StorageAnalysisResponse,
+                    "storage-analysis",
+                ),
                 "storage-analysis",
-            ), "storage-analysis"),
-            _tracked(self._build_section(
-                structured_report.PRIVACY_RISK,
-                context,
-                _PrivacyRiskResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.PRIVACY_RISK,
+                    context,
+                    _PrivacyRiskResponse,
+                    "privacy-risk",
+                ),
                 "privacy-risk",
-            ), "privacy-risk"),
-            _tracked(self._build_section(
-                structured_report.VENDOR,
-                context,
-                _VendorResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.VENDOR,
+                    context,
+                    _VendorResponse,
+                    "key-vendors",
+                ),
                 "key-vendors",
-            ), "key-vendors"),
+            ),
             _tracked(
                 consent_section_coro,
                 "consent-analysis",
             ),
-            _tracked(self._build_section(
-                structured_report.SOCIAL_MEDIA_IMPLICATIONS,
-                context,
-                _SocialMediaImplicationsResponse,
+            _tracked(
+                self._build_section(
+                    structured_report.SOCIAL_MEDIA_IMPLICATIONS,
+                    context,
+                    _SocialMediaImplicationsResponse,
+                    "social-media-implications",
+                ),
                 "social-media-implications",
-            ), "social-media-implications"),
-            _tracked(self._build_section(
-                structured_report.RECOMMENDATIONS,
-                context,
-                _RecommendationsResponse,
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.RECOMMENDATIONS,
+                    context,
+                    _RecommendationsResponse,
+                    "recommendations",
+                ),
                 "recommendations",
-            ), "recommendations"),
+            ),
         )
 
         # ── Deterministic consent overrides ─────────────────
