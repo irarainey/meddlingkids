@@ -38,6 +38,20 @@ _MAX_SCRIPTS = 200
 _MAX_SCRIPT_GROUPS = 100
 _MAX_STORAGE_ITEMS = 100
 
+# Human-readable labels for report section progress events.
+_SECTION_LABELS: dict[str, str] = {
+    "tracking-technologies": "Tracking technologies",
+    "data-collection": "Data collection",
+    "third-party-services": "Third-party services",
+    "cookie-analysis": "Cookie analysis",
+    "storage-analysis": "Storage analysis",
+    "privacy-risk": "Privacy risk",
+    "key-vendors": "Key vendors",
+    "consent-analysis": "Consent analysis",
+    "social-media-implications": "Social media",
+    "recommendations": "Recommendations",
+}
+
 
 async def run_ai_analysis(
     session: browser_session.BrowserSession,
@@ -80,10 +94,11 @@ async def run_ai_analysis(
     )
     yield sse_helpers.format_progress_event(
         "analysis-start",
-        "Analyzing page content...",
+        "Starting analysis...",
         75,
     )
 
+    log.info("Starting AI analysis")
     log.start_timer("ai-analysis")
 
     # ── Pre-compute deterministic values ──────────────────────
@@ -150,21 +165,42 @@ async def run_ai_analysis(
 
     # Start the structured report concurrently with script
     # and tracking analysis — it depends only on the
-    # pre-computed deterministic values above.
-    report_agent = agents.get_structured_report_agent()
-    report_task = asyncio.create_task(
-        report_agent.build_report(
-            tracking_summary,
-            consent_details,
-            pre_consent_stats,
-            score_breakdown,
-            domain_knowledge,
+    # pre-computed deterministic values above.  Section
+    # progress is pushed onto the same queue so the client
+    # sees granular updates as each report section finishes.
+    def _report_section_done(section_name: str, done: int, total: int) -> None:
+        label = _SECTION_LABELS.get(section_name, section_name)
+        log.info(f"Report section complete: {label} ({done}/{total})")
+        progress_queue.put_nowait(
+            sse_helpers.format_progress_event(
+                "report-section",
+                f"Building report: {label} ({done}/{total})...",
+                90 + int((done / total) * 4),  # 90-94
+            )
         )
-    )
+
+    report_agent = agents.get_structured_report_agent()
+
+    async def _run_report() -> report_models.StructuredReport:
+        try:
+            return await report_agent.build_report(
+                tracking_summary,
+                consent_details,
+                pre_consent_stats,
+                score_breakdown,
+                domain_knowledge,
+                on_section_done=_report_section_done,
+            )
+        finally:
+            progress_queue.put_nowait(None)
+
+    report_task = asyncio.create_task(_run_report())
 
     # Drain events as they arrive — this keeps SSE streaming
-    # in real-time rather than batching.
-    tasks_remaining = 2
+    # in real-time rather than batching.  Three concurrent
+    # producers (script, tracking, report) each send a None
+    # sentinel when they finish.
+    tasks_remaining = 3
     finished = 0
     while finished < tasks_remaining:
         event = await progress_queue.get()
@@ -176,13 +212,14 @@ async def run_ai_analysis(
     try:
         await script_task
         await tracking_task
+        await report_task
     except Exception:
-        # Cancel the report task so it doesn't leak if
-        # analysis fails.
-        if not report_task.done():
-            report_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await report_task
+        # Cancel surviving tasks so they don't leak.
+        for task in (script_task, tracking_task, report_task):
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
         raise
 
     script_result = script_task.result()
@@ -668,10 +705,11 @@ async def _score_and_summarise(
     full_text = "".join(analysis_chunks)
     log.info("Analysis streamed", {"length": len(full_text)})
 
-    yield sse_helpers.format_progress_event("ai-scoring", "Calculating privacy score...", 94)
+    log.info("Finalizing privacy score", {"score": score_breakdown.total_score})
+    yield sse_helpers.format_progress_event("ai-scoring", "Finalizing privacy score...", 95)
 
-    yield sse_helpers.format_progress_event("ai-summarizing", "Generating summary...", 96)
-    log.info("Starting summary generation")
+    log.info("Generating findings summary")
+    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 96)
 
     # The structured report is already being built concurrently
     # (launched alongside script and tracking analysis).  Only
@@ -688,7 +726,8 @@ async def _score_and_summarise(
         )
     )
 
-    yield sse_helpers.format_progress_event("ai-report", "Generating report...", 97)
+    log.info("Finalizing report and summary")
+    yield sse_helpers.format_progress_event("ai-report", "Finalizing report and summary...", 97)
 
     try:
         structured_report, summary_findings = await asyncio.gather(
@@ -754,6 +793,7 @@ async def _score_and_summarise(
 
     # ── Build final payload ─────────────────────────────────
 
+    log.success("Investigation complete")
     yield sse_helpers.format_progress_event("complete", "Investigation complete!", 100)
 
     yield _build_complete_payload(

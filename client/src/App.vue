@@ -72,15 +72,24 @@ const appVersion = __APP_VERSION__
 const serverVersion = ref('')
 
 onMounted(async () => {
-  try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const res = await fetch(`${apiBase}/api/version`)
-    if (res.ok) {
-      const data = await res.json()
-      serverVersion.value = data.version
+  const apiBase = import.meta.env.VITE_API_URL || ''
+  const maxAttempts = 5
+  const delayMs = 3000
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${apiBase}/api/version`)
+      if (res.ok) {
+        const data = await res.json()
+        serverVersion.value = data.version
+        return
+      }
+    } catch {
+      // Server not ready yet — retry after a short delay
     }
-  } catch {
-    // Server version is optional — silently ignore
+    if (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, delayMs))
+    }
   }
 })
 
