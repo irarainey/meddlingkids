@@ -9,6 +9,13 @@
 
 set -e
 
+# Fix .output directory permissions for volume mounts, then drop to appuser.
+# When a host directory is bind-mounted, Docker creates it as root — this
+# ensures appuser can write cache, logs, and reports.
+OUTPUT_DIR=/app/server/.output
+mkdir -p "$OUTPUT_DIR/cache" "$OUTPUT_DIR/logs" "$OUTPUT_DIR/reports"
+chown -R appuser:appgroup "$OUTPUT_DIR"
+
 # Start Xvfb on display :99 in the background
 echo "Starting Xvfb virtual display on :99..."
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
@@ -29,7 +36,8 @@ export DISPLAY=:99
 echo "Starting server..."
 echo "Open your browser: http://localhost:${UVICORN_PORT:-3001}"
 cd /app/server
+# Drop to non-root user and start the server.
 # Always bind to 0.0.0.0 inside Docker so the server is reachable from the host.
 # UVICORN_HOST from .env is intentionally ignored here — containers must listen
 # on all interfaces for port-forwarding to work.
-exec .venv/bin/uvicorn src.main:app --host "0.0.0.0" --port "${UVICORN_PORT:-3001}"
+exec su -s /bin/bash appuser -c ".venv/bin/uvicorn src.main:app --host 0.0.0.0 --port ${UVICORN_PORT:-3001}"

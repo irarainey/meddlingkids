@@ -544,11 +544,18 @@ class BrowserSession:
             log.warn("Failed to capture storage", {"error": str(exc)})
             return {"local_storage": [], "session_storage": []}
 
-    async def take_screenshot(self, full_page: bool = False) -> bytes:
-        """Take a PNG screenshot of the current page (for AI analysis)."""
+    async def take_screenshot(self, full_page: bool = False, *, timeout: int = 15_000) -> bytes:
+        """Take a PNG screenshot of the current page (for AI analysis).
+
+        Args:
+            full_page: Capture the full scrollable page instead of just
+                the viewport.
+            timeout: Maximum time in milliseconds to wait for the
+                screenshot.  Defaults to 15 000 ms.
+        """
         if not self._page:
             raise RuntimeError("No browser session active")
-        return await self._page.screenshot(type="png", full_page=full_page)
+        return await self._page.screenshot(type="png", full_page=full_page, timeout=timeout)
 
     @staticmethod
     def optimize_screenshot_bytes(png_bytes: bytes) -> str:
@@ -556,7 +563,13 @@ class BrowserSession:
 
         Downscales wide images and compresses to JPEG for smaller
         payloads.  This is a pure CPU operation — no browser round-trip.
+
+        Returns an empty ``data:`` URI when *png_bytes* is empty so
+        callers that fall back to ``b""`` on screenshot failure still
+        produce a valid (blank) event payload.
         """
+        if not png_bytes:
+            return ""
         return image.png_to_data_url(png_bytes)
 
     async def get_page_content(self) -> str:

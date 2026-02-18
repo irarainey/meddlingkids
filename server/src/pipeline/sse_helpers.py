@@ -14,7 +14,9 @@ import pydantic
 
 from src.browser import session as browser_session
 from src.models import analysis, consent, tracking_data
-from src.utils import serialization
+from src.utils import logger, serialization
+
+log = logger.create_logger("SSE-Helpers")
 
 # ====================================================================
 # camelCase Serialization
@@ -140,7 +142,14 @@ async def take_screenshot_event(
     Returns:
         Tuple of (SSE event string, raw PNG bytes, storage dict).
     """
-    screenshot_bytes = await session.take_screenshot(full_page=False)
+    try:
+        screenshot_bytes = await session.take_screenshot(full_page=False)
+    except Exception as exc:
+        log.warn(
+            "Screenshot failed in take_screenshot_event — using empty image",
+            {"error": str(exc)},
+        )
+        screenshot_bytes = b""
     optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot_bytes)
     if storage is None:
         storage = await session.capture_storage()

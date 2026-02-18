@@ -80,7 +80,7 @@ def start_log_file(domain: str) -> None:
 
     end_log_file()
 
-    logs_dir = pathlib.Path.cwd() / ".logs"
+    logs_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.removeprefix("www.")
@@ -137,7 +137,7 @@ def save_report_file(
     if not _write_to_file:
         return None
 
-    reports_dir = pathlib.Path.cwd() / ".reports"
+    reports_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.removeprefix("www.")

@@ -68,7 +68,21 @@ async def detect_overlay(
 
     # Use a viewport-only screenshot for faster detection.
     # Overlays always cover the viewport, so full-page is unnecessary.
-    viewport_screenshot = await session.take_screenshot(full_page=False)
+    try:
+        viewport_screenshot = await session.take_screenshot(full_page=False)
+    except Exception as exc:
+        log.warn(
+            "Screenshot failed during overlay detection — skipping",
+            {"iteration": iteration + 1, "error": str(exc)},
+        )
+        log.end_timer(
+            f"overlay-detect-{iteration + 1}",
+            "Screenshot failed",
+        )
+        return consent.CookieConsentDetection.not_found(
+            reason=f"Screenshot failed: {exc}",
+        )
+
     log.debug(
         "Running overlay detection",
         {
@@ -229,7 +243,14 @@ async def capture_consent_content(
         A ``(consent_text, screenshot)`` tuple.
     """
     consent_text = await consent_extraction_agent._extract_consent_text(page)
-    screenshot = await session.take_screenshot(full_page=False)
+    try:
+        screenshot = await session.take_screenshot(full_page=False)
+    except Exception as exc:
+        log.warn(
+            "Screenshot failed during consent capture — using empty image",
+            {"error": str(exc)},
+        )
+        screenshot = b""
 
     log.info(
         "Pre-dismiss consent capture complete",

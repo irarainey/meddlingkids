@@ -40,8 +40,8 @@ from src.utils import cache, logger
 
 log = logger.create_logger("ScriptCache")
 
-# Cache directory — lives alongside server source, gitignored.
-_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".cache" / "scripts"
+# Cache directory — lives under server/.output/cache/, gitignored.
+_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "scripts"
 
 
 # ── Cached script model ────────────────────────────────────────
