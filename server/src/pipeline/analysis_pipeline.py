@@ -705,15 +705,12 @@ async def _score_and_summarise(
     full_text = "".join(analysis_chunks)
     log.info("Analysis streamed", {"length": len(full_text)})
 
-    log.info("Finalizing privacy score", {"score": score_breakdown.total_score})
-    yield sse_helpers.format_progress_event("ai-scoring", "Finalizing privacy score...", 95)
-
-    log.info("Generating findings summary")
-    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 96)
-
     # The structured report is already being built concurrently
     # (launched alongside script and tracking analysis).  Only
     # the summary needs the completed analysis text.
+    log.info("Generating findings summary")
+    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 95)
+
     summary_agent = agents.get_summary_findings_agent()
     summary_task = asyncio.create_task(
         summary_agent.summarise(
@@ -725,9 +722,6 @@ async def _score_and_summarise(
             pre_consent_stats,
         )
     )
-
-    log.info("Finalizing report and summary")
-    yield sse_helpers.format_progress_event("ai-report", "Finalizing report and summary...", 97)
 
     try:
         structured_report, summary_findings = await asyncio.gather(
@@ -742,10 +736,12 @@ async def _score_and_summarise(
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
         raise
+
     log.info(
         "Structured report and summary generated",
         {"summaryCount": len(summary_findings)},
     )
+    yield sse_helpers.format_progress_event("ai-report", "Finalizing report...", 97)
 
     # Surface a note when any core agent lacked an LLM client.
     # Under normal operation ``validate_llm_config()`` blocks the
