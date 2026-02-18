@@ -15,6 +15,7 @@ import {
   NetworkTab,
   ScriptsTab,
   StorageTab,
+  TrackerGraphTab,
 } from './components'
 
 // All state, computed properties, and methods from the composable
@@ -30,6 +31,7 @@ const {
   scriptGroups,
   localStorage,
   sessionStorage,
+  networkRequests,
   activeTab,
   consentDetails,
   structuredReport,
@@ -219,6 +221,9 @@ function onUrlMouseUp(event: Event): void {
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
             🌐 Network ({{ filteredNetworkRequests.length }})
           </button>
+          <button class="tab" :class="{ active: activeTab === 'tracker-graph' }" @click="activeTab = 'tracker-graph'">
+            🕸️ Graph ({{ networkRequests.length }})
+          </button>
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})
           </button>
@@ -261,6 +266,13 @@ function onUrlMouseUp(event: Event): void {
           :filtered-network-requests="filteredNetworkRequests"
         />
 
+        <TrackerGraphTab
+          v-if="activeTab === 'tracker-graph'"
+          :network-requests="networkRequests"
+          :structured-report="structuredReport"
+          :analyzed-url="inputValue"
+        />
+
         <ScriptsTab
           v-if="activeTab === 'scripts'"
           :scripts-by-domain="scriptsByDomain"
@@ -275,8 +287,7 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently.
-      <span class="version">Client {{ appVersion }}<span v-if="serverVersion"> / Server {{ serverVersion }}</span></span>
+      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version: Client {{ appVersion }}<span v-if="serverVersion"> : Server {{ serverVersion }}</span>
     </footer>
 </template>
 

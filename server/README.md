@@ -52,7 +52,7 @@ uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 
 ```
 src/
-├── main.py                          # FastAPI application entry point
+├── main.py                          # FastAPI app entry point (CORS, cache-control middleware, API routes)
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
 │   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings)
@@ -81,7 +81,7 @@ src/
 │       ├── extract_consent_text.js  # Extract consent dialog text from DOM
 │       └── extract_iframe_text.js   # Extract text from consent iframes
 ├── browser/                         # Browser automation
-│   ├── session.py                   # Playwright async browser session (cleanup timeouts, force-kill, context manager, screenshot timeout config)
+│   ├── session.py                   # Playwright async browser session (cleanup timeouts, force-kill, context manager, screenshot timeout config, initiator domain & redirect chain capture)
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling

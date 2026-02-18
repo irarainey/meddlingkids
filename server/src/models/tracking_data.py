@@ -62,3 +62,5 @@ class NetworkRequest(pydantic.BaseModel):
     status_code: int | None = None
     post_data: str | None = None
     pre_consent: bool = False
+    initiator_domain: str | None = None
+    redirected_from_url: str | None = None

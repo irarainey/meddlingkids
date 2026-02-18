@@ -403,6 +403,7 @@ App.vue
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
+    ├── TrackerGraphTab (D3.js force-directed network graph)
     ├── ScriptsTab
     └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```
@@ -452,7 +453,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager). `take_screenshot()` accepts a configurable `timeout` (default 15s) and `optimize_screenshot_bytes()` gracefully handles empty input |
+| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager). Captures `initiator_domain` from the requesting frame and `redirected_from_url` from redirect chains. `take_screenshot()` accepts a configurable `timeout` (default 15s) and `optimize_screenshot_bytes()` gracefully handles empty input |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -643,6 +644,8 @@ class NetworkRequest(BaseModel):
     status_code: int | None = None
     post_data: str | None = None
     pre_consent: bool = False
+    initiator_domain: str | None = None
+    redirected_from_url: str | None = None
 ```
 
 ### ConsentPartner

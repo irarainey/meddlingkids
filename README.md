@@ -20,7 +20,8 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
-- 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering
+- 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering and initiator domain tracking
+- 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), minimap navigation, and resource-type breakdown
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🎯 **TCF Purpose Breakdown** — Maps consent purposes to the IAB TCF v2.2 taxonomy with risk levels, lawful bases, and human-readable explanations
 - 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
@@ -70,9 +71,15 @@ After the analysis is complete, we get a privacy score out of 100 based on the t
 
 ---
 
-If you want to dive deeper, we get a full report showing all cookies, scripts, network requests, storage items, and AI analysis.
+If you want to dive deeper, we get a full report showing analysis, consent, cookies, storage items, network requests, and scripts.
 
 ![Full Report](./images/examples/006.jpg)
+
+---
+
+And if you want an even deeper dive, we provide a detailed visualizations and interactive graph to explore network traffic for tracker relationships and data flows.
+
+![Tracker Graph](./images/examples/007.jpg)
 
 ---
 
@@ -80,7 +87,7 @@ If you want to dive deeper, we get a full report showing all cookies, scripts, n
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Vue 3, TypeScript, Vite |
+| Frontend | Vue 3, TypeScript, Vite, D3.js |
 | Backend | Python, FastAPI, Microsoft Agent Framework |
 | Browser Automation | Playwright for Python with real Chrome (headed mode on Xvfb virtual display) |
 | Communication | Server-Sent Events (SSE) |

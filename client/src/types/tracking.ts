@@ -126,6 +126,10 @@ export interface NetworkRequest {
   preConsent?: boolean
   /** Number of duplicate GET requests collapsed into this entry */
   duplicateCount?: number
+  /** Domain of the frame that initiated the request */
+  initiatorDomain?: string
+  /** Previous URL in a redirect chain */
+  redirectedFromUrl?: string
 }
 
 // ============================================================================
@@ -392,4 +396,4 @@ export interface ErrorDialogState {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'debug-log'
+export type TabId = 'cookies' | 'storage' | 'network' | 'tracker-graph' | 'scripts' | 'analysis' | 'consent' | 'debug-log'

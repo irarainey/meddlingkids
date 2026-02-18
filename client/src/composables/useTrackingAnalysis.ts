@@ -569,6 +569,7 @@ export function useTrackingAnalysis() {
     scriptGroups,
     localStorage,
     sessionStorage,
+    networkRequests,
     activeTab,
     structuredReport,
     analysisError,

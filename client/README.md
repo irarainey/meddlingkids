@@ -37,7 +37,8 @@ src/
 │       ├── DebugLogTab.vue      # Server debug log (debug mode only)
 │       ├── NetworkTab.vue       # Network requests
 │       ├── ScriptsTab.vue       # Scripts by domain
-│       └── StorageTab.vue       # localStorage/sessionStorage
+│       ├── StorageTab.vue       # localStorage/sessionStorage
+│       └── TrackerGraphTab.vue  # Interactive tracker relationship graph (D3.js)
 ├── composables/
 │   ├── index.ts                 # Barrel export
 │   └── useTrackingAnalysis.ts   # Main state management composable
@@ -111,6 +112,7 @@ Each tab is a self-contained component with its own template and scoped styles:
 | `NetworkTab` | Network requests with third-party filter and filter explanation note |
 | `ScriptsTab` | JavaScript files grouped by domain |
 | `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
+| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Includes view modes (all domains, third-party only, pre-consent only), subgraph highlighting, minimap navigation, and resource-type breakdown |
 
 ### useTrackingAnalysis Composable
 
@@ -135,6 +137,7 @@ const {
   scriptGroups,         // Grouped similar scripts
   localStorage,         // localStorage items
   sessionStorage,       // sessionStorage items
+  networkRequests,      // Raw network requests (used by TrackerGraphTab)
   activeTab,            // Currently selected tab
   structuredReport,     // Structured per-section report
   analysisError,        // Analysis error if AI failed
@@ -183,7 +186,7 @@ Located in `types/tracking.ts`:
 | `StorageInfo` | Storage key lookup result with description, setBy, purpose, riskLevel, and privacyNote |
 | `TcfPurpose` | IAB TCF v2.2 purpose with id, name, description, riskLevel, lawfulBases, notes, and category |
 | `TcfLookupResult` | TCF purpose lookup result with matched purposes and unmatched strings |
-| `NetworkRequest` | HTTP request with domain, type, third-party flag |
+| `NetworkRequest` | HTTP request with domain, type, third-party flag, initiator domain, and redirect source |
 | `ConsentCategory` | Cookie category from consent dialog |
 | `ConsentPartner` | Third-party vendor from consent dialog (with risk classification and URL) |
 | `ConsentDetails` | Full consent dialog information |
@@ -252,6 +255,7 @@ Located in `utils/formatters.ts`:
 | **Cookies** | All cookies grouped by domain — click any cookie for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Storage** | localStorage and sessionStorage items — click any key for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Network** | HTTP requests with third-party filter |
+| **Graph** | Interactive tracker relationship graph showing domain connections, with view modes for all domains, third-party only, and pre-consent only |
 | **Scripts** | JavaScript files grouped by domain |
 | **Debug Log** | Server debug log output (debug mode only, enabled via `?debug=true`) |
 
@@ -349,6 +353,7 @@ npm run preview
 
 - **Vue 3**: Composition API with `<script setup>` syntax
 - **TypeScript**: Full type safety throughout
+- **D3.js**: Force-directed graph visualization for the tracker graph tab
 - **Vite**: Fast build tool and dev server
 - **CSS**: Global shared styles + scoped component styles
 
