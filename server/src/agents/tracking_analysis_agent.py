@@ -70,9 +70,11 @@ class TrackingAnalysisAgent(base.BaseAgent):
         )
         chunk_count = 0
         async with self._build_agent() as agent:
-            async for update in agent.run_stream(message):
+            thread = agent.get_new_thread()
+            async for update in agent.run_stream(message, thread=thread):
                 chunk_count += 1
                 yield update
+            logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.info(
             "Streaming tracking analysis complete",
             {

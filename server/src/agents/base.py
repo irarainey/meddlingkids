@@ -231,7 +231,9 @@ class BaseAgent:
             text=user_prompt,
         )
         async with self._build_agent(instructions, max_tokens, response_model) as agent:
-            response = await agent.run(message)
+            thread = agent.get_new_thread()
+            response = await agent.run(message, thread=thread)
+            logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.debug(
             f"{self.agent_name}: response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -278,7 +280,9 @@ class BaseAgent:
             ],
         )
         async with self._build_agent(instructions, max_tokens) as agent:
-            response = await agent.run(message)
+            thread = agent.get_new_thread()
+            response = await agent.run(message, thread=thread)
+            logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.debug(
             f"{self.agent_name}: vision response received",
             {"responseChars": len(response.text) if response.text else 0},
