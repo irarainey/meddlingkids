@@ -530,6 +530,7 @@ function renderGraphInner() {
 
   // Re-apply subgraph highlight if a node was selected before re-render
   if (selectedNode.value) applyHighlight()
+
 }
 
 /**
@@ -750,7 +751,9 @@ watch(filteredGraphData, () => {
   renderGraph()
 })
 
-watch(selectedNode, () => applyHighlight())
+watch(selectedNode, () => {
+  applyHighlight()
+})
 
 /** Connected domains for the selected node (shown in detail panel). */
 const selectedConnections = computed(() => {
@@ -766,6 +769,44 @@ const selectedConnections = computed(() => {
       preConsent: e.preConsent,
     }))
     .sort((a, b) => b.weight - a.weight)
+})
+
+/** Human-friendly labels and icons for common Playwright resource types. */
+const RESOURCE_TYPE_META: Record<string, { icon: string; label: string }> = {
+  script: { icon: '📜', label: 'Scripts' },
+  stylesheet: { icon: '🎨', label: 'Stylesheets' },
+  image: { icon: '🖼️', label: 'Images' },
+  font: { icon: '🔤', label: 'Fonts' },
+  xhr: { icon: '📡', label: 'XHR' },
+  fetch: { icon: '📡', label: 'Fetch' },
+  document: { icon: '📄', label: 'Documents' },
+  iframe: { icon: '🪟', label: 'IFrames' },
+  media: { icon: '🎬', label: 'Media' },
+  websocket: { icon: '🔌', label: 'WebSocket' },
+  ping: { icon: '📍', label: 'Pings' },
+  manifest: { icon: '📋', label: 'Manifests' },
+  preflight: { icon: '✈️', label: 'Preflight' },
+  other: { icon: '📦', label: 'Other' },
+}
+
+/** Resource-type breakdown for the currently selected domain. */
+const selectedResourceBreakdown = computed(() => {
+  if (!selectedNode.value) return []
+  const domain = selectedNode.value.id
+  const counts = new Map<string, number>()
+
+  for (const req of props.networkRequests) {
+    if (req.domain !== domain) continue
+    const type = req.resourceType || 'other'
+    counts.set(type, (counts.get(type) ?? 0) + 1)
+  }
+
+  return Array.from(counts.entries())
+    .map(([type, count]) => {
+      const meta = RESOURCE_TYPE_META[type] ?? { icon: '📦', label: type }
+      return { type, count, icon: meta.icon, label: meta.label }
+    })
+    .sort((a, b) => b.count - a.count)
 })
 </script>
 
@@ -880,6 +921,16 @@ const selectedConnections = computed(() => {
             <span class="conn-domain">{{ conn.domain }}</span>
             <span class="conn-weight">×{{ conn.weight }}</span>
             <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
+          </div>
+        </div>
+        <div v-if="selectedResourceBreakdown.length > 0" class="detail-resources">
+          <h4>Resource Types</h4>
+          <div class="resource-grid">
+            <div v-for="res in selectedResourceBreakdown" :key="res.type" class="resource-item">
+              <span class="resource-icon">{{ res.icon }}</span>
+              <span class="resource-label">{{ res.label }}</span>
+              <span class="resource-count">{{ res.count }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1222,6 +1273,48 @@ const selectedConnections = computed(() => {
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   flex-shrink: 0;
+}
+
+/* Resource-type breakdown */
+.detail-resources {
+  margin-top: 0.75rem;
+}
+
+.detail-resources h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: #e0e7ff;
+}
+
+.resource-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #1e2235;
+  border: 1px solid #3d4663;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.resource-icon {
+  font-size: 0.85rem;
+}
+
+.resource-label {
+  color: #c7d2fe;
+}
+
+.resource-count {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* Minimap */

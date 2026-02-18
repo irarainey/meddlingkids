@@ -52,6 +52,7 @@ export default tseslint.config(
         SVGCircleElement: 'readonly',
         SVGLineElement: 'readonly',
         SVGTextElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
         ResizeObserver: 'readonly',
         requestAnimationFrame: 'readonly',
       },
