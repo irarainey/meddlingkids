@@ -130,27 +130,27 @@ function riskClass(level: string): string {
             <div v-else-if="cookieInfoCache[cookieKey(cookie)]" class="cookie-info-content">
               <div class="info-row">
                 <span class="info-label">What it does</span>
-                <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)]?.description }}</span>
+                <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)].description }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Set by</span>
-                <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)]?.setBy }}</span>
+                <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)].setBy }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(cookieInfoCache[cookieKey(cookie)]?.purpose ?? '') }}</span>
+                <span class="info-value">{{ purposeLabel(cookieInfoCache[cookieKey(cookie)].purpose) }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Risk</span>
                 <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(cookieInfoCache[cookieKey(cookie)]?.riskLevel ?? '')">
-                    {{ cookieInfoCache[cookieKey(cookie)]?.riskLevel }}
+                  <span class="risk-badge" :class="riskClass(cookieInfoCache[cookieKey(cookie)].riskLevel)">
+                    {{ cookieInfoCache[cookieKey(cookie)].riskLevel }}
                   </span>
                 </span>
               </div>
-              <div v-if="cookieInfoCache[cookieKey(cookie)]?.privacyNote" class="info-row">
+              <div v-if="cookieInfoCache[cookieKey(cookie)].privacyNote" class="info-row">
                 <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ cookieInfoCache[cookieKey(cookie)]?.privacyNote }}</span>
+                <span class="info-value privacy-note">{{ cookieInfoCache[cookieKey(cookie)].privacyNote }}</span>
               </div>
             </div>
           </div>
