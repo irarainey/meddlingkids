@@ -77,7 +77,7 @@ If you want to dive deeper, we get a full report showing analysis, consent, cook
 
 ---
 
-And if you want an even deeper dive, we provide a detailed visualizations and interactive graph to explore network traffic for tracker relationships and data flows.
+And if you want an even deeper dive, we provide a detailed visualization and interactive graph to explore network traffic for tracker relationships and data flows.
 
 ![Tracker Graph](./images/examples/007.jpg)
 
@@ -351,7 +351,6 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 | `poe lint:mypy` | Run mypy type checking only |
 | `poe format` | Auto-fix ruff lint issues and format code |
 | `poe test` | Run unit tests |
-| `poe test:cov` | Run unit tests with coverage summary |
 
 ## Project Documentation
 

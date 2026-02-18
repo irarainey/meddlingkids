@@ -975,7 +975,6 @@ poe lint:ruff     # Run ruff linter and format check only
 poe lint:mypy     # Run mypy type checking only
 poe format        # Auto-fix ruff lint issues and format code
 poe test          # Run unit tests
-poe test:cov      # Run unit tests with coverage summary
 ```
 
 All tool configuration (ruff rules, mypy settings, poe tasks) lives in `server/pyproject.toml`.
