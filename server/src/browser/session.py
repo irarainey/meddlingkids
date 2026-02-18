@@ -354,6 +354,27 @@ class BrowserSession:
                     post_data = request.post_data
                 except Exception:
                     post_data = None
+            # Derive the initiating domain from the request's
+            # parent frame URL so we can visualise domain
+            # relationships in the tracker graph.
+            initiator_domain: str | None = None
+            try:
+                frame = request.frame
+                if frame and frame.url:
+                    initiator_domain = url_mod.extract_domain(
+                        frame.url,
+                    )
+            except Exception:
+                initiator_domain = None
+
+            redirected_from_url: str | None = None
+            try:
+                prev = request.redirected_from
+                if prev:
+                    redirected_from_url = prev.url
+            except Exception:
+                redirected_from_url = None
+
             self._tracked_network_requests.append(
                 tracking_data.NetworkRequest(
                     url=request_url,
@@ -366,6 +387,8 @@ class BrowserSession:
                     ),
                     timestamp=datetime.now(UTC).isoformat(),
                     post_data=post_data,
+                    initiator_domain=initiator_domain,
+                    redirected_from_url=redirected_from_url,
                 )
             )
             # Index for O(1) response matching
