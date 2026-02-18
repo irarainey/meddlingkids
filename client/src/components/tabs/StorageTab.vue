@@ -120,27 +120,27 @@ function riskClass(level: string): string {
             <div v-else-if="storageInfoCache[itemKey('localStorage', item)]" class="storage-info-content">
               <div class="info-row">
                 <span class="info-label">What it does</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)].description }}</span>
+                <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)]?.description }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Set by</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)].setBy }}</span>
+                <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)]?.setBy }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('localStorage', item)].purpose) }}</span>
+                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('localStorage', item)]?.purpose ?? '') }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Risk</span>
                 <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('localStorage', item)].riskLevel)">
-                    {{ storageInfoCache[itemKey('localStorage', item)].riskLevel }}
+                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('localStorage', item)]?.riskLevel ?? '')">
+                    {{ storageInfoCache[itemKey('localStorage', item)]?.riskLevel }}
                   </span>
                 </span>
               </div>
-              <div v-if="storageInfoCache[itemKey('localStorage', item)].privacyNote" class="info-row">
+              <div v-if="storageInfoCache[itemKey('localStorage', item)]?.privacyNote" class="info-row">
                 <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('localStorage', item)].privacyNote }}</span>
+                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('localStorage', item)]?.privacyNote }}</span>
               </div>
             </div>
           </div>
@@ -166,27 +166,27 @@ function riskClass(level: string): string {
             <div v-else-if="storageInfoCache[itemKey('sessionStorage', item)]" class="storage-info-content">
               <div class="info-row">
                 <span class="info-label">What it does</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)].description }}</span>
+                <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)]?.description }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Set by</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)].setBy }}</span>
+                <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)]?.setBy }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('sessionStorage', item)].purpose) }}</span>
+                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('sessionStorage', item)]?.purpose ?? '') }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Risk</span>
                 <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('sessionStorage', item)].riskLevel)">
-                    {{ storageInfoCache[itemKey('sessionStorage', item)].riskLevel }}
+                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel ?? '')">
+                    {{ storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel }}
                   </span>
                 </span>
               </div>
-              <div v-if="storageInfoCache[itemKey('sessionStorage', item)].privacyNote" class="info-row">
+              <div v-if="storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote" class="info-row">
                 <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('sessionStorage', item)].privacyNote }}</span>
+                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote }}</span>
               </div>
             </div>
           </div>
