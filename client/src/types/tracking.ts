@@ -48,6 +48,27 @@ export interface StorageInfo {
 }
 
 /**
+ * A matched IAB TCF v2.2 purpose with full metadata.
+ */
+export interface TcfPurpose {
+  id: number
+  name: string
+  description: string
+  riskLevel: string
+  lawfulBases: string[]
+  notes: string
+  category: 'purpose' | 'special-purpose' | 'feature' | 'special-feature'
+}
+
+/**
+ * Result of mapping consent purpose strings to TCF purposes.
+ */
+export interface TcfLookupResult {
+  matched: TcfPurpose[]
+  unmatched: string[]
+}
+
+/**
  * A JavaScript script loaded by the page.
  */
 export interface TrackedScript {
@@ -371,4 +392,4 @@ export interface ErrorDialogState {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'debug-log'
+export type TabId = 'cookies' | 'storage' | 'network' | 'scripts' | 'analysis' | 'consent' | 'debug-log'

@@ -17,7 +17,7 @@ from fastapi.middleware import cors
 from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
-from src.analysis import cookie_lookup, storage_lookup
+from src.analysis import cookie_lookup, storage_lookup, tcf_lookup
 from src.pipeline import stream
 from src.utils import cache, logger
 
@@ -131,6 +131,27 @@ async def storage_info_endpoint(
     agent = get_storage_info_agent()
     result = await storage_lookup.get_storage_info(key, storage_type, value, agent)
 
+    return result.model_dump(by_alias=True)
+
+
+@app.post("/api/tcf-purposes")
+async def tcf_purposes_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Map consent purpose strings to IAB TCF v2.2 purposes.
+
+    Accepts a list of purpose strings and returns matched TCF
+    purposes with full metadata (description, risk level, lawful
+    bases, notes) and any unmatched strings.  Matching is purely
+    deterministic — no LLM calls.
+    """
+    body = await request.json()
+    purposes: list[str] = body.get("purposes", [])
+
+    if not purposes:
+        return {"matched": [], "unmatched": []}
+
+    result = tcf_lookup.lookup_purposes(purposes)
     return result.model_dump(by_alias=True)
 
 

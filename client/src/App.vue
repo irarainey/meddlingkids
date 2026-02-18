@@ -9,6 +9,7 @@ import {
   PageErrorDialog,
   ErrorDialog,
   AnalysisTab,
+  ConsentTab,
   CookiesTab,
   DebugLogTab,
   NetworkTab,
@@ -30,6 +31,7 @@ const {
   localStorage,
   sessionStorage,
   activeTab,
+  consentDetails,
   structuredReport,
   analysisError,
   summaryFindings,
@@ -191,10 +193,13 @@ function onUrlMouseUp(event: Event): void {
           >
             📋 Analysis
           </button>
+          <button v-if="consentDetails" class="tab" :class="{ active: activeTab === 'consent' }" @click="activeTab = 'consent'">
+            🎯 Consent
+          </button>
           <button class="tab" :class="{ active: activeTab === 'cookies' }" @click="activeTab = 'cookies'">
             🍪 Cookies ({{ cookies.length }})
           </button>
-          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">
+          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">`
             💾 Storage ({{ localStorage.length + sessionStorage.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
@@ -223,6 +228,11 @@ function onUrlMouseUp(event: Event): void {
           v-if="activeTab === 'cookies'"
           :cookies-by-domain="cookiesByDomain"
           :cookie-count="cookies.length"
+        />
+
+        <ConsentTab
+          v-if="activeTab === 'consent'"
+          :consent-details="consentDetails"
         />
 
         <StorageTab
