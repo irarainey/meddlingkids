@@ -26,6 +26,7 @@ async def stream_tracking_analysis(
     analyzed_url: str,
     consent_details: consent.ConsentDetails | None = None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    tracking_summary: analysis.TrackingSummary | None = None,
 ) -> AsyncIterable[str]:
     """Stream the main tracking analysis token-by-token.
 
@@ -43,6 +44,9 @@ async def stream_tracking_analysis(
         analyzed_url: The URL that was analysed.
         consent_details: Optional consent dialog info.
         pre_consent_stats: Optional pre-consent page-load stats.
+        tracking_summary: Optional pre-built tracking summary.
+            When provided, avoids rebuilding the summary
+            from the raw data.
 
     Yields:
         Incremental text chunks of the analysis.
@@ -61,14 +65,15 @@ async def stream_tracking_analysis(
     )
     tracking_agent = agents.get_tracking_analysis_agent()
 
-    tracking_summary = tracking_summary_mod.build_tracking_summary(
-        cookies,
-        scripts,
-        network_requests,
-        local_storage,
-        session_storage,
-        analyzed_url,
-    )
+    if tracking_summary is None:
+        tracking_summary = tracking_summary_mod.build_tracking_summary(
+            cookies,
+            scripts,
+            network_requests,
+            local_storage,
+            session_storage,
+            analyzed_url,
+        )
     log.debug(
         "Tracking summary built",
         {

@@ -140,8 +140,8 @@ Page loaded successfully
    │
    ├── capture_current_cookies() → Intercept all cookies
    ├── capture_storage() → Read localStorage/sessionStorage
-   ├── take_screenshot() → PNG screenshot (for AI vision)
-   │   └── optimize_screenshot_bytes() → Convert to JPEG (reuses PNG, no second capture)
+   ├── take_screenshot() → JPEG screenshot (quality 72, for AI vision)
+   │   └── optimize_screenshot_bytes() → Downscale JPEG for LLM vision
    │
    └── send_event('screenshot', {
          screenshot,      // base64 JPEG
@@ -1090,8 +1090,8 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Script analysis results are cached per **script domain** (not per site) by base URL (query strings stripped) + MD5 content hash; a script analysed on one site is an immediate cache hit on any other site that loads it. Within a single scan, scripts sharing the same base URL are deduplicated (fetched and analysed once)
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
-- Screenshots are captured once as PNG; JPEG conversion reuses the bytes (no second browser capture)
-- Vision API calls (detection, extraction) convert PNG to JPEG and downscale to max 1280px wide
+- Screenshots are captured once as JPEG (quality 72) by Playwright — no format conversion needed
+- Vision API calls (detection, extraction) downscale JPEG to max 1280px wide
 - Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads
 - Overlay cache stores successful dismiss strategies per domain (Playwright locator strategy, button text, frame type, consent platform), skipping LLM vision detection on repeat visits
 - CMP platform detection identifies 19 known consent platforms by cookies, media group profile, or DOM selectors; when matched, the pipeline attempts a deterministic button click before falling back to LLM vision

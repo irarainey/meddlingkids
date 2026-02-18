@@ -73,7 +73,7 @@ class ConsentDetectionAgent(base.BaseAgent):
         """Detect overlays from a screenshot.
 
         Args:
-            screenshot: Raw PNG screenshot bytes.
+            screenshot: Raw JPEG screenshot bytes.
 
         Returns:
             A ``CookieConsentDetection`` with button text.

@@ -359,7 +359,7 @@ async def take_initial_screenshot(
     """Take the first page screenshot.
 
     Returns:
-        Tuple of (SSE screenshot event, PNG bytes, storage dict).
+        Tuple of (SSE screenshot event, JPEG bytes, storage dict).
     """
     return await sse_helpers.take_screenshot_event(session, storage)
 

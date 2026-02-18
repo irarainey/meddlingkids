@@ -130,8 +130,22 @@ class StructuredReportAgent(base.BaseAgent):
             domain_knowledge,
         )
 
-        # Wave 1: Core independent sections
-        log.info("Building report sections (wave 1)...")
+        # All sections are independent — they share the same
+        # data context and none reference another's output.
+        # Running them in a single concurrent batch maximises
+        # throughput.
+        consent_section_coro = (
+            self._build_section(
+                structured_report.CONSENT_ANALYSIS,
+                context,
+                _ConsentAnalysisResponse,
+                "consent-analysis",
+            )
+            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
+            else _noop_section(report.ConsentAnalysisSection())
+        )
+
+        log.info("Building all report sections concurrently...")
         (
             tracking_tech,
             data_collection,
@@ -139,6 +153,10 @@ class StructuredReportAgent(base.BaseAgent):
             cookie_analysis,
             storage_analysis,
             privacy_risk,
+            vendors,
+            consent_analysis,
+            social_media_implications,
+            recommendations,
         ) = await asyncio.gather(
             self._build_section(
                 structured_report.TRACKING_TECH,
@@ -176,22 +194,6 @@ class StructuredReportAgent(base.BaseAgent):
                 _PrivacyRiskResponse,
                 "privacy-risk",
             ),
-        )
-
-        # Wave 2: Sections that benefit from full context
-        log.info("Building report sections (wave 2)...")
-        consent_section_coro = (
-            self._build_section(
-                structured_report.CONSENT_ANALYSIS,
-                context,
-                _ConsentAnalysisResponse,
-                "consent-analysis",
-            )
-            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
-            else _noop_section(report.ConsentAnalysisSection())
-        )
-
-        vendors, consent_analysis, social_media_implications, recommendations = await asyncio.gather(
             self._build_section(
                 structured_report.VENDOR,
                 context,

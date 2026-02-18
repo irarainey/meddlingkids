@@ -26,7 +26,7 @@ async def extract_consent_details(
 
     Args:
         page: Playwright page for DOM text extraction.
-        screenshot: Raw PNG screenshot bytes.
+        screenshot: Raw JPEG screenshot bytes.
         pre_captured_text: DOM text captured while the consent
             dialog was still visible. If provided, the agent
             uses this instead of re-extracting from the page.

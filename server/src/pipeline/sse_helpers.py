@@ -140,7 +140,7 @@ async def take_screenshot_event(
         extra: Optional additional fields for the event payload.
 
     Returns:
-        Tuple of (SSE event string, raw PNG bytes, storage dict).
+        Tuple of (SSE event string, raw JPEG bytes, storage dict).
     """
     try:
         screenshot_bytes = await session.take_screenshot(full_page=False)

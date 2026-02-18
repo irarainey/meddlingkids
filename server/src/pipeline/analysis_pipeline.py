@@ -1,8 +1,15 @@
 """
-AI analysis pipeline — concurrent script + tracking analysis.
+AI analysis pipeline — maximum-concurrency agent orchestration.
 
-Runs script grouping/identification and LLM tracking analysis in
-parallel, then scores results and generates summary findings.
+Pre-computes deterministic values (scoring, tracking summary,
+domain knowledge) then launches three concurrent work-streams:
+
+1. Script grouping/identification (with semaphore-bounded LLM)
+2. Streaming LLM tracking analysis
+3. Structured report generation (10 LLM sections in parallel)
+
+Once the tracking stream finishes, the summary-findings agent
+runs concurrently with any still-in-flight report sections.
 """
 
 from __future__ import annotations
@@ -79,6 +86,51 @@ async def run_ai_analysis(
 
     log.start_timer("ai-analysis")
 
+    # ── Pre-compute deterministic values ──────────────────────
+    # Scoring and the structured report only depend on raw
+    # captured data, not on LLM analysis output.  Computing
+    # them upfront lets us start the structured report
+    # concurrently with script and tracking analysis.
+    tracking_summary = tracking_summary_mod.build_tracking_summary(
+        final_cookies,
+        final_scripts,
+        final_requests,
+        storage["local_storage"],
+        storage["session_storage"],
+        url,
+    )
+
+    score_breakdown = calculator.calculate_privacy_score(
+        final_cookies,
+        final_scripts,
+        final_requests,
+        storage["local_storage"],
+        storage["session_storage"],
+        url,
+        consent_details,
+        pre_consent_stats,
+    )
+    log.info(
+        "Privacy score calculated",
+        {"score": score_breakdown.total_score},
+    )
+
+    domain = url_mod.extract_domain(url)
+    domain_knowledge = domain_cache.load(domain)
+
+    if domain_knowledge:
+        log.info(
+            "Domain cache hit — anchoring classifications",
+            {
+                "domain": domain,
+                "scanCount": domain_knowledge.scan_count,
+                "trackers": len(domain_knowledge.trackers),
+                "vendors": len(domain_knowledge.vendors),
+            },
+        )
+    else:
+        log.info("Domain cache miss — no prior knowledge", {"domain": domain})
+
     # ── Launch concurrent tasks and yield events in real-time ──
     progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
     analysis_chunks: list[str] = []
@@ -93,6 +145,21 @@ async def run_ai_analysis(
         consent_details,
         analysis_chunks,
         pre_consent_stats,
+        tracking_summary=tracking_summary,
+    )
+
+    # Start the structured report concurrently with script
+    # and tracking analysis — it depends only on the
+    # pre-computed deterministic values above.
+    report_agent = agents.get_structured_report_agent()
+    report_task = asyncio.create_task(
+        report_agent.build_report(
+            tracking_summary,
+            consent_details,
+            pre_consent_stats,
+            score_breakdown,
+            domain_knowledge,
+        )
     )
 
     # Drain events as they arrive — this keeps SSE streaming
@@ -106,16 +173,25 @@ async def run_ai_analysis(
             continue
         yield event
 
-    await script_task
-    await tracking_task
+    try:
+        await script_task
+        await tracking_task
+    except Exception:
+        # Cancel the report task so it doesn't leak if
+        # analysis fails.
+        if not report_task.done():
+            report_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await report_task
+        raise
+
     script_result = script_task.result()
 
     log.end_timer("tracking-analysis", "Tracking analysis complete")
 
-    # ── Scoring and summary ─────────────────────────────────
+    # ── Summary (scoring + report already in flight) ────────
     async for event in _score_and_summarise(
         final_cookies,
-        final_scripts,
         final_requests,
         storage,
         url,
@@ -123,6 +199,10 @@ async def run_ai_analysis(
         overlay_count,
         analysis_chunks,
         script_result,
+        tracking_summary,
+        score_breakdown,
+        domain_knowledge,
+        report_task,
         pre_consent_stats,
     ):
         yield event
@@ -138,12 +218,18 @@ def _launch_concurrent_tasks(
     consent_details: consent.ConsentDetails | None,
     analysis_chunks: list[str],
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    tracking_summary: analysis.TrackingSummary | None = None,
 ) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[None]]:
     """Create and launch the concurrent script + tracking tasks.
 
     Both tasks push SSE event strings (or ``None`` sentinels) onto
     *progress_queue*.  The caller is responsible for draining the
     queue to keep events streaming in real-time.
+
+    Args:
+        tracking_summary: Optional pre-built tracking summary
+            passed through to the tracking analysis stream to
+            avoid rebuilding it.
 
     Returns:
         Tuple of (script_task, tracking_task).
@@ -213,6 +299,7 @@ def _launch_concurrent_tasks(
                 url,
                 consent_details,
                 pre_consent_stats,
+                tracking_summary=tracking_summary,
             ):
                 analysis_chunks.append(chunk)
                 progress_queue.put_nowait(sse_helpers.format_sse_event("analysis-chunk", {"text": chunk}))
@@ -559,7 +646,6 @@ def _render_report_text(
 
 async def _score_and_summarise(
     final_cookies: list[tracking_data.TrackedCookie],
-    final_scripts: list[tracking_data.TrackedScript],
     final_requests: list[tracking_data.NetworkRequest],
     storage: dict[str, list[tracking_data.StorageItem]],
     url: str,
@@ -567,71 +653,30 @@ async def _score_and_summarise(
     overlay_count: int,
     analysis_chunks: list[str],
     script_result: scripts.ScriptAnalysisResult,
+    tracking_summary: analysis.TrackingSummary,
+    score_breakdown: analysis.ScoreBreakdown,
+    domain_knowledge: domain_cache.DomainKnowledge | None,
+    report_task: asyncio.Task[report_models.StructuredReport],
     pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> AsyncGenerator[str]:
-    """Score, summarise, and yield the complete event."""
+    """Summarise and yield the complete event.
+
+    Scoring, the tracking summary, domain knowledge, and the
+    structured report are pre-computed / pre-launched by the
+    caller for maximum concurrency.
+    """
     full_text = "".join(analysis_chunks)
     log.info("Analysis streamed", {"length": len(full_text)})
 
     yield sse_helpers.format_progress_event("ai-scoring", "Calculating privacy score...", 94)
 
-    tracking_summary = tracking_summary_mod.build_tracking_summary(
-        final_cookies,
-        final_scripts,
-        final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
-        url,
-    )
-
-    score_breakdown = calculator.calculate_privacy_score(
-        final_cookies,
-        final_scripts,
-        final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
-        url,
-        consent_details,
-        pre_consent_stats,
-    )
-    log.info(
-        "Privacy score calculated",
-        {"score": score_breakdown.total_score},
-    )
-
     yield sse_helpers.format_progress_event("ai-summarizing", "Generating summary...", 96)
-    log.info("Starting summary and report generation")
+    log.info("Starting summary generation")
 
-    # Build structured report and summary findings concurrently
-    report_agent = agents.get_structured_report_agent()
+    # The structured report is already being built concurrently
+    # (launched alongside script and tracking analysis).  Only
+    # the summary needs the completed analysis text.
     summary_agent = agents.get_summary_findings_agent()
-
-    # Load cached domain knowledge for consistency anchoring.
-    domain = url_mod.extract_domain(url)
-    domain_knowledge = domain_cache.load(domain)
-
-    if domain_knowledge:
-        log.info(
-            "Domain cache hit — anchoring classifications",
-            {
-                "domain": domain,
-                "scanCount": domain_knowledge.scan_count,
-                "trackers": len(domain_knowledge.trackers),
-                "vendors": len(domain_knowledge.vendors),
-            },
-        )
-    else:
-        log.info("Domain cache miss — no prior knowledge", {"domain": domain})
-
-    structured_report_task = asyncio.create_task(
-        report_agent.build_report(
-            tracking_summary,
-            consent_details,
-            pre_consent_stats,
-            score_breakdown,
-            domain_knowledge,
-        )
-    )
     summary_task = asyncio.create_task(
         summary_agent.summarise(
             full_text,
@@ -647,12 +692,12 @@ async def _score_and_summarise(
 
     try:
         structured_report, summary_findings = await asyncio.gather(
-            structured_report_task,
+            report_task,
             summary_task,
         )
     except Exception:
         # Cancel the surviving task so it doesn't leak.
-        for task in (structured_report_task, summary_task):
+        for task in (report_task, summary_task):
             if not task.done():
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
@@ -687,6 +732,7 @@ async def _score_and_summarise(
     log.end_timer("ai-analysis", "All AI analysis complete")
 
     # ── Save report to file (when log-to-file is enabled) ───
+    domain = url_mod.extract_domain(url)
     analysis_success = bool(full_text)
     privacy_score = score_breakdown.total_score
 
