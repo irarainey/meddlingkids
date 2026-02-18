@@ -1,0 +1,32 @@
+# =============================================================================
+# Docker Compose — Local Development
+# =============================================================================
+# Run the Meddling Kids container locally with the .output directory
+# mounted so cache, logs, and reports are persisted on the host.
+#
+# Usage:
+#   docker compose up              # Start the container (pulls image if needed)
+#   docker compose down            # Stop the container
+#
+# To build locally instead of pulling:
+#   docker compose up --build
+#
+# Requires a .env file — copy .env.example and fill in your values:
+#   cp .env.example .env
+# =============================================================================
+
+services:
+  meddlingkids:
+    container_name: meddlingkids
+    image: ghcr.io/irarainey/meddlingkids:latest
+    build: .
+    ports:
+      - "${UVICORN_PORT:-3001}:${UVICORN_PORT:-3001}"
+    env_file:
+      - .env
+    environment:
+      - SHOW_UI=true
+    volumes:
+      - ~/.meddlingkids/output:/app/server/.output
+    stdin_open: true
+    tty: true

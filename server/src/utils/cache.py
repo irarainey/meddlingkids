@@ -1,6 +1,6 @@
 """Shared cache management utilities.
 
-Caches live under ``server/.cache/``:
+Caches live under ``server/.output/cache/``:
 
 - ``domain/`` — per-site domain knowledge (tracker labels, etc.)
 - ``overlay/`` — per-site overlay dismissal strategies
@@ -22,8 +22,11 @@ from src.utils import logger
 
 log = logger.create_logger("CacheManager")
 
+# Shared output root — parent of cache/, logs/, reports/.
+_OUTPUT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent / ".output"
+
 # Root cache directory — parent of domain/, overlay/, scripts/.
-_CACHE_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent / ".cache"
+_CACHE_ROOT = _OUTPUT_ROOT / "cache"
 
 
 def atomic_write_text(path: pathlib.Path, content: str) -> None:

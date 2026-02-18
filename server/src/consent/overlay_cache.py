@@ -43,8 +43,8 @@ LocatorStrategy = Literal[
 
 FrameType = Literal["main", "consent-iframe"]
 
-# Cache directory — lives alongside server source, gitignored.
-_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".cache" / "overlay"
+# Cache directory — lives under server/.output/cache/, gitignored.
+_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "overlay"
 
 
 class CachedOverlay(pydantic.BaseModel):

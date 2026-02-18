@@ -7,6 +7,9 @@
 # Build:
 #   docker build -t meddlingkids .
 #
+# Run with docker compose (recommended):
+#   docker compose up
+#
 # Run with env file (default port 3001):
 #   docker run -p 3001:3001 --env-file .env meddlingkids
 #
@@ -118,11 +121,15 @@ RUN chmod +x docker-entrypoint.sh
 # Create X11 socket directory for Xvfb (must exist before switching to non-root user)
 RUN mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
+# Pre-create .output directory for volume mounts (owned by appuser)
+RUN mkdir -p /app/server/.output/cache /app/server/.output/logs /app/server/.output/reports
+
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app
 
-# Switch to non-root user
-USER appuser
+# NOTE: USER is intentionally not set here — the entrypoint starts as root
+# to fix volume-mount permissions, then drops to appuser before starting
+# the server. See docker-entrypoint.sh for details.
 
 # Environment variables with defaults
 ENV SHOW_UI=true
@@ -135,10 +142,6 @@ ENV WRITE_TO_FILE=false
 # ENV AZURE_OPENAI_ENDPOINT=
 # ENV AZURE_OPENAI_API_KEY=
 # ENV AZURE_OPENAI_DEPLOYMENT=
-
-# Health check using the UVICORN_PORT environment variable
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${UVICORN_PORT:-3001}/ || exit 1
 
 # Use tini as init process for proper signal handling (CTRL+C)
 ENTRYPOINT ["/usr/bin/tini", "--"]

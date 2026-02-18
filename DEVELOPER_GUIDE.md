@@ -182,9 +182,10 @@ OverlayPipeline.run()
    │
    ├── 3. Vision detection loop (up to 5 iterations)
    │   │
-   │   ├── steps.detect_overlay(screenshot)
+   ├── steps.detect_overlay(screenshot)
    │   │   └── AI vision-only analysis (viewport screenshot, JPEG, max 1280px)
    │   │       Returns: { found, overlay_type, button_text, certainty }
+   │   │   └── Screenshot failures return not-found (analysis continues)
    │   │   └── Runs concurrently with pending extraction via asyncio.gather
    │   │
    │   ├── _retry_validate_in_dom(page, detection)
@@ -205,6 +206,7 @@ OverlayPipeline.run()
    │   │
    │   ├── steps.capture_after_click(session, page, detection)
    │   │   └── Waits for DOM, captures cookies, takes screenshot
+   │   │   └── Screenshot failures produce an empty image (analysis continues)
    │   │
    │   ├── If first cookie-consent overlay:
    │   │   ├── steps.capture_consent_content() → Read-only pre-dismiss capture
@@ -450,7 +452,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager) |
+| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager). `take_screenshot()` accepts a configurable `timeout` (default 15s) and `optimize_screenshot_bytes()` gracefully handles empty input |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -498,9 +500,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
 | `browser_phases.py` | Phases 1-3: setup (with browser launch retry), navigate, initial capture |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
-| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract) |
+| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
-| `sse_helpers.py` | SSE formatting and serialization helpers |
+| `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
 
 ### Data Layer
 
@@ -732,7 +734,7 @@ class ThirdPartyGroup(BaseModel):
 
 ## Caching
 
-Three caches live under `server/.cache/` (gitignored).
+Three caches live under `server/.output/cache/` (gitignored).
 They reduce LLM calls and improve analysis speed on repeat
 visits — and, for scripts, across different sites.
 
@@ -891,6 +893,17 @@ If any step times out, the remaining steps still execute. After all steps comple
 
 The top-level orchestrator in `stream.py` wraps `session.close()` in a 30-second outer timeout within the `finally` block. This prevents the entire SSE connection from hanging if cleanup itself gets stuck. Log file finalization (`logger.end_log_file()`) runs after cleanup so that teardown activity is captured in the log.
 
+### Screenshot Resilience
+
+Ad-heavy pages can become temporarily unresponsive after a consent overlay is dismissed (dozens of tracking scripts load at once). To prevent a single screenshot timeout from crashing the entire analysis:
+
+- **Configurable timeout** — `session.take_screenshot()` accepts a `timeout` parameter (default 15 000 ms, reduced from Playwright's default 30 000 ms) so the pipeline fails fast.
+- **Graceful fallback in overlay detection** — `detect_overlay()` catches screenshot exceptions and returns a `CookieConsentDetection.not_found()` result. The overlay loop exits cleanly instead of raising.
+- **Graceful fallback in consent capture** — `capture_consent_content()` catches screenshot exceptions and falls back to `b""`. Consent extraction can still proceed using extracted DOM text alone.
+- **Graceful fallback in SSE screenshot events** — `take_screenshot_event()` catches screenshot exceptions and falls back to `b""`. Post-click captures produce an empty image rather than crashing.
+- **Empty-bytes guard** — `optimize_screenshot_bytes()` returns an empty string for empty bytes input, preventing a downstream Pillow crash when any of the above fallbacks flow through the optimization pipeline.
+- **Background refresher** — The screenshot refresher in `stream.py` already catches all exceptions and skips the update (this was implemented before the above changes).
+
 ### Client Error Reporting
 
 The client (`useTrackingAnalysis.ts`) provides context-aware error messages:
@@ -1044,8 +1057,8 @@ log.success('Done!', {'result': data})
 
 Set `WRITE_TO_FILE=true` in your environment to write logs and reports to files. Folders are created automatically if they don't exist.
 
-- **Logs** are saved to the `/.logs` folder. Each analysis creates a new log file named after the domain being analyzed. File logs are plain text with ANSI color codes stripped for readability.
-- **Reports** are saved to the `/.reports` folder. Each analysis creates a text file containing the final structured report.
+- **Logs** are saved to the `server/.output/logs/` folder. Each analysis creates a new log file named after the domain being analyzed. File logs are plain text with ANSI color codes stripped for readability.
+- **Reports** are saved to the `server/.output/reports/` folder. Each analysis creates a text file containing the final structured report.
 
 ```bash
 # Enable file output

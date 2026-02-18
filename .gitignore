@@ -1,3 +1,6 @@
+# Server output (cache, logs, reports)
+.output/
+
 # Logs
 .logs/
 *.log

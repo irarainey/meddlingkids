@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -67,6 +67,20 @@ const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
 
 const appVersion = __APP_VERSION__
+const serverVersion = ref('')
+
+onMounted(async () => {
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const res = await fetch(`${apiBase}/api/version`)
+    if (res.ok) {
+      const data = await res.json()
+      serverVersion.value = data.version
+    }
+  } catch {
+    // Server version is optional — silently ignore
+  }
+})
 
 /** Show the Debug Log tab only when ?debug=true is in the URL. */
 const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
@@ -261,7 +275,8 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version {{ appVersion }}
+      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently.
+      <span class="version">Client {{ appVersion }}<span v-if="serverVersion"> / Server {{ serverVersion }}</span></span>
     </footer>
 </template>
 
@@ -416,6 +431,12 @@ function onUrlMouseUp(event: Event): void {
   user-select: none;
   pointer-events: none;
   line-height: 1.4;
+}
+
+.app-footer .version {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.6rem;
 }
 
 @media (max-width: 900px) {

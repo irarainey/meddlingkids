@@ -34,8 +34,8 @@ from src.utils import cache, logger
 
 log = logger.create_logger("DomainCache")
 
-# Cache directory — lives alongside server source, gitignored.
-_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".cache" / "domain"
+# Cache directory — lives under server/.output/cache/, gitignored.
+_CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "domain"
 
 # Items not seen for this many consecutive scans are pruned.
 _STALE_SCAN_THRESHOLD = 3

@@ -114,27 +114,29 @@ meddlingkids/
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
-├── .logs/                     # Server logs (auto-created when WRITE_TO_FILE=true)
-├── .reports/                  # Analysis reports (auto-created when WRITE_TO_FILE=true)
-├── .cache/                    # Analysis caches (auto-created)
-│   ├── domain/                # Domain knowledge cache for cross-run consistency
-│   ├── overlay/               # Overlay dismissal cache per domain
-│   └── scripts/               # Script analysis cache per script domain (URL + content hash)
+├── .output/                   # All server output (auto-created, gitignored)
+│   ├── cache/                 # Analysis caches
+│   │   ├── domain/            # Domain knowledge cache for cross-run consistency
+│   │   ├── overlay/           # Overlay dismissal cache per domain
+│   │   └── scripts/           # Script analysis cache per script domain (URL + content hash)
+│   ├── logs/                  # Server logs (when WRITE_TO_FILE=true)
+│   └── reports/               # Analysis reports (when WRITE_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
+├── docker-compose.yml         # Local development with volume mount (~/.meddlingkids/output)
 └── vite.config.ts             # Vite build configuration
 ```
 
 ## Caching
 
-Meddling Kids uses three caches stored in `server/.cache/` to speed up
+Meddling Kids uses three caches stored in `server/.output/cache/` to speed up
 repeat analyses and reduce LLM calls. Cache files are JSON, created
 automatically, and gitignored.
 
 | Cache | Directory | Keyed By | What It Stores | Saves |
 |-------|-----------|----------|---------------|-------|
-| **Script analysis** | `.cache/scripts/` | Script domain (e.g. `s0.2mdn.net.json`) | LLM-generated descriptions of unknown scripts, keyed by base URL (query strings stripped) and MD5 content hash | LLM calls for every previously analysed script — even across different site scans |
-| **Domain knowledge** | `.cache/domain/` | Scanned site domain | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
-| **Overlay dismissal** | `.cache/overlay/` | Scanned site domain | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type, consent platform) | LLM vision calls for overlay detection on repeat visits |
+| **Script analysis** | `.output/cache/scripts/` | Script domain (e.g. `s0.2mdn.net.json`) | LLM-generated descriptions of unknown scripts, keyed by base URL (query strings stripped) and MD5 content hash | LLM calls for every previously analysed script — even across different site scans |
+| **Domain knowledge** | `.output/cache/domain/` | Scanned site domain | Tracker categories, cookie groupings, vendor roles, and severity levels from prior analyses | Consistency — anchors the LLM to established labels so classifications stay stable across runs |
+| **Overlay dismissal** | `.output/cache/overlay/` | Scanned site domain | Successful consent-dismiss strategies (Playwright locator strategy, button text, frame type, consent platform) | LLM vision calls for overlay detection on repeat visits |
 
 ### How It Helps
 
@@ -290,6 +292,17 @@ Create a `.env` file with your credentials and run:
 ```bash
 docker run -p 3001:3001 --env-file .env ghcr.io/irarainey/meddlingkids:latest
 ```
+
+### Using Docker Compose
+
+For local development with output (cache, logs, reports) persisted on the host:
+
+```bash
+cp .env.example .env  # fill in your credentials
+docker compose up
+```
+
+The `~/.meddlingkids/output/` directory on the host is mounted into the container so cache, logs, and reports persist across container restarts and are kept outside the project tree.
 
 ### Using a Custom Port
 
