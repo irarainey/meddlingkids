@@ -229,19 +229,19 @@ All data captured
    │
    ├── ┌─────────────────── Run concurrently ──────────────────┐
    │   │                                                       │
-   │   │  analyze_scripts(scripts)                          │
+   │   │  analyze_scripts(scripts)                             │
    │   │   ├── Group similar scripts (chunks, vendor bundles)  │
    │   │   ├── Match against tracking patterns (JSON)          │
    │   │   ├── Match against benign patterns (JSON)            │
-   │   │   ├── Deduplicate by base URL (strip query strings)  │
-   │   │   ├── Check per-script-domain cache (URL + MD5 hash) │
+   │   │   ├── Deduplicate by base URL (strip query strings)   │
+   │   │   ├── Check per-script-domain cache (URL + MD5 hash)  │
    │   │   └── LLM analysis for uncached unknown scripts       │
    │   │       (concurrent with semaphore, max 10 at a time)   │
    │   │                                                       │
    │   │  stream_tracking_analysis(summary, consent, stats)    │
    │   │   ├── build_tracking_summary() → Data for LLM         │
    │   │   ├── GDPR/TCF reference data (purposes, lawful       │
-   │   │   │   bases, ePrivacy categories, consent cookies)     │
+   │   │   │   bases, ePrivacy categories, consent cookies)    │
    │   │   ├── Pre-consent page-load stats                     │
    │   │   ├── Media group context (if domain recognised)      │
    │   │   └── Main analysis prompt → Full markdown report     │
@@ -259,7 +259,7 @@ All data captured
    │   │   ├── 10 concurrent section LLM calls                 │
    │   │   ├── GDPR/TCF reference data                         │
    │   │   ├── Deterministic overrides (partner count,         │
-   │   │   │   domain count, cookie count, storage counts)      │
+   │   │   │   domain count, cookie count, storage counts)     │
    │   │   └── Vendor URL enrichment from partner databases    │
    │   │                                                       │
    │   └───────────────────────────────────────────────────────┘

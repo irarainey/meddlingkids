@@ -104,7 +104,6 @@ meddlingkids/
 │   │   └── utils/             # Formatting utilities
 │   └── public/                # Static assets
 ├── server/                    # Python FastAPI backend
-│   ├── pyproject.toml         # Python dependencies (managed with uv)
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
@@ -129,8 +128,7 @@ meddlingkids/
 │   ├── logs/                  # Server logs (when WRITE_TO_FILE=true)
 │   └── reports/               # Analysis reports (when WRITE_TO_FILE=true)
 ├── Dockerfile                 # Multi-stage production build
-├── docker-compose.yml         # Local development with volume mount (~/.meddlingkids/output)
-└── vite.config.ts             # Vite build configuration
+meddlingkids/output)
 ```
 
 ## Caching
