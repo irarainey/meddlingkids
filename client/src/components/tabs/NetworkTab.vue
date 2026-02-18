@@ -16,7 +16,7 @@ defineProps<{
 <template>
   <div class="tab-content">
     <div v-if="filteredNetworkRequests.length === 0" class="empty-state">
-      No network requests detected yet
+      No network requests detected
     </div>
     <div v-else class="domain-groups">
       <p class="filter-note">

@@ -97,7 +97,7 @@ function riskClass(level: string): string {
 <template>
   <div class="tab-content">
     <div v-if="localStorage.length === 0 && sessionStorage.length === 0" class="empty-state">
-      No storage data detected yet
+      No storage data detected
     </div>
     <div v-else class="domain-groups">
       <div v-if="localStorage.length > 0" class="domain-group">

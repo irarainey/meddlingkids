@@ -29,7 +29,7 @@ defineProps<{
 
 <template>
   <div class="tab-content">
-    <div v-if="scriptCount === 0" class="empty-state">No scripts detected yet</div>
+    <div v-if="scriptCount === 0" class="empty-state">No scripts detected</div>
     <div v-else class="domain-groups">
       <!-- Script Groups (application chunks, vendor bundles, etc.) -->
       <div v-if="scriptGroups && scriptGroups.length > 0" class="grouped-scripts-section">

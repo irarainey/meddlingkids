@@ -96,7 +96,7 @@ function riskClass(level: string): string {
 
 <template>
   <div class="tab-content">
-    <div v-if="cookieCount === 0" class="empty-state">No cookies detected yet</div>
+    <div v-if="cookieCount === 0" class="empty-state">No cookies detected</div>
     <div v-else class="domain-groups">
       <div v-for="(domainCookies, domain) in cookiesByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">{{ domain }} ({{ domainCookies.length }})</h3>

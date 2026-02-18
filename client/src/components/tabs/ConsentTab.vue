@@ -144,7 +144,7 @@ function toggleRiskGroup(level: string): void {
 <template>
   <div class="tab-content">
     <div v-if="!consentDetails" class="empty-state">
-      No consent dialog was detected on this page
+      No consent dialog was detected
     </div>
 
     <div v-else class="consent-layout">
