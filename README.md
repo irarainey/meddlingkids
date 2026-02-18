@@ -71,9 +71,15 @@ After the analysis is complete, we get a privacy score out of 100 based on the t
 
 ---
 
-If you want to dive deeper, we get a full report showing all cookies, scripts, network requests, storage items, and AI analysis.
+If you want to dive deeper, we get a full report showing analysis, consent, cookies, storage items, network requests, and scripts.
 
 ![Full Report](./images/examples/006.jpg)
+
+---
+
+And if you want an even deeper dive, we provide a detailed visualizations and interactive graph to explore network traffic for tracker relationships and data flows.
+
+![Tracker Graph](./images/examples/007.jpg)
 
 ---
 
