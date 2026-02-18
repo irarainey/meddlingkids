@@ -127,11 +127,11 @@ async def _screenshot_refresher(
     while updates_sent < remaining:
         await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
         try:
-            png_bytes = await session.take_screenshot(full_page=False)
-            new_hash = hashlib.md5(png_bytes).hexdigest()
+            screenshot = await session.take_screenshot(full_page=False)
+            new_hash = hashlib.md5(screenshot).hexdigest()
             if new_hash != current_hash:
                 current_hash = new_hash
-                optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png_bytes)
+                optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
                 event = sse_helpers.format_screenshot_update_event(
                     optimized,
                 )
@@ -365,8 +365,8 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
     # visual changes while the page loads.
     ctx.refresh_queue = asyncio.Queue()
     try:
-        initial_png = await session.take_screenshot(full_page=False)
-        last_screenshot_hash = hashlib.md5(initial_png).hexdigest()
+        initial_screenshot = await session.take_screenshot(full_page=False)
+        last_screenshot_hash = hashlib.md5(initial_screenshot).hexdigest()
     except Exception:
         log.debug("Initial screenshot for hash failed — starting refresher with empty hash")
         last_screenshot_hash = ""
@@ -576,9 +576,9 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
         current_hash = ""
 
         try:
-            png = await session.take_screenshot(full_page=False)
-            current_hash = hashlib.md5(png).hexdigest()
-            optimized = browser_session.BrowserSession.optimize_screenshot_bytes(png)
+            screenshot = await session.take_screenshot(full_page=False)
+            current_hash = hashlib.md5(screenshot).hexdigest()
+            optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
             yield sse_helpers.format_screenshot_update_event(optimized)
             remaining_refreshes -= 1
             log.info("Immediate pre-analysis screenshot refresh emitted")

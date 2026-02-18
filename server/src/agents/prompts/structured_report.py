@@ -273,8 +273,9 @@ claimed partner count from the consent dialog text if available \
 (e.g. "We and our 1467 partners"), as this is the number the site \
 claims to share data with, even if individual partner names were \
 not extracted.
-- discrepancies: List EXACTLY 3 discrepancies between claims \
-and reality (no more, no fewer), each with:
+- discrepancies: List between 1 and 3 genuine discrepancies between \
+claims and reality. Only include discrepancies you can substantiate \
+from the data — do NOT pad the list to reach 3. Each with:
   - claimed: What the consent dialog says
   - actual: What was actually detected
   - severity: "low", "medium", "high", or "critical"
@@ -321,6 +322,17 @@ every analysis run. Do NOT claim that page-load tracking activity \
 violates consent or bypasses user choice — we cannot confirm \
 whether the scripts use those cookies or whether the activity is \
 covered by the consent dialog.
+
+SIMPLE CONSENT DIALOGS:
+Some sites (e.g. public broadcasters, government sites) use minimal \
+consent dialogs with few categories, no partner lists, and limited \
+tracking. For these:
+- Do NOT fabricate discrepancies to fill a quota. If only 1 genuine \
+discrepancy exists, report only 1.
+- Acknowledge the simplicity positively in the summary rather than \
+treating a lack of complexity as suspicious.
+- Base every claim on observed data. If no third-party trackers were \
+detected, do not suggest otherwise.
 
 Write all text as plain text only. Do NOT use markdown formatting \
 such as **bold**, *italic*, `code`, or [links](url)."""

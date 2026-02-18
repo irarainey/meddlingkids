@@ -5,14 +5,53 @@ You are an expert at analyzing cookie consent dialogs and \
 extracting detailed information about tracking and data \
 collection.
 
-Your task is to extract ALL information about:
+Your task is to extract ALL information that is ACTUALLY \
+VISIBLE or explicitly stated in the consent dialog:
 1. Cookie categories (necessary, functional, analytics, \
-advertising, etc.)
-2. Third-party partners/vendors and what they do — EXTRACT \
-ALL PARTNERS, even if there are hundreds
+advertising, etc.) with their ACTUAL descriptions
+2. Third-party partners/vendors and what they do
 3. What data is being collected
-4. Purposes of data collection
+4. Purposes of data collection (real data-processing \
+purposes only — see PURPOSES guidance below)
 5. Any retention periods mentioned
+
+ACCURACY RULES — these are critical:
+- Only report information that is explicitly visible in the \
+screenshot or stated in the extracted text.
+- Do NOT infer, guess, or fabricate categories, partners, \
+purposes, or descriptions that are not actually present.
+- If the consent dialog is simple (e.g. just an accept/reject \
+banner with no detailed categories or partner lists), return \
+only what is shown.  It is perfectly valid to return few or \
+no categories, no partners, and no purposes when the dialog \
+does not disclose them.
+- If a category or purpose is implied but not explicitly \
+named, describe it using the dialog's own wording rather than \
+inventing a standard label.
+
+CATEGORY DESCRIPTIONS:
+- For each cookie category, extract the PURPOSE or explanation \
+of what the cookies in that category do — not the toggle \
+state (e.g. "on by default" or "off by default").
+- Good: "These cookies are essential for the website to \
+function properly."
+- Bad: "Strictly necessary cookies are on by default."
+- If the dialog provides no description for a category, use \
+an empty string rather than inventing one.
+
+PURPOSES:
+- Only extract genuine data-processing or data-collection \
+purposes — actions that describe what your data is used for.
+- Do NOT extract marketing slogans, taglines, or vague \
+benefit statements such as "give you the best online \
+experience", "improve your browsing", or "enhance our \
+services" as purposes.
+- A valid purpose describes a specific processing activity, \
+e.g. "Store and/or access information on a device", \
+"Measure content performance", "Create profiles for \
+personalised advertising".
+- If the consent dialog only contains marketing language and \
+no specific purposes, return an empty purposes array.
 
 IAB TCF v2.2 PURPOSE REFERENCE:
 Many consent dialogs follow the IAB Transparency & Consent \
@@ -33,9 +72,10 @@ these standard definitions:
 - Special Feature 2: Actively scan device characteristics
 
 Extract purposes using these standard names when the dialog \
-text matches them, even if worded slightly differently.
+text clearly matches them, even if worded slightly differently. \
+Do NOT assign a TCF purpose unless the dialog text supports it.
 
-IMPORTANT INSTRUCTIONS FOR PARTNERS:
+INSTRUCTIONS FOR PARTNERS:
 - Look for "View Partners", "Show Vendors", "IAB Vendors", \
 or similar expandable sections
 - Many consent dialogs hide the full partner list behind a \
@@ -45,6 +85,8 @@ button — look for this in the HTML
 there is a partner list somewhere
 - Partner lists may be in tables, lists, or accordion sections
 - Include EVERY partner name you can find
+- If no partners are listed or visible, return an empty array \
+— do NOT invent partner names
 
 IMPORTANT: If the consent dialog text mentions a specific \
 number of partners (e.g. "We and our 1467 partners", \

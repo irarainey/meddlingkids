@@ -13,12 +13,14 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import io
+import json
 import os
 import pathlib
 import re
 import sys
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 # ============================================================================
 # Per-session state (isolated via contextvars)
@@ -28,6 +30,8 @@ _timers_var: contextvars.ContextVar[dict[str, tuple[float, str]]] = contextvars.
 _log_buffer_var: contextvars.ContextVar[list[str]] = contextvars.ContextVar("_log_buffer_var")
 _log_file_stream_var: contextvars.ContextVar[io.TextIOWrapper | None] = contextvars.ContextVar("_log_file_stream_var", default=None)
 _log_file_path_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("_log_file_path_var", default=None)
+_analysis_domain_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("_analysis_domain_var", default=None)
+_agents_run_dir_var: contextvars.ContextVar[pathlib.Path | None] = contextvars.ContextVar("_agents_run_dir_var", default=None)
 
 
 def _get_timers() -> dict[str, tuple[float, str]]:
@@ -75,19 +79,27 @@ _write_to_file = os.environ.get("WRITE_TO_FILE", "").lower() == "true"
 
 def start_log_file(domain: str) -> None:
     """Start a new log file for a specific analysis."""
+    _analysis_domain_var.set(domain)
+
     if not _write_to_file:
         return
 
     end_log_file()
-
-    logs_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
 
     safe_domain = domain.removeprefix("www.")
     safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
 
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Create a per-run directory for agent thread files.
+    output_root = pathlib.Path(__file__).resolve().parent.parent.parent / ".output"
+    agents_run_dir = output_root / "agents" / f"{safe_domain}_{timestamp}"
+    agents_run_dir.mkdir(parents=True, exist_ok=True)
+    _agents_run_dir_var.set(agents_run_dir)
+
+    logs_dir = output_root / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
     log_file_path = str(logs_dir / f"{safe_domain}_{timestamp}.log")
 
     try:
@@ -117,6 +129,8 @@ def end_log_file() -> None:
             print("\033[33m⚠ [Logger] Failed to flush/close log file stream\033[0m")
         _log_file_stream_var.set(None)
         _log_file_path_var.set(None)
+    _analysis_domain_var.set(None)
+    _agents_run_dir_var.set(None)
 
 
 def save_report_file(
@@ -153,6 +167,45 @@ def save_report_file(
         return str(path)
     except Exception as err:
         print(f"\033[31m\u2717 [Logger] Failed to save report: {err}\033[0m")
+        return None
+
+
+def save_agent_thread(
+    agent_name: str,
+    thread_data: dict[str, Any],
+) -> str | None:
+    """Save a serialised Agent Framework thread as a JSON file.
+
+    Only writes when ``WRITE_TO_FILE`` is enabled.  The domain
+    is read from the per-session contextvar set by
+    ``start_log_file()``.
+
+    Args:
+        agent_name: Name of the agent that produced the thread.
+        thread_data: Serialised thread dictionary from
+            ``AgentThread.serialize()``.
+
+    Returns:
+        The file path written, or ``None`` if skipped.
+    """
+    if not _write_to_file:
+        return None
+
+    run_dir = _agents_run_dir_var.get(None)
+    if run_dir is None:
+        return None
+
+    safe_agent = "".join(c if c.isalnum() or c in ".-_" else "_" for c in agent_name)[:50]
+
+    now = datetime.now(UTC)
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    path = run_dir / f"{safe_agent}_{timestamp}.json"
+
+    try:
+        path.write_text(json.dumps(thread_data, indent=2, default=str), encoding="utf-8")
+        return str(path)
+    except Exception as err:
+        print(f"\033[31m\u2717 [Logger] Failed to save agent thread: {err}\033[0m")
         return None
 
 

@@ -231,7 +231,9 @@ class BaseAgent:
             text=user_prompt,
         )
         async with self._build_agent(instructions, max_tokens, response_model) as agent:
-            response = await agent.run(message)
+            thread = agent.get_new_thread()
+            response = await agent.run(message, thread=thread)
+            logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.debug(
             f"{self.agent_name}: response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -252,7 +254,7 @@ class BaseAgent:
 
         Args:
             user_text: Textual part of the user message.
-            screenshot: Raw screenshot bytes (PNG).
+            screenshot: Raw JPEG screenshot bytes.
             instructions: Override system prompt.
             max_tokens: Override max tokens.
 
@@ -264,8 +266,8 @@ class BaseAgent:
             f"{self.agent_name}: vision completion",
             {
                 "textChars": len(user_text),
-                "pngBytes": len(screenshot),
-                "jpegBytes": jpeg_size,
+                "screenshotBytes": len(screenshot),
+                "llmJpegBytes": jpeg_size,
                 "maxTokens": max_tokens or self.max_tokens,
             },
         )
@@ -278,7 +280,9 @@ class BaseAgent:
             ],
         )
         async with self._build_agent(instructions, max_tokens) as agent:
-            response = await agent.run(message)
+            thread = agent.get_new_thread()
+            response = await agent.run(message, thread=thread)
+            logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.debug(
             f"{self.agent_name}: vision response received",
             {"responseChars": len(response.text) if response.text else 0},

@@ -83,7 +83,7 @@ class ConsentExtractionAgent(base.BaseAgent):
 
         Args:
             page: Playwright page for DOM text extraction.
-            screenshot: Raw PNG screenshot bytes.
+            screenshot: Raw JPEG screenshot bytes.
             pre_captured_text: DOM text captured while the
                 consent dialog was still visible.  When
                 provided, skips live DOM extraction (the

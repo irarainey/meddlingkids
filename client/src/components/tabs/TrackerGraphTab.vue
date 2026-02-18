@@ -812,8 +812,8 @@ const selectedResourceBreakdown = computed(() => {
 
 <template>
   <div class="tab-content tracker-graph-tab" :class="{ fullscreen: isFullscreen }">
-    <div v-if="networkRequests.length === 0" class="empty-state">
-      No network request data available
+    <div v-if="networkRequests.length === 0 || graphData.edges.length === 0" class="empty-state">
+      No network connections to display.
     </div>
     <template v-else>
       <!-- Explanation -->

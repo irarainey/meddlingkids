@@ -19,7 +19,7 @@ async def detect_cookie_consent(
     """Detect blocking overlays using LLM vision.
 
     Args:
-        screenshot: Raw PNG screenshot bytes.
+        screenshot: Raw JPEG screenshot bytes.
 
     Returns:
         Detection result with button text.

@@ -568,7 +568,12 @@ class BrowserSession:
             return {"local_storage": [], "session_storage": []}
 
     async def take_screenshot(self, full_page: bool = False, *, timeout: int = 15_000) -> bytes:
-        """Take a PNG screenshot of the current page (for AI analysis).
+        """Take a JPEG screenshot of the current page.
+
+        Captures directly as JPEG (quality 72) so no further
+        format conversion is needed — all downstream consumers
+        (client display, LLM vision) use the bytes as-is or
+        downscale for the vision API.
 
         Args:
             full_page: Capture the full scrollable page instead of just
@@ -578,22 +583,27 @@ class BrowserSession:
         """
         if not self._page:
             raise RuntimeError("No browser session active")
-        return await self._page.screenshot(type="png", full_page=full_page, timeout=timeout)
+        return await self._page.screenshot(
+            type="jpeg",
+            quality=72,
+            full_page=full_page,
+            timeout=timeout,
+        )
 
     @staticmethod
-    def optimize_screenshot_bytes(png_bytes: bytes) -> str:
-        """Convert raw PNG screenshot bytes to an optimized JPEG data URL.
+    def optimize_screenshot_bytes(screenshot_bytes: bytes) -> str:
+        """Convert raw screenshot bytes to an optimized JPEG data URL.
 
-        Downscales wide images and compresses to JPEG for smaller
-        payloads.  This is a pure CPU operation — no browser round-trip.
+        Downscales wide images for smaller payloads.  This is a
+        pure CPU operation — no browser round-trip.
 
-        Returns an empty ``data:`` URI when *png_bytes* is empty so
+        Returns an empty string when *screenshot_bytes* is empty so
         callers that fall back to ``b""`` on screenshot failure still
         produce a valid (blank) event payload.
         """
-        if not png_bytes:
+        if not screenshot_bytes:
             return ""
-        return image.png_to_data_url(png_bytes)
+        return image.screenshot_to_data_url(screenshot_bytes)
 
     async def get_page_content(self) -> str:
         """Get the full HTML content of the current page."""

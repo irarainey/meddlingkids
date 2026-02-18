@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from urllib import parse
 
 import pydantic
@@ -99,15 +100,12 @@ class StructuredReportAgent(base.BaseAgent):
         pre_consent_stats: analysis.PreConsentStats | None = None,
         score_breakdown: analysis.ScoreBreakdown | None = None,
         domain_knowledge: domain_cache.DomainKnowledge | None = None,
+        on_section_done: Callable[[str, int, int], None] | None = None,
     ) -> report.StructuredReport:
         """Build a complete structured report.
 
-        Runs section LLM calls concurrently in two waves:
-        1. Core sections (tracking, data, third-party, cookies,
-           storage, risk) — all independent
-        2. Derived sections (consent, social media implications,
-           vendors, recommendations) — benefit from earlier
-           context
+        All 10 sections run concurrently in a single batch —
+        they are independent and share the same data context.
 
         Args:
             tracking_summary: Collected tracking data summary.
@@ -117,6 +115,8 @@ class StructuredReportAgent(base.BaseAgent):
                 available, so the LLM can calibrate risk levels.
             domain_knowledge: Optional cached classifications
                 from a prior analysis of the same domain.
+            on_section_done: Optional callback invoked as each
+                section completes — ``(section_name, done, total)``.
 
         Returns:
             Complete ``StructuredReport``.
@@ -130,56 +130,28 @@ class StructuredReportAgent(base.BaseAgent):
             domain_knowledge,
         )
 
-        # Wave 1: Core independent sections
-        log.info("Building report sections (wave 1)...")
-        (
-            tracking_tech,
-            data_collection,
-            third_party,
-            cookie_analysis,
-            storage_analysis,
-            privacy_risk,
-        ) = await asyncio.gather(
-            self._build_section(
-                structured_report.TRACKING_TECH,
-                context,
-                _TrackingTechResponse,
-                "tracking-technologies",
-            ),
-            self._build_section(
-                structured_report.DATA_COLLECTION,
-                context,
-                _DataCollectionResponse,
-                "data-collection",
-            ),
-            self._build_section(
-                structured_report.THIRD_PARTY,
-                context,
-                _ThirdPartyResponse,
-                "third-party-services",
-            ),
-            self._build_section(
-                structured_report.COOKIE_ANALYSIS,
-                context,
-                _CookieAnalysisResponse,
-                "cookie-analysis",
-            ),
-            self._build_section(
-                structured_report.STORAGE_ANALYSIS,
-                context,
-                _StorageAnalysisResponse,
-                "storage-analysis",
-            ),
-            self._build_section(
-                structured_report.PRIVACY_RISK,
-                context,
-                _PrivacyRiskResponse,
-                "privacy-risk",
-            ),
-        )
+        # All sections are independent — they share the same
+        # data context and none reference another's output.
+        # Running them in a single concurrent batch maximises
+        # throughput.
+        #
+        # Wrap each coroutine so the optional progress callback
+        # fires as sections finish, giving the client granular
+        # "Building report: <section> (N/10)..." updates.
+        _sections_done = 0
+        _total_sections = 10
 
-        # Wave 2: Sections that benefit from full context
-        log.info("Building report sections (wave 2)...")
+        async def _tracked(
+            coro: Awaitable[pydantic.BaseModel | None],
+            section_name: str,
+        ) -> pydantic.BaseModel | None:
+            nonlocal _sections_done
+            result = await coro
+            _sections_done += 1
+            if on_section_done:
+                on_section_done(section_name, _sections_done, _total_sections)
+            return result
+
         consent_section_coro = (
             self._build_section(
                 structured_report.CONSENT_ANALYSIS,
@@ -191,24 +163,102 @@ class StructuredReportAgent(base.BaseAgent):
             else _noop_section(report.ConsentAnalysisSection())
         )
 
-        vendors, consent_analysis, social_media_implications, recommendations = await asyncio.gather(
-            self._build_section(
-                structured_report.VENDOR,
-                context,
-                _VendorResponse,
+        log.info("Building all report sections concurrently...")
+        (
+            tracking_tech,
+            data_collection,
+            third_party,
+            cookie_analysis,
+            storage_analysis,
+            privacy_risk,
+            vendors,
+            consent_analysis,
+            social_media_implications,
+            recommendations,
+        ) = await asyncio.gather(
+            _tracked(
+                self._build_section(
+                    structured_report.TRACKING_TECH,
+                    context,
+                    _TrackingTechResponse,
+                    "tracking-technologies",
+                ),
+                "tracking-technologies",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.DATA_COLLECTION,
+                    context,
+                    _DataCollectionResponse,
+                    "data-collection",
+                ),
+                "data-collection",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.THIRD_PARTY,
+                    context,
+                    _ThirdPartyResponse,
+                    "third-party-services",
+                ),
+                "third-party-services",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.COOKIE_ANALYSIS,
+                    context,
+                    _CookieAnalysisResponse,
+                    "cookie-analysis",
+                ),
+                "cookie-analysis",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.STORAGE_ANALYSIS,
+                    context,
+                    _StorageAnalysisResponse,
+                    "storage-analysis",
+                ),
+                "storage-analysis",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.PRIVACY_RISK,
+                    context,
+                    _PrivacyRiskResponse,
+                    "privacy-risk",
+                ),
+                "privacy-risk",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.VENDOR,
+                    context,
+                    _VendorResponse,
+                    "key-vendors",
+                ),
                 "key-vendors",
             ),
-            consent_section_coro,
-            self._build_section(
-                structured_report.SOCIAL_MEDIA_IMPLICATIONS,
-                context,
-                _SocialMediaImplicationsResponse,
+            _tracked(
+                consent_section_coro,
+                "consent-analysis",
+            ),
+            _tracked(
+                self._build_section(
+                    structured_report.SOCIAL_MEDIA_IMPLICATIONS,
+                    context,
+                    _SocialMediaImplicationsResponse,
+                    "social-media-implications",
+                ),
                 "social-media-implications",
             ),
-            self._build_section(
-                structured_report.RECOMMENDATIONS,
-                context,
-                _RecommendationsResponse,
+            _tracked(
+                self._build_section(
+                    structured_report.RECOMMENDATIONS,
+                    context,
+                    _RecommendationsResponse,
+                    "recommendations",
+                ),
                 "recommendations",
             ),
         )
