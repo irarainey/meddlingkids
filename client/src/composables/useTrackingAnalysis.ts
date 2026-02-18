@@ -210,6 +210,31 @@ export function useTrackingAnalysis() {
     return Object.fromEntries(Object.entries(grouped).sort((a, b) => b[1].length - a[1].length))
   })
 
+  /**
+   * Count of unique domain-to-domain connections for the Graph tab badge.
+   * Mirrors the edge-building logic in TrackerGraphTab so the badge is zero
+   * when the graph has nothing to display.
+   */
+  const graphConnectionCount = computed(() => {
+    let origin: string
+    try {
+      origin = new URL(inputValue.value).hostname
+    } catch {
+      origin = 'origin'
+    }
+    const edges = new Set<string>()
+    for (const req of networkRequests.value) {
+      const target = req.domain
+      if (!target || target === 'unknown') continue
+      const source = req.initiatorDomain && req.initiatorDomain !== 'unknown'
+        ? req.initiatorDomain
+        : origin
+      if (source === target) continue
+      edges.add(`${source}>>>${target}`)
+    }
+    return edges.size
+  })
+
   // ============================================================================
   // Methods
   // ============================================================================
@@ -593,6 +618,7 @@ export function useTrackingAnalysis() {
     cookiesByDomain,
     filteredNetworkRequests,
     networkByDomain,
+    graphConnectionCount,
 
     // Methods
     openScreenshotModal,

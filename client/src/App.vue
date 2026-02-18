@@ -55,6 +55,7 @@ const {
   cookiesByDomain,
   filteredNetworkRequests,
   networkByDomain,
+  graphConnectionCount,
 
   // Methods
   openScreenshotModal,
@@ -231,7 +232,7 @@ function onUrlMouseUp(event: Event): void {
             🌐 Network ({{ filteredNetworkRequests.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'tracker-graph' }" @click="activeTab = 'tracker-graph'">
-            🕸️ Graph ({{ networkRequests.length }})
+            🕸️ Graph ({{ graphConnectionCount }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})

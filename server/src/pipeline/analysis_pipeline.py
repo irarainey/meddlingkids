@@ -226,6 +226,9 @@ async def run_ai_analysis(
 
     log.end_timer("tracking-analysis", "Tracking analysis complete")
 
+    log.info("Finalizing privacy score", {"score": score_breakdown.total_score})
+    yield sse_helpers.format_progress_event("ai-scoring", "Finalizing privacy score...", 95)
+
     # ── Summary (scoring + report already in flight) ────────
     async for event in _score_and_summarise(
         final_cookies,
@@ -709,7 +712,7 @@ async def _score_and_summarise(
     # (launched alongside script and tracking analysis).  Only
     # the summary needs the completed analysis text.
     log.info("Generating findings summary")
-    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 95)
+    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 96)
 
     summary_agent = agents.get_summary_findings_agent()
     summary_task = asyncio.create_task(
@@ -741,7 +744,7 @@ async def _score_and_summarise(
         "Structured report and summary generated",
         {"summaryCount": len(summary_findings)},
     )
-    yield sse_helpers.format_progress_event("ai-report", "Finalizing report...", 97)
+    yield sse_helpers.format_progress_event("ai-report", "Finalizing report...", 98)
 
     # Surface a note when any core agent lacked an LLM client.
     # Under normal operation ``validate_llm_config()`` blocks the
