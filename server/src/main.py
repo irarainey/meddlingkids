@@ -16,7 +16,8 @@ from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
 
-from src.agents import observability_setup
+from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
+from src.analysis import cookie_lookup, storage_lookup, tcf_lookup
 from src.pipeline import stream
 from src.utils import cache, logger
 
@@ -68,7 +69,7 @@ async def disable_static_cache(
     call_next,
 ) -> fastapi.Response:
     """Prevent browsers from serving stale static assets from the Docker build."""
-    response = await call_next(request)
+    response: fastapi.Response = await call_next(request)
     if request.url.path.startswith("/assets"):
         response.headers["Cache-Control"] = "no-store"
     return response
@@ -85,6 +86,73 @@ async def clear_cache_endpoint() -> dict[str, object]:
     removed = cache.clear_all()
     log.success("Cache cleared via API", {"filesRemoved": removed})
     return {"success": True, "filesRemoved": removed}
+
+
+@app.post("/api/cookie-info")
+async def cookie_info_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Look up information about a specific cookie.
+
+    Checks known databases first and falls back to LLM for
+    unrecognised cookies.
+    """
+    body = await request.json()
+    name: str = body.get("name", "")
+    domain: str = body.get("domain", "")
+    value: str = body.get("value", "")
+
+    if not name:
+        raise fastapi.HTTPException(status_code=400, detail="Cookie name is required")
+
+    agent = get_cookie_info_agent()
+    result = await cookie_lookup.get_cookie_info(name, domain, value, agent)
+
+    return result.model_dump(by_alias=True)
+
+
+@app.post("/api/storage-info")
+async def storage_info_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Look up information about a specific storage key.
+
+    Checks known databases first and falls back to LLM for
+    unrecognised keys.
+    """
+    body = await request.json()
+    key: str = body.get("key", "")
+    storage_type: str = body.get("storageType", "localStorage")
+    value: str = body.get("value", "")
+
+    if not key:
+        raise fastapi.HTTPException(status_code=400, detail="Storage key is required")
+
+    agent = get_storage_info_agent()
+    result = await storage_lookup.get_storage_info(key, storage_type, value, agent)
+
+    return result.model_dump(by_alias=True)
+
+
+@app.post("/api/tcf-purposes")
+async def tcf_purposes_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Map consent purpose strings to IAB TCF v2.2 purposes.
+
+    Accepts a list of purpose strings and returns matched TCF
+    purposes with full metadata (description, risk level, lawful
+    bases, notes) and any unmatched strings.  Matching is purely
+    deterministic — no LLM calls.
+    """
+    body = await request.json()
+    purposes: list[str] = body.get("purposes", [])
+
+    if not purposes:
+        return {"matched": [], "unmatched": []}
+
+    result = tcf_lookup.lookup_purposes(purposes)
+    return result.model_dump(by_alias=True)
 
 
 @app.get("/api/open-browser-stream")

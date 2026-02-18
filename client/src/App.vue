@@ -9,6 +9,7 @@ import {
   PageErrorDialog,
   ErrorDialog,
   AnalysisTab,
+  ConsentTab,
   CookiesTab,
   DebugLogTab,
   NetworkTab,
@@ -30,6 +31,7 @@ const {
   localStorage,
   sessionStorage,
   activeTab,
+  consentDetails,
   structuredReport,
   analysisError,
   summaryFindings,
@@ -106,8 +108,7 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
-  <div>
-    <header class="header">
+  <header class="header">
       <img :src="logo" alt="Meddling Kids" class="logo" />
       <p class="tagline">
         Feed any URL to these meddling kids and watch them unmask sneaky trackers, 
@@ -192,10 +193,13 @@ function onUrlMouseUp(event: Event): void {
           >
             📋 Analysis
           </button>
+          <button v-if="consentDetails" class="tab" :class="{ active: activeTab === 'consent' }" @click="activeTab = 'consent'">
+            🎯 Consent
+          </button>
           <button class="tab" :class="{ active: activeTab === 'cookies' }" @click="activeTab = 'cookies'">
             🍪 Cookies ({{ cookies.length }})
           </button>
-          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">
+          <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">`
             💾 Storage ({{ localStorage.length + sessionStorage.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
@@ -226,6 +230,11 @@ function onUrlMouseUp(event: Event): void {
           :cookie-count="cookies.length"
         />
 
+        <ConsentTab
+          v-if="activeTab === 'consent'"
+          :consent-details="consentDetails"
+        />
+
         <StorageTab
           v-if="activeTab === 'storage'"
           :local-storage="localStorage"
@@ -252,9 +261,8 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      This is an experimental application. Results are AI-generated and may be inaccurate or incomplete, and should not be relied upon as definitive assessments. Version {{ appVersion }}
+      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version {{ appVersion }}
     </footer>
-  </div>
 </template>
 
 <style scoped>
@@ -400,14 +408,11 @@ function onUrlMouseUp(event: Event): void {
 }
 
 .app-footer {
-  position: fixed;
-  bottom: 0.5rem;
-  left: 0;
-  width: 100%;
+  margin-top: auto;
   text-align: center;
   color: #4b5563;
   font-size: 0.7rem;
-  padding: 0.25rem 1rem;
+  padding: 1.5rem 1rem 0.5rem;
   user-select: none;
   pointer-events: none;
   line-height: 1.4;

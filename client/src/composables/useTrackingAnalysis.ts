@@ -399,6 +399,23 @@ export function useTrackingAnalysis() {
           if (data.consentDetails) {
             consentDetails.value = data.consentDetails
           }
+          // Update final tracking data — the complete event
+          // carries the definitive snapshot captured right before
+          // analysis, which includes cookies set by deferred scripts
+          // and post-consent tracking that arrived after the initial
+          // screenshot event.
+          if (data.cookies) {
+            cookies.value = data.cookies
+          }
+          if (data.networkRequests) {
+            networkRequests.value = data.networkRequests
+          }
+          if (data.localStorage) {
+            localStorage.value = data.localStorage
+          }
+          if (data.sessionStorage) {
+            sessionStorage.value = data.sessionStorage
+          }
           // Update scripts with analyzed descriptions if available
           if (data.scripts) {
             scripts.value = data.scripts

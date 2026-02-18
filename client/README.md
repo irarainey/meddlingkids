@@ -32,6 +32,7 @@ src/
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
 │       ├── AnalysisTab.vue      # AI analysis results
+│       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown
 │       ├── CookiesTab.vue       # Cookies by domain
 │       ├── DebugLogTab.vue      # Server debug log (debug mode only)
 │       ├── NetworkTab.vue       # Network requests
@@ -104,11 +105,12 @@ Each tab is a self-contained component with its own template and scoped styles:
 | Component | Purpose |
 |-----------|---------|
 | `AnalysisTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
-| `CookiesTab` | Cookies grouped by domain |
+| `ConsentTab` | Consent dialog details with IAB TCF v2.2 purpose breakdown, consent categories, and partners grouped by risk level |
+| `CookiesTab` | Cookies grouped by domain with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
 | `DebugLogTab` | Server debug log output (visible in debug mode only) |
 | `NetworkTab` | Network requests with third-party filter and filter explanation note |
 | `ScriptsTab` | JavaScript files grouped by domain |
-| `StorageTab` | localStorage and sessionStorage items |
+| `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
 
 ### useTrackingAnalysis Composable
 
@@ -177,6 +179,10 @@ Located in `types/tracking.ts`:
 | `TrackedScript` | JavaScript file loaded by the page |
 | `ScriptGroup` | Group of similar scripts (chunks, vendor bundles) |
 | `StorageItem` | localStorage/sessionStorage entry |
+| `CookieInfo` | Cookie lookup result with description, setBy, purpose, riskLevel, and privacyNote |
+| `StorageInfo` | Storage key lookup result with description, setBy, purpose, riskLevel, and privacyNote |
+| `TcfPurpose` | IAB TCF v2.2 purpose with id, name, description, riskLevel, lawfulBases, notes, and category |
+| `TcfLookupResult` | TCF purpose lookup result with matched purposes and unmatched strings |
 | `NetworkRequest` | HTTP request with domain, type, third-party flag |
 | `ConsentCategory` | Cookie category from consent dialog |
 | `ConsentPartner` | Third-party vendor from consent dialog (with risk classification and URL) |
@@ -242,8 +248,9 @@ Located in `utils/formatters.ts`:
 | Tab | Content |
 |-----|---------|
 | **Analysis** | Structured privacy report with summary findings and AI analysis |
-| **Cookies** | All cookies grouped by domain |
-| **Storage** | localStorage and sessionStorage items |
+| **Consent** | TCF purpose breakdown with risk levels, consent categories, and partners grouped by risk classification (visible when consent dialog detected) |
+| **Cookies** | All cookies grouped by domain — click any cookie for instant identification (description, who sets it, purpose, risk level, privacy note) |
+| **Storage** | localStorage and sessionStorage items — click any key for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Network** | HTTP requests with third-party filter |
 | **Scripts** | JavaScript files grouped by domain |
 | **Debug Log** | Server debug log output (debug mode only, enabled via `?debug=true`) |
