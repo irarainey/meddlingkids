@@ -67,10 +67,6 @@ sequence = [
 help = "Run unit tests"
 cmd = "pytest tests/ -v"
 
-[tool.poe.tasks."test:cov"]
-help = "Run unit tests with coverage summary"
-cmd = "pytest tests/ -v --tb=short"
-
 # ── Ruff ────────────────────────────────────────────────────────
 
 [tool.ruff]
