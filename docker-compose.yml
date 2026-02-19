@@ -19,6 +19,7 @@ services:
   meddlingkids:
     container_name: meddlingkids
     image: ghcr.io/irarainey/meddlingkids:latest
+    user: "${UID_GID:-1000:1000}"
     build: .
     ports:
       - "${UVICORN_PORT:-3001}:${UVICORN_PORT:-3001}"
