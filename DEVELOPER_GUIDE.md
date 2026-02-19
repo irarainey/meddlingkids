@@ -444,7 +444,7 @@ Key framework types used:
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, and configurable `call_timeout` (default 60 s) passed to `RetryChatMiddleware` |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
-| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff and per-call timeout via `asyncio.wait_for()` |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 6 in-flight LLM calls) to prevent overwhelming the endpoint |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
@@ -584,6 +584,7 @@ BaseAgent._build_agent() → Creates ChatAgent (agent_framework.ChatAgent)
     │
     ├── TimingChatMiddleware → Logs duration + records token usage
     ├── RetryChatMiddleware → Handles 429/5xx with backoff + per-call timeout
+    │                         + global concurrency limit (max 6 in-flight)
     └── ChatAgent.run() or run_stream() → LLM chat completion
     │
     ▼

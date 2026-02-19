@@ -202,5 +202,5 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, and configurable `call_timeout` (default 60 s) passed to `RetryChatMiddleware` |
 | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) |
 | `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
-| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`) |
+| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 6 in-flight LLM calls) |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |

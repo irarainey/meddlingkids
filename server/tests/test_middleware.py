@@ -1,16 +1,18 @@
 """Tests for agent middleware utilities.
 
-Covers ``_is_retryable``, ``EmptyResponseError``, and
-``RetryChatMiddleware._get_retry_after``.
+Covers ``_is_retryable``, ``EmptyResponseError``,
+``RetryChatMiddleware._get_retry_after``, per-call timeout
+error messages, and global LLM concurrency limiting.
 """
 
 from __future__ import annotations
 
-from src.agents.middleware import (
-    EmptyResponseError,
-    RetryChatMiddleware,
-    _is_retryable,
-)
+import asyncio
+from unittest import mock
+
+import pytest
+
+from src.agents import middleware as middleware_mod
 
 # ── _is_retryable ──────────────────────────────────────────────
 
@@ -19,43 +21,43 @@ class TestIsRetryable:
     """Tests for the error classification helper."""
 
     def test_rate_limit_429_string(self) -> None:
-        assert _is_retryable(Exception("Error 429 Too Many Requests"))
+        assert middleware_mod._is_retryable(Exception("Error 429 Too Many Requests"))
 
     def test_rate_limit_text(self) -> None:
-        assert _is_retryable(Exception("rate limit exceeded"))
+        assert middleware_mod._is_retryable(Exception("rate limit exceeded"))
 
     def test_timeout_string(self) -> None:
-        assert _is_retryable(Exception("connection timed out"))
+        assert middleware_mod._is_retryable(Exception("connection timed out"))
 
     def test_timeout_error_type(self) -> None:
-        assert _is_retryable(TimeoutError("timed out"))
+        assert middleware_mod._is_retryable(TimeoutError("timed out"))
 
     def test_connection_error_type(self) -> None:
-        assert _is_retryable(ConnectionError("reset"))
+        assert middleware_mod._is_retryable(ConnectionError("reset"))
 
     def test_connection_reset_error_type(self) -> None:
-        assert _is_retryable(ConnectionResetError("peer reset"))
+        assert middleware_mod._is_retryable(ConnectionResetError("peer reset"))
 
     def test_empty_response_error(self) -> None:
-        assert _is_retryable(EmptyResponseError("empty"))
+        assert middleware_mod._is_retryable(middleware_mod.EmptyResponseError("empty"))
 
     def test_server_error_status_code(self) -> None:
         exc = Exception("server error")
         exc.status_code = 502  # type: ignore[attr-defined]
-        assert _is_retryable(exc)
+        assert middleware_mod._is_retryable(exc)
 
     def test_server_error_status_attr(self) -> None:
         exc = Exception("bad gateway")
         exc.status = 503  # type: ignore[attr-defined]
-        assert _is_retryable(exc)
+        assert middleware_mod._is_retryable(exc)
 
     def test_non_retryable_error(self) -> None:
-        assert not _is_retryable(ValueError("invalid input"))
+        assert not middleware_mod._is_retryable(ValueError("invalid input"))
 
     def test_non_retryable_400(self) -> None:
         exc = Exception("bad request")
         exc.status_code = 400  # type: ignore[attr-defined]
-        assert not _is_retryable(exc)
+        assert not middleware_mod._is_retryable(exc)
 
 
 # ── EmptyResponseError ──────────────────────────────────────────
@@ -65,10 +67,10 @@ class TestEmptyResponseError:
     """Tests for EmptyResponseError."""
 
     def test_is_exception(self) -> None:
-        assert isinstance(EmptyResponseError("test"), Exception)
+        assert isinstance(middleware_mod.EmptyResponseError("test"), Exception)
 
     def test_message(self) -> None:
-        err = EmptyResponseError("Agent X got nothing")
+        err = middleware_mod.EmptyResponseError("Agent X got nothing")
         assert "Agent X" in str(err)
 
 
@@ -79,28 +81,156 @@ class TestGetRetryAfter:
     """Tests for RetryChatMiddleware._get_retry_after."""
 
     def test_no_headers_attribute(self) -> None:
-        assert RetryChatMiddleware._get_retry_after(Exception("oops")) is None
+        assert middleware_mod.RetryChatMiddleware._get_retry_after(Exception("oops")) is None
 
     def test_dict_with_retry_after(self) -> None:
         exc = Exception("rate limit")
         exc.headers = {"Retry-After": "5"}  # type: ignore[attr-defined]
-        result = RetryChatMiddleware._get_retry_after(exc)
+        result = middleware_mod.RetryChatMiddleware._get_retry_after(exc)
         assert result == 5000  # 5 seconds → 5000 ms
 
     def test_dict_with_lowercase_key(self) -> None:
         exc = Exception("rate limit")
         exc.headers = {"retry-after": "10"}  # type: ignore[attr-defined]
-        result = RetryChatMiddleware._get_retry_after(exc)
+        result = middleware_mod.RetryChatMiddleware._get_retry_after(exc)
         assert result == 10000
 
     def test_non_numeric_value(self) -> None:
         exc = Exception("rate limit")
         exc.headers = {"Retry-After": "Thu, 01 Jan 2099 00:00:00 GMT"}  # type: ignore[attr-defined]
-        result = RetryChatMiddleware._get_retry_after(exc)
+        result = middleware_mod.RetryChatMiddleware._get_retry_after(exc)
         assert result is None
 
     def test_non_dict_headers(self) -> None:
         exc = Exception("oops")
         exc.headers = "not a dict"  # type: ignore[attr-defined]
-        result = RetryChatMiddleware._get_retry_after(exc)
+        result = middleware_mod.RetryChatMiddleware._get_retry_after(exc)
         assert result is None
+
+
+# ── Global LLM concurrency ─────────────────────────────────────
+
+
+class TestGlobalLLMConcurrency:
+    """Tests for the global LLM concurrency semaphore."""
+
+    def test_semaphore_exists_with_expected_limit(self) -> None:
+        assert middleware_mod._llm_semaphore._value == middleware_mod._MAX_CONCURRENT_LLM_CALLS
+
+    def test_max_concurrent_llm_calls_value(self) -> None:
+        assert middleware_mod._MAX_CONCURRENT_LLM_CALLS == 6
+
+
+# ── Timeout error message ──────────────────────────────────────
+
+
+class TestTimeoutErrorMessage:
+    """Timeout errors should include a descriptive message."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_raises_with_descriptive_message(self) -> None:
+        """A per-call timeout wraps the bare TimeoutError."""
+        middleware = middleware_mod.RetryChatMiddleware(
+            "TestAgent",
+            max_retries=0,
+            per_call_timeout=5.0,
+        )
+        context = mock.MagicMock()
+        context.result = None
+
+        async def slow_next(_ctx: object) -> None:
+            await asyncio.sleep(999)
+
+        with pytest.raises(TimeoutError, match="timed out after 5.0s"):
+            await middleware.process(context, slow_next)
+
+    @pytest.mark.asyncio
+    async def test_timeout_retried_then_raises(self) -> None:
+        """Timeouts are retried up to max_retries, then raised."""
+        call_count = 0
+
+        async def slow_next(_ctx: object) -> None:
+            nonlocal call_count
+            call_count += 1
+            await asyncio.sleep(999)
+
+        middleware = middleware_mod.RetryChatMiddleware(
+            "TestAgent",
+            max_retries=1,
+            per_call_timeout=0.05,
+            initial_delay_ms=10,
+        )
+        context = mock.MagicMock()
+        context.result = None
+
+        with pytest.raises(TimeoutError, match="timed out after 0.05s"):
+            await middleware.process(context, slow_next)
+
+        assert call_count == 2  # initial + 1 retry
+
+
+# ── Semaphore integration ──────────────────────────────────────
+
+
+class TestSemaphoreIntegration:
+    """The retry middleware should acquire the global semaphore."""
+
+    @pytest.mark.asyncio
+    async def test_semaphore_limits_concurrency(self) -> None:
+        """Only _MAX_CONCURRENT_LLM_CALLS should run at once."""
+        peak_concurrent = 0
+        current_concurrent = 0
+        lock = asyncio.Lock()
+
+        async def tracking_next(_ctx: object) -> None:
+            nonlocal peak_concurrent, current_concurrent
+            async with lock:
+                current_concurrent += 1
+                peak_concurrent = max(peak_concurrent, current_concurrent)
+            await asyncio.sleep(0.05)
+            async with lock:
+                current_concurrent -= 1
+
+        # Launch more tasks than the semaphore allows.
+        total = middleware_mod._MAX_CONCURRENT_LLM_CALLS + 4
+        middlewares = [
+            middleware_mod.RetryChatMiddleware(f"Agent-{i}", max_retries=0)
+            for i in range(total)
+        ]
+        contexts = [mock.MagicMock() for _ in range(total)]
+        for ctx in contexts:
+            ctx.result = None
+
+        await asyncio.gather(
+            *(m.process(ctx, tracking_next) for m, ctx in zip(middlewares, contexts))
+        )
+        assert peak_concurrent <= middleware_mod._MAX_CONCURRENT_LLM_CALLS
+
+    @pytest.mark.asyncio
+    async def test_semaphore_released_on_success(self) -> None:
+        """Semaphore is released after a successful call."""
+        async def ok_next(_ctx: object) -> None:
+            pass
+
+        middleware = middleware_mod.RetryChatMiddleware("TestAgent", max_retries=0)
+        context = mock.MagicMock()
+        context.result = None
+
+        initial = middleware_mod._llm_semaphore._value
+        await middleware.process(context, ok_next)
+        assert middleware_mod._llm_semaphore._value == initial
+
+    @pytest.mark.asyncio
+    async def test_semaphore_released_on_failure(self) -> None:
+        """Semaphore is released even when the call fails."""
+        async def fail_next(_ctx: object) -> None:
+            raise ValueError("non-retryable")
+
+        middleware = middleware_mod.RetryChatMiddleware("TestAgent", max_retries=0)
+        context = mock.MagicMock()
+        context.result = None
+
+        initial = middleware_mod._llm_semaphore._value
+        with pytest.raises(ValueError):
+            await middleware.process(context, fail_next)
+        assert middleware_mod._llm_semaphore._value == initial
