@@ -86,8 +86,10 @@ class TestStreamInactivityTimeout:
         ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
         ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
 
-        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr), \
-             pytest.raises(TimeoutError, match="No streaming tokens received"):
+        with (
+            mock.patch.object(agent, "_build_agent", return_value=ctx_mgr),
+            pytest.raises(TimeoutError, match="No streaming tokens received"),
+        ):
             async for _ in agent.analyze_stream(_empty_summary()):
                 pass
 
@@ -105,8 +107,10 @@ class TestStreamInactivityTimeout:
         ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
 
         collected: list[str] = []
-        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr), \
-             pytest.raises(TimeoutError, match="Stream stalled after 2 chunks"):
+        with (
+            mock.patch.object(agent, "_build_agent", return_value=ctx_mgr),
+            pytest.raises(TimeoutError, match="Stream stalled after 2 chunks"),
+        ):
             async for update in agent.analyze_stream(_empty_summary()):
                 collected.append(update.text)
 
@@ -143,8 +147,7 @@ class TestStreamInactivityTimeout:
         ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
         ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
 
-        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr), \
-             pytest.raises(TimeoutError, match=r"0\.05s"):
+        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr), pytest.raises(TimeoutError, match=r"0\.05s"):
             async for _ in agent.analyze_stream(_empty_summary()):
                 pass
 

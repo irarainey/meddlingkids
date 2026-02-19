@@ -141,7 +141,7 @@ class TestTimeoutErrorMessage:
         async def slow_next(_ctx: object) -> None:
             await asyncio.sleep(999)
 
-        with pytest.raises(TimeoutError, match="timed out after 5.0s"):
+        with pytest.raises(TimeoutError, match=r"timed out after 5\.0s"):
             await middleware.process(context, slow_next)
 
     @pytest.mark.asyncio
@@ -163,7 +163,7 @@ class TestTimeoutErrorMessage:
         context = mock.MagicMock()
         context.result = None
 
-        with pytest.raises(TimeoutError, match="timed out after 0.05s"):
+        with pytest.raises(TimeoutError, match=r"timed out after 0\.05s"):
             await middleware.process(context, slow_next)
 
         assert call_count == 2  # initial + 1 retry
@@ -193,22 +193,18 @@ class TestSemaphoreIntegration:
 
         # Launch more tasks than the semaphore allows.
         total = middleware_mod._MAX_CONCURRENT_LLM_CALLS + 4
-        middlewares = [
-            middleware_mod.RetryChatMiddleware(f"Agent-{i}", max_retries=0)
-            for i in range(total)
-        ]
+        middlewares = [middleware_mod.RetryChatMiddleware(f"Agent-{i}", max_retries=0) for i in range(total)]
         contexts = [mock.MagicMock() for _ in range(total)]
         for ctx in contexts:
             ctx.result = None
 
-        await asyncio.gather(
-            *(m.process(ctx, tracking_next) for m, ctx in zip(middlewares, contexts))
-        )
+        await asyncio.gather(*(m.process(ctx, tracking_next) for m, ctx in zip(middlewares, contexts, strict=True)))
         assert peak_concurrent <= middleware_mod._MAX_CONCURRENT_LLM_CALLS
 
     @pytest.mark.asyncio
     async def test_semaphore_released_on_success(self) -> None:
         """Semaphore is released after a successful call."""
+
         async def ok_next(_ctx: object) -> None:
             pass
 
@@ -223,6 +219,7 @@ class TestSemaphoreIntegration:
     @pytest.mark.asyncio
     async def test_semaphore_released_on_failure(self) -> None:
         """Semaphore is released even when the call fails."""
+
         async def fail_next(_ctx: object) -> None:
             raise ValueError("non-retryable")
 

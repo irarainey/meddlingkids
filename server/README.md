@@ -25,6 +25,9 @@ uv run playwright install chromium
 - `AZURE_OPENAI_DEPLOYMENT` - Name of the deployed model (must support vision, e.g., `gpt-5.2-chat`)
 - `OPENAI_API_VERSION` - API version (default: `2024-12-01-preview`)
 
+### Per-Agent Deployment Overrides
+- `AZURE_OPENAI_SCRIPT_DEPLOYMENT` - Alternative deployment for the `ScriptAnalysisAgent` (e.g., `gpt-5.1-codex-mini`). Falls back to `AZURE_OPENAI_DEPLOYMENT` when unset
+
 ### Standard OpenAI (fallback)
 - `OPENAI_API_KEY` - API key for authentication
 - `OPENAI_MODEL` - Model name (must support vision, default: `gpt-5.2-chat`)
@@ -55,8 +58,8 @@ src/
 ├── main.py                          # FastAPI app entry point (CORS, cache-control middleware, API routes)
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
-│   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings)
-│   ├── llm_client.py                # Chat client factory
+│   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides
+│   ├── llm_client.py                # Chat client factory (supports per-agent deployment overrides)
 │   ├── middleware.py                # Timing & retry middleware
 │   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall)
 │   ├── consent_extraction_agent.py  # Extract consent details agent
@@ -201,7 +204,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | Module | Purpose |
 |--------|---------|
 | `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, and configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware` |
-| `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) |
-| `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
+| `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) with per-agent deployment overrides (`get_agent_deployment()`) |
+| `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` (supports `deployment_override` for per-agent model selection) |
 | `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 10 in-flight LLM calls) |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |

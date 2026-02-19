@@ -94,11 +94,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
                 except StopAsyncIteration:
                     break
                 except TimeoutError:
-                    phase = (
-                        "No streaming tokens received"
-                        if chunk_count == 0
-                        else f"Stream stalled after {chunk_count} chunks"
-                    )
+                    phase = "No streaming tokens received" if chunk_count == 0 else f"Stream stalled after {chunk_count} chunks"
                     log.error(
                         "Streaming inactivity timeout",
                         {
@@ -106,9 +102,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
                             "chunksReceived": chunk_count,
                         },
                     )
-                    raise TimeoutError(
-                        f"{phase} for {timeout}s"
-                    ) from None
+                    raise TimeoutError(f"{phase} for {timeout}s") from None
             logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.info(
             "Streaming tracking analysis complete",

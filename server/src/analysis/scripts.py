@@ -419,7 +419,7 @@ async def _analyze_unknowns(
         """Analyse one script, update results, and save to cache immediately."""
         nonlocal completed_count, llm_failures
         async with semaphore:
-            llm_url, description = await _analyze_one_with_llm(url, content)
+            _, description = await _analyze_one_with_llm(url, content)
 
         # Update result entries in-place.
         for ri in result_indices:
@@ -462,7 +462,11 @@ async def _analyze_unknowns(
         await asyncio.gather(
             *(
                 analyze_with_progress(
-                    fetch_url, content, len(result_indices), script_domain, result_indices,
+                    fetch_url,
+                    content,
+                    len(result_indices),
+                    script_domain,
+                    result_indices,
                 )
                 for _base, (script_domain, fetch_url, content, result_indices) in bases_needing_llm.items()
             )

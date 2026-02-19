@@ -224,9 +224,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
             except TimeoutError as exc:
                 # asyncio.wait_for raises a bare TimeoutError
                 # with no message — wrap with a descriptive one.
-                last_error = TimeoutError(
-                    f"LLM call timed out after {self.per_call_timeout}s"
-                )
+                last_error = TimeoutError(f"LLM call timed out after {self.per_call_timeout}s")
                 if attempt >= self.max_retries:
                     log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {last_error}")
                     raise last_error from exc
@@ -285,10 +283,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         jitter = random.uniform(0, wait_ms * 0.1)
         total_ms = min(wait_ms + jitter, self.max_delay_ms)
         log.warn(
-            f"Agent '{self.agent_name}' attempt"
-            f" {attempt + 1}/{self.max_retries + 1}"
-            f" failed, retrying in"
-            f" {total_ms / 1000:.1f}s: {exc}"
+            f"Agent '{self.agent_name}' attempt {attempt + 1}/{self.max_retries + 1} failed, retrying in {total_ms / 1000:.1f}s: {exc}"
         )
 
     async def _backoff(
