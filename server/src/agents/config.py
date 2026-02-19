@@ -11,6 +11,8 @@ variable binding, type coercion, and validation.
 
 from __future__ import annotations
 
+import os
+
 import pydantic
 import pydantic_settings
 
@@ -27,6 +29,32 @@ AGENT_SCRIPT_ANALYSIS = "ScriptAnalysisAgent"
 AGENT_STRUCTURED_REPORT = "StructuredReportAgent"
 AGENT_COOKIE_INFO = "CookieInfoAgent"
 AGENT_STORAGE_INFO = "StorageInfoAgent"
+
+
+# Per-agent deployment overrides.
+# Maps agent names to environment variable names that hold
+# an alternative Azure deployment.  When the variable is set
+# and non-empty, the agent uses that deployment instead of
+# the default ``AZURE_OPENAI_DEPLOYMENT``.
+_AGENT_DEPLOYMENT_OVERRIDES: dict[str, str] = {
+    AGENT_SCRIPT_ANALYSIS: "AZURE_OPENAI_SCRIPT_DEPLOYMENT",
+}
+
+
+def get_agent_deployment(agent_name: str) -> str | None:
+    """Return the deployment override for *agent_name*, if configured.
+
+    Reads the environment variable mapped in
+    ``_AGENT_DEPLOYMENT_OVERRIDES``.  Returns ``None`` when
+    no override is configured so the caller falls back to the
+    default deployment.
+    """
+    env_var = _AGENT_DEPLOYMENT_OVERRIDES.get(agent_name)
+    if not env_var:
+        return None
+
+    value = os.environ.get(env_var, "").strip()
+    return value or None
 
 
 class AzureOpenAIConfig(pydantic_settings.BaseSettings):

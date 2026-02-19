@@ -14,7 +14,7 @@ from typing import Any, TypeVar
 import agent_framework
 import pydantic
 
-from src.agents import llm_client
+from src.agents import config, llm_client
 from src.agents import middleware as middleware_mod
 from src.utils import image, logger
 
@@ -65,10 +65,18 @@ class BaseAgent:
     def initialise(self) -> bool:
         """Create the underlying LLM chat client.
 
+        When the agent's name has a deployment override
+        configured via ``config.get_agent_deployment()``,
+        a dedicated client using that deployment is created.
+
         Returns:
             ``True`` when the client was created.
         """
-        self._chat_client = llm_client.get_chat_client(agent_name=self.agent_name)
+        deployment = config.get_agent_deployment(self.agent_name)
+        self._chat_client = llm_client.get_chat_client(
+            agent_name=self.agent_name,
+            deployment_override=deployment,
+        )
         return self._chat_client is not None
 
     @property
