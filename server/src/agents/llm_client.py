@@ -18,6 +18,8 @@ log = logger.create_logger("LLM-Client")
 
 def get_chat_client(
     agent_name: str | None = None,
+    *,
+    deployment_override: str | None = None,
 ) -> ChatClientProtocol | None:
     """Create and return a chat client for the configured LLM backend.
 
@@ -29,6 +31,8 @@ def get_chat_client(
 
     Args:
         agent_name: Optional name of the agent for logging context.
+        deployment_override: Optional Azure deployment name that
+            replaces the default ``AZURE_OPENAI_DEPLOYMENT``.
 
     Returns:
         A ``ChatClientProtocol`` instance, or ``None`` if
@@ -36,7 +40,7 @@ def get_chat_client(
     """
     azure_cfg = config.AzureOpenAIConfig()
     if azure_cfg.validate_config():
-        return _create_azure_client(azure_cfg, agent_name)
+        return _create_azure_client(azure_cfg, agent_name, deployment_override)
 
     openai_cfg = config.OpenAIConfig()
     if openai_cfg.validate_config():
@@ -49,21 +53,25 @@ def get_chat_client(
 def _create_azure_client(
     cfg: config.AzureOpenAIConfig,
     agent_name: str | None,
+    deployment_override: str | None = None,
 ) -> ChatClientProtocol:
     """Instantiate an Azure OpenAI chat client.
 
     Args:
         cfg: Validated Azure OpenAI configuration.
         agent_name: Optional agent name for logging.
+        deployment_override: Optional deployment name that
+            replaces ``cfg.deployment``.
 
     Returns:
         An ``AzureOpenAIChatClient`` instance.
     """
+    deployment = deployment_override or cfg.deployment
     log.info(
         "Using Azure OpenAI",
         {
             "agent": agent_name or "default",
-            "deployment": cfg.deployment,
+            "deployment": deployment,
             "endpoint": cfg.endpoint,
             "apiVersion": cfg.api_version,
         },
@@ -73,7 +81,7 @@ def _create_azure_client(
         api_key=cfg.api_key.get_secret_value(),
         api_version=cfg.api_version,
         endpoint=cfg.endpoint,
-        deployment_name=cfg.deployment,
+        deployment_name=deployment,
     )
 
 

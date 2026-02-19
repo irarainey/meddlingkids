@@ -120,7 +120,7 @@ The core of the application logic, managing:
 
 - **Reactive State**: All UI state including loading status, error messages, and collected data
 - **SSE Connection**: Establishes and manages the EventSource connection to the server
-- **Event Handlers**: Processes `progress`, `screenshot`, `consentDetails`, `pageError`, `complete`, and `error` events
+- **Event Handlers**: Processes `progress`, `screenshot`, `consentDetails`, `pageError`, `complete`, and `error` events. Progress updates are monotonic — status messages and the progress bar only advance forward; out-of-order events from concurrent pipeline stages are silently ignored
 - **Error Handling**: Categorized error titles (timeout, browser, configuration), contextual connection-loss messages based on progress step, and server-error priority to prevent overwriting specific error messages
 - **Computed Properties**: Derived data like grouped cookies/scripts by domain, filtered network requests
 

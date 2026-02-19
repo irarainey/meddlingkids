@@ -361,8 +361,6 @@ async def _analyze_unknowns(
 
     cache_hits: int = 0
     cache_hit_scripts: int = 0
-    # Track newly analysed scripts grouped by their script domain.
-    newly_by_domain: dict[str, list[script_cache.CachedScript]] = {}
     bases_needing_llm: dict[str, tuple[str, str, str | None, list[int]]] = {}
 
     for base, (script_domain, fetch_url, content, result_indices) in base_to_info.items():
@@ -380,9 +378,6 @@ async def _analyze_unknowns(
                         description=cached_desc,
                         resource_type=results[ri].resource_type,
                     )
-                newly_by_domain.setdefault(script_domain, []).append(
-                    script_cache.CachedScript(url=fetch_url, content_hash=content_hash, description=cached_desc),
-                )
                 continue
         bases_needing_llm[base] = (script_domain, fetch_url, content, result_indices)
 
@@ -401,6 +396,7 @@ async def _analyze_unknowns(
     # ── LLM analysis for cache misses ──────────────────────
     semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
     completed_count = cache_hit_scripts
+    llm_failures = 0
 
     if on_progress:
         if cache_hits:
@@ -413,10 +409,46 @@ async def _analyze_unknowns(
         else:
             on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts...")
 
-    async def analyze_with_progress(url: str, content: str | None, count: int) -> tuple[str, str]:
-        nonlocal completed_count
+    async def analyze_with_progress(
+        url: str,
+        content: str | None,
+        count: int,
+        script_domain: str,
+        result_indices: list[int],
+    ) -> None:
+        """Analyse one script, update results, and save to cache immediately."""
+        nonlocal completed_count, llm_failures
         async with semaphore:
-            result = await _analyze_one_with_llm(url, content)
+            _, description = await _analyze_one_with_llm(url, content)
+
+        # Update result entries in-place.
+        for ri in result_indices:
+            old = results[ri]
+            results[ri] = tracking_data.TrackedScript(
+                url=old.url,
+                domain=old.domain,
+                description=description,
+                resource_type=old.resource_type,
+            )
+
+        # Save to cache immediately so partial progress
+        # survives if a later call times out or the process
+        # is interrupted.
+        if content:
+            new_entry = script_cache.CachedScript(
+                url=url,
+                content_hash=script_cache.compute_hash(content),
+                description=description,
+            )
+            existing = cache_entries.get(script_domain)
+            script_cache.save(script_domain, [new_entry], existing=existing)
+            # Update the in-memory entry so subsequent saves
+            # for the same domain carry forward this result.
+            if existing is None:
+                existing = script_cache.ScriptCacheEntry(domain=script_domain)
+                cache_entries[script_domain] = existing
+            existing.scripts.append(new_entry)
+
         completed_count += count
         if on_progress:
             on_progress(
@@ -425,40 +457,20 @@ async def _analyze_unknowns(
                 total_to_analyze,
                 f"Analyzed {completed_count}/{total_to_analyze} scripts...",
             )
-        return result
 
     if bases_needing_llm:
-        llm_results = await asyncio.gather(
+        await asyncio.gather(
             *(
-                analyze_with_progress(fetch_url, content, len(result_indices))
-                for _base, (_sd, fetch_url, content, result_indices) in bases_needing_llm.items()
+                analyze_with_progress(
+                    fetch_url,
+                    content,
+                    len(result_indices),
+                    script_domain,
+                    result_indices,
+                )
+                for _base, (script_domain, fetch_url, content, result_indices) in bases_needing_llm.items()
             )
         )
-
-        for llm_url, description in llm_results:
-            base = script_cache.strip_query_string(llm_url)
-            script_domain, fetch_url, content, result_indices = bases_needing_llm[base]
-            for ri in result_indices:
-                old = results[ri]
-                results[ri] = tracking_data.TrackedScript(
-                    url=old.url,
-                    domain=old.domain,
-                    description=description,
-                    resource_type=old.resource_type,
-                )
-            if content:
-                newly_by_domain.setdefault(script_domain, []).append(
-                    script_cache.CachedScript(
-                        url=fetch_url,
-                        content_hash=script_cache.compute_hash(content),
-                        description=description,
-                    ),
-                )
-
-    # ── Save caches per script domain ──────────────────────
-    for script_domain, new_scripts in newly_by_domain.items():
-        existing = cache_entries.get(script_domain)
-        script_cache.save(script_domain, new_scripts, existing=existing)
 
     if on_progress:
         on_progress("analyzing", total_to_analyze, total_to_analyze, "Script analysis complete...")
@@ -469,7 +481,6 @@ async def _analyze_unknowns(
             "analyzed": llm_to_analyze,
             "cacheHits": cache_hits,
             "deduplicatedByBaseUrl": deduped_count,
-            "scriptDomainsCached": len(newly_by_domain),
             "concurrency": MAX_CONCURRENCY,
             "total": len(results),
         },

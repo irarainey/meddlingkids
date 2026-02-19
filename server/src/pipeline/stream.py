@@ -257,6 +257,7 @@ async def _run_analysis(
         yield sse_helpers.format_progress_event("cache-cleared", "Caches cleared!", 2)
 
     log.start_timer("total-analysis")
+    analysis_start = asyncio.get_event_loop().time()
 
     try:
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
@@ -284,13 +285,15 @@ async def _run_analysis(
             )
 
     except TimeoutError:
+        elapsed = asyncio.get_event_loop().time() - analysis_start
+        elapsed_str = f"{int(elapsed)} seconds" if elapsed < 120 else f"{elapsed / 60:.1f} minutes"
         log.error(
             "Analysis timed out",
-            {"timeout_seconds": STREAM_TIMEOUT_SECONDS},
+            {"elapsed_seconds": int(elapsed), "limit_seconds": STREAM_TIMEOUT_SECONDS},
         )
         yield sse_helpers.format_sse_event(
             "error",
-            {"error": f"Analysis timed out after {STREAM_TIMEOUT_SECONDS // 60} minutes"},
+            {"error": f"Analysis timed out after {elapsed_str}"},
         )
     except Exception as error:
         log.error(

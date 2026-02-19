@@ -168,7 +168,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                     ),
                     screenshot=llm_screenshot,
                 ),
-                timeout=30,
+                timeout=20,
             )
             log.end_timer(
                 "vision-extraction",

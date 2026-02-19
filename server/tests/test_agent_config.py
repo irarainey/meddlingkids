@@ -13,6 +13,7 @@ from src.agents.config import (
     AGENT_TRACKING_ANALYSIS,
     AzureOpenAIConfig,
     OpenAIConfig,
+    get_agent_deployment,
     validate_llm_config,
 )
 
@@ -91,3 +92,36 @@ class TestValidateLlmConfig:
         with mock.patch.dict("os.environ", env, clear=True):
             result = validate_llm_config()
         assert result is None
+
+
+class TestGetAgentDeployment:
+    """Tests for per-agent deployment overrides."""
+
+    def test_returns_none_for_unknown_agent(self) -> None:
+        assert get_agent_deployment("UnknownAgent") is None
+
+    def test_returns_none_when_env_var_not_set(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True):
+            assert get_agent_deployment(AGENT_SCRIPT_ANALYSIS) is None
+
+    def test_returns_none_when_env_var_empty(self) -> None:
+        with mock.patch.dict("os.environ", {"AZURE_OPENAI_SCRIPT_DEPLOYMENT": ""}):
+            assert get_agent_deployment(AGENT_SCRIPT_ANALYSIS) is None
+
+    def test_returns_none_when_env_var_whitespace(self) -> None:
+        with mock.patch.dict("os.environ", {"AZURE_OPENAI_SCRIPT_DEPLOYMENT": "  "}):
+            assert get_agent_deployment(AGENT_SCRIPT_ANALYSIS) is None
+
+    def test_returns_deployment_when_set(self) -> None:
+        with mock.patch.dict("os.environ", {"AZURE_OPENAI_SCRIPT_DEPLOYMENT": "gpt-5.1-codex-mini"}):
+            assert get_agent_deployment(AGENT_SCRIPT_ANALYSIS) == "gpt-5.1-codex-mini"
+
+    def test_strips_whitespace(self) -> None:
+        with mock.patch.dict("os.environ", {"AZURE_OPENAI_SCRIPT_DEPLOYMENT": "  codex-mini  "}):
+            assert get_agent_deployment(AGENT_SCRIPT_ANALYSIS) == "codex-mini"
+
+    def test_no_override_for_other_agents(self) -> None:
+        """Non-script agents have no override mapping."""
+        with mock.patch.dict("os.environ", {"AZURE_OPENAI_SCRIPT_DEPLOYMENT": "codex-mini"}):
+            assert get_agent_deployment(AGENT_TRACKING_ANALYSIS) is None
+            assert get_agent_deployment(AGENT_STRUCTURED_REPORT) is None

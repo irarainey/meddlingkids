@@ -91,6 +91,7 @@ class StructuredReportAgent(base.BaseAgent):
     instructions = ""  # Overridden per section
     max_tokens = 2048
     max_retries = 5
+    call_timeout = 60  # Large prompts (100K+ chars) need more time than default
     response_model = None  # Set dynamically per section
 
     async def build_report(

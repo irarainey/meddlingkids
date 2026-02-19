@@ -339,12 +339,16 @@ export function useTrackingAnalysis() {
         try {
           clearTimeout(connectionTimeout)
           const data = JSON.parse(event.data)
-          statusMessage.value = data.message
-          progressStep.value = data.step
-          // Only advance — never allow the progress bar to go backward.
-          // The server emits progress values from multiple concurrent
-          // pipeline stages that may arrive out of order.
-          progressPercent.value = Math.max(progressPercent.value, data.progress)
+          // Only advance — never allow the progress bar or status
+          // message to go backward.  The server emits progress
+          // values from multiple concurrent pipeline stages that
+          // may arrive out of order (e.g. script analysis at 84%
+          // interleaved with report generation at 91%).
+          if (data.progress >= progressPercent.value) {
+            statusMessage.value = data.message
+            progressStep.value = data.step
+            progressPercent.value = data.progress
+          }
         } catch {
           console.error('[SSE] Failed to parse progress event')
         }

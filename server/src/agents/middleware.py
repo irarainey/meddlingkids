@@ -97,6 +97,18 @@ _DEFAULT_INITIAL_DELAY_MS = 1000
 _DEFAULT_MAX_DELAY_MS = 30_000
 _BACKOFF_MULTIPLIER = 2.0
 
+# ── Global LLM concurrency ─────────────────────────────────────────
+
+_MAX_CONCURRENT_LLM_CALLS = 10
+"""Maximum LLM calls in-flight at once across all agents.
+
+Prevents overwhelming the Azure OpenAI endpoint when
+multiple agents (e.g. StructuredReportAgent 10 sections +
+ScriptAnalysisAgent batch) fire concurrently.
+"""
+
+_llm_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_LLM_CALLS)
+
 
 class EmptyResponseError(Exception):
     """Raised when the LLM returns an empty (zero-character) response.
@@ -199,15 +211,26 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
 
         for attempt in range(self.max_retries + 1):
             try:
-                if self.per_call_timeout is not None:
-                    await asyncio.wait_for(
-                        next(context),
-                        timeout=self.per_call_timeout,
-                    )
-                else:
-                    await next(context)
+                async with _llm_semaphore:
+                    if self.per_call_timeout is not None:
+                        await asyncio.wait_for(
+                            next(context),
+                            timeout=self.per_call_timeout,
+                        )
+                    else:
+                        await next(context)
                 self._check_empty_response(context)
                 return
+            except TimeoutError as exc:
+                # asyncio.wait_for raises a bare TimeoutError
+                # with no message — wrap with a descriptive one.
+                last_error = TimeoutError(f"LLM call timed out after {self.per_call_timeout}s")
+                if attempt >= self.max_retries:
+                    log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {last_error}")
+                    raise last_error from exc
+
+                self._log_retry(attempt, last_error, delay_ms)
+                delay_ms = await self._backoff(last_error, delay_ms)
             except Exception as exc:
                 last_error = exc
                 if attempt >= self.max_retries or not _is_retryable(exc):
@@ -215,20 +238,8 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                         log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {exc}")
                     raise
 
-                # Respect Retry-After header when available.
-                retry_after = self._get_retry_after(exc)
-                wait_ms = retry_after or delay_ms
-                jitter = random.uniform(0, wait_ms * 0.1)
-                total_ms = min(wait_ms + jitter, self.max_delay_ms)
-
-                log.warn(
-                    f"Agent '{self.agent_name}' attempt"
-                    f" {attempt + 1}/{self.max_retries + 1}"
-                    f" failed, retrying in"
-                    f" {total_ms / 1000:.1f}s: {exc}"
-                )
-                await asyncio.sleep(total_ms / 1000)
-                delay_ms = int(delay_ms * _BACKOFF_MULTIPLIER)
+                self._log_retry(attempt, exc, delay_ms)
+                delay_ms = await self._backoff(exc, delay_ms)
 
         if last_error:  # pragma: no cover — defensive
             raise last_error
@@ -253,6 +264,50 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         if not text:
             log.warn(f"Agent '{self.agent_name}' received an empty response from the LLM, retrying")
             raise EmptyResponseError(f"Agent '{self.agent_name}' received an empty (0-character) response")
+
+    def _log_retry(
+        self,
+        attempt: int,
+        exc: BaseException,
+        delay_ms: int,
+    ) -> None:
+        """Log a retry warning with attempt details.
+
+        Args:
+            attempt: Zero-based attempt index.
+            exc: The exception that triggered the retry.
+            delay_ms: Base delay before jitter.
+        """
+        retry_after = self._get_retry_after(exc)
+        wait_ms = retry_after or delay_ms
+        jitter = random.uniform(0, wait_ms * 0.1)
+        total_ms = min(wait_ms + jitter, self.max_delay_ms)
+        log.warn(
+            f"Agent '{self.agent_name}' attempt {attempt + 1}/{self.max_retries + 1} failed, retrying in {total_ms / 1000:.1f}s: {exc}"
+        )
+
+    async def _backoff(
+        self,
+        exc: BaseException,
+        delay_ms: int,
+    ) -> int:
+        """Sleep for backoff and return the next delay.
+
+        Respects ``Retry-After`` headers when present.
+
+        Args:
+            exc: The exception (may contain headers).
+            delay_ms: Current base delay in ms.
+
+        Returns:
+            Updated delay for the next attempt.
+        """
+        retry_after = self._get_retry_after(exc)
+        wait_ms = retry_after or delay_ms
+        jitter = random.uniform(0, wait_ms * 0.1)
+        total_ms = min(wait_ms + jitter, self.max_delay_ms)
+        await asyncio.sleep(total_ms / 1000)
+        return int(delay_ms * _BACKOFF_MULTIPLIER)
 
     @staticmethod
     def _get_retry_after(
