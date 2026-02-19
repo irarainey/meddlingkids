@@ -9,6 +9,19 @@
 
 set -e
 
+# Remap appuser UID/GID to match the host user when UID_GID is set.
+# This ensures files written to bind-mounted volumes are readable on the host.
+if [[ -n "${UID_GID:-}" ]]; then
+    IFS=':' read -r HOST_UID HOST_GID <<< "$UID_GID"
+    if [[ -n "$HOST_GID" ]] && [[ "$HOST_GID" != "$(id -g appuser)" ]]; then
+        groupmod -g "$HOST_GID" appgroup
+    fi
+    if [[ -n "$HOST_UID" ]] && [[ "$HOST_UID" != "$(id -u appuser)" ]]; then
+        usermod -u "$HOST_UID" appuser
+    fi
+    echo "Mapped appuser to UID=${HOST_UID}, GID=${HOST_GID}"
+fi
+
 # Fix .output directory permissions for volume mounts, then drop to appuser.
 # When a host directory is bind-mounted, Docker creates it as root — this
 # ensures appuser can write cache, logs, and reports.
@@ -36,7 +49,7 @@ export DISPLAY=:99
 echo "Starting server..."
 
 if [[ "${SHOW_UI,,}" == "true" ]]; then
-    echo "Open the client UI at: http://localhost:${UVICORN_PORT:-3001}"
+    echo "Open the client UI at: http://localhost:${UI_PORT:-3002}"
 fi
 
 cd /app/server

@@ -21,11 +21,12 @@ services:
     image: ghcr.io/irarainey/meddlingkids:latest
     build: .
     ports:
-      - "${UVICORN_PORT:-3001}:${UVICORN_PORT:-3001}"
+      - "${UI_PORT:-3002}:${UVICORN_PORT:-3001}"
     env_file:
       - .env
     environment:
       - SHOW_UI=true
+      - UID_GID=${UID_GID:-1000:1000}
     volumes:
       - ~/.meddlingkids/output:/app/server/.output
     stdin_open: true

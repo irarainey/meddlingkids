@@ -121,14 +121,13 @@ meddlingkids/
 │       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .output/                   # All server output (auto-created, gitignored)
+│   ├── agents/                # Microsoft Agent Framework threads (for debugging and prompt engineering)
 │   ├── cache/                 # Analysis caches
 │   │   ├── domain/            # Domain knowledge cache for cross-run consistency
 │   │   ├── overlay/           # Overlay dismissal cache per domain
 │   │   └── scripts/           # Script analysis cache per script domain (URL + content hash)
 │   ├── logs/                  # Server logs (when WRITE_TO_FILE=true)
 │   └── reports/               # Analysis reports (when WRITE_TO_FILE=true)
-├── Dockerfile                 # Multi-stage production build
-meddlingkids/output)
 ```
 
 ## Caching
@@ -307,7 +306,28 @@ cp .env.example .env  # fill in your credentials
 docker compose up
 ```
 
+Then open http://localhost:3002 to access the app.
+
+The host-facing port defaults to **3002** (via `UI_PORT`) to avoid conflicts with a local dev server on 3001. The container's internal server always listens on port 3001 (via `UVICORN_PORT`). To change the host port, set `UI_PORT` in your `.env`:
+
+```env
+UI_PORT=4000
+```
+
 The `~/.meddlingkids/output/` directory on the host is mounted into the container so cache, logs, and reports persist across container restarts and are kept outside the project tree.
+
+#### Volume File Permissions
+
+The entrypoint remaps the container user's UID and GID so files written to the mounted volume are readable on the host. By default, `UID_GID` is set to `1000:1000`, which matches the standard first user on most Linux distributions. If your host user has a different UID/GID, set it in your `.env`:
+
+```bash
+# Find your UID and GID
+id -u   # e.g. 1000
+id -g   # e.g. 1000
+
+# Add to .env
+UID_GID=1000:1000
+```
 
 ### Using a Custom Port
 
