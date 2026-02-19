@@ -29,6 +29,7 @@ class CookieConsentDetection(pydantic.BaseModel):
     button_text: str | None
     confidence: ConfidenceLevel
     reason: str
+    error: bool = False
 
     @classmethod
     def not_found(cls, reason: str = "") -> CookieConsentDetection:
@@ -40,6 +41,24 @@ class CookieConsentDetection(pydantic.BaseModel):
             button_text=None,
             confidence="low",
             reason=reason,
+        )
+
+    @classmethod
+    def failed(cls, reason: str) -> CookieConsentDetection:
+        """Return a detection result indicating an error.
+
+        Unlike ``not_found``, this signals that detection
+        could not be performed (e.g. timeout) rather than
+        that no overlay was observed.
+        """
+        return cls(
+            found=False,
+            overlay_type=None,
+            selector=None,
+            button_text=None,
+            confidence="low",
+            reason=reason,
+            error=True,
         )
 
 

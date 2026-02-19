@@ -10,6 +10,7 @@ Returns structured ``CookieConsentDetection``.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Literal
 
 import pydantic
@@ -114,6 +115,12 @@ class ConsentDetectionAgent(base.BaseAgent):
 
         except Exception as error:
             msg = errors.get_error_message(error)
+
+            # Let timeouts propagate so callers can
+            # distinguish "timed out" from "not found".
+            if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+                raise
+
             if any(
                 kw in msg
                 for kw in (

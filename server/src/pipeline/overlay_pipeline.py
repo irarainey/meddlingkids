@@ -418,6 +418,31 @@ class OverlayPipeline:
             # ── Detect ──────────────────────────────────────
             detection = await overlay_steps.detect_overlay(session, overlay_count)
 
+            # Detection error (e.g. timeout) — warn the user
+            # but continue the analysis.  This is NOT the same
+            # as "no overlay found".
+            if detection.error:
+                log.warn(
+                    "Overlay detection failed — skipping consent handling",
+                    {"reason": detection.reason},
+                )
+                yield self._progress(
+                    "consent-warn",
+                    "Overlay detection unavailable — skipping consent check",
+                    70,
+                )
+                yield sse_helpers.format_sse_event(
+                    "consent",
+                    {
+                        "detected": False,
+                        "clicked": False,
+                        "details": None,
+                        "reason": detection.reason,
+                        "error": True,
+                    },
+                )
+                break
+
             if not detection.found or (not detection.selector and not detection.button_text):
                 for event in overlay_steps.build_no_overlay_events(overlay_count, detection.reason):
                     yield event

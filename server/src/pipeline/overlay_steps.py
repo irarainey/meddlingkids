@@ -92,7 +92,20 @@ async def detect_overlay(
     )
 
     log.info("Sending screenshot to overlay detection model...")
-    detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
+    try:
+        detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
+    except (asyncio.TimeoutError, TimeoutError):
+        log.warn(
+            "Overlay detection timed out",
+            {"iteration": iteration + 1},
+        )
+        log.end_timer(
+            f"overlay-detect-{iteration + 1}",
+            "Overlay detection timed out",
+        )
+        return consent.CookieConsentDetection.failed(
+            reason="Overlay detection timed out",
+        )
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
         "Overlay detection complete",
