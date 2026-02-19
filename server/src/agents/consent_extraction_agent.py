@@ -17,9 +17,9 @@ from playwright import async_api
 
 from src.agents import base, config
 from src.agents.prompts import consent_extraction
-from src.consent import constants
+from src.consent import constants, text_parser
 from src.models import consent
-from src.utils import errors, json_parsing, logger
+from src.utils import errors, image, json_parsing, logger
 
 log = logger.create_logger("ConsentExtractionAgent")
 
@@ -27,6 +27,7 @@ log = logger.create_logger("ConsentExtractionAgent")
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
 _EXTRACT_IFRAME_JS = (_SCRIPTS_DIR / "extract_iframe_text.js").read_text()
+_GET_CONSENT_BOUNDS_JS = (_SCRIPTS_DIR / "get_consent_bounds.js").read_text()
 # ── Structured output models ───────────────────────────────────
 
 
@@ -78,8 +79,20 @@ class ConsentExtractionAgent(base.BaseAgent):
         screenshot: bytes,
         *,
         pre_captured_text: str | None = None,
+        consent_bounds: tuple[int, int, int, int] | None = None,
     ) -> consent.ConsentDetails:
         """Extract consent details from a page screenshot.
+
+        When *consent_bounds* is provided the screenshot is
+        cropped to just the dialog area before sending to the
+        LLM — this avoids content-filter rejections caused by
+        surrounding page content (e.g. ads).
+
+        A local regex-based parser always runs on the DOM text
+        in parallel.  Its results are merged with the LLM
+        output: the LLM takes priority for any field it
+        populated; the local parse fills gaps the LLM missed
+        and acts as the sole source if the LLM fails entirely.
 
         Args:
             page: Playwright page for DOM text extraction.
@@ -88,6 +101,9 @@ class ConsentExtractionAgent(base.BaseAgent):
                 consent dialog was still visible.  When
                 provided, skips live DOM extraction (the
                 dialog may already be dismissed).
+            consent_bounds: ``(left, top, right, bottom)``
+                pixel region to crop the screenshot to before
+                sending it to the LLM.
 
         Returns:
             Structured ``ConsentDetails``.
@@ -109,6 +125,30 @@ class ConsentExtractionAgent(base.BaseAgent):
             {"length": len(consent_text)},
         )
 
+        # ── Local text parse (always runs) ──────────────
+        local_result = text_parser.parse_consent_text(consent_text)
+
+        # ── Crop screenshot to dialog area ──────────────
+        llm_screenshot = screenshot
+        if consent_bounds and screenshot:
+            try:
+                llm_screenshot = image.crop_jpeg(screenshot, consent_bounds)
+                log.info(
+                    "Screenshot cropped to consent dialog",
+                    {
+                        "originalBytes": len(screenshot),
+                        "croppedBytes": len(llm_screenshot),
+                        "bounds": consent_bounds,
+                    },
+                )
+            except Exception as crop_err:
+                log.warn(
+                    "Screenshot cropping failed — using original",
+                    {"error": str(crop_err)},
+                )
+                llm_screenshot = screenshot
+
+        # ── LLM vision extraction ───────────────────────
         log.start_timer("vision-extraction")
         log.info("Analysing consent dialog with vision...")
 
@@ -126,7 +166,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                         " categories, partners, purposes, and"
                         " any manage options button."
                     ),
-                    screenshot=screenshot,
+                    screenshot=llm_screenshot,
                 ),
                 timeout=30,
             )
@@ -137,9 +177,10 @@ class ConsentExtractionAgent(base.BaseAgent):
 
             parsed = self._parse_response(response, _ConsentExtractionResponse)
             if parsed:
-                result = _to_domain(parsed, consent_text)
+                llm_result = _to_domain(parsed, consent_text)
+                result = _merge_results(llm_result, local_result)
                 log.info(
-                    "Extraction result",
+                    "Extraction result (LLM + local merge)",
                     {
                         "categories": len(result.categories),
                         "partners": len(result.partners),
@@ -152,7 +193,8 @@ class ConsentExtractionAgent(base.BaseAgent):
 
             # Fallback: manual parse from text
             log.debug("Structured parse failed, trying text fallback")
-            return _parse_text_fallback(response.text, consent_text)
+            llm_result = _parse_text_fallback(response.text, consent_text)
+            return _merge_results(llm_result, local_result)
         except Exception as error:
             log.end_timer(
                 "vision-extraction",
@@ -162,18 +204,20 @@ class ConsentExtractionAgent(base.BaseAgent):
             is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
             if is_timeout:
                 log.warn(
-                    "Consent extraction timed out",
+                    "Consent extraction timed out — using local parse",
                     {"error": error_msg},
                 )
             else:
                 log.error(
-                    "Consent extraction failed",
+                    "Consent extraction failed — using local parse",
                     {"error": error_msg},
                 )
-            return consent.ConsentDetails.empty(
-                consent_text[:5000],
-                claimed_partner_count=_extract_partner_count_from_text(consent_text),
-            )
+            # LLM failed entirely — use the local parse as
+            # the primary result, supplemented with partner
+            # count from regex if the local parser missed it.
+            if not local_result.claimed_partner_count:
+                local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
+            return local_result
 
 
 # ── Helpers ─────────────────────────────────────────────────────
@@ -306,6 +350,46 @@ def _parse_text_fallback(
             claimed_partner_count=(raw.get("claimedPartnerCount") or _extract_partner_count_from_text(raw_text)),
         )
     return consent.ConsentDetails.empty(raw_text[:5000])
+
+
+def _merge_results(
+    llm: consent.ConsentDetails,
+    local: consent.ConsentDetails,
+) -> consent.ConsentDetails:
+    """Merge LLM and local-parse results conservatively.
+
+    The LLM result is authoritative for categories, partners,
+    and purposes.  The local parse only supplements two
+    high-confidence scalar signals that cannot produce false
+    positives:
+
+    * ``has_manage_options`` — ``True`` if either source
+      detected the indicator.
+    * ``claimed_partner_count`` — falls back to the local
+      count when the LLM didn't extract one.
+
+    Categories, purposes, and partners from the local parse
+    are **not** merged in because the regex patterns can
+    produce false positives on non-consent page text (e.g.
+    news article headlines containing words like "ads" or
+    "analytics").
+
+    Args:
+        llm: Result from the LLM vision extraction.
+        local: Result from the local text parser.
+
+    Returns:
+        A ``ConsentDetails`` instance.
+    """
+    return consent.ConsentDetails(
+        has_manage_options=llm.has_manage_options or local.has_manage_options,
+        categories=llm.categories,
+        partners=llm.partners,
+        purposes=llm.purposes,
+        raw_text=llm.raw_text,
+        claimed_partner_count=llm.claimed_partner_count or local.claimed_partner_count,
+        consent_platform=llm.consent_platform,
+    )
 
 
 async def _extract_consent_text(

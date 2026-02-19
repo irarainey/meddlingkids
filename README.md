@@ -15,7 +15,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 
 - 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
 - 📱 **Device Emulation** — Test as iPhone, iPad, Android Phone, Android Tablet, Windows Chrome, or macOS Safari
-- 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details
+- 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details using dual-source extraction (LLM vision + local regex parser) with screenshot cropping to the dialog bounding box
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
@@ -34,7 +34,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Overlay Detection** — AI analyzes the page for overlays (cookie consent, sign-in, newsletter, paywall, age verification)
-6. **Overlay Interaction** — Attempts to dismiss detected overlays and captures changes
+6. **Overlay Interaction** — Attempts to dismiss detected overlays and captures changes. Consent dialog screenshots are cropped to the dialog bounding box before AI extraction, with a local regex fallback if the LLM is unavailable
 7. **Data Collection** — Captures cookies, scripts, network requests, and storage
 8. **Privacy Score** — Generates a 0-100 privacy score with Scooby-Doo themed rating
 9. **Privacy Analysis** — AI reviews collected data for privacy concerns

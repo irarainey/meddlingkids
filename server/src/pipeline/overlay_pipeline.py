@@ -128,7 +128,7 @@ class OverlayPipeline:
         self._cache_dismissed = 0
         self._failed_cache_types: set[str] = set()
         self._new_overlays: list[overlay_cache.CachedOverlay] = []
-        self._deferred_extraction: tuple[bytes, str | None] | None = None
+        self._deferred_extraction: tuple[bytes, str | None, overlay_steps.ConsentBounds] | None = None
         # Mutable state shared across run phases
         self._screenshot: bytes = initial_screenshot
         self._storage: dict = {}
@@ -342,7 +342,7 @@ class OverlayPipeline:
                 self._storage = await self._session.capture_storage()
 
                 if self._deferred_extraction:
-                    ext_screenshot, ext_text = self._deferred_extraction
+                    ext_screenshot, ext_text, ext_bounds = self._deferred_extraction
                     self._deferred_extraction = None
                     self._pending_extract = asyncio.create_task(
                         overlay_steps.collect_extraction_events(
@@ -351,6 +351,7 @@ class OverlayPipeline:
                             result,
                             pre_click_consent_text=ext_text,
                             consent_platform=self._detected_platform.name if self._detected_platform else None,
+                            consent_bounds=ext_bounds,
                         )
                     )
 
@@ -417,6 +418,31 @@ class OverlayPipeline:
         while overlay_count < MAX_OVERLAYS:
             # ── Detect ──────────────────────────────────────
             detection = await overlay_steps.detect_overlay(session, overlay_count)
+
+            # Detection error (e.g. timeout) — warn the user
+            # but continue the analysis.  This is NOT the same
+            # as "no overlay found".
+            if detection.error:
+                log.warn(
+                    "Overlay detection failed — skipping consent handling",
+                    {"reason": detection.reason},
+                )
+                yield self._progress(
+                    "consent-warn",
+                    "Overlay detection unavailable — skipping consent check",
+                    70,
+                )
+                yield sse_helpers.format_sse_event(
+                    "consent",
+                    {
+                        "detected": False,
+                        "clicked": False,
+                        "details": None,
+                        "reason": detection.reason,
+                        "error": True,
+                    },
+                )
+                break
 
             if not detection.found or (not detection.selector and not detection.button_text):
                 for event in overlay_steps.build_no_overlay_events(overlay_count, detection.reason):
@@ -535,13 +561,16 @@ class OverlayPipeline:
         # ── Capture consent content before dismissing ───
         pre_click_screenshot: bytes | None = None
         pre_click_consent_text: str | None = None
+        pre_click_consent_bounds: overlay_steps.ConsentBounds = None
         if is_first_cookie_consent:
             yield self._progress(
                 f"overlay-{overlay_number}-capture",
                 "Inspecting overlay content...",
                 progress_base,
             )
-            pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
+            pre_click_consent_text, pre_click_screenshot, pre_click_consent_bounds = await overlay_steps.capture_consent_content(
+                page, session
+            )
 
         # ── Click ───────────────────────────────────────
         yield self._progress(
@@ -573,6 +602,7 @@ class OverlayPipeline:
                             result,
                             pre_click_consent_text=pre_click_consent_text,
                             consent_platform=self._detected_platform.name if self._detected_platform else None,
+                            consent_bounds=pre_click_consent_bounds,
                         )
                     )
 
@@ -630,6 +660,7 @@ class OverlayPipeline:
                         result,
                         pre_click_consent_text=pre_click_consent_text,
                         consent_platform=self._detected_platform.name if self._detected_platform else None,
+                        consent_bounds=pre_click_consent_bounds,
                     )
                 )
 
@@ -665,6 +696,7 @@ class OverlayPipeline:
                     result,
                     pre_click_consent_text=pre_click_consent_text,
                     consent_platform=self._detected_platform.name if self._detected_platform else None,
+                    consent_bounds=pre_click_consent_bounds,
                 )
             )
 
@@ -756,13 +788,15 @@ class OverlayPipeline:
         # Capture consent content before clicking (for extraction)
         pre_click_screenshot: bytes | None = None
         pre_click_consent_text: str | None = None
+        pre_click_consent_bounds: overlay_steps.ConsentBounds = None
         try:
-            consent_text, consent_screenshot = await overlay_steps.capture_consent_content(
+            consent_text, consent_screenshot, consent_bounds = await overlay_steps.capture_consent_content(
                 self._page,
                 self._session,
             )
             pre_click_consent_text = consent_text
             pre_click_screenshot = consent_screenshot
+            pre_click_consent_bounds = consent_bounds
         except Exception:
             log.debug("Pre-click consent capture failed")
 
@@ -821,6 +855,7 @@ class OverlayPipeline:
                         self.result,
                         pre_click_consent_text=pre_click_consent_text,
                         consent_platform=authoritative_platform.name,
+                        consent_bounds=pre_click_consent_bounds,
                     )
                 )
 
@@ -839,6 +874,7 @@ class OverlayPipeline:
                 self._deferred_extraction = (
                     pre_click_screenshot,
                     pre_click_consent_text,
+                    pre_click_consent_bounds,
                 )
 
     # ── Cached overlay helpers ──────────────────────────────
@@ -939,13 +975,16 @@ class OverlayPipeline:
             # ── Capture consent content before dismissing ───
             pre_click_screenshot: bytes | None = None
             pre_click_consent_text: str | None = None
+            pre_click_consent_bounds: overlay_steps.ConsentBounds = None
             if is_first_cookie:
                 yield self._progress(
                     f"overlay-{overlay_number}-capture",
                     "Inspecting overlay content...",
                     progress_base,
                 )
-                pre_click_consent_text, pre_click_screenshot = await overlay_steps.capture_consent_content(page, session)
+                pre_click_consent_text, pre_click_screenshot, pre_click_consent_bounds = await overlay_steps.capture_consent_content(
+                    page, session
+                )
 
             yield self._progress(
                 f"overlay-{overlay_number}-click",
@@ -1009,6 +1048,7 @@ class OverlayPipeline:
                     self._deferred_extraction = (
                         pre_click_screenshot,
                         pre_click_consent_text,
+                        pre_click_consent_bounds,
                     )
             else:
                 log.info(
@@ -1029,6 +1069,7 @@ class OverlayPipeline:
                     self._deferred_extraction = (
                         pre_click_screenshot,
                         pre_click_consent_text,
+                        pre_click_consent_bounds,
                     )
 
         result.overlay_count += dismissed

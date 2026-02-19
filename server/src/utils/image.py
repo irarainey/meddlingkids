@@ -111,6 +111,8 @@ def screenshot_to_data_url(jpeg_bytes: bytes) -> str:
 
 def optimize_for_llm(
     screenshot_bytes: bytes,
+    *,
+    crop_box: tuple[int, int, int, int] | None = None,
 ) -> tuple[str, int]:
     """Aggressively optimize a screenshot for LLM vision.
 
@@ -120,11 +122,17 @@ def optimize_for_llm(
 
     Args:
         screenshot_bytes: Raw JPEG screenshot bytes.
+        crop_box: Optional ``(left, top, right, bottom)``
+            pixel region to crop *before* downscaling.
+            Coordinates are relative to the original image.
 
     Returns:
         Tuple of (``data:image/jpeg;base64,...`` string,
         compressed byte count).
     """
+    if crop_box is not None:
+        screenshot_bytes = crop_jpeg(screenshot_bytes, crop_box)
+
     jpeg_bytes, _, _ = downscale_jpeg(
         screenshot_bytes,
         max_width=_LLM_MAX_WIDTH,
@@ -135,3 +143,36 @@ def optimize_for_llm(
         f"data:image/jpeg;base64,{b64}",
         len(jpeg_bytes),
     )
+
+
+def crop_jpeg(
+    jpeg_bytes: bytes,
+    box: tuple[int, int, int, int],
+) -> bytes:
+    """Crop a JPEG image to *box* and return new JPEG bytes.
+
+    Args:
+        jpeg_bytes: Raw JPEG image bytes.
+        box: ``(left, top, right, bottom)`` in pixels.
+
+    Returns:
+        Cropped JPEG bytes at the original quality.
+    """
+    img: Image.Image = Image.open(io.BytesIO(jpeg_bytes))
+    try:
+        # Clamp coordinates to image bounds.
+        left = max(0, box[0])
+        top = max(0, box[1])
+        right = min(img.width, box[2])
+        bottom = min(img.height, box[3])
+
+        if right <= left or bottom <= top:
+            return jpeg_bytes  # Invalid box — return original.
+
+        cropped = img.crop((left, top, right, bottom))
+        buf = io.BytesIO()
+        cropped.save(buf, format="JPEG", quality=85, optimize=True)
+        cropped.close()
+        return buf.getvalue()
+    finally:
+        img.close()

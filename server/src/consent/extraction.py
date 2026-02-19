@@ -21,6 +21,7 @@ async def extract_consent_details(
     screenshot: bytes,
     *,
     pre_captured_text: str | None = None,
+    consent_bounds: tuple[int, int, int, int] | None = None,
 ) -> consent.ConsentDetails:
     """Extract detailed consent information from a page.
 
@@ -30,6 +31,9 @@ async def extract_consent_details(
         pre_captured_text: DOM text captured while the consent
             dialog was still visible. If provided, the agent
             uses this instead of re-extracting from the page.
+        consent_bounds: ``(left, top, right, bottom)`` pixel
+            region of the consent dialog for screenshot
+            cropping before sending to the LLM.
 
     Returns:
         Structured ``ConsentDetails``.
@@ -39,6 +43,7 @@ async def extract_consent_details(
         {
             "screenshotBytes": len(screenshot),
             "hasPreCapturedText": pre_captured_text is not None,
+            "hasBounds": consent_bounds is not None,
         },
     )
     agent = agents.get_consent_extraction_agent()
@@ -50,4 +55,5 @@ async def extract_consent_details(
         page,
         screenshot,
         pre_captured_text=pre_captured_text,
+        consent_bounds=consent_bounds,
     )

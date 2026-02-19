@@ -47,6 +47,7 @@ class BaseAgent:
     instructions: str = ""
     max_tokens: int = 4096
     max_retries: int = 5
+    call_timeout: float = 60
     temperature: float | None = None
     seed: int | None = None
     response_model: type[pydantic.BaseModel] | None = None
@@ -55,7 +56,11 @@ class BaseAgent:
         """Initialise with a shared LLM chat client."""
         self._chat_client: agent_framework.ChatClientProtocol | None = None
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
-        self._retry = middleware_mod.RetryChatMiddleware(self.agent_name, max_retries=self.max_retries)
+        self._retry = middleware_mod.RetryChatMiddleware(
+            self.agent_name,
+            max_retries=self.max_retries,
+            per_call_timeout=self.call_timeout,
+        )
 
     def initialise(self) -> bool:
         """Create the underlying LLM chat client.

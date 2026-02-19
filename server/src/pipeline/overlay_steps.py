@@ -23,6 +23,9 @@ from src.models import consent
 from src.pipeline import sse_helpers
 from src.utils import logger
 
+# Bounding-box type alias used throughout the overlay pipeline.
+ConsentBounds = tuple[int, int, int, int] | None
+
 if TYPE_CHECKING:
     from src.pipeline.overlay_pipeline import OverlayHandlingResult
 
@@ -92,7 +95,20 @@ async def detect_overlay(
     )
 
     log.info("Sending screenshot to overlay detection model...")
-    detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
+    try:
+        detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
+    except TimeoutError:
+        log.warn(
+            "Overlay detection timed out",
+            {"iteration": iteration + 1},
+        )
+        log.end_timer(
+            f"overlay-detect-{iteration + 1}",
+            "Overlay detection timed out",
+        )
+        return consent.CookieConsentDetection.failed(
+            reason="Overlay detection timed out",
+        )
     log.end_timer(
         f"overlay-detect-{iteration + 1}",
         "Overlay detection complete",
@@ -221,14 +237,14 @@ async def capture_after_click(
 async def capture_consent_content(
     page: async_api.Page,
     session: browser_session.BrowserSession,
-) -> tuple[str, bytes]:
+) -> tuple[str, bytes, ConsentBounds]:
     """Capture consent dialog content before dismissing it.
 
     Extracts DOM text from the consent dialog (main page and
-    consent-manager iframes) and takes a viewport screenshot
-    while the overlay is still visible.  The extraction agent
-    later analyses both the text and the screenshot to build
-    the structured ``ConsentDetails``.
+    consent-manager iframes), takes a viewport screenshot
+    while the overlay is still visible, and determines the
+    bounding box of the consent dialog element so the
+    screenshot can be cropped before sending to the LLM.
 
     This is intentionally a *read-only* step — it does not
     click any buttons or expand the dialog.  The goal is to
@@ -240,7 +256,9 @@ async def capture_consent_content(
         session: Browser session for taking screenshots.
 
     Returns:
-        A ``(consent_text, screenshot)`` tuple.
+        A ``(consent_text, screenshot, consent_bounds)`` tuple
+        where *consent_bounds* is ``(left, top, right, bottom)``
+        or ``None`` when the dialog element could not be located.
     """
     consent_text = await consent_extraction_agent._extract_consent_text(page)
     try:
@@ -252,11 +270,32 @@ async def capture_consent_content(
         )
         screenshot = b""
 
+    # Locate the consent dialog bounding box for screenshot cropping.
+    consent_bounds: ConsentBounds = None
+    try:
+        raw = await page.evaluate(consent_extraction_agent._GET_CONSENT_BOUNDS_JS)
+        if raw and isinstance(raw, dict):
+            consent_bounds = (
+                int(raw["left"]),
+                int(raw["top"]),
+                int(raw["right"]),
+                int(raw["bottom"]),
+            )
+            log.info(
+                "Consent dialog bounds detected",
+                {"bounds": consent_bounds},
+            )
+    except Exception as exc:
+        log.debug(
+            "Consent bounds detection failed",
+            {"error": str(exc)},
+        )
+
     log.info(
         "Pre-dismiss consent capture complete",
-        {"textLength": len(consent_text)},
+        {"textLength": len(consent_text), "hasBounds": consent_bounds is not None},
     )
-    return consent_text, screenshot
+    return consent_text, screenshot, consent_bounds
 
 
 # ====================================================================
@@ -270,6 +309,7 @@ async def extract_and_classify_consent(
     result: OverlayHandlingResult,
     pre_click_consent_text: str | None = None,
     consent_platform: str | None = None,
+    consent_bounds: ConsentBounds = None,
 ) -> AsyncGenerator[str]:
     """Extract consent details and classify partner risk levels.
 
@@ -285,6 +325,8 @@ async def extract_and_classify_consent(
             consent dialog was still visible.  If provided,
             the extraction agent uses this instead of
             re-extracting from the (now-dismissed) page.
+        consent_bounds: ``(left, top, right, bottom)`` pixel
+            region of the consent dialog for screenshot cropping.
     """
     log.start_timer("consent-extraction")
     yield sse_helpers.format_progress_event(
@@ -296,6 +338,7 @@ async def extract_and_classify_consent(
         page,
         pre_click_screenshot,
         pre_captured_text=pre_click_consent_text,
+        consent_bounds=consent_bounds,
     )
     if consent_platform:
         result.consent_details.consent_platform = consent_platform
@@ -356,6 +399,7 @@ async def collect_extraction_events(
     result: OverlayHandlingResult,
     pre_click_consent_text: str | None = None,
     consent_platform: str | None = None,
+    consent_bounds: ConsentBounds = None,
 ) -> list[str]:
     """Run consent extraction, returning events for deferred yielding.
 
@@ -369,6 +413,7 @@ async def collect_extraction_events(
         result,
         pre_click_consent_text=pre_click_consent_text,
         consent_platform=consent_platform,
+        consent_bounds=consent_bounds,
     ):
         events.append(event)
     return events

@@ -149,6 +149,8 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         initial_delay_ms: Initial delay before first retry.
         max_delay_ms: Cap on backoff delay.
         agent_name: Agent name for log context.
+        per_call_timeout: Seconds before a single LLM call
+            is cancelled.  ``None`` disables the guard.
     """
 
     def __init__(
@@ -158,6 +160,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         max_retries: int = _DEFAULT_MAX_RETRIES,
         initial_delay_ms: int = _DEFAULT_INITIAL_DELAY_MS,
         max_delay_ms: int = _DEFAULT_MAX_DELAY_MS,
+        per_call_timeout: float | None = None,
     ) -> None:
         """Initialise the retry middleware.
 
@@ -166,11 +169,14 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
             max_retries: Maximum retry attempts.
             initial_delay_ms: First backoff delay in ms.
             max_delay_ms: Maximum backoff delay in ms.
+            per_call_timeout: Seconds before an individual
+                LLM call is cancelled.  ``None`` disables.
         """
         self.agent_name = agent_name or "Unknown"
         self.max_retries = max_retries
         self.initial_delay_ms = initial_delay_ms
         self.max_delay_ms = max_delay_ms
+        self.per_call_timeout = per_call_timeout
         super().__init__()
 
     async def process(
@@ -193,7 +199,13 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
 
         for attempt in range(self.max_retries + 1):
             try:
-                await next(context)
+                if self.per_call_timeout is not None:
+                    await asyncio.wait_for(
+                        next(context),
+                        timeout=self.per_call_timeout,
+                    )
+                else:
+                    await next(context)
                 self._check_empty_response(context)
                 return
             except Exception as exc:
