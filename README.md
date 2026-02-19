@@ -306,9 +306,19 @@ cp .env.example .env  # fill in your credentials
 docker compose up
 ```
 
+Then open http://localhost:3002 to access the app.
+
+The host-facing port defaults to **3002** (via `UI_PORT`) to avoid conflicts with a local dev server on 3001. The container's internal server always listens on port 3001 (via `UVICORN_PORT`). To change the host port, set `UI_PORT` in your `.env`:
+
+```env
+UI_PORT=4000
+```
+
 The `~/.meddlingkids/output/` directory on the host is mounted into the container so cache, logs, and reports persist across container restarts and are kept outside the project tree.
 
-By default, files written to the mounted volume are owned by the container's internal user (UID 1001). To make them readable by your host user, set `UID_GID` in your `.env` file to match your host UID and GID:
+#### Volume File Permissions
+
+The entrypoint remaps the container user's UID and GID so files written to the mounted volume are readable on the host. By default, `UID_GID` is set to `1000:1000`, which matches the standard first user on most Linux distributions. If your host user has a different UID/GID, set it in your `.env`:
 
 ```bash
 # Find your UID and GID
@@ -318,8 +328,6 @@ id -g   # e.g. 1000
 # Add to .env
 UID_GID=1000:1000
 ```
-
-The entrypoint remaps the container user to these IDs at startup, so all output files are owned by your host user.
 
 ### Using a Custom Port
 
