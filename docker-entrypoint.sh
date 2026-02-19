@@ -34,8 +34,13 @@ fi
 export DISPLAY=:99
 
 echo "Starting server..."
-echo "Open your browser: http://localhost:${UVICORN_PORT:-3001}"
+
+if [[ "${SHOW_UI,,}" == "true" ]]; then
+    echo "Open your browser: http://localhost:${UVICORN_PORT:-3001}"
+fi
+
 cd /app/server
+
 # Drop to non-root user and start the server.
 # Always bind to 0.0.0.0 inside Docker so the server is reachable from the host.
 # UVICORN_HOST from .env is intentionally ignored here — containers must listen
