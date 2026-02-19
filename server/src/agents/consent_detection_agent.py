@@ -63,7 +63,8 @@ class ConsentDetectionAgent(base.BaseAgent):
     agent_name = config.AGENT_CONSENT_DETECTION
     instructions = consent_detection.INSTRUCTIONS
     max_tokens = 500
-    max_retries = 5
+    max_retries = 2
+    call_timeout = 30
     response_model = _VisionDetectionResponse
 
     async def detect(
