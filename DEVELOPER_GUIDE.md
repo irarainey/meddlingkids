@@ -212,8 +212,12 @@ OverlayPipeline.run()
    │   │   ├── steps.capture_consent_content() → Read-only pre-dismiss capture
    │   │   │   └── Extracts text from consent iframes and main-frame containers
    │   │   │   └── Uses constants.is_consent_frame() and CONSENT_CONTAINER_SELECTORS
+   │   │   │   └── Evaluates get_consent_bounds.js → consent dialog bounding box
+   │   │   │   └── Returns (text, screenshot, consent_bounds)
    │   │   └── Start extraction as asyncio.create_task (concurrent)
-   │   │       └── AI extracts partners, categories, purposes
+   │   │       └── Screenshot cropped to consent_bounds before LLM call
+   │   │       └── Local regex parser (text_parser) runs alongside LLM
+   │   │       └── Results merged (LLM authoritative; local supplements)
    │   │       └── Events yielded when both extraction and next detection complete
    │   │
    │   └── send_event('screenshot', {...}) → Post-dismissal screenshot
@@ -426,8 +430,8 @@ Key framework types used:
 
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
-| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons |
-| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Extract consent dialog details (categories, partners, purposes) |
+| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
+| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Dual-source consent extraction: a local regex parser (`text_parser`) runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails, the local parse becomes the sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
@@ -437,10 +441,10 @@ Key framework types used:
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
-| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes |
+| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, and configurable `call_timeout` (default 60 s) passed to `RetryChatMiddleware` |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
-| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff and per-call timeout via `asyncio.wait_for()` |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
@@ -468,6 +472,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
 | `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
+| `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (12 patterns), manage-options indicators, partner names, and claimed partner counts from DOM text without any LLM call |
 
 **`analysis/`** — Tracking analysis and scoring
 
@@ -501,7 +506,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
 | `browser_phases.py` | Phases 1-3: setup (with browser launch retry), navigate, initial capture |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
-| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
+| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
 
@@ -528,7 +533,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `cache.py` | Cross-cache management — `clear_all()` and `atomic_write_text()` for crash-safe file writes |
 | `errors.py` | Error message extraction and client-safe error sanitisation (`get_safe_client_message()`) |
 | `usage_tracking.py` | Per-session LLM call count and token usage tracking (`contextvars` isolation) |
-| `image.py` | Screenshot optimisation and JPEG conversion |
+| `image.py` | Screenshot optimisation, JPEG conversion, and consent dialog cropping (`crop_jpeg()`, `optimize_for_llm()` with `crop_box` parameter) |
 | `json_parsing.py` | LLM response JSON parsing |
 | `logger.py` | Structured logger with colour output (`contextvars` isolation) |
 | `risk.py` | Shared risk-scoring helpers (`risk_label`) |
@@ -578,7 +583,7 @@ BaseAgent._build_agent() → Creates ChatAgent (agent_framework.ChatAgent)
     │                         with ChatClientProtocol + middleware
     │
     ├── TimingChatMiddleware → Logs duration + records token usage
-    ├── RetryChatMiddleware → Handles 429/5xx with backoff
+    ├── RetryChatMiddleware → Handles 429/5xx with backoff + per-call timeout
     └── ChatAgent.run() or run_stream() → LLM chat completion
     │
     ▼
@@ -901,7 +906,7 @@ The top-level orchestrator in `stream.py` wraps `session.close()` in a 30-second
 Ad-heavy pages can become temporarily unresponsive after a consent overlay is dismissed (dozens of tracking scripts load at once). To prevent a single screenshot timeout from crashing the entire analysis:
 
 - **Configurable timeout** — `session.take_screenshot()` accepts a `timeout` parameter (default 15 000 ms, reduced from Playwright's default 30 000 ms) so the pipeline fails fast.
-- **Graceful fallback in overlay detection** — `detect_overlay()` catches screenshot exceptions and returns a `CookieConsentDetection.not_found()` result. The overlay loop exits cleanly instead of raising.
+- **Graceful fallback in overlay detection** — `detect_overlay()` catches screenshot exceptions and returns a `CookieConsentDetection.not_found()` result. When detection times out, it returns `CookieConsentDetection.failed()` with `error=True`, distinguishing a timeout from a clean "not found". The overlay loop exits cleanly instead of raising.
 - **Graceful fallback in consent capture** — `capture_consent_content()` catches screenshot exceptions and falls back to `b""`. Consent extraction can still proceed using extracted DOM text alone.
 - **Graceful fallback in SSE screenshot events** — `take_screenshot_event()` catches screenshot exceptions and falls back to `b""`. Post-click captures produce an empty image rather than crashing.
 - **Empty-bytes guard** — `optimize_screenshot_bytes()` returns an empty string for empty bytes input, preventing a downstream Pillow crash when any of the above fallbacks flow through the optimization pipeline.

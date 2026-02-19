@@ -79,7 +79,8 @@ src/
 │   │   └── tracking_analysis.py     # Tracking analysis prompt
 │   └── scripts/                     # JavaScript snippets evaluated in-browser
 │       ├── extract_consent_text.js  # Extract consent dialog text from DOM
-│       └── extract_iframe_text.js   # Extract text from consent iframes
+│       ├── extract_iframe_text.js   # Extract text from consent iframes
+│       └── get_consent_bounds.js    # Locate consent dialog bounding box for screenshot cropping
 ├── browser/                         # Browser automation
 │   ├── session.py                   # Playwright async browser session (cleanup timeouts, force-kill, context manager, screenshot timeout config, initiator domain & redirect chain capture)
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
@@ -91,7 +92,8 @@ src/
 │   ├── extraction.py                # Consent detail extraction orchestration
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON)
 │   ├── partner_classification.py    # Consent partner risk classification and URL enrichment
-│   └── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
+│   ├── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
+│   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners)
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
@@ -142,7 +144,7 @@ src/
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
     ├── errors.py                    # Error message extraction and client-safe error sanitisation
-    ├── image.py                     # Screenshot optimisation & JPEG conversion
+    ├── image.py                     # Screenshot optimisation, JPEG conversion & consent dialog cropping
     ├── json_parsing.py              # LLM response JSON parsing
     ├── logger.py                    # Structured logger with colour output (contextvars isolation)
     ├── risk.py                      # Shared risk-scoring helpers (risk_label)
@@ -184,8 +186,8 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
-| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons |
-| `ConsentExtractionAgent` | Screenshot + DOM text | `ConsentDetails` | Extracts consent categories, partners, purposes from consent dialogs |
+| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
+| `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Dual-source consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails (timeout or content filter), the local parse becomes the sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
@@ -197,8 +199,8 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Module | Purpose |
 |--------|---------|
-| `base.py` | `BaseAgent` — shared agent factory with structured output and Azure schema fixes |
+| `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, and configurable `call_timeout` (default 60 s) passed to `RetryChatMiddleware` |
 | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) |
 | `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` |
-| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx) |
+| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`) |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
