@@ -239,8 +239,9 @@ All data captured
    │   │   ├── Match against benign patterns (JSON)            │
    │   │   ├── Deduplicate by base URL (strip query strings)   │
    │   │   ├── Check per-script-domain cache (URL + MD5 hash)  │
-   │   │   └── LLM analysis for uncached unknown scripts       │
-   │   │       (concurrent with semaphore, max 10 at a time)   │
+   │   │   ├── LLM analysis for uncached unknown scripts       │
+   │   │   │   (concurrent with semaphore, max 10 at a time)   │
+   │   │   └── Incremental cache save after each LLM result    │
    │   │                                                       │
    │   │  stream_tracking_analysis(summary, consent, stats)    │
    │   │   ├── build_tracking_summary() → Data for LLM         │
@@ -434,17 +435,17 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Dual-source consent extraction: a local regex parser (`text_parser`) runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails, the local parse becomes the sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment |
-| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
+| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Has a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
-| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, and configurable `call_timeout` (default 60 s) passed to `RetryChatMiddleware` |
+| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, and configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware` |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) |
 | `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) |
-| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 6 in-flight LLM calls) to prevent overwhelming the endpoint |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |

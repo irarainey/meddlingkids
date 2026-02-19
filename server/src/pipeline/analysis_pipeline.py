@@ -306,7 +306,7 @@ def _launch_concurrent_tasks(
                     )
                 )
             else:
-                pct = 79 + int((current / total) * 11)
+                pct = min(79 + int((current / total) * 11), 89)
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",

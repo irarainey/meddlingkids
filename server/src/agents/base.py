@@ -47,7 +47,7 @@ class BaseAgent:
     instructions: str = ""
     max_tokens: int = 4096
     max_retries: int = 5
-    call_timeout: float = 60
+    call_timeout: float = 30
     temperature: float | None = None
     seed: int | None = None
     response_model: type[pydantic.BaseModel] | None = None

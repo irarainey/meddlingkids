@@ -7,6 +7,7 @@ data.  Supports both full-response and streaming modes.
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import agent_framework
@@ -37,6 +38,11 @@ class TrackingAnalysisAgent(base.BaseAgent):
     max_retries = 5
     response_model = None  # Free-form markdown output
 
+    #: Seconds to wait for the next streaming token before
+    #: considering the stream stalled.  Covers both initial
+    #: time-to-first-token and mid-stream pauses.
+    stream_inactivity_timeout: float = 60
+
     async def analyze_stream(
         self,
         tracking_summary: analysis.TrackingSummary,
@@ -47,6 +53,10 @@ class TrackingAnalysisAgent(base.BaseAgent):
 
         Yields ``AgentResponseUpdate`` objects whose ``.text``
         attribute contains the incremental text delta.
+
+        Raises ``TimeoutError`` if no token arrives within
+        ``stream_inactivity_timeout`` seconds (covers both
+        time-to-first-token and mid-stream stalls).
 
         Args:
             tracking_summary: Collected tracking data summary.
@@ -69,11 +79,36 @@ class TrackingAnalysisAgent(base.BaseAgent):
             text=prompt,
         )
         chunk_count = 0
+        timeout = self.stream_inactivity_timeout
         async with self._build_agent() as agent:
             thread = agent.get_new_thread()
-            async for update in agent.run_stream(message, thread=thread):
-                chunk_count += 1
-                yield update
+            stream = agent.run_stream(message, thread=thread).__aiter__()
+            while True:
+                try:
+                    update = await asyncio.wait_for(
+                        stream.__anext__(),
+                        timeout=timeout,
+                    )
+                    chunk_count += 1
+                    yield update
+                except StopAsyncIteration:
+                    break
+                except TimeoutError:
+                    phase = (
+                        "No streaming tokens received"
+                        if chunk_count == 0
+                        else f"Stream stalled after {chunk_count} chunks"
+                    )
+                    log.error(
+                        "Streaming inactivity timeout",
+                        {
+                            "timeout": timeout,
+                            "chunksReceived": chunk_count,
+                        },
+                    )
+                    raise TimeoutError(
+                        f"{phase} for {timeout}s"
+                    ) from None
             logger.save_agent_thread(self.agent_name, await thread.serialize())
         log.info(
             "Streaming tracking analysis complete",

@@ -99,7 +99,7 @@ _BACKOFF_MULTIPLIER = 2.0
 
 # ── Global LLM concurrency ─────────────────────────────────────────
 
-_MAX_CONCURRENT_LLM_CALLS = 6
+_MAX_CONCURRENT_LLM_CALLS = 10
 """Maximum LLM calls in-flight at once across all agents.
 
 Prevents overwhelming the Azure OpenAI endpoint when

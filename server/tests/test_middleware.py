@@ -118,7 +118,7 @@ class TestGlobalLLMConcurrency:
         assert middleware_mod._llm_semaphore._value == middleware_mod._MAX_CONCURRENT_LLM_CALLS
 
     def test_max_concurrent_llm_calls_value(self) -> None:
-        assert middleware_mod._MAX_CONCURRENT_LLM_CALLS == 6
+        assert middleware_mod._MAX_CONCURRENT_LLM_CALLS == 10
 
 
 # ── Timeout error message ──────────────────────────────────────
