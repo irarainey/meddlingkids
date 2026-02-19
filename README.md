@@ -121,14 +121,13 @@ meddlingkids/
 │       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .output/                   # All server output (auto-created, gitignored)
+│   ├── agents/                # Microsoft Agent Framework threads (for debugging and prompt engineering)
 │   ├── cache/                 # Analysis caches
 │   │   ├── domain/            # Domain knowledge cache for cross-run consistency
 │   │   ├── overlay/           # Overlay dismissal cache per domain
 │   │   └── scripts/           # Script analysis cache per script domain (URL + content hash)
 │   ├── logs/                  # Server logs (when WRITE_TO_FILE=true)
 │   └── reports/               # Analysis reports (when WRITE_TO_FILE=true)
-├── Dockerfile                 # Multi-stage production build
-meddlingkids/output)
 ```
 
 ## Caching
@@ -308,6 +307,19 @@ docker compose up
 ```
 
 The `~/.meddlingkids/output/` directory on the host is mounted into the container so cache, logs, and reports persist across container restarts and are kept outside the project tree.
+
+By default, files written to the mounted volume are owned by the container's internal user (UID 1001). To make them readable by your host user, set `UID_GID` in your `.env` file to match your host UID and GID:
+
+```bash
+# Find your UID and GID
+id -u   # e.g. 1000
+id -g   # e.g. 1000
+
+# Add to .env
+UID_GID=1000:1000
+```
+
+The entrypoint remaps the container user to these IDs at startup, so all output files are owned by your host user.
 
 ### Using a Custom Port
 
