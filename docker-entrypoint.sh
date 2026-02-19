@@ -36,7 +36,7 @@ export DISPLAY=:99
 echo "Starting server..."
 
 if [[ "${SHOW_UI,,}" == "true" ]]; then
-    echo "Open your browser: http://localhost:${UVICORN_PORT:-3001}"
+    echo "Open the client UI at: http://localhost:${UVICORN_PORT:-3001}"
 fi
 
 cd /app/server
