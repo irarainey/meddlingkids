@@ -260,7 +260,7 @@ function onUrlMouseUp(event: Event): void {
         />
 
         <ConsentTab
-          v-if="activeTab === 'consent'"
+          v-show="activeTab === 'consent'"
           :consent-details="consentDetails"
         />
 

@@ -162,12 +162,12 @@ function toggleRiskGroup(level: string): void {
             <span class="meta-label">Partners Claimed</span>
             <span class="meta-value">{{ consentDetails.claimedPartnerCount }}</span>
           </div>
-          <div class="meta-card">
+          <div v-if="consentDetails.categories.length > 0" class="meta-card">
             <span class="meta-icon">📂</span>
             <span class="meta-label">Categories</span>
             <span class="meta-value">{{ consentDetails.categories.length }}</span>
           </div>
-          <div class="meta-card">
+          <div v-if="consentDetails.purposes.length > 0" class="meta-card">
             <span class="meta-icon">🎯</span>
             <span class="meta-label">Purposes</span>
             <span class="meta-value">{{ consentDetails.purposes.length }}</span>

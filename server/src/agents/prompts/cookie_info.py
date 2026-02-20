@@ -22,6 +22,8 @@ Provide a concise explanation with these fields:
 
 Be specific and factual. If you recognise the cookie from a well-known \
 service, identify it by name. If the cookie is genuinely unknown and \
-its purpose cannot be determined, say so honestly.
+its purpose cannot be determined from the name, domain, or value, \
+respond immediately with purpose "unknown" and riskLevel "low" — \
+do not speculate or fabricate an explanation.
 
-Return a JSON object with those five fields."""
+Keep responses short. Return a JSON object with those five fields."""

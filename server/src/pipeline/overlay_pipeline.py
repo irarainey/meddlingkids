@@ -284,48 +284,85 @@ class OverlayPipeline:
         )
 
         # ── Detect consent platform ────────────────────
+        # Priority: page DOM (ground truth) > cookies > domain profile (hint).
+        # The media-group database can be stale so domain-based
+        # detection is only used when the page itself gives no
+        # signal.  DOM detection is cheap (~50-100ms) and
+        # authoritative.
+
+        domain_hint = None
         if self._domain:
-            self._detected_platform = platform_detection.detect_platform_from_domain(self._domain)
-
-        if self._detected_platform:
-            log.info(
-                "Consent platform detected from domain",
-                {
-                    "platform": self._detected_platform.name,
-                    "key": self._detected_platform.key,
-                    "domain": self._domain,
-                },
-            )
-        else:
-            log.info("No consent platform detected from domain", {"domain": self._domain})
-
-        # ── Fallback: detect from page DOM/iframes and cookies ──
-        if not self._detected_platform:
-            self._detected_platform = await platform_detection.detect_platform_from_page(
-                self._page,
-            )
-            if self._detected_platform:
+            domain_hint = platform_detection.detect_platform_from_domain(self._domain)
+            if domain_hint:
                 log.info(
-                    "Consent platform detected from page DOM",
+                    "Domain profile suggests consent platform",
                     {
-                        "platform": self._detected_platform.name,
-                        "key": self._detected_platform.key,
+                        "platform": domain_hint.name,
+                        "key": domain_hint.key,
                         "domain": self._domain,
                     },
                 )
 
+        # DOM detection — always runs, most reliable signal
+        dom_detected = await platform_detection.detect_platform_from_page(
+            self._page,
+        )
+        if dom_detected:
+            self._detected_platform = dom_detected
+            if domain_hint and domain_hint.key != dom_detected.key:
+                log.warn(
+                    "Domain profile CMP mismatch — using DOM detection",
+                    {
+                        "domain": self._domain,
+                        "profileSuggested": domain_hint.name,
+                        "actualOnPage": dom_detected.name,
+                    },
+                )
+            else:
+                log.info(
+                    "Consent platform detected from page DOM",
+                    {
+                        "platform": dom_detected.name,
+                        "key": dom_detected.key,
+                        "domain": self._domain,
+                    },
+                )
+
+        # Cookie detection — second-best signal
         if not self._detected_platform:
             cookies = await self._page.context.cookies()
             self._detected_platform = platform_detection.detect_platform_from_cookies(cookies)
             if self._detected_platform:
-                log.info(
-                    "Consent platform detected from cookies",
-                    {
-                        "platform": self._detected_platform.name,
-                        "key": self._detected_platform.key,
-                        "domain": self._domain,
-                    },
-                )
+                if domain_hint and domain_hint.key != self._detected_platform.key:
+                    log.warn(
+                        "Domain profile CMP mismatch — using cookie detection",
+                        {
+                            "domain": self._domain,
+                            "profileSuggested": domain_hint.name,
+                            "actualFromCookies": self._detected_platform.name,
+                        },
+                    )
+                else:
+                    log.info(
+                        "Consent platform detected from cookies",
+                        {
+                            "platform": self._detected_platform.name,
+                            "key": self._detected_platform.key,
+                            "domain": self._domain,
+                        },
+                    )
+
+        # Domain profile hint — only used when DOM and cookies gave no signal
+        if not self._detected_platform and domain_hint:
+            self._detected_platform = domain_hint
+            log.info(
+                "Using domain profile CMP hint (no DOM/cookie confirmation)",
+                {
+                    "platform": domain_hint.name,
+                    "key": domain_hint.key,
+                    "domain": self._domain,
+                },
+            )
 
         # ── Try cached overlay strategy first ───────────
         cached_entry = overlay_cache.load(self._domain) if self._domain else None
@@ -710,30 +747,29 @@ class OverlayPipeline:
         if profile is None:
             return
 
-        # Check if the CMP's container is even visible
-        cmp_on_page = await platform_detection.detect_platform_from_page(
+        # The detection phase already verified the CMP via DOM
+        # probing, so we can go straight to button finding.
+        # If the CMP's container is no longer visible (e.g. page
+        # navigated), fall through to vision detection.
+        cmp_visible = await platform_detection.detect_platform_from_page(
             self._page,
         )
-        if cmp_on_page is None:
-            # DOM doesn't show this CMP — fall through
+        if cmp_visible is None:
             log.debug(
                 "CMP container not found in DOM — skipping deterministic dismiss",
                 {"expected": profile.name},
             )
             return
 
-        # If DOM detection found a *different* CMP, use that
-        # CMP's selectors for button finding, but keep the media
-        # group profile's identity as the authoritative CMP name
-        # for reporting (e.g. Sourcepoint delegates to Quantcast
-        # Choice for the UI, but the CMP is still Sourcepoint).
-        authoritative_platform = profile
-        if cmp_on_page.key != profile.key:
+        # If the visible CMP differs from our resolved platform
+        # (e.g. page state changed since initial detection), use
+        # the one actually on the page for button finding.
+        if cmp_visible.key != profile.key:
             log.info(
-                "DOM detection found different CMP than media group profile",
-                {"expected": profile.name, "found": cmp_on_page.name},
+                "CMP on page differs from resolved platform — using page CMP",
+                {"resolved": profile.name, "onPage": cmp_visible.name},
             )
-            profile = cmp_on_page
+            profile = cmp_visible
 
         # Try to find the accept button
         accept_result = await platform_detection.find_accept_button(
@@ -842,14 +878,14 @@ class OverlayPipeline:
                         pre_click_screenshot,
                         self.result,
                         pre_click_consent_text=pre_click_consent_text,
-                        consent_platform=authoritative_platform.name,
+                        consent_platform=profile.name,
                         consent_bounds=pre_click_consent_bounds,
                     )
                 )
 
             log.success(
                 "CMP-specific dismiss succeeded — LLM vision skipped",
-                {"platform": authoritative_platform.name, "button": button_text},
+                {"platform": profile.name, "button": button_text},
             )
 
         except Exception as exc:

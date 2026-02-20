@@ -12,7 +12,7 @@ import pydantic
 
 from src.agents import base, config
 from src.agents.prompts import storage_info
-from src.utils import logger
+from src.utils import json_parsing, logger
 
 log = logger.create_logger("StorageInfoAgent")
 
@@ -45,7 +45,7 @@ class StorageInfoAgent(base.BaseAgent):
     agent_name = config.AGENT_STORAGE_INFO
     instructions = storage_info.INSTRUCTIONS
     max_tokens = 300
-    max_retries = 3
+    max_retries = 2
     response_model = StorageInfoResult
 
     async def explain(
@@ -73,6 +73,15 @@ class StorageInfoAgent(base.BaseAgent):
             parsed = self._parse_response(response, StorageInfoResult)
             if parsed:
                 return parsed
+
+            # Fallback: manual JSON parse from response text
+            raw = json_parsing.load_json_from_text(response.text)
+            if isinstance(raw, dict):
+                try:
+                    return StorageInfoResult.model_validate(raw)
+                except Exception:
+                    pass
+
             log.warn("Failed to parse storage info response", {"key": key})
             return None
         except Exception as exc:

@@ -1135,7 +1135,7 @@ const selectedResourceBreakdown = computed(() => {
 
 .graph-svg {
   width: 100%;
-  height: 480px;
+  height: 720px;
   display: block;
 }
 

@@ -6,7 +6,8 @@ LLM calls, and that the fallback path is exercised for unknown keys.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+import json
 
 import pytest
 
@@ -371,3 +372,84 @@ class TestStorageInfoResult:
         assert data["privacyNote"] == "A note"
         assert "set_by" not in data
         assert "risk_level" not in data
+
+
+class TestStorageInfoAgentFallbackParsing:
+    """Verify the agent falls back to manual JSON parsing when
+    response.value returns None."""
+
+    @pytest.mark.asyncio
+    async def test_json_text_fallback_parses_valid_json(self) -> None:
+        """When response.value is None but response.text contains
+        valid JSON, the agent should parse it manually."""
+        agent = StorageInfoAgent.__new__(StorageInfoAgent)
+        json_text = json.dumps({
+            "description": "Page engagement timing metric",
+            "setBy": "DotMetrics",
+            "purpose": "analytics",
+            "riskLevel": "medium",
+            "privacyNote": "Tracks time on page.",
+        })
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = json_text
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("DotMetricsTimeOnPage", "localStorage", "12345")
+
+        assert result is not None
+        assert result.description == "Page engagement timing metric"
+        assert result.purpose == "analytics"
+
+    @pytest.mark.asyncio
+    async def test_json_text_fallback_with_markdown_fences(self) -> None:
+        """JSON wrapped in markdown code fences should still be parsed."""
+        agent = StorageInfoAgent.__new__(StorageInfoAgent)
+        json_text = '```json\n' + json.dumps({
+            "description": "Test key",
+            "setBy": "TestSDK",
+            "purpose": "functional",
+            "riskLevel": "none",
+            "privacyNote": "",
+        }) + '\n```'
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = json_text
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("test_key", "localStorage", "val")
+
+        assert result is not None
+        assert result.purpose == "functional"
+
+    @pytest.mark.asyncio
+    async def test_invalid_json_text_returns_none(self) -> None:
+        """When both response.value and text parsing fail, return None."""
+        agent = StorageInfoAgent.__new__(StorageInfoAgent)
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = "I don't know this key."
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("mystery_key", "localStorage", "val")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_structured_value_takes_precedence(self) -> None:
+        """When response.value returns a valid model, skip the fallback."""
+        agent = StorageInfoAgent.__new__(StorageInfoAgent)
+        expected = StorageInfoResult(
+            description="Structured result",
+            setBy="Framework",
+            purpose="session",
+            riskLevel="none",
+            privacyNote="",
+        )
+        mock_response = MagicMock()
+        mock_response.value = expected
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("session_id", "sessionStorage", "abc")
+
+        assert result is expected
