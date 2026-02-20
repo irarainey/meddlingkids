@@ -29,7 +29,7 @@ from src.agents import config
 from src.analysis import tracking_summary
 from src.browser import device_configs
 from src.browser import session as browser_session
-from src.models import analysis, browser, consent
+from src.models import analysis, browser, consent, tracking_data
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache, errors, logger, usage_tracking
 from src.utils import url as url_mod
@@ -89,7 +89,7 @@ class _StreamContext:
     device_type: browser.DeviceType
     refresher_task: asyncio.Task[None] | None = None
     refresh_queue: asyncio.Queue[str] = dataclasses.field(default_factory=asyncio.Queue)
-    storage: dict = dataclasses.field(default_factory=dict)
+    storage: tracking_data.CapturedStorage = dataclasses.field(default_factory=tracking_data.CapturedStorage)
     screenshot: bytes = b""
     pre_consent_stats: analysis.PreConsentStats | None = None
     consent_details: consent.ConsentDetails | None = None

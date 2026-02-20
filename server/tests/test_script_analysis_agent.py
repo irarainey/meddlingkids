@@ -6,6 +6,7 @@ Covers the ``_is_model_error`` helper and the
 
 from __future__ import annotations
 
+import json
 from unittest import mock
 
 import pytest
@@ -70,7 +71,7 @@ class TestAnalyzeOneFallback:
     ) -> None:
         """Normal path: override model succeeds."""
         resp = mock.MagicMock()
-        resp.value = mock.MagicMock(description="Ad script")
+        resp.text = json.dumps({"description": "Ad script"})
         with mock.patch.object(
             agent,
             "_complete",
@@ -92,8 +93,8 @@ class TestAnalyzeOneFallback:
         the retry succeeds."""
         model_err = Exception("OperationNotSupported: chatCompletion does not work with the specified model")
         fallback_resp = mock.MagicMock()
-        fallback_resp.value = mock.MagicMock(
-            description="Tracking pixel",
+        fallback_resp.text = json.dumps(
+            {"description": "Tracking pixel"},
         )
 
         call_count = 0

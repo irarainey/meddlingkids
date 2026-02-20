@@ -53,7 +53,7 @@ _SECTION_LABELS: dict[str, str] = {
 
 async def run_ai_analysis(
     session: browser_session.BrowserSession,
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int = 0,
@@ -86,8 +86,8 @@ async def run_ai_analysis(
             "cookies": len(final_cookies),
             "scripts": len(final_scripts),
             "requests": len(final_requests),
-            "localStorage": len(storage["local_storage"]),
-            "sessionStorage": len(storage["session_storage"]),
+            "localStorage": len(storage.local_storage),
+            "sessionStorage": len(storage.session_storage),
         },
     )
     yield sse_helpers.format_progress_event(
@@ -108,8 +108,8 @@ async def run_ai_analysis(
         final_cookies,
         final_scripts,
         final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
+        storage.local_storage,
+        storage.session_storage,
         url,
     )
 
@@ -117,8 +117,8 @@ async def run_ai_analysis(
         final_cookies,
         final_scripts,
         final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
+        storage.local_storage,
+        storage.session_storage,
         url,
         consent_details,
         pre_consent_stats,
@@ -252,7 +252,7 @@ def _launch_concurrent_tasks(
     final_cookies: list[tracking_data.TrackedCookie],
     final_scripts: list[tracking_data.TrackedScript],
     final_requests: list[tracking_data.NetworkRequest],
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
@@ -336,8 +336,8 @@ def _launch_concurrent_tasks(
         try:
             return await tracking.run_tracking_analysis(
                 final_cookies,
-                storage["local_storage"],
-                storage["session_storage"],
+                storage.local_storage,
+                storage.session_storage,
                 final_requests,
                 final_scripts,
                 url,
@@ -691,7 +691,7 @@ def _render_report_text(
 async def _score_and_summarise(
     final_cookies: list[tracking_data.TrackedCookie],
     final_requests: list[tracking_data.NetworkRequest],
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int,
@@ -823,7 +823,7 @@ def _build_complete_payload(
     analysis_success: bool = True,
     final_cookies: list[tracking_data.TrackedCookie] | None = None,
     final_requests: list[tracking_data.NetworkRequest] | None = None,
-    storage: dict[str, list[tracking_data.StorageItem]] | None = None,
+    storage: tracking_data.CapturedStorage | None = None,
 ) -> str:
     """Build the final SSE ``complete`` event payload.
 
@@ -855,8 +855,8 @@ def _build_complete_payload(
             "consentDetails": consent_dict,
             "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
             "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
-            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["local_storage"]] if storage else None),
-            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["session_storage"]] if storage else None),
+            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.local_storage] if storage else None),
+            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.session_storage] if storage else None),
             "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
             "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
             "debugLog": logger.get_log_buffer(),

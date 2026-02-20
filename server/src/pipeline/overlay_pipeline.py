@@ -49,10 +49,6 @@ _ACCEPT_BUTTON_RE = re.compile(
 # ====================================================================
 
 
-def _empty_storage() -> dict[str, list[tracking_data.StorageItem]]:
-    return {"local_storage": [], "session_storage": []}
-
-
 class OverlayHandlingResult(pydantic.BaseModel):
     """Mutable state populated by the overlay handling pipeline."""
 
@@ -62,7 +58,7 @@ class OverlayHandlingResult(pydantic.BaseModel):
     failed: bool = False
     failure_message: str = ""
     final_screenshot: bytes = b""
-    final_storage: dict[str, list[tracking_data.StorageItem]] = pydantic.Field(default_factory=_empty_storage)
+    final_storage: tracking_data.CapturedStorage = pydantic.Field(default_factory=tracking_data.CapturedStorage)
 
 
 # ====================================================================
@@ -131,7 +127,7 @@ class OverlayPipeline:
         self._deferred_extraction: tuple[bytes, str | None, overlay_steps.ConsentBounds] | None = None
         # Mutable state shared across run phases
         self._screenshot: bytes = initial_screenshot
-        self._storage: dict = {}
+        self._storage = tracking_data.CapturedStorage()
         self._failed_signatures: set[str] = set()
         self._pending_extract: asyncio.Task[list[str]] | None = None
         self._detected_platform: platform_detection.ConsentPlatformProfile | None = None

@@ -50,6 +50,18 @@ class StorageItem(pydantic.BaseModel):
     timestamp: str
 
 
+class CapturedStorage(pydantic.BaseModel):
+    """localStorage and sessionStorage captured from the browser.
+
+    Replaces the raw ``dict[str, list[StorageItem]]`` that was
+    previously threaded through the pipeline with string keys
+    ``"local_storage"`` and ``"session_storage"``.
+    """
+
+    local_storage: list[StorageItem] = pydantic.Field(default_factory=list)
+    session_storage: list[StorageItem] = pydantic.Field(default_factory=list)
+
+
 class NetworkRequest(pydantic.BaseModel):
     """Represents an HTTP network request made by the page."""
 

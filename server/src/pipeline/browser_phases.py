@@ -17,7 +17,7 @@ from playwright import async_api
 
 from src.browser import session as browser_session
 from src.consent import constants
-from src.models import browser
+from src.models import browser, tracking_data
 from src.pipeline import sse_helpers
 from src.utils import logger
 
@@ -341,11 +341,11 @@ async def check_access(
 
 async def capture_page_data(
     session: browser_session.BrowserSession,
-) -> dict:
+) -> tracking_data.CapturedStorage:
     """Capture cookies and storage.
 
     Returns:
-        Storage dict with ``local_storage`` and ``session_storage``.
+        Captured browser storage.
     """
     log.start_timer("initial-capture")
     await session.capture_current_cookies()
@@ -354,19 +354,19 @@ async def capture_page_data(
 
 async def take_initial_screenshot(
     session: browser_session.BrowserSession,
-    storage: dict,
-) -> tuple[str, bytes, dict]:
+    storage: tracking_data.CapturedStorage,
+) -> tuple[str, bytes, tracking_data.CapturedStorage]:
     """Take the first page screenshot.
 
     Returns:
-        Tuple of (SSE screenshot event, JPEG bytes, storage dict).
+        Tuple of (SSE screenshot event, JPEG bytes, captured storage).
     """
     return await sse_helpers.take_screenshot_event(session, storage)
 
 
 def log_capture_stats(
     session: browser_session.BrowserSession,
-    storage: dict,
+    storage: tracking_data.CapturedStorage,
 ) -> None:
     """Log initial capture statistics."""
     log.end_timer("initial-capture", "Initial data captured")
@@ -376,7 +376,7 @@ def log_capture_stats(
             "cookies": len(session.get_tracked_cookies()),
             "scripts": len(session.get_tracked_scripts()),
             "requests": len(session.get_tracked_network_requests()),
-            "localStorage": len(storage["local_storage"]),
-            "sessionStorage": len(storage["session_storage"]),
+            "localStorage": len(storage.local_storage),
+            "sessionStorage": len(storage.session_storage),
         },
     )

@@ -1,10 +1,24 @@
-"""Tests for src.agents.base — BaseAgent._prepare_strict_schema."""
+"""Tests for src.agents.base — BaseAgent helpers."""
 
 from __future__ import annotations
 
+import json
 from unittest import mock
 
+import agent_framework
+import pydantic
+
 from src.agents.base import BaseAgent
+
+
+# ── Helper model ──────────────────────────────────────────────
+
+
+class _SampleModel(pydantic.BaseModel):
+    """Tiny model for testing _parse_response."""
+
+    name: str
+    count: int
 
 
 class TestPrepareStrictSchema:
@@ -93,6 +107,52 @@ class TestPrepareStrictSchema:
         result = BaseAgent._prepare_strict_schema(schema)
         variant = result["properties"]["field"]["anyOf"][0]
         assert variant["additionalProperties"] is False
+
+
+class TestParseResponse:
+    """Validates _parse_response directly parses response.text."""
+
+    def _agent(self) -> BaseAgent:
+        agent = BaseAgent.__new__(BaseAgent)
+        agent.agent_name = "TestAgent"
+        return agent
+
+    def _response(self, text: str) -> agent_framework.AgentResponse:
+        return agent_framework.AgentResponse(
+            messages=[
+                agent_framework.Message(role="assistant", text=text),
+            ],
+        )
+
+    def test_parses_valid_json(self) -> None:
+        """Valid JSON in response.text is parsed into the model."""
+        agent = self._agent()
+        resp = self._response(json.dumps({"name": "foo", "count": 42}))
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is not None
+        assert result.name == "foo"
+        assert result.count == 42
+
+    def test_returns_none_for_invalid_json(self) -> None:
+        """Non-JSON text returns None (no crash)."""
+        agent = self._agent()
+        resp = self._response("not json at all")
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is None
+
+    def test_returns_none_for_empty_text(self) -> None:
+        """Empty response text returns None."""
+        agent = self._agent()
+        resp = self._response("")
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is None
+
+    def test_returns_none_for_schema_mismatch(self) -> None:
+        """JSON that doesn't match the model returns None."""
+        agent = self._agent()
+        resp = self._response(json.dumps({"wrong": "fields"}))
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is None
 
 
 class TestFallbackClient:

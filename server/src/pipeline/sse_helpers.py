@@ -72,7 +72,7 @@ def format_progress_event(step: str, message: str, progress: int) -> str:
 def build_screenshot_event(
     session: browser_session.BrowserSession,
     optimized_screenshot: str,
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     *,
     extra: dict[str, Any] | None = None,
 ) -> str:
@@ -84,8 +84,7 @@ def build_screenshot_event(
     Args:
         session: Active browser session with tracked data.
         optimized_screenshot: Base64 JPEG data URL string.
-        storage: Dict with ``local_storage`` and
-            ``session_storage`` lists.
+        storage: Captured browser storage.
         extra: Optional additional fields to merge into the
             event payload.
 
@@ -97,8 +96,8 @@ def build_screenshot_event(
         "cookies": [to_camel_case_dict(c) for c in session.get_tracked_cookies()],
         "scripts": [to_camel_case_dict(s) for s in session.get_tracked_scripts()],
         "networkRequests": [to_camel_case_dict(r) for r in session.get_tracked_network_requests()],
-        "localStorage": [to_camel_case_dict(i) for i in storage.get("local_storage", [])],
-        "sessionStorage": [to_camel_case_dict(i) for i in storage.get("session_storage", [])],
+        "localStorage": [to_camel_case_dict(i) for i in storage.local_storage],
+        "sessionStorage": [to_camel_case_dict(i) for i in storage.session_storage],
     }
     if extra:
         payload.update(extra)
@@ -124,10 +123,10 @@ def format_screenshot_update_event(
 
 async def take_screenshot_event(
     session: browser_session.BrowserSession,
-    storage: dict[str, list[tracking_data.StorageItem]] | None = None,
+    storage: tracking_data.CapturedStorage | None = None,
     *,
     extra: dict[str, Any] | None = None,
-) -> tuple[str, bytes, dict[str, list[tracking_data.StorageItem]]]:
+) -> tuple[str, bytes, tracking_data.CapturedStorage]:
     """Take a screenshot, capture storage, and build the SSE event.
 
     Convenience wrapper that performs the full capture-and-serialize
@@ -135,12 +134,12 @@ async def take_screenshot_event(
 
     Args:
         session: Active browser session.
-        storage: Pre-captured storage dict.  If ``None``, storage
+        storage: Pre-captured storage.  If ``None``, storage
             is captured from the session.
         extra: Optional additional fields for the event payload.
 
     Returns:
-        Tuple of (SSE event string, raw JPEG bytes, storage dict).
+        Tuple of (SSE event string, raw JPEG bytes, captured storage).
     """
     try:
         screenshot_bytes = await session.take_screenshot(full_page=False)

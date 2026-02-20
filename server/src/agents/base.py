@@ -348,6 +348,12 @@ class BaseAgent:
     ) -> T | None:
         """Attempt to parse a response into a Pydantic model.
 
+        The agent framework's ``response.value`` only works
+        when ``response_format`` is a Pydantic class, but we
+        pass a dict (required for Azure strict-mode schemas).
+        So we parse ``response.text`` directly with
+        ``model.model_validate_json``.
+
         Falls back to ``None`` if parsing fails.
 
         Args:
@@ -357,11 +363,17 @@ class BaseAgent:
         Returns:
             Parsed model instance or ``None``.
         """
+        text = response.text
+        if not text:
+            log.warn(
+                f"{self.agent_name}: empty response text — cannot parse",
+            )
+            return None
         try:
-            return response.value
+            return model.model_validate_json(text)
         except Exception as exc:
             log.warn(
                 f"{self.agent_name}: failed to parse structured output: {exc}",
-                {"responsePreview": (response.text or "")[:200]},
+                {"responsePreview": text[:200]},
             )
             return None

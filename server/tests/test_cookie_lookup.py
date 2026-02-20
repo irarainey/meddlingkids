@@ -483,20 +483,23 @@ class TestCookieInfoAgentFallbackParsing:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_structured_value_takes_precedence(self) -> None:
-        """When response.value returns a valid model, skip the fallback."""
+    async def test_structured_parse_from_text(self) -> None:
+        """When response.text contains valid JSON, _parse_response
+        parses it directly without needing the fallback."""
         agent = CookieInfoAgent.__new__(CookieInfoAgent)
-        expected = CookieInfoResult(
-            description="Structured result",
-            setBy="Framework",
-            purpose="session",
-            riskLevel="none",
-            privacyNote="",
-        )
+        json_text = json.dumps({
+            "description": "Structured result",
+            "setBy": "Framework",
+            "purpose": "session",
+            "riskLevel": "none",
+            "privacyNote": "",
+        })
         mock_response = MagicMock()
-        mock_response.value = expected
+        mock_response.text = json_text
 
         with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
             result = await agent.explain("sid", ".example.com", "abc")
 
-        assert result is expected
+        assert result is not None
+        assert result.description == "Structured result"
+        assert result.purpose == "session"

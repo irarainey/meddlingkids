@@ -98,9 +98,9 @@ def sample_storage_item() -> tracking_data.StorageItem:
 
 
 @pytest.fixture()
-def empty_storage() -> dict[str, list[tracking_data.StorageItem]]:
-    """Empty storage dict matching the pipeline convention."""
-    return {"local_storage": [], "session_storage": []}
+def empty_storage() -> tracking_data.CapturedStorage:
+    """Empty captured storage for tests."""
+    return tracking_data.CapturedStorage()
 
 
 # ── Consent Fixtures ────────────────────────────────────────────
