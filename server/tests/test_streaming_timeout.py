@@ -1,15 +1,17 @@
-"""Tests for TrackingAnalysisAgent streaming inactivity timeout.
+"""Tests for TrackingAnalysisAgent structured output and timeout defaults.
 
-Validates that ``analyze_stream()`` raises ``TimeoutError``
-when no streaming token arrives within the configured
-inactivity window.
+Validates that ``analyze()`` returns a typed
+``TrackingAnalysisResult`` from structured JSON, falls
+back gracefully on parse failures, and that call-timeout
+defaults are set to expected values across agents.
 """
 
 from __future__ import annotations
 
-import asyncio
+import json
 from unittest import mock
 
+import agent_framework
 import pytest
 
 from src.agents import base, consent_detection_agent, structured_report_agent, tracking_analysis_agent
@@ -32,132 +34,153 @@ def _empty_summary() -> analysis.TrackingSummary:
     )
 
 
-class _FakeUpdate:
-    """Minimal stand-in for AgentResponseUpdate."""
+def _make_response(
+    text: str,
+    value: object | None = None,
+) -> agent_framework.AgentResponse:
+    """Build a minimal AgentResponse for testing.
 
-    def __init__(self, text: str) -> None:
-        self.text = text
-
-
-class _FakeSession:
-    """Minimal stand-in for an AgentSession."""
-
-    def to_dict(self) -> dict:
-        return {}
-
-
-class _FakeResponseStream:
-    """Async iterable that yields updates, optionally hanging."""
-
-    def __init__(self, updates: list[_FakeUpdate], hang: bool = False) -> None:
-        self._updates = updates
-        self._hang = hang
-
-    def __aiter__(self):
-        return self._iter()
-
-    async def _iter(self):
-        for update in self._updates:
-            yield update
-        if self._hang:
-            await asyncio.sleep(999)
+    Args:
+        text: Raw response text.
+        value: Optional parsed value for ``_parse_response``.
+    """
+    return agent_framework.AgentResponse(
+        messages=[agent_framework.Message(role="assistant", text=text)],
+        value=value,
+    )
 
 
-class _FakeAgent:
-    """Minimal Agent stand-in with configurable stream behaviour."""
+def _make_agent() -> tracking_analysis_agent.TrackingAnalysisAgent:
+    """Create a bare TrackingAnalysisAgent for unit tests."""
+    agent = tracking_analysis_agent.TrackingAnalysisAgent.__new__(
+        tracking_analysis_agent.TrackingAnalysisAgent,
+    )
+    agent.agent_name = "TrackingAnalysisAgent"
+    agent.max_tokens = 4096
+    agent.max_retries = 5
+    agent.call_timeout = 60
+    return agent
 
-    def __init__(self, updates: list[_FakeUpdate] | None = None, hang: bool = False) -> None:
-        self._updates = updates or []
-        self._hang = hang
 
-    def run(self, message: object, *, stream: bool = False, session: object = None) -> _FakeResponseStream:
-        return _FakeResponseStream(self._updates, hang=self._hang)
-
-
-class TestStreamInactivityTimeout:
-    """Tests for the streaming inactivity timeout in TrackingAnalysisAgent."""
-
-    def _make_agent(self, timeout: float = 0.05) -> tracking_analysis_agent.TrackingAnalysisAgent:
-        """Create an agent with a very short timeout for testing."""
-        agent = tracking_analysis_agent.TrackingAnalysisAgent.__new__(tracking_analysis_agent.TrackingAnalysisAgent)
-        agent.stream_inactivity_timeout = timeout
-        agent.agent_name = "TrackingAnalysisAgent"
-        return agent
+class TestTrackingAnalysisStructuredOutput:
+    """Tests for the structured (non-streaming) TrackingAnalysisAgent."""
 
     @pytest.mark.asyncio
-    async def test_timeout_on_no_first_token(self) -> None:
-        """TimeoutError raised when no token arrives at all."""
-        agent = self._make_agent(timeout=0.05)
+    async def test_structured_parse_success(self) -> None:
+        """Agent returns TrackingAnalysisResult on successful parse."""
+        parsed = tracking_analysis_agent._TrackingAnalysisResponse(
+            risk_level="high",
+            risk_summary="Lots of trackers.",
+            sections=[
+                analysis.TrackingAnalysisSection(
+                    heading="Tracking Technologies Identified",
+                    content="Google Analytics detected.",
+                ),
+            ],
+        )
+        resp = _make_response(
+            text=json.dumps(parsed.model_dump()),
+            value=parsed,
+        )
+        agent = _make_agent()
 
-        fake = _FakeAgent(updates=[], hang=True)
-        ctx_mgr = mock.AsyncMock()
-        ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
-        ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
+        with mock.patch.object(agent, "_complete", return_value=resp):
+            result = await agent.analyze(_empty_summary())
+
+        assert isinstance(result, analysis.TrackingAnalysisResult)
+        assert result.risk_level == "high"
+        assert result.risk_summary == "Lots of trackers."
+        assert len(result.sections) == 1
+        assert result.sections[0].heading == "Tracking Technologies Identified"
+
+    @pytest.mark.asyncio
+    async def test_text_fallback_on_parse_failure(self) -> None:
+        """Agent falls back to JSON text parsing when structured parse fails."""
+        json_body = {
+            "risk_level": "low",
+            "risk_summary": "Clean site.",
+            "sections": [
+                {"heading": "Cookie Analysis", "content": "No cookies."},
+            ],
+        }
+        resp = _make_response(text=json.dumps(json_body))
+
+        agent = _make_agent()
 
         with (
-            mock.patch.object(agent, "_build_agent", return_value=ctx_mgr),
-            pytest.raises(TimeoutError, match="No streaming tokens received"),
+            mock.patch.object(agent, "_complete", return_value=resp),
+            # _parse_response returns None (structured parse fails)
+            mock.patch.object(agent, "_parse_response", return_value=None),
         ):
-            async for _ in agent.analyze_stream(_empty_summary()):
-                pass
+            result = await agent.analyze(_empty_summary())
+
+        assert isinstance(result, analysis.TrackingAnalysisResult)
+        assert result.risk_level == "low"
+        assert result.sections[0].heading == "Cookie Analysis"
 
     @pytest.mark.asyncio
-    async def test_timeout_mid_stream(self) -> None:
-        """TimeoutError raised when stream stalls after some tokens."""
-        agent = self._make_agent(timeout=0.05)
+    async def test_raw_text_fallback(self) -> None:
+        """Agent wraps raw text when all parsing fails."""
+        resp = _make_response(text="Some unparseable markdown text.")
 
-        fake = _FakeAgent(
-            updates=[_FakeUpdate("chunk1"), _FakeUpdate("chunk2")],
-            hang=True,
-        )
-        ctx_mgr = mock.AsyncMock()
-        ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
-        ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
+        agent = _make_agent()
 
-        collected: list[str] = []
         with (
-            mock.patch.object(agent, "_build_agent", return_value=ctx_mgr),
-            pytest.raises(TimeoutError, match="Stream stalled after 2 chunks"),
+            mock.patch.object(agent, "_complete", return_value=resp),
+            mock.patch.object(agent, "_parse_response", return_value=None),
         ):
-            async for update in agent.analyze_stream(_empty_summary()):
-                collected.append(update.text)
+            result = await agent.analyze(_empty_summary())
 
-        # Should have received the two initial chunks before timeout
-        assert collected == ["chunk1", "chunk2"]
+        assert isinstance(result, analysis.TrackingAnalysisResult)
+        assert result.risk_level == "medium"
+        assert len(result.sections) == 1
+        assert result.sections[0].heading == "Raw Analysis"
+        assert "unparseable" in result.sections[0].content
 
     @pytest.mark.asyncio
-    async def test_normal_stream_completes(self) -> None:
-        """A well-behaved stream completes without timeout."""
-        agent = self._make_agent(timeout=1.0)
-
-        fake = _FakeAgent(
-            updates=[_FakeUpdate("a"), _FakeUpdate("b"), _FakeUpdate("c")],
-            hang=False,
+    async def test_to_text_serialization(self) -> None:
+        """TrackingAnalysisResult.to_text() produces readable output."""
+        result = analysis.TrackingAnalysisResult(
+            risk_level="high",
+            risk_summary="Many trackers found.",
+            sections=[
+                analysis.TrackingAnalysisSection(
+                    heading="Tracking Technologies",
+                    content="Google Analytics, Facebook Pixel.",
+                ),
+                analysis.TrackingAnalysisSection(
+                    heading="Recommendations",
+                    content="Use a content blocker.",
+                ),
+            ],
         )
-        ctx_mgr = mock.AsyncMock()
-        ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
-        ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
-
-        collected: list[str] = []
-        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr):
-            async for update in agent.analyze_stream(_empty_summary()):
-                collected.append(update.text)
-
-        assert collected == ["a", "b", "c"]
+        text = result.to_text()
+        assert "Risk Level: high" in text
+        assert "## Tracking Technologies" in text
+        assert "Google Analytics, Facebook Pixel." in text
+        assert "## Recommendations" in text
 
     @pytest.mark.asyncio
-    async def test_timeout_message_includes_duration(self) -> None:
-        """Error message includes the configured timeout value."""
-        agent = self._make_agent(timeout=0.05)
+    async def test_code_fence_fallback(self) -> None:
+        """Agent handles LLM responses wrapped in code fences."""
+        json_body = {
+            "risk_level": "medium",
+            "risk_summary": "Moderate tracking.",
+            "sections": [],
+        }
+        fenced = f"```json\n{json.dumps(json_body)}\n```"
+        resp = _make_response(text=fenced)
 
-        fake = _FakeAgent(updates=[], hang=True)
-        ctx_mgr = mock.AsyncMock()
-        ctx_mgr.__aenter__ = mock.AsyncMock(return_value=fake)
-        ctx_mgr.__aexit__ = mock.AsyncMock(return_value=False)
+        agent = _make_agent()
 
-        with mock.patch.object(agent, "_build_agent", return_value=ctx_mgr), pytest.raises(TimeoutError, match=r"0\.05s"):
-            async for _ in agent.analyze_stream(_empty_summary()):
-                pass
+        with (
+            mock.patch.object(agent, "_complete", return_value=resp),
+            mock.patch.object(agent, "_parse_response", return_value=None),
+        ):
+            result = await agent.analyze(_empty_summary())
+
+        assert result.risk_level == "medium"
+        assert result.risk_summary == "Moderate tracking."
 
 
 class TestDefaultTimeoutValues:
@@ -172,5 +195,9 @@ class TestDefaultTimeoutValues:
     def test_structured_report_timeout(self) -> None:
         assert structured_report_agent.StructuredReportAgent.call_timeout == 60
 
-    def test_streaming_inactivity_timeout(self) -> None:
-        assert tracking_analysis_agent.TrackingAnalysisAgent.stream_inactivity_timeout == 60
+    def test_tracking_analysis_timeout(self) -> None:
+        assert tracking_analysis_agent.TrackingAnalysisAgent.call_timeout == 60
+
+    def test_tracking_analysis_uses_structured_output(self) -> None:
+        """TrackingAnalysisAgent has a response_model set."""
+        assert tracking_analysis_agent.TrackingAnalysisAgent.response_model is not None

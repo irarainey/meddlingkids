@@ -432,16 +432,6 @@ class OverlayPipeline:
                     "Overlay detection unavailable — skipping consent check",
                     70,
                 )
-                yield sse_helpers.format_sse_event(
-                    "consent",
-                    {
-                        "detected": False,
-                        "clicked": False,
-                        "details": None,
-                        "reason": detection.reason,
-                        "error": True,
-                    },
-                )
                 break
 
             if not detection.found or (not detection.selector and not detection.button_text):
@@ -606,12 +596,11 @@ class OverlayPipeline:
                         )
                     )
 
-                event, msg = overlay_steps.build_click_failure(detection, overlay_number)
+                msg = overlay_steps.build_click_failure(detection, overlay_number)
                 if overlay_number == 1:
                     log.error("Failed to click first overlay, aborting analysis")
                     result.failed = True
                     result.failure_message = msg
-                    yield event
                 else:
                     log.warn(
                         f"Failed to click overlay {overlay_number}, continuing analysis",
@@ -664,7 +653,7 @@ class OverlayPipeline:
                     )
                 )
 
-            event, msg = overlay_steps.build_click_failure(
+            msg = overlay_steps.build_click_failure(
                 detection,
                 overlay_number,
                 error_detail=str(click_error),
@@ -676,7 +665,6 @@ class OverlayPipeline:
                 )
                 result.failed = True
                 result.failure_message = msg
-                yield event
             else:
                 log.warn(
                     f"Failed to click overlay {overlay_number}, continuing analysis",

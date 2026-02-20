@@ -245,13 +245,13 @@ All data captured
    │   │   │   (AZURE_OPENAI_SCRIPT_DEPLOYMENT)                │
    │   │   └── Incremental cache save after each LLM result    │
    │   │                                                       │
-   │   │  stream_tracking_analysis(summary, consent, stats)    │
+   │   │  run_tracking_analysis(summary, consent, stats)       │
    │   │   ├── build_tracking_summary() → Data for LLM         │
    │   │   ├── GDPR/TCF reference data (purposes, lawful       │
    │   │   │   bases, ePrivacy categories, consent cookies)    │
    │   │   ├── Pre-consent page-load stats                     │
    │   │   ├── Media group context (if domain recognised)      │
-   │   │   └── Main analysis prompt → Full markdown report     │
+   │   │   └── Main analysis prompt → Structured JSON result   │
    │   │                                                       │
    │   │                                                       │
    │   │  calculate_privacy_score() → Deterministic 0-100      │
@@ -597,10 +597,9 @@ BaseAgent._build_agent() → Creates Agent (agent_framework.Agent)
     └── Agent.run() or run(stream=True) → LLM chat completion
     │
     ▼
-Parse response (structured JSON via response_format or streamed markdown)
+Parse response (structured JSON via response_format)
     │
-    ├── Streamed: send_event('analysis-chunk', {text}) per token
-    └── Final:    send_event('complete', results)
+    └── send_event('complete', results)
     │
     ▼
 Client displays analysis
@@ -744,8 +743,7 @@ class ThirdPartyGroup(BaseModel):
 | `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (background refresh as ads/content load) |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `analysis-chunk` | Server → Client | `{ text }` | Streamed token from tracking analysis (real-time LLM output) |
-| `complete` | Server → Client | `{ success, analysis, structuredReport, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, analysisError, consentDetails, scripts, scriptGroups, debugLog }` | Final analysis results |
+| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---

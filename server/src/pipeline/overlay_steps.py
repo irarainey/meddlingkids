@@ -211,23 +211,6 @@ async def capture_after_click(
 
     log.success(f"Overlay {overlay_number} ({detection.overlay_type}) dismissed successfully")
 
-    yield sse_helpers.format_sse_event(
-        "consent",
-        {
-            "detected": True,
-            "clicked": True,
-            "details": {
-                "found": detection.found,
-                "overlayType": detection.overlay_type,
-                "selector": detection.selector,
-                "buttonText": detection.button_text,
-                "confidence": detection.confidence,
-                "reason": detection.reason,
-            },
-            "overlayNumber": overlay_number,
-        },
-    )
-
 
 # ====================================================================
 # Pre-Dismiss Content Capture
@@ -433,15 +416,6 @@ def build_no_overlay_events(
         log.info("No overlay detected", {"reason": reason})
         return [
             sse_helpers.format_progress_event("consent-none", "No overlay detected...", 70),
-            sse_helpers.format_sse_event(
-                "consent",
-                {
-                    "detected": False,
-                    "clicked": False,
-                    "details": None,
-                    "reason": reason,
-                },
-            ),
         ]
     dismissed_label = "overlay" if overlay_count == 1 else "overlays"
     log.success(f"Dismissed {overlay_count} {dismissed_label}, no more found")
@@ -459,31 +433,18 @@ def build_click_failure(
     detection: consent.CookieConsentDetection,
     overlay_number: int,
     error_detail: str | None = None,
-) -> tuple[str, str]:
-    """Build click failure SSE event and message."""
+) -> str:
+    """Build click failure log message.
+
+    Returns:
+        Human-readable failure description.
+    """
     if error_detail:
         msg = f"Failed to dismiss {detection.overlay_type or 'overlay'}: {error_detail}"
     else:
         msg = f"Failed to dismiss {detection.overlay_type or 'overlay'} (button: '{detection.button_text or detection.selector}')"
 
-    event = sse_helpers.format_sse_event(
-        "consent",
-        {
-            "detected": True,
-            "clicked": False,
-            "details": {
-                "found": detection.found,
-                "overlayType": detection.overlay_type,
-                "selector": detection.selector,
-                "buttonText": detection.button_text,
-                "confidence": detection.confidence,
-                "reason": detection.reason,
-            },
-            "error": msg,
-            "overlayNumber": overlay_number,
-        },
-    )
-    return event, msg
+    return msg
 
 
 # ====================================================================
