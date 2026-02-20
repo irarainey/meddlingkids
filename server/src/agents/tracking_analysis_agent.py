@@ -1,115 +1,170 @@
 """Tracking analysis agent for privacy risk assessment.
 
-Generates a comprehensive markdown privacy report by
-analysing cookies, scripts, network requests, and storage
-data.  Supports both full-response and streaming modes.
+Generates a structured JSON privacy analysis by examining
+cookies, scripts, network requests, and storage data.
+Consistent with other agents' structured-output approach.
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
-
-import agent_framework
 
 from src.agents import base, config, gdpr_context
 from src.agents.prompts import tracking_analysis
+from src.analysis import domain_cache
 from src.data import loader
 from src.models import analysis, consent
-from src.utils import logger
+from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("TrackingAnalysisAgent")
+
+
+# ── Private response wrapper ───────────────────────────────────
+# The LLM sees this schema via ``response_format``.  We map
+# the parsed result to the public ``TrackingAnalysisResult``
+# model in ``models.analysis`` before returning.
+
+import pydantic  # noqa: E402 (grouped after local imports)
+
+
+class _TrackingAnalysisResponse(pydantic.BaseModel):
+    """Schema pushed to the LLM via ``response_format``."""
+
+    risk_level: analysis.RiskLevel
+    risk_summary: str
+    sections: list[analysis.TrackingAnalysisSection]
 
 
 # ── Agent class ─────────────────────────────────────────────────
 
 
 class TrackingAnalysisAgent(base.BaseAgent):
-    """Text agent that generates privacy analysis reports.
+    """Agent that generates structured privacy analysis reports.
 
-    Does NOT use structured output — the response is
-    free-form markdown.  Supports streaming via
-    ``analyze_stream()``.
+    Uses ``response_format`` with a JSON schema to produce
+    typed output, consistent with StructuredReportAgent and
+    SummaryFindingsAgent.
     """
 
     agent_name = config.AGENT_TRACKING_ANALYSIS
     instructions = tracking_analysis.INSTRUCTIONS
     max_tokens = 4096
     max_retries = 5
-    response_model = None  # Free-form markdown output
+    call_timeout = 60  # Large prompts need more time
+    response_model = _TrackingAnalysisResponse
 
-    #: Seconds to wait for the next streaming token before
-    #: considering the stream stalled.  Covers both initial
-    #: time-to-first-token and mid-stream pauses.
-    stream_inactivity_timeout: float = 60
-
-    async def analyze_stream(
+    async def analyze(
         self,
         tracking_summary: analysis.TrackingSummary,
         consent_details: consent.ConsentDetails | None = None,
         pre_consent_stats: analysis.PreConsentStats | None = None,
-    ):
-        """Stream the tracking analysis token-by-token.
-
-        Yields ``AgentResponseUpdate`` objects whose ``.text``
-        attribute contains the incremental text delta.
-
-        Raises ``TimeoutError`` if no token arrives within
-        ``stream_inactivity_timeout`` seconds (covers both
-        time-to-first-token and mid-stream stalls).
+        score_breakdown: analysis.ScoreBreakdown | None = None,
+        domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    ) -> analysis.TrackingAnalysisResult:
+        """Run the tracking analysis and return structured output.
 
         Args:
             tracking_summary: Collected tracking data summary.
             consent_details: Optional consent dialog info.
             pre_consent_stats: Optional pre-consent page-load stats.
+            score_breakdown: Deterministic privacy score so the
+                LLM can calibrate its risk assessment.
+            domain_knowledge: Prior-run classifications for
+                consistency anchoring.
 
-        Yields:
-            ``AgentResponseUpdate`` with text deltas.
+        Returns:
+            Structured ``TrackingAnalysisResult``.
+
+        Raises:
+            TimeoutError: If the LLM call exceeds
+                ``call_timeout`` on every retry.
         """
-        prompt = _build_user_prompt(tracking_summary, consent_details, pre_consent_stats)
+        prompt = _build_user_prompt(
+            tracking_summary,
+            consent_details,
+            pre_consent_stats,
+            score_breakdown,
+            domain_knowledge,
+        )
         log.info(
-            "Starting streaming tracking analysis",
+            "Starting tracking analysis",
             {
                 "promptChars": len(prompt),
                 "hasConsent": consent_details is not None,
             },
         )
-        message = agent_framework.Message(
-            role="user",
-            text=prompt,
+
+        response = await self._complete(prompt)
+
+        parsed = self._parse_response(response, _TrackingAnalysisResponse)
+        if parsed:
+            result = analysis.TrackingAnalysisResult(
+                risk_level=parsed.risk_level,
+                risk_summary=parsed.risk_summary,
+                sections=parsed.sections,
+            )
+            log.info(
+                "Tracking analysis complete",
+                {
+                    "riskLevel": result.risk_level,
+                    "sections": len(result.sections),
+                },
+            )
+            return result
+
+        # Fallback: try manual JSON parse from text
+        log.warn("Structured parse failed — attempting text fallback")
+        fallback = _parse_text_fallback(response.text)
+        if fallback:
+            log.info(
+                "Text fallback succeeded",
+                {
+                    "riskLevel": fallback.risk_level,
+                    "sections": len(fallback.sections),
+                },
+            )
+            return fallback
+
+        # Last resort: wrap the raw text as a single section
+        log.warn("All parsing failed — wrapping raw text")
+        return analysis.TrackingAnalysisResult(
+            risk_level="medium",
+            risk_summary="Unable to parse structured analysis.",
+            sections=[
+                analysis.TrackingAnalysisSection(
+                    heading="Raw Analysis",
+                    content=response.text or "",
+                ),
+            ],
         )
-        chunk_count = 0
-        timeout = self.stream_inactivity_timeout
-        async with self._build_agent() as agent:
-            session = agent_framework.AgentSession()
-            stream = agent.run(message, stream=True, session=session).__aiter__()
-            while True:
-                try:
-                    update = await asyncio.wait_for(
-                        stream.__anext__(),
-                        timeout=timeout,
-                    )
-                    chunk_count += 1
-                    yield update
-                except StopAsyncIteration:
-                    break
-                except TimeoutError:
-                    phase = "No streaming tokens received" if chunk_count == 0 else f"Stream stalled after {chunk_count} chunks"
-                    log.error(
-                        "Streaming inactivity timeout",
-                        {
-                            "timeout": timeout,
-                            "chunksReceived": chunk_count,
-                        },
-                    )
-                    raise TimeoutError(f"{phase} for {timeout}s") from None
-            logger.save_agent_thread(self.agent_name, session.to_dict())
-        log.info(
-            "Streaming tracking analysis complete",
-            {
-                "chunks": chunk_count,
-            },
-        )
+
+
+# ── Text fallback parser ────────────────────────────────────────
+
+
+def _parse_text_fallback(
+    text: str | None,
+) -> analysis.TrackingAnalysisResult | None:
+    """Try to parse a ``TrackingAnalysisResult`` from raw text.
+
+    The LLM sometimes wraps JSON in code fences even when
+    structured output is requested.  This falls back to
+    ``json_parsing.load_json_from_text`` and then
+    validates the result.
+
+    Args:
+        text: Raw response text.
+
+    Returns:
+        Parsed result or ``None`` on failure.
+    """
+    data = json_parsing.load_json_from_text(text)
+    if data is None:
+        return None
+    try:
+        return analysis.TrackingAnalysisResult.model_validate(data)
+    except Exception:
+        return None
 
 
 # ── Prompt builders ─────────────────────────────────────────────
@@ -119,6 +174,8 @@ def _build_user_prompt(
     tracking_summary: analysis.TrackingSummary,
     consent_details: consent.ConsentDetails | None = None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    score_breakdown: analysis.ScoreBreakdown | None = None,
+    domain_knowledge: domain_cache.DomainKnowledge | None = None,
 ) -> str:
     """Build the user prompt from tracking data.
 
@@ -126,6 +183,8 @@ def _build_user_prompt(
         tracking_summary: Collected tracking data summary.
         consent_details: Optional consent dialog info.
         pre_consent_stats: Optional pre-consent page-load stats.
+        score_breakdown: Deterministic privacy score.
+        domain_knowledge: Prior-run domain classifications.
 
     Returns:
         Formatted user prompt string.
@@ -144,6 +203,9 @@ def _build_user_prompt(
     pre_consent_section = ""
     if pre_consent_stats:
         pre_consent_section = _build_pre_consent_section(pre_consent_stats)
+
+    score_section = _build_score_section(score_breakdown)
+    knowledge_section = _build_knowledge_section(domain_knowledge)
 
     return (
         "Analyze the following tracking data collected"
@@ -168,6 +230,8 @@ def _build_user_prompt(
         f"## SessionStorage Data\n{session_json}"
         f"{pre_consent_section}"
         f"{consent_section}\n\n"
+        f"{score_section}"
+        f"{knowledge_section}"
         f"{_build_gdpr_reference()}\n\n"
         f"{loader.build_tracking_cookie_context()}\n\n"
         f"{loader.build_media_group_context(tracking_summary.analyzed_url)}\n\n"
@@ -278,3 +342,55 @@ def _build_gdpr_reference() -> str:
     """
 
     return gdpr_context.build_gdpr_reference(heading="## GDPR / TCF Reference")
+
+
+def _build_score_section(
+    score_breakdown: analysis.ScoreBreakdown | None,
+) -> str:
+    """Build a deterministic-score context section.
+
+    When a score breakdown is available, format it as a reference
+    the LLM must stay consistent with.
+
+    Args:
+        score_breakdown: Pre-computed privacy score, or ``None``.
+
+    Returns:
+        Formatted section string (empty when *score_breakdown* is ``None``).
+    """
+    if not score_breakdown:
+        return ""
+
+    label = risk.risk_label(score_breakdown.total_score)
+    top = ", ".join(score_breakdown.factors[:5]) or "none"
+    cat_lines = "\n".join(
+        f"  - {name}: {cat.points}/{cat.max_points}" for name, cat in score_breakdown.categories.items() if cat.points > 0
+    )
+
+    return (
+        "## Deterministic Privacy Score\n"
+        f"Total: {score_breakdown.total_score}/100 — **{label}**\n"
+        f"Top factors: {top}\n"
+        f"Category breakdown:\n{cat_lines}\n\n"
+        "Your risk assessments MUST be consistent with this score.\n\n"
+    )
+
+
+def _build_knowledge_section(
+    domain_knowledge: domain_cache.DomainKnowledge | None,
+) -> str:
+    """Build a domain-knowledge context section.
+
+    Delegates to ``domain_cache.build_context_hint`` when knowledge
+    is available.
+
+    Args:
+        domain_knowledge: Prior-run domain classifications, or ``None``.
+
+    Returns:
+        Formatted section string (empty when *domain_knowledge* is ``None``).
+    """
+    if not domain_knowledge:
+        return ""
+
+    return domain_cache.build_context_hint(domain_knowledge) + "\n\n"

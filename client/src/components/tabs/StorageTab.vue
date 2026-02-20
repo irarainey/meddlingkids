@@ -82,6 +82,10 @@ function purposeLabel(purpose: string): string {
   return labels[purpose] || purpose
 }
 
+function isUnknownPurpose(info: StorageInfo | undefined): boolean {
+  return info?.purpose === 'unknown'
+}
+
 function riskClass(level: string): string {
   const classes: Record<string, string> = {
     'none': 'risk-none',
@@ -122,26 +126,28 @@ function riskClass(level: string): string {
                 <span class="info-label">What it does</span>
                 <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)]?.description }}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Set by</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)]?.setBy }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('localStorage', item)]?.purpose ?? '') }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Risk</span>
-                <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('localStorage', item)]?.riskLevel ?? '')">
-                    {{ storageInfoCache[itemKey('localStorage', item)]?.riskLevel }}
+              <template v-if="!isUnknownPurpose(storageInfoCache[itemKey('localStorage', item)])">
+                <div class="info-row">
+                  <span class="info-label">Set by</span>
+                  <span class="info-value">{{ storageInfoCache[itemKey('localStorage', item)]?.setBy }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Purpose</span>
+                  <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('localStorage', item)]?.purpose ?? '') }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Risk</span>
+                  <span class="info-value">
+                    <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('localStorage', item)]?.riskLevel ?? '')">
+                      {{ storageInfoCache[itemKey('localStorage', item)]?.riskLevel }}
+                    </span>
                   </span>
-                </span>
-              </div>
-              <div v-if="storageInfoCache[itemKey('localStorage', item)]?.privacyNote" class="info-row">
-                <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('localStorage', item)]?.privacyNote }}</span>
-              </div>
+                </div>
+                <div v-if="storageInfoCache[itemKey('localStorage', item)]?.privacyNote" class="info-row">
+                  <span class="info-label">Privacy</span>
+                  <span class="info-value privacy-note">{{ storageInfoCache[itemKey('localStorage', item)]?.privacyNote }}</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -168,26 +174,28 @@ function riskClass(level: string): string {
                 <span class="info-label">What it does</span>
                 <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)]?.description }}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Set by</span>
-                <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)]?.setBy }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('sessionStorage', item)]?.purpose ?? '') }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Risk</span>
-                <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel ?? '')">
-                    {{ storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel }}
+              <template v-if="!isUnknownPurpose(storageInfoCache[itemKey('sessionStorage', item)])">
+                <div class="info-row">
+                  <span class="info-label">Set by</span>
+                  <span class="info-value">{{ storageInfoCache[itemKey('sessionStorage', item)]?.setBy }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Purpose</span>
+                  <span class="info-value">{{ purposeLabel(storageInfoCache[itemKey('sessionStorage', item)]?.purpose ?? '') }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Risk</span>
+                  <span class="info-value">
+                    <span class="risk-badge" :class="riskClass(storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel ?? '')">
+                      {{ storageInfoCache[itemKey('sessionStorage', item)]?.riskLevel }}
+                    </span>
                   </span>
-                </span>
-              </div>
-              <div v-if="storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote" class="info-row">
-                <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote }}</span>
-              </div>
+                </div>
+                <div v-if="storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote" class="info-row">
+                  <span class="info-label">Privacy</span>
+                  <span class="info-value privacy-note">{{ storageInfoCache[itemKey('sessionStorage', item)]?.privacyNote }}</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>

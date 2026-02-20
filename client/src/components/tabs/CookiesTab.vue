@@ -82,6 +82,10 @@ function purposeLabel(purpose: string): string {
   return labels[purpose] || purpose
 }
 
+function isUnknownPurpose(info: CookieInfo | undefined): boolean {
+  return info?.purpose === 'unknown'
+}
+
 function riskClass(level: string): string {
   const classes: Record<string, string> = {
     'none': 'risk-none',
@@ -132,26 +136,28 @@ function riskClass(level: string): string {
                 <span class="info-label">What it does</span>
                 <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)]?.description }}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Set by</span>
-                <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)]?.setBy }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Purpose</span>
-                <span class="info-value">{{ purposeLabel(cookieInfoCache[cookieKey(cookie)]?.purpose ?? '') }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Risk</span>
-                <span class="info-value">
-                  <span class="risk-badge" :class="riskClass(cookieInfoCache[cookieKey(cookie)]?.riskLevel ?? '')">
-                    {{ cookieInfoCache[cookieKey(cookie)]?.riskLevel }}
+              <template v-if="!isUnknownPurpose(cookieInfoCache[cookieKey(cookie)])">
+                <div class="info-row">
+                  <span class="info-label">Set by</span>
+                  <span class="info-value">{{ cookieInfoCache[cookieKey(cookie)]?.setBy }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Purpose</span>
+                  <span class="info-value">{{ purposeLabel(cookieInfoCache[cookieKey(cookie)]?.purpose ?? '') }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Risk</span>
+                  <span class="info-value">
+                    <span class="risk-badge" :class="riskClass(cookieInfoCache[cookieKey(cookie)]?.riskLevel ?? '')">
+                      {{ cookieInfoCache[cookieKey(cookie)]?.riskLevel }}
+                    </span>
                   </span>
-                </span>
-              </div>
-              <div v-if="cookieInfoCache[cookieKey(cookie)]?.privacyNote" class="info-row">
-                <span class="info-label">Privacy</span>
-                <span class="info-value privacy-note">{{ cookieInfoCache[cookieKey(cookie)]?.privacyNote }}</span>
-              </div>
+                </div>
+                <div v-if="cookieInfoCache[cookieKey(cookie)]?.privacyNote" class="info-row">
+                  <span class="info-label">Privacy</span>
+                  <span class="info-value privacy-note">{{ cookieInfoCache[cookieKey(cookie)]?.privacyNote }}</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>

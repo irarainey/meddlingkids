@@ -23,8 +23,10 @@ Provide a concise explanation with these fields:
 
 Be specific and factual. If you recognise the key from a well-known \
 service or SDK, identify it by name. If the key is genuinely unknown \
-and its purpose cannot be determined from the name or value, say so \
-honestly. Many storage keys are simple UI state (theme, language) — \
-classify these as "functional" with risk "none".
+and its purpose cannot be determined from the name or value, respond \
+immediately with purpose "unknown" and riskLevel "low" — do not \
+speculate or fabricate an explanation. Many storage keys are simple \
+UI state (theme, language) — classify these as "functional" with \
+risk "none".
 
-Return a JSON object with those five fields."""
+Keep responses short. Return a JSON object with those five fields."""

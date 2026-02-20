@@ -530,10 +530,10 @@ class BrowserSession:
                 self._cookie_index[cookie_key] = len(self._tracked_cookies)
                 self._tracked_cookies.append(tracked)
 
-    async def capture_storage(self) -> dict[str, list[tracking_data.StorageItem]]:
+    async def capture_storage(self) -> tracking_data.CapturedStorage:
         """Capture localStorage and sessionStorage contents."""
         if not self._page:
-            return {"local_storage": [], "session_storage": []}
+            return tracking_data.CapturedStorage()
 
         try:
             storage_data = await self._page.evaluate(
@@ -554,18 +554,18 @@ class BrowserSession:
             )
 
             now = datetime.now(UTC).isoformat()
-            return {
-                "local_storage": [
+            return tracking_data.CapturedStorage(
+                local_storage=[
                     tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now) for item in storage_data["localStorage"]
                 ],
-                "session_storage": [
+                session_storage=[
                     tracking_data.StorageItem(key=item["key"], value=item["value"], timestamp=now)
                     for item in storage_data["sessionStorage"]
                 ],
-            }
+            )
         except Exception as exc:
             log.warn("Failed to capture storage", {"error": str(exc)})
-            return {"local_storage": [], "session_storage": []}
+            return tracking_data.CapturedStorage()
 
     async def take_screenshot(self, full_page: bool = False, *, timeout: int = 15_000) -> bytes:
         """Take a JPEG screenshot of the current page.

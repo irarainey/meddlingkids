@@ -308,8 +308,7 @@ The environment is configured via:
 | `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (background refresh) |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `analysis-chunk` | `{ text }` | Streamed token from tracking analysis (not currently consumed by client) |
-| `complete` | `{ analysis, structuredReport, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, analysisError, consentDetails, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
+| `complete` | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development

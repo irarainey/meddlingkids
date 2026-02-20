@@ -183,7 +183,7 @@ class TestBuildPreConsentStats:
                 cookies,
                 [],
                 [],
-                {"local_storage": [], "session_storage": []},
+                tracking_data.CapturedStorage(),
             )
         assert result.total_cookies == 2
         assert result.tracking_cookies == 1  # _ga matches
@@ -198,7 +198,7 @@ class TestBuildPreConsentStats:
                 [],
                 [],
                 reqs,
-                {"local_storage": [], "session_storage": []},
+                tracking_data.CapturedStorage(),
             )
         assert result.tracker_requests == 1
 
@@ -208,7 +208,10 @@ class TestBuildPreConsentStats:
                 [],
                 [],
                 [],
-                {"local_storage": [_storage("a"), _storage("b")], "session_storage": [_storage("c")]},
+                tracking_data.CapturedStorage(
+                    local_storage=[_storage("a"), _storage("b")],
+                    session_storage=[_storage("c")],
+                ),
             )
         assert result.total_local_storage == 2
         assert result.total_session_storage == 1

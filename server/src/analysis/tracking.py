@@ -1,15 +1,14 @@
-"""AI-powered streaming tracking analysis service.
+"""AI-powered tracking analysis service.
 
-Orchestrates the ``TrackingAnalysisAgent`` to stream a
-privacy analysis report token-by-token.  Scoring and
-summary findings are handled separately by the caller.
+Orchestrates the ``TrackingAnalysisAgent`` to produce a
+structured privacy analysis.  Scoring and summary findings
+are handled separately by the caller.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterable
-
 from src import agents
+from src.analysis import domain_cache
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.models import analysis, consent, tracking_data
 from src.utils import logger
@@ -17,7 +16,7 @@ from src.utils import logger
 log = logger.create_logger("AI-Analysis")
 
 
-async def stream_tracking_analysis(
+async def run_tracking_analysis(
     cookies: list[tracking_data.TrackedCookie],
     local_storage: list[tracking_data.StorageItem],
     session_storage: list[tracking_data.StorageItem],
@@ -27,13 +26,13 @@ async def stream_tracking_analysis(
     consent_details: consent.ConsentDetails | None = None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
     tracking_summary: analysis.TrackingSummary | None = None,
-) -> AsyncIterable[str]:
-    """Stream the main tracking analysis token-by-token.
+    score_breakdown: analysis.ScoreBreakdown | None = None,
+    domain_knowledge: domain_cache.DomainKnowledge | None = None,
+) -> analysis.TrackingAnalysisResult:
+    """Run the main tracking analysis and return structured output.
 
-    Yields incremental text deltas from the
-    ``TrackingAnalysisAgent``.  After the stream completes,
-    callers should run the summary-findings and scoring
-    steps separately.
+    Delegates to ``TrackingAnalysisAgent.analyze()`` which
+    uses structured JSON output via ``response_format``.
 
     Args:
         cookies: Tracked cookies from the page.
@@ -47,12 +46,16 @@ async def stream_tracking_analysis(
         tracking_summary: Optional pre-built tracking summary.
             When provided, avoids rebuilding the summary
             from the raw data.
+        score_breakdown: Deterministic privacy score so the
+            LLM can calibrate its risk assessment.
+        domain_knowledge: Prior-run classifications for
+            consistency anchoring.
 
-    Yields:
-        Incremental text chunks of the analysis.
+    Returns:
+        Structured ``TrackingAnalysisResult``.
     """
     log.info(
-        "Starting tracking analysis stream",
+        "Starting tracking analysis",
         {
             "url": analyzed_url,
             "cookies": len(cookies),
@@ -82,12 +85,18 @@ async def stream_tracking_analysis(
         },
     )
 
-    chunk_count = 0
-    async for update in tracking_agent.analyze_stream(tracking_summary, consent_details, pre_consent_stats):
-        if update.text:
-            text = update.text if isinstance(update.text, str) else str(update.text)
-            if text:
-                chunk_count += 1
-                yield text
-
-    log.info("Tracking analysis stream complete", {"chunks": chunk_count})
+    result = await tracking_agent.analyze(
+        tracking_summary,
+        consent_details,
+        pre_consent_stats,
+        score_breakdown,
+        domain_knowledge,
+    )
+    log.info(
+        "Tracking analysis complete",
+        {
+            "riskLevel": result.risk_level,
+            "sections": len(result.sections),
+        },
+    )
+    return result

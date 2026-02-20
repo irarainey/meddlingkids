@@ -460,12 +460,16 @@ export function useTrackingAnalysis() {
           activeTab.value = 'analysis'
           statusMessage.value = data.message
           progressPercent.value = 100
-          isComplete.value = true
+          hasCompleted = true
           
           // Wait for the van animation to complete (500ms CSS transition + buffer)
-          // before hiding progress and showing score dialog
+          // before hiding progress, showing tabs, and opening the score dialog.
+          // Setting isComplete and showScoreDialog in the same tick ensures the
+          // score overlay is already rendered when the tabs appear — otherwise
+          // the tabs flash in 700ms before the dialog.
           setTimeout(() => {
             isLoading.value = false
+            isComplete.value = true
             if (data.privacyScore !== null && data.privacyScore !== undefined) {
               showScoreDialog.value = true
             }
@@ -482,6 +486,11 @@ export function useTrackingAnalysis() {
       // onerror (which fires when the stream subsequently closes)
       // must not overwrite the more specific message.
       let hasServerError = false
+
+      // Tracks whether the 'complete' event has been received.
+      // isComplete is set inside a setTimeout, so this local flag
+      // guards the onerror handler during the animation delay.
+      let hasCompleted = false
 
       eventSource.addEventListener('error', (event) => {
         clearTimeout(connectionTimeout)
@@ -527,8 +536,9 @@ export function useTrackingAnalysis() {
         // After a successful 'complete' event the handler calls
         // eventSource.close(), which sets readyState to CLOSED.
         // In that case the error is just the browser noticing the
-        // connection went away — nothing to report.
-        if (isComplete.value) {
+        // connection went away — nothing to report.  hasCompleted
+        // covers the animation delay before isComplete is set.
+        if (isComplete.value || hasCompleted) {
           return
         }
 

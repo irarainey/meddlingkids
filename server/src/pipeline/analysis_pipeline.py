@@ -33,10 +33,8 @@ from src.utils import url as url_mod
 log = logger.create_logger("Analysis")
 
 # Collection caps for the SSE ``complete`` payload — keep it under ~1 MB.
-_MAX_DOMAIN_BREAKDOWN = 100
 _MAX_SCRIPTS = 200
 _MAX_SCRIPT_GROUPS = 100
-_MAX_STORAGE_ITEMS = 100
 
 # Human-readable labels for report section progress events.
 _SECTION_LABELS: dict[str, str] = {
@@ -55,7 +53,7 @@ _SECTION_LABELS: dict[str, str] = {
 
 async def run_ai_analysis(
     session: browser_session.BrowserSession,
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int = 0,
@@ -88,8 +86,8 @@ async def run_ai_analysis(
             "cookies": len(final_cookies),
             "scripts": len(final_scripts),
             "requests": len(final_requests),
-            "localStorage": len(storage["local_storage"]),
-            "sessionStorage": len(storage["session_storage"]),
+            "localStorage": len(storage.local_storage),
+            "sessionStorage": len(storage.session_storage),
         },
     )
     yield sse_helpers.format_progress_event(
@@ -110,8 +108,8 @@ async def run_ai_analysis(
         final_cookies,
         final_scripts,
         final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
+        storage.local_storage,
+        storage.session_storage,
         url,
     )
 
@@ -119,8 +117,8 @@ async def run_ai_analysis(
         final_cookies,
         final_scripts,
         final_requests,
-        storage["local_storage"],
-        storage["session_storage"],
+        storage.local_storage,
+        storage.session_storage,
         url,
         consent_details,
         pre_consent_stats,
@@ -148,7 +146,6 @@ async def run_ai_analysis(
 
     # ── Launch concurrent tasks and yield events in real-time ──
     progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
-    analysis_chunks: list[str] = []
 
     script_task, tracking_task = _launch_concurrent_tasks(
         progress_queue,
@@ -158,9 +155,10 @@ async def run_ai_analysis(
         storage,
         url,
         consent_details,
-        analysis_chunks,
         pre_consent_stats,
         tracking_summary=tracking_summary,
+        score_breakdown=score_breakdown,
+        domain_knowledge=domain_knowledge,
     )
 
     # Start the structured report concurrently with script
@@ -223,6 +221,7 @@ async def run_ai_analysis(
         raise
 
     script_result = script_task.result()
+    analysis_result = tracking_task.result()
 
     log.end_timer("tracking-analysis", "Tracking analysis complete")
 
@@ -237,7 +236,7 @@ async def run_ai_analysis(
         url,
         consent_details,
         overlay_count,
-        analysis_chunks,
+        analysis_result,
         script_result,
         tracking_summary,
         score_breakdown,
@@ -253,23 +252,28 @@ def _launch_concurrent_tasks(
     final_cookies: list[tracking_data.TrackedCookie],
     final_scripts: list[tracking_data.TrackedScript],
     final_requests: list[tracking_data.NetworkRequest],
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
-    analysis_chunks: list[str],
     pre_consent_stats: analysis.PreConsentStats | None = None,
     tracking_summary: analysis.TrackingSummary | None = None,
-) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[None]]:
+    score_breakdown: analysis.ScoreBreakdown | None = None,
+    domain_knowledge: domain_cache.DomainKnowledge | None = None,
+) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[analysis.TrackingAnalysisResult]]:
     """Create and launch the concurrent script + tracking tasks.
 
-    Both tasks push SSE event strings (or ``None`` sentinels) onto
-    *progress_queue*.  The caller is responsible for draining the
-    queue to keep events streaming in real-time.
+    Both tasks push ``None`` sentinels onto *progress_queue*
+    when they finish.  The caller is responsible for draining
+    the queue to keep events streaming in real-time.
 
     Args:
         tracking_summary: Optional pre-built tracking summary
-            passed through to the tracking analysis stream to
-            avoid rebuilding it.
+            passed through to the tracking analysis to avoid
+            rebuilding it.
+        score_breakdown: Deterministic privacy score so the
+            LLM can calibrate its risk assessment.
+        domain_knowledge: Prior-run classifications for
+            consistency anchoring.
 
     Returns:
         Tuple of (script_task, tracking_task).
@@ -328,21 +332,21 @@ def _launch_concurrent_tasks(
 
     log.start_timer("tracking-analysis")
 
-    async def _run_tracking() -> None:
+    async def _run_tracking() -> analysis.TrackingAnalysisResult:
         try:
-            async for chunk in tracking.stream_tracking_analysis(
+            return await tracking.run_tracking_analysis(
                 final_cookies,
-                storage["local_storage"],
-                storage["session_storage"],
+                storage.local_storage,
+                storage.session_storage,
                 final_requests,
                 final_scripts,
                 url,
                 consent_details,
                 pre_consent_stats,
                 tracking_summary=tracking_summary,
-            ):
-                analysis_chunks.append(chunk)
-                progress_queue.put_nowait(sse_helpers.format_sse_event("analysis-chunk", {"text": chunk}))
+                score_breakdown=score_breakdown,
+                domain_knowledge=domain_knowledge,
+            )
         finally:
             progress_queue.put_nowait(None)
 
@@ -687,11 +691,11 @@ def _render_report_text(
 async def _score_and_summarise(
     final_cookies: list[tracking_data.TrackedCookie],
     final_requests: list[tracking_data.NetworkRequest],
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
     overlay_count: int,
-    analysis_chunks: list[str],
+    analysis_result: analysis.TrackingAnalysisResult,
     script_result: scripts.ScriptAnalysisResult,
     tracking_summary: analysis.TrackingSummary,
     score_breakdown: analysis.ScoreBreakdown,
@@ -705,8 +709,8 @@ async def _score_and_summarise(
     structured report are pre-computed / pre-launched by the
     caller for maximum concurrency.
     """
-    full_text = "".join(analysis_chunks)
-    log.info("Analysis streamed", {"length": len(full_text)})
+    full_text = analysis_result.to_text()
+    log.info("Analysis complete", {"length": len(full_text)})
 
     # The structured report is already being built concurrently
     # (launched alongside script and tracking analysis).  Only
@@ -796,14 +800,13 @@ async def _score_and_summarise(
     yield sse_helpers.format_progress_event("complete", "Investigation complete!", 100)
 
     yield _build_complete_payload(
-        full_text,
         structured_report,
         summary_findings,
         score_breakdown,
-        tracking_summary,
         consent_details,
         script_result,
         overlay_count,
+        analysis_success=bool(full_text),
         final_cookies=final_cookies,
         final_requests=final_requests,
         storage=storage,
@@ -811,76 +814,49 @@ async def _score_and_summarise(
 
 
 def _build_complete_payload(
-    full_text: str,
     structured_report: report_models.StructuredReport | None,
     summary_findings: list[analysis.SummaryFinding],
     score_breakdown: analysis.ScoreBreakdown,
-    tracking_summary: analysis.TrackingSummary,
     consent_details: consent.ConsentDetails | None,
     script_result: scripts.ScriptAnalysisResult,
     overlay_count: int,
+    analysis_success: bool = True,
     final_cookies: list[tracking_data.TrackedCookie] | None = None,
     final_requests: list[tracking_data.NetworkRequest] | None = None,
-    storage: dict[str, list[tracking_data.StorageItem]] | None = None,
+    storage: tracking_data.CapturedStorage | None = None,
 ) -> str:
     """Build the final SSE ``complete`` event payload.
 
-    Large collections (domain breakdown, scripts, groups) are
-    capped to prevent multi-MB SSE events on sites with
-    hundreds of third-party scripts.
+    Large collections (scripts, groups) are capped to prevent
+    multi-MB SSE events on sites with hundreds of third-party
+    scripts.
     """
-    analysis_success = bool(full_text)
     privacy_score = score_breakdown.total_score
 
     if analysis_success:
         log.success(
             "Analysis succeeded",
-            {
-                "privacyScore": privacy_score,
-                "analysisLength": len(full_text),
-            },
+            {"privacyScore": privacy_score},
         )
     else:
         log.error("Analysis produced no output")
 
     consent_dict = sse_helpers.serialize_consent_details(consent_details) if consent_details else None
-    score_dict = sse_helpers.serialize_score_breakdown(score_breakdown) if score_breakdown else None
 
     return sse_helpers.format_sse_event(
         "complete",
         {
-            "success": True,
             "message": ("Tracking analyzed after dismissing overlays" if overlay_count > 0 else "Tracking analyzed"),
-            "analysis": full_text if analysis_success else None,
             "structuredReport": (structured_report.model_dump(by_alias=True) if analysis_success and structured_report else None),
             "summaryFindings": ([{"type": f.type, "text": f.text} for f in summary_findings] if analysis_success else None),
             "privacyScore": (privacy_score if analysis_success else None),
             "privacySummary": (score_breakdown.summary if analysis_success else None),
-            "scoreBreakdown": (score_dict if analysis_success else None),
-            "analysisSummary": (
-                {
-                    "analyzedUrl": tracking_summary.analyzed_url,
-                    "totalCookies": tracking_summary.total_cookies,
-                    "totalScripts": tracking_summary.total_scripts,
-                    "totalNetworkRequests": tracking_summary.total_network_requests,
-                    "localStorageItems": tracking_summary.local_storage_items,
-                    "sessionStorageItems": tracking_summary.session_storage_items,
-                    "thirdPartyDomains": tracking_summary.third_party_domains,
-                    "domainBreakdown": [
-                        sse_helpers.to_camel_case_dict(d) for d in tracking_summary.domain_breakdown[:_MAX_DOMAIN_BREAKDOWN]
-                    ],
-                    "localStorage": tracking_summary.local_storage[:_MAX_STORAGE_ITEMS],
-                    "sessionStorage": tracking_summary.session_storage[:_MAX_STORAGE_ITEMS],
-                }
-                if tracking_summary
-                else None
-            ),
             "analysisError": (None if analysis_success else "Analysis produced no output"),
             "consentDetails": consent_dict,
             "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
             "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
-            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["local_storage"]] if storage else None),
-            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage["session_storage"]] if storage else None),
+            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.local_storage] if storage else None),
+            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.session_storage] if storage else None),
             "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
             "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
             "debugLog": logger.get_log_buffer(),

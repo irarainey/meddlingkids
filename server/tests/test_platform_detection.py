@@ -300,17 +300,16 @@ class TestDetectPlatformFromDomain:
         result = platform_detection.detect_platform_from_domain("random-unknown-site.xyz")
         assert result is None
 
-    def test_reach_plc_domain_returns_sourcepoint(self) -> None:
-        """mirror.co.uk is a Reach plc site using Sourcepoint."""
+    def test_reach_plc_domain_returns_quantcast_choice(self) -> None:
+        """mirror.co.uk is a Reach plc site using Quantcast Choice (IAB CMP ID 10)."""
         result = platform_detection.detect_platform_from_domain("mirror.co.uk")
         assert result is not None
-        assert result.key == "sourcepoint"
+        assert result.key == "quantcast_choice"
 
-    def test_dmg_media_domain_returns_onetrust(self) -> None:
-        """dailymail.co.uk is a DMG Media site using OneTrust."""
+    def test_dmg_media_domain_returns_none_for_custom_cmp(self) -> None:
+        """dailymail.co.uk is a DMG Media site using a custom in-house CMP."""
         result = platform_detection.detect_platform_from_domain("dailymail.co.uk")
-        assert result is not None
-        assert result.key == "onetrust"
+        assert result is None
 
     def test_bristol247_domain_returns_consentmanager(self) -> None:
         """bristol247.com is an independent site using consentmanager."""

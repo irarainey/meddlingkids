@@ -50,6 +50,11 @@ class ScriptAnalysisAgent(base.BaseAgent):
     ) -> str | None:
         """Analyse a single script.
 
+        If the configured deployment returns a non-retryable
+        error (e.g. ``OperationNotSupported``), the agent
+        switches to the fallback (default) deployment and
+        retries the request once.
+
         Args:
             url: Script URL.
             content: Optional script content snippet.
@@ -62,19 +67,36 @@ class ScriptAnalysisAgent(base.BaseAgent):
         log.debug("Analysing script", {"url": url})
 
         try:
-            response = await self._complete(user_message)
-
-            parsed = self._parse_response(response, _ScriptResult)
-            if parsed and parsed.description:
-                return parsed.description
-
-            # Fallback: try to extract from raw text
-            raw = json_parsing.load_json_from_text(response.text)
-            if isinstance(raw, dict):
-                return raw.get("description")
-
-            return None
+            return await self._try_complete(user_message, url)
         except Exception as error:
+            # If the error looks like a model-level rejection
+            # and we have a fallback, switch and retry once.
+            if self.has_fallback and _is_model_error(error):
+                log.warn(
+                    "Deployment unsupported, falling back",
+                    {
+                        "url": url,
+                        "error": errors.get_error_message(error),
+                    },
+                )
+                self.activate_fallback()
+                try:
+                    return await self._try_complete(
+                        user_message,
+                        url,
+                    )
+                except Exception as retry_error:
+                    log.error(
+                        "Script analysis failed after fallback",
+                        {
+                            "url": url,
+                            "error": errors.get_error_message(
+                                retry_error,
+                            ),
+                        },
+                    )
+                    return None
+
             log.error(
                 "Script analysis failed",
                 {
@@ -83,3 +105,48 @@ class ScriptAnalysisAgent(base.BaseAgent):
                 },
             )
             return None
+
+    async def _try_complete(
+        self,
+        user_message: str,
+        url: str,
+    ) -> str | None:
+        """Attempt a single LLM completion for a script.
+
+        Args:
+            user_message: Formatted prompt with URL and content.
+            url: Script URL (for logging context).
+
+        Returns:
+            Short description string, or ``None`` on parse
+            failure.
+        """
+        response = await self._complete(user_message)
+
+        parsed = self._parse_response(response, _ScriptResult)
+        if parsed and parsed.description:
+            return parsed.description
+
+        # Fallback: try to extract from raw text.
+        raw = json_parsing.load_json_from_text(response.text)
+        if isinstance(raw, dict):
+            return raw.get("description")
+
+        return None
+
+
+def _is_model_error(error: BaseException) -> bool:
+    """Check if the error indicates the model is unsupported.
+
+    Detects Azure ``OperationNotSupported`` (HTTP 400) and
+    similar model-level rejections that will never succeed
+    on retry with the same deployment.
+
+    Args:
+        error: The exception to inspect.
+
+    Returns:
+        ``True`` when the error is a permanent model issue.
+    """
+    err_str = str(error).lower()
+    return "operationnotsupported" in err_str or "does not work with the specified model" in err_str

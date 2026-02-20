@@ -143,7 +143,14 @@ async def try_click_consent_button(
     # Phase 0: Try the frame where validation already found the element
     if found_in_frame and found_in_frame != page.main_frame:
         log.debug("Trying validated frame first", {"url": found_in_frame.url[:80]})
-        strategy = await _try_click_in_frame(found_in_frame, selector, button_text, 3000, deadline=deadline)
+        strategy = await _try_click_in_frame(
+            found_in_frame,
+            selector,
+            button_text,
+            3000,
+            deadline=deadline,
+            is_consent_frame=True,
+        )
         if strategy:
             if await _did_navigate_away(page, original_url):
                 return _fail
@@ -174,7 +181,14 @@ async def try_click_consent_button(
                 return _fail
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
-            strategy = await _try_click_in_frame(frame, selector, button_text, 3000, deadline=deadline)
+            strategy = await _try_click_in_frame(
+                frame,
+                selector,
+                button_text,
+                3000,
+                deadline=deadline,
+                is_consent_frame=True,
+            )
             if strategy:
                 if await _did_navigate_away(page, original_url):
                     return _fail
@@ -296,6 +310,7 @@ async def _safe_click(
     timeout: int,
     *,
     force_on_timeout: bool = False,
+    skip_safety: bool = False,
 ) -> bool:
     """Click a locator, checking navigation safety first.
 
@@ -307,9 +322,20 @@ async def _safe_click(
             (``_is_safe_to_click`` returns ``None``).
             Use for LLM-identified elements where we have
             high confidence the element is a consent button.
+        skip_safety: When ``True``, skip the ``evaluate()``
+            safety check entirely.  Use for elements inside
+            cross-origin consent iframes where ``evaluate()``
+            always times out (~2 s) because the browser
+            blocks JS execution across origins.  Elements
+            inside consent iframes are safe by definition.
     """
     try:
         first = locator.first
+
+        if skip_safety:
+            await first.click(timeout=timeout)
+            return True
+
         safety = await _is_safe_to_click(first)
 
         if safety is False:
@@ -373,6 +399,7 @@ async def _try_click_in_frame(
     timeout: int,
     *,
     deadline: float = 0.0,
+    is_consent_frame: bool = False,
 ) -> overlay_cache.LocatorStrategy | None:
     """Try clicking in a specific frame using LLM-provided selector and text.
 
@@ -384,6 +411,11 @@ async def _try_click_in_frame(
     LLM-identified consent elements — if the safety check times out
     on a busy page, we still try clicking since the LLM identified
     the element as a consent button.
+
+    When *is_consent_frame* is ``True`` (the frame is a known
+    consent iframe, typically cross-origin), the ``evaluate()``
+    safety check is skipped entirely to avoid 2 s timeouts per
+    strategy that always fail in cross-origin contexts.
 
     Respects the *deadline* (monotonic clock) to avoid exhausting the
     total click time budget when the page is unresponsive and every
@@ -404,6 +436,7 @@ async def _try_click_in_frame(
                 frame.locator(css_selector),
                 timeout,
                 force_on_timeout=True,
+                skip_safety=is_consent_frame,
             )
         ):
             return "css"
@@ -421,6 +454,7 @@ async def _try_click_in_frame(
                     locator,
                     timeout,
                     force_on_timeout=True,
+                    skip_safety=is_consent_frame,
                 ):
                     return strategy  # type: ignore[return-value]
 
@@ -438,6 +472,7 @@ async def _try_click_in_frame(
                 locator,
                 timeout,
                 force_on_timeout=True,
+                skip_safety=is_consent_frame,
             ):
                 return strategy  # type: ignore[return-value]
 

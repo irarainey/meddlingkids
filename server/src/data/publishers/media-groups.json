@@ -32,9 +32,10 @@
       "mylondon.news",
       "inyourarea.co.uk"
     ],
-    "consent_platform": "Sourcepoint",
+    "consent_platform": "Quantcast Choice",
     "key_vendors": [
       "Google",
+      "Quantcast",
       "Permutive",
       "Lotame",
       "Lotame Panorama",
@@ -52,6 +53,7 @@
     "privacy_characteristics": [
       "UK's largest commercial national and regional news publisher",
       "Over 100 regional and national titles",
+      "Uses Quantcast Choice CMP (IAB CMP ID 10) for consent management",
       "Extensive use of Permutive for on-device audience segmentation",
       "Member of Ozone Project publisher advertising alliance",
       "Uses Lotame DMP for data management and audience insight",
@@ -81,7 +83,7 @@
       "thisismoney.co.uk",
       "newscientist.com"
     ],
-    "consent_platform": "OneTrust",
+    "consent_platform": "Custom (DMG Media Privacy)",
     "key_vendors": [
       "Google",
       "comScore",
@@ -92,11 +94,11 @@
       "Ipsos",
       "DotMetrics",
       "CACI",
-      "Atolls",
-      "OneTrust"
+      "Atolls"
     ],
     "privacy_characteristics": [
       "MailOnline is one of the world's most visited English-language newspaper websites",
+      "Uses custom in-house CMP served from cmp.dmgmediaprivacy.co.uk",
       "Significant programmatic advertising operation",
       "Uses session replay tools for UX analysis",
       "Extensive third-party cookie ecosystem",
@@ -117,22 +119,23 @@
       "independent.co.uk",
       "standard.co.uk"
     ],
-    "consent_platform": "OneTrust",
+    "consent_platform": "Sourcepoint",
     "key_vendors": [
       "Google",
+      "Sourcepoint",
       "comScore",
       "Permutive",
       "LiveRamp",
       "Teads",
-      "Outbrain",
-      "OneTrust"
+      "Outbrain"
     ],
     "privacy_characteristics": [
       "Digital-only national newspaper since 2016",
+      "Uses Sourcepoint CMP (managerId 1141355) with custom wrapper",
+      "CMP served from cmpv2.independent.co.uk domain",
       "All identified vendors already present in standard ad-tech databases",
       "Standard programmatic advertising operation",
-      "Participates in IAB TCF v2 framework",
-      "Uses standard consent management platform"
+      "Participates in IAB TCF v2 framework"
     ]
   },
   "guardian media group": {

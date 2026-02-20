@@ -245,13 +245,13 @@ All data captured
    │   │   │   (AZURE_OPENAI_SCRIPT_DEPLOYMENT)                │
    │   │   └── Incremental cache save after each LLM result    │
    │   │                                                       │
-   │   │  stream_tracking_analysis(summary, consent, stats)    │
+   │   │  run_tracking_analysis(summary, consent, stats)       │
    │   │   ├── build_tracking_summary() → Data for LLM         │
    │   │   ├── GDPR/TCF reference data (purposes, lawful       │
    │   │   │   bases, ePrivacy categories, consent cookies)    │
    │   │   ├── Pre-consent page-load stats                     │
    │   │   ├── Media group context (if domain recognised)      │
-   │   │   └── Main analysis prompt → Full markdown report     │
+   │   │   └── Main analysis prompt → Structured JSON result   │
    │   │                                                       │
    │   │                                                       │
    │   │  calculate_privacy_score() → Deterministic 0-100      │
@@ -281,16 +281,17 @@ All data captured
 Analysis complete
    │
    └── send_event('complete', {
-         success,
-         analysis,          // Full markdown report
+         message,           // Completion message
          structuredReport,  // Per-section structured report
          summaryFindings,   // Structured findings array
          privacyScore,      // 0-100
          privacySummary,    // One sentence
-         scoreBreakdown,    // Detailed score breakdown
-         analysisSummary,   // Aggregate statistics
          analysisError,     // Error message if analysis failed
          consentDetails,    // Consent dialog info
+         cookies,           // Final cookie snapshot
+         networkRequests,   // Network requests
+         localStorage,      // localStorage items
+         sessionStorage,    // sessionStorage items
          scripts,           // Scripts with descriptions
          scriptGroups,      // Grouped similar scripts
          debugLog           // Server debug log lines
@@ -434,7 +435,7 @@ Key framework types used:
 - `agent_framework.ChatMiddleware` — pluggable request/response pipeline
 - `agent_framework.Message` / `agent_framework.Content` — message types (text + multimodal)
 - `agent_framework.ChatOptions` — token limits and structured output (`response_format`)
-- `agent_framework.AgentResponse` — typed response with `.value` property for automatic Pydantic parsing
+- `agent_framework.AgentResponse` — typed response wrapper (structured output is parsed via `model.model_validate_json(response.text)` in `BaseAgent._parse_response()`)
 - `agent_framework.AgentSession` — lightweight session container (replaces threads)
 
 | Agent | Module | Responsibility |
@@ -515,7 +516,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
 | `browser_phases.py` | Phases 1-3: setup (with browser launch retry), navigate, initial capture |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
-| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
+| `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `detect_overlay()` speculatively crops the viewport screenshot to the consent dialog bounding box (via `get_consent_bounds.js`) before sending to the LLM, preventing content-filter rejections from background imagery. `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
 
@@ -597,10 +598,9 @@ BaseAgent._build_agent() → Creates Agent (agent_framework.Agent)
     └── Agent.run() or run(stream=True) → LLM chat completion
     │
     ▼
-Parse response (structured JSON via response_format or streamed markdown)
+Parse response (model.model_validate_json via BaseAgent._parse_response)
     │
-    ├── Streamed: send_event('analysis-chunk', {text}) per token
-    └── Final:    send_event('complete', results)
+    └── send_event('complete', results)
     │
     ▼
 Client displays analysis
@@ -609,6 +609,22 @@ Client displays analysis
 ---
 
 ## Key Data Types
+
+### StorageItem
+```python
+class StorageItem(BaseModel):
+    key: str
+    value: str
+    timestamp: str
+```
+
+### CapturedStorage
+```python
+class CapturedStorage(BaseModel):
+    """localStorage and sessionStorage captured from the browser."""
+    local_storage: list[StorageItem] = []
+    session_storage: list[StorageItem] = []
+```
 
 ### TrackedCookie
 ```python
@@ -744,8 +760,7 @@ class ThirdPartyGroup(BaseModel):
 | `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (background refresh as ads/content load) |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `analysis-chunk` | Server → Client | `{ text }` | Streamed token from tracking analysis (real-time LLM output) |
-| `complete` | Server → Client | `{ success, analysis, structuredReport, summaryFindings, privacyScore, privacySummary, scoreBreakdown, analysisSummary, analysisError, consentDetails, scripts, scriptGroups, debugLog }` | Final analysis results |
+| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---

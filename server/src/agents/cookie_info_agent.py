@@ -12,7 +12,7 @@ import pydantic
 
 from src.agents import base, config
 from src.agents.prompts import cookie_info
-from src.utils import logger
+from src.utils import json_parsing, logger
 
 log = logger.create_logger("CookieInfoAgent")
 
@@ -45,7 +45,7 @@ class CookieInfoAgent(base.BaseAgent):
     agent_name = config.AGENT_COOKIE_INFO
     instructions = cookie_info.INSTRUCTIONS
     max_tokens = 300
-    max_retries = 3
+    max_retries = 2
     response_model = CookieInfoResult
 
     async def explain(
@@ -74,6 +74,15 @@ class CookieInfoAgent(base.BaseAgent):
             parsed = self._parse_response(response, CookieInfoResult)
             if parsed:
                 return parsed
+
+            # Fallback: manual JSON parse from response text
+            raw = json_parsing.load_json_from_text(response.text)
+            if isinstance(raw, dict):
+                try:
+                    return CookieInfoResult.model_validate(raw)
+                except Exception:
+                    pass
+
             log.warn("Failed to parse cookie info response", {"name": name})
             return None
         except Exception as exc:

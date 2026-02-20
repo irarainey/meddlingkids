@@ -104,3 +104,64 @@ class ScoreBreakdown(pydantic.BaseModel):
     categories: dict[str, CategoryScore] = pydantic.Field(default_factory=dict)
     factors: list[str] = pydantic.Field(default_factory=list)
     summary: str = ""
+
+
+# ── Tracking analysis output ───────────────────────────────────
+
+RiskLevel = Literal["low", "medium", "high", "very_high"]
+
+
+class TrackingAnalysisSection(pydantic.BaseModel):
+    """A single section of the tracking analysis."""
+
+    heading: str = pydantic.Field(
+        description="Section heading matching one of the required analysis areas",
+    )
+    content: str = pydantic.Field(
+        description="Detailed analysis text for this section",
+    )
+
+
+class TrackingAnalysisResult(pydantic.BaseModel):
+    """Structured output from TrackingAnalysisAgent.
+
+    Captures the same analytical content previously returned
+    as free-form Markdown, now in a typed JSON envelope that
+    is consistent with other agents.
+    """
+
+    risk_level: RiskLevel = pydantic.Field(
+        description="Overall privacy risk level",
+    )
+    risk_summary: str = pydantic.Field(
+        description="One-paragraph summary of the overall privacy risk",
+    )
+    sections: list[TrackingAnalysisSection] = pydantic.Field(
+        default_factory=list,
+        description=(
+            "Ordered analysis sections covering tracking technologies, "
+            "data collection, third-party services, cookies, storage, "
+            "consent analysis, partner/vendor analysis, and recommendations"
+        ),
+    )
+
+    def to_text(self) -> str:
+        """Serialise the analysis to plain text.
+
+        Used when feeding the result to downstream agents
+        (e.g. SummaryFindingsAgent) that expect a text
+        representation.
+
+        Returns:
+            Human-readable text rendering of the analysis.
+        """
+        lines = [
+            f"Risk Level: {self.risk_level}",
+            f"Risk Summary: {self.risk_summary}",
+            "",
+        ]
+        for section in self.sections:
+            lines.append(f"## {section.heading}")
+            lines.append(section.content)
+            lines.append("")
+        return "\n".join(lines)

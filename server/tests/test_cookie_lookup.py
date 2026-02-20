@@ -6,7 +6,8 @@ LLM calls, and that the fallback path is exercised for unknown cookies.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -418,3 +419,97 @@ class TestCookieInfoResult:
         assert data["privacyNote"] == "A note"
         assert "set_by" not in data
         assert "risk_level" not in data
+
+
+class TestCookieInfoAgentFallbackParsing:
+    """Verify the agent falls back to manual JSON parsing when
+    response.value returns None."""
+
+    @pytest.mark.asyncio
+    async def test_json_text_fallback_parses_valid_json(self) -> None:
+        """When response.value is None but response.text contains
+        valid JSON, the agent should parse it manually."""
+        agent = CookieInfoAgent.__new__(CookieInfoAgent)
+        json_text = json.dumps(
+            {
+                "description": "BBC multivariate testing cookie",
+                "setBy": "BBC",
+                "purpose": "functional",
+                "riskLevel": "none",
+                "privacyNote": "Used for A/B testing.",
+            }
+        )
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = json_text
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("ckns_mvt", ".bbc.co.uk", "abc123")
+
+        assert result is not None
+        assert result.description == "BBC multivariate testing cookie"
+        assert result.purpose == "functional"
+
+    @pytest.mark.asyncio
+    async def test_json_text_fallback_with_markdown_fences(self) -> None:
+        """JSON wrapped in markdown code fences should still be parsed."""
+        agent = CookieInfoAgent.__new__(CookieInfoAgent)
+        json_text = (
+            "```json\n"
+            + json.dumps(
+                {
+                    "description": "Test cookie",
+                    "setBy": "TestService",
+                    "purpose": "analytics",
+                    "riskLevel": "low",
+                    "privacyNote": "",
+                }
+            )
+            + "\n```"
+        )
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = json_text
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("test_cookie", ".example.com", "val")
+
+        assert result is not None
+        assert result.purpose == "analytics"
+
+    @pytest.mark.asyncio
+    async def test_invalid_json_text_returns_none(self) -> None:
+        """When both response.value and text parsing fail, return None."""
+        agent = CookieInfoAgent.__new__(CookieInfoAgent)
+        mock_response = MagicMock()
+        mock_response.value = None
+        mock_response.text = "I don't know this cookie."
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("mystery", ".example.com", "val")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_structured_parse_from_text(self) -> None:
+        """When response.text contains valid JSON, _parse_response
+        parses it directly without needing the fallback."""
+        agent = CookieInfoAgent.__new__(CookieInfoAgent)
+        json_text = json.dumps(
+            {
+                "description": "Structured result",
+                "setBy": "Framework",
+                "purpose": "session",
+                "riskLevel": "none",
+                "privacyNote": "",
+            }
+        )
+        mock_response = MagicMock()
+        mock_response.text = json_text
+
+        with patch.object(agent, "_complete", new_callable=AsyncMock, return_value=mock_response):
+            result = await agent.explain("sid", ".example.com", "abc")
+
+        assert result is not None
+        assert result.description == "Structured result"
+        assert result.purpose == "session"

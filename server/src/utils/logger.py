@@ -198,7 +198,10 @@ def save_agent_thread(
     safe_agent = "".join(c if c.isalnum() or c in ".-_" else "_" for c in agent_name)[:50]
 
     now = datetime.now(UTC)
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    # Microsecond precision prevents filename collisions when
+    # multiple agent calls (e.g. concurrent report sections)
+    # complete within the same wall-clock second.
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
     path = run_dir / f"{safe_agent}_{timestamp}.json"
 
     try:

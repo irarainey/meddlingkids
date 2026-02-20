@@ -21,7 +21,7 @@ from src.consent import click, extraction, partner_classification
 from src.consent import detection as consent_detection_mod
 from src.models import consent
 from src.pipeline import sse_helpers
-from src.utils import logger
+from src.utils import image, logger
 
 # Bounding-box type alias used throughout the overlay pipeline.
 ConsentBounds = tuple[int, int, int, int] | None
@@ -66,6 +66,11 @@ async def detect_overlay(
     Takes a viewport-only screenshot for detection (overlays are
     always visible in the viewport) to reduce image size and
     speed up LLM inference.
+
+    When the consent dialog can be located in the DOM, the
+    screenshot is cropped to just the dialog area before being
+    sent to the LLM.  This avoids content-filter rejections
+    caused by background page imagery and reduces token usage.
     """
     log.start_timer(f"overlay-detect-{iteration + 1}")
 
@@ -86,17 +91,50 @@ async def detect_overlay(
             reason=f"Screenshot failed: {exc}",
         )
 
+    # ── Speculative crop ────────────────────────────────
+    # Try to locate the consent dialog via known CSS selectors
+    # and crop the screenshot to just that region.  This
+    # prevents background page content from triggering
+    # Azure content filters during LLM vision analysis.
+    detection_screenshot = viewport_screenshot
+    page = session.get_page()
+    if page is not None:
+        try:
+            raw = await page.evaluate(
+                consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
+            )
+            if raw and isinstance(raw, dict):
+                crop_box: tuple[int, int, int, int] = (
+                    int(raw["left"]),
+                    int(raw["top"]),
+                    int(raw["right"]),
+                    int(raw["bottom"]),
+                )
+                cropped = image.crop_jpeg(viewport_screenshot, crop_box)
+                if cropped is not viewport_screenshot:
+                    detection_screenshot = cropped
+                    log.info(
+                        "Cropped detection screenshot to consent dialog",
+                        {"bounds": crop_box},
+                    )
+        except Exception as exc:
+            log.debug(
+                "Speculative consent bounds detection failed — using full screenshot",
+                {"error": str(exc)},
+            )
+
     log.debug(
         "Running overlay detection",
         {
             "iteration": iteration + 1,
-            "screenshotBytes": len(viewport_screenshot),
+            "screenshotBytes": len(detection_screenshot),
+            "cropped": detection_screenshot is not viewport_screenshot,
         },
     )
 
     log.info("Sending screenshot to overlay detection model...")
     try:
-        detection = await consent_detection_mod.detect_cookie_consent(viewport_screenshot)
+        detection = await consent_detection_mod.detect_cookie_consent(detection_screenshot)
     except TimeoutError:
         log.warn(
             "Overlay detection timed out",
@@ -210,23 +248,6 @@ async def capture_after_click(
     yield event_str
 
     log.success(f"Overlay {overlay_number} ({detection.overlay_type}) dismissed successfully")
-
-    yield sse_helpers.format_sse_event(
-        "consent",
-        {
-            "detected": True,
-            "clicked": True,
-            "details": {
-                "found": detection.found,
-                "overlayType": detection.overlay_type,
-                "selector": detection.selector,
-                "buttonText": detection.button_text,
-                "confidence": detection.confidence,
-                "reason": detection.reason,
-            },
-            "overlayNumber": overlay_number,
-        },
-    )
 
 
 # ====================================================================
@@ -433,15 +454,6 @@ def build_no_overlay_events(
         log.info("No overlay detected", {"reason": reason})
         return [
             sse_helpers.format_progress_event("consent-none", "No overlay detected...", 70),
-            sse_helpers.format_sse_event(
-                "consent",
-                {
-                    "detected": False,
-                    "clicked": False,
-                    "details": None,
-                    "reason": reason,
-                },
-            ),
         ]
     dismissed_label = "overlay" if overlay_count == 1 else "overlays"
     log.success(f"Dismissed {overlay_count} {dismissed_label}, no more found")
@@ -459,31 +471,18 @@ def build_click_failure(
     detection: consent.CookieConsentDetection,
     overlay_number: int,
     error_detail: str | None = None,
-) -> tuple[str, str]:
-    """Build click failure SSE event and message."""
+) -> str:
+    """Build click failure log message.
+
+    Returns:
+        Human-readable failure description.
+    """
     if error_detail:
         msg = f"Failed to dismiss {detection.overlay_type or 'overlay'}: {error_detail}"
     else:
         msg = f"Failed to dismiss {detection.overlay_type or 'overlay'} (button: '{detection.button_text or detection.selector}')"
 
-    event = sse_helpers.format_sse_event(
-        "consent",
-        {
-            "detected": True,
-            "clicked": False,
-            "details": {
-                "found": detection.found,
-                "overlayType": detection.overlay_type,
-                "selector": detection.selector,
-                "buttonText": detection.button_text,
-                "confidence": detection.confidence,
-                "reason": detection.reason,
-            },
-            "error": msg,
-            "overlayNumber": overlay_number,
-        },
-    )
-    return event, msg
+    return msg
 
 
 # ====================================================================

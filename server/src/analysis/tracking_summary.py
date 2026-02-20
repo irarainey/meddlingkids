@@ -110,7 +110,7 @@ def build_pre_consent_stats(
     cookies: list[tracking_data.TrackedCookie],
     scripts: list[tracking_data.TrackedScript],
     requests: list[tracking_data.NetworkRequest],
-    storage: dict[str, list[tracking_data.StorageItem]],
+    storage: tracking_data.CapturedStorage,
 ) -> analysis.PreConsentStats:
     """Snapshot tracking data on initial page load.
 
@@ -130,8 +130,7 @@ def build_pre_consent_stats(
         cookies: Currently tracked cookies.
         scripts: Currently tracked scripts.
         requests: Currently tracked network requests.
-        storage: Dict with ``local_storage`` and
-            ``session_storage`` lists.
+        storage: Captured browser storage.
 
     Returns:
         Page-load statistics for scoring calibration.
@@ -148,8 +147,8 @@ def build_pre_consent_stats(
         total_cookies=len(cookies),
         total_scripts=len(scripts),
         total_requests=len(requests),
-        total_local_storage=len(storage["local_storage"]),
-        total_session_storage=len(storage["session_storage"]),
+        total_local_storage=len(storage.local_storage),
+        total_session_storage=len(storage.session_storage),
         tracking_cookies=tracking_cookies,
         tracking_scripts=tracking_scripts,
         tracker_requests=tracker_requests,
