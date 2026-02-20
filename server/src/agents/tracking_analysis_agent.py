@@ -74,15 +74,15 @@ class TrackingAnalysisAgent(base.BaseAgent):
                 "hasConsent": consent_details is not None,
             },
         )
-        message = agent_framework.ChatMessage(
-            role=agent_framework.Role.USER,
+        message = agent_framework.Message(
+            role="user",
             text=prompt,
         )
         chunk_count = 0
         timeout = self.stream_inactivity_timeout
         async with self._build_agent() as agent:
-            thread = agent.get_new_thread()
-            stream = agent.run_stream(message, thread=thread).__aiter__()
+            session = agent_framework.AgentSession()
+            stream = agent.run(message, stream=True, session=session).__aiter__()
             while True:
                 try:
                     update = await asyncio.wait_for(
@@ -103,7 +103,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
                         },
                     )
                     raise TimeoutError(f"{phase} for {timeout}s") from None
-            logger.save_agent_thread(self.agent_name, await thread.serialize())
+            logger.save_agent_thread(self.agent_name, session.to_dict())
         log.info(
             "Streaming tracking analysis complete",
             {

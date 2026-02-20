@@ -182,8 +182,8 @@ def save_agent_thread(
 
     Args:
         agent_name: Name of the agent that produced the thread.
-        thread_data: Serialised thread dictionary from
-            ``AgentThread.serialize()``.
+        thread_data: Serialised session dictionary from
+            ``AgentSession.to_dict()``.
 
     Returns:
         The file path written, or ``None`` if skipped.

@@ -8,7 +8,6 @@ inactivity window.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator
 from unittest import mock
 
 import pytest
@@ -40,30 +39,39 @@ class _FakeUpdate:
         self.text = text
 
 
-class _FakeThread:
-    """Minimal stand-in for a ChatThread."""
+class _FakeSession:
+    """Minimal stand-in for an AgentSession."""
 
-    async def serialize(self) -> str:
-        return "{}"
+    def to_dict(self) -> dict:
+        return {}
+
+
+class _FakeResponseStream:
+    """Async iterable that yields updates, optionally hanging."""
+
+    def __init__(self, updates: list[_FakeUpdate], hang: bool = False) -> None:
+        self._updates = updates
+        self._hang = hang
+
+    def __aiter__(self):
+        return self._iter()
+
+    async def _iter(self):
+        for update in self._updates:
+            yield update
+        if self._hang:
+            await asyncio.sleep(999)
 
 
 class _FakeAgent:
-    """Minimal ChatAgent stand-in with configurable stream behaviour."""
+    """Minimal Agent stand-in with configurable stream behaviour."""
 
     def __init__(self, updates: list[_FakeUpdate] | None = None, hang: bool = False) -> None:
         self._updates = updates or []
         self._hang = hang
 
-    def get_new_thread(self) -> _FakeThread:
-        return _FakeThread()
-
-    async def run_stream(self, message: object, *, thread: object) -> AsyncGenerator[_FakeUpdate]:
-        """Async generator that yields updates, optionally hanging."""
-        for update in self._updates:
-            yield update
-        if self._hang:
-            # Simulate an endpoint that stops sending tokens
-            await asyncio.sleep(999)
+    def run(self, message: object, *, stream: bool = False, session: object = None) -> _FakeResponseStream:
+        return _FakeResponseStream(self._updates, hang=self._hang)
 
 
 class TestStreamInactivityTimeout:

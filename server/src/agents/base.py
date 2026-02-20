@@ -26,8 +26,8 @@ T = TypeVar("T", bound=pydantic.BaseModel)
 class BaseAgent:
     """Base class for all domain-specific agents.
 
-    Manages a shared ``ChatClientProtocol`` and constructs
-    purpose-specific ``ChatAgent`` contexts with timing and
+    Manages a shared ``SupportsChatGetResponse`` and constructs
+    purpose-specific ``Agent`` contexts with timing and
     retry middleware baked in.
 
     Subclasses should set ``agent_name``, ``instructions``,
@@ -54,7 +54,7 @@ class BaseAgent:
 
     def __init__(self) -> None:
         """Initialise with a shared LLM chat client."""
-        self._chat_client: agent_framework.ChatClientProtocol | None = None
+        self._chat_client: agent_framework.SupportsChatGetResponse | None = None
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
         self._retry = middleware_mod.RetryChatMiddleware(
             self.agent_name,
@@ -184,8 +184,8 @@ class BaseAgent:
         instructions: str | None = None,
         max_tokens: int | None = None,
         response_model: type[pydantic.BaseModel] | None = None,
-    ) -> agent_framework.ChatAgent:
-        """Build a ``ChatAgent`` with middleware and options.
+    ) -> agent_framework.Agent:
+        """Build an ``Agent`` with middleware and options.
 
         The returned agent must be used as an async context
         manager (``async with``).
@@ -198,13 +198,13 @@ class BaseAgent:
                 structured output.
 
         Returns:
-            A ``ChatAgent`` ready for ``async with``.
+            An ``Agent`` ready for ``async with``.
         """
         if self._chat_client is None:
             raise ValueError(f"{self.agent_name}: chat client not initialised. Call initialise() first.")
 
-        return agent_framework.ChatAgent(
-            chat_client=self._chat_client,
+        return agent_framework.Agent(
+            client=self._chat_client,
             instructions=instructions or self.instructions,
             name=self.agent_name,
             description=(f"Chat agent for {self.agent_name}"),
@@ -239,14 +239,14 @@ class BaseAgent:
             f"{self.agent_name}: text completion",
             {"promptChars": len(user_prompt), "maxTokens": max_tokens or self.max_tokens},
         )
-        message = agent_framework.ChatMessage(
-            role=agent_framework.Role.USER,
+        message = agent_framework.Message(
+            role="user",
             text=user_prompt,
         )
         async with self._build_agent(instructions, max_tokens, response_model) as agent:
-            thread = agent.get_new_thread()
-            response = await agent.run(message, thread=thread)
-            logger.save_agent_thread(self.agent_name, await thread.serialize())
+            session = agent_framework.AgentSession()
+            response = await agent.run(message, session=session)
+            logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -285,17 +285,17 @@ class BaseAgent:
             },
         )
 
-        message = agent_framework.ChatMessage(
-            role=agent_framework.Role.USER,
+        message = agent_framework.Message(
+            role="user",
             contents=[
                 agent_framework.Content.from_uri(image_uri, media_type="image/jpeg"),
                 agent_framework.Content.from_text(user_text),
             ],
         )
         async with self._build_agent(instructions, max_tokens) as agent:
-            thread = agent.get_new_thread()
-            response = await agent.run(message, thread=thread)
-            logger.save_agent_thread(self.agent_name, await thread.serialize())
+            session = agent_framework.AgentSession()
+            response = await agent.run(message, session=session)
+            logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: vision response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -319,7 +319,7 @@ class BaseAgent:
             Parsed model instance or ``None``.
         """
         try:
-            return response.try_parse_value(model)
+            return response.value
         except Exception as exc:
             log.warn(
                 f"{self.agent_name}: failed to parse structured output: {exc}",

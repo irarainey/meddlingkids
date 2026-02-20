@@ -138,7 +138,7 @@ class TestTimeoutErrorMessage:
         context = mock.MagicMock()
         context.result = None
 
-        async def slow_next(_ctx: object) -> None:
+        async def slow_next() -> None:
             await asyncio.sleep(999)
 
         with pytest.raises(TimeoutError, match=r"timed out after 5\.0s"):
@@ -149,7 +149,7 @@ class TestTimeoutErrorMessage:
         """Timeouts are retried up to max_retries, then raised."""
         call_count = 0
 
-        async def slow_next(_ctx: object) -> None:
+        async def slow_next() -> None:
             nonlocal call_count
             call_count += 1
             await asyncio.sleep(999)
@@ -182,7 +182,7 @@ class TestSemaphoreIntegration:
         current_concurrent = 0
         lock = asyncio.Lock()
 
-        async def tracking_next(_ctx: object) -> None:
+        async def tracking_next() -> None:
             nonlocal peak_concurrent, current_concurrent
             async with lock:
                 current_concurrent += 1
@@ -205,7 +205,7 @@ class TestSemaphoreIntegration:
     async def test_semaphore_released_on_success(self) -> None:
         """Semaphore is released after a successful call."""
 
-        async def ok_next(_ctx: object) -> None:
+        async def ok_next() -> None:
             pass
 
         middleware = middleware_mod.RetryChatMiddleware("TestAgent", max_retries=0)
@@ -220,7 +220,7 @@ class TestSemaphoreIntegration:
     async def test_semaphore_released_on_failure(self) -> None:
         """Semaphore is released even when the call fails."""
 
-        async def fail_next(_ctx: object) -> None:
+        async def fail_next() -> None:
             raise ValueError("non-retryable")
 
         middleware = middleware_mod.RetryChatMiddleware("TestAgent", max_retries=0)

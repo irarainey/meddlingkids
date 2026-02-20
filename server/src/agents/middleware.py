@@ -10,6 +10,7 @@ import asyncio
 import random
 import time
 from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 import agent_framework
 
@@ -41,25 +42,26 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
     async def process(
         self,
         context: agent_framework.ChatContext,
-        next: Callable[[agent_framework.ChatContext], Awaitable[None]],
+        call_next: Callable[[], Awaitable[None]],
     ) -> None:
         """Process a chat request and measure execution time.
 
         Args:
             context: Chat invocation context with messages and
                 options.
-            next: Callable to invoke the next middleware or LLM.
+            call_next: Callable to invoke the next middleware or LLM.
         """
         message_count = len(context.messages)
         log.debug(f"Agent '{self.agent_name}' sending {message_count} message(s) to LLM")
 
         start_time = time.perf_counter()
-        await next(context)
+        await call_next()
         duration = time.perf_counter() - start_time
 
         log.info(f"Agent '{self.agent_name}' completed in {duration:.2f}s")
 
-        context.metadata["timing"] = {
+        metadata = cast(dict[str, Any], context.metadata)
+        metadata["timing"] = {
             "duration_seconds": round(duration, 3),
             "agent_name": self.agent_name,
         }
@@ -194,13 +196,13 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
     async def process(
         self,
         context: agent_framework.ChatContext,
-        next: Callable[[agent_framework.ChatContext], Awaitable[None]],
+        call_next: Callable[[], Awaitable[None]],
     ) -> None:
         """Invoke the LLM with automatic retry on failure.
 
         Args:
             context: Chat invocation context.
-            next: Callable to invoke the next middleware or LLM.
+            call_next: Callable to invoke the next middleware or LLM.
 
         Raises:
             Exception: Re-raised from the last attempt when all
@@ -214,11 +216,11 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                 async with _llm_semaphore:
                     if self.per_call_timeout is not None:
                         await asyncio.wait_for(
-                            next(context),
+                            call_next(),
                             timeout=self.per_call_timeout,
                         )
                     else:
-                        await next(context)
+                        await call_next()
                 self._check_empty_response(context)
                 return
             except TimeoutError as exc:
