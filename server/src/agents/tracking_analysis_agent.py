@@ -364,9 +364,7 @@ def _build_score_section(
     label = risk.risk_label(score_breakdown.total_score)
     top = ", ".join(score_breakdown.factors[:5]) or "none"
     cat_lines = "\n".join(
-        f"  - {name}: {cat.points}/{cat.max_points}"
-        for name, cat in score_breakdown.categories.items()
-        if cat.points > 0
+        f"  - {name}: {cat.points}/{cat.max_points}" for name, cat in score_breakdown.categories.items() if cat.points > 0
     )
 
     return (

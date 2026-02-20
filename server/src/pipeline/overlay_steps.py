@@ -104,18 +104,18 @@ async def detect_overlay(
                 consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
             )
             if raw and isinstance(raw, dict):
-                bounds: ConsentBounds = (
+                crop_box: tuple[int, int, int, int] = (
                     int(raw["left"]),
                     int(raw["top"]),
                     int(raw["right"]),
                     int(raw["bottom"]),
                 )
-                cropped = image.crop_jpeg(viewport_screenshot, bounds)
+                cropped = image.crop_jpeg(viewport_screenshot, crop_box)
                 if cropped is not viewport_screenshot:
                     detection_screenshot = cropped
                     log.info(
                         "Cropped detection screenshot to consent dialog",
-                        {"bounds": bounds},
+                        {"bounds": crop_box},
                     )
         except Exception as exc:
             log.debug(

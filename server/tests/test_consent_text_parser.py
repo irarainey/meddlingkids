@@ -125,10 +125,7 @@ class TestConsentContextGate:
         assert text_parser._CONSENT_CONTEXT_RE.search(text)
 
     def test_plain_news_article_does_not_match(self) -> None:
-        text = (
-            "Labour leads in the polls ahead of the general election. "
-            "The Prime Minister addressed the nation last night."
-        )
+        text = "Labour leads in the polls ahead of the general election. The Prime Minister addressed the nation last night."
         assert text_parser._CONSENT_CONTEXT_RE.search(text) is None
 
     def test_navigation_text_does_not_match(self) -> None:
@@ -171,10 +168,7 @@ class TestPurposeExtraction:
         assert len(purposes) == 5
 
     def test_deduplicates_purposes(self) -> None:
-        text = (
-            "Measure advertising performance. "
-            "Measure advertising performance."
-        )
+        text = "Measure advertising performance. Measure advertising performance."
         purposes = text_parser._extract_purposes(text)
         assert len(purposes) == 1
 

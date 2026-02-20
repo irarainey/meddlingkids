@@ -36,17 +36,14 @@ def _empty_summary() -> analysis.TrackingSummary:
 
 def _make_response(
     text: str,
-    value: object | None = None,
 ) -> agent_framework.AgentResponse:
     """Build a minimal AgentResponse for testing.
 
     Args:
         text: Raw response text.
-        value: Optional parsed value for ``_parse_response``.
     """
     return agent_framework.AgentResponse(
         messages=[agent_framework.Message(role="assistant", text=text)],
-        value=value,
     )
 
 
@@ -80,7 +77,6 @@ class TestTrackingAnalysisStructuredOutput:
         )
         resp = _make_response(
             text=json.dumps(parsed.model_dump()),
-            value=parsed,
         )
         agent = _make_agent()
 

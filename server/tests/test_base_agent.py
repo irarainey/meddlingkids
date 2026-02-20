@@ -10,7 +10,6 @@ import pydantic
 
 from src.agents.base import BaseAgent
 
-
 # ── Helper model ──────────────────────────────────────────────
 
 

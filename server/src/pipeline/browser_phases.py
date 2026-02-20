@@ -311,10 +311,7 @@ async def check_access(
 
     event_str, _, _ = await sse_helpers.take_screenshot_event(
         session,
-        storage={
-            "local_storage": [],
-            "session_storage": [],
-        },
+        storage=tracking_data.CapturedStorage(),
     )
     events.append(event_str)
 

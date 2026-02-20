@@ -6,8 +6,8 @@ LLM calls, and that the fallback path is exercised for unknown keys.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -383,13 +383,15 @@ class TestStorageInfoAgentFallbackParsing:
         """When response.value is None but response.text contains
         valid JSON, the agent should parse it manually."""
         agent = StorageInfoAgent.__new__(StorageInfoAgent)
-        json_text = json.dumps({
-            "description": "Page engagement timing metric",
-            "setBy": "DotMetrics",
-            "purpose": "analytics",
-            "riskLevel": "medium",
-            "privacyNote": "Tracks time on page.",
-        })
+        json_text = json.dumps(
+            {
+                "description": "Page engagement timing metric",
+                "setBy": "DotMetrics",
+                "purpose": "analytics",
+                "riskLevel": "medium",
+                "privacyNote": "Tracks time on page.",
+            }
+        )
         mock_response = MagicMock()
         mock_response.value = None
         mock_response.text = json_text
@@ -405,13 +407,19 @@ class TestStorageInfoAgentFallbackParsing:
     async def test_json_text_fallback_with_markdown_fences(self) -> None:
         """JSON wrapped in markdown code fences should still be parsed."""
         agent = StorageInfoAgent.__new__(StorageInfoAgent)
-        json_text = '```json\n' + json.dumps({
-            "description": "Test key",
-            "setBy": "TestSDK",
-            "purpose": "functional",
-            "riskLevel": "none",
-            "privacyNote": "",
-        }) + '\n```'
+        json_text = (
+            "```json\n"
+            + json.dumps(
+                {
+                    "description": "Test key",
+                    "setBy": "TestSDK",
+                    "purpose": "functional",
+                    "riskLevel": "none",
+                    "privacyNote": "",
+                }
+            )
+            + "\n```"
+        )
         mock_response = MagicMock()
         mock_response.value = None
         mock_response.text = json_text
@@ -440,13 +448,15 @@ class TestStorageInfoAgentFallbackParsing:
         """When response.text contains valid JSON, _parse_response
         parses it directly without needing the fallback."""
         agent = StorageInfoAgent.__new__(StorageInfoAgent)
-        json_text = json.dumps({
-            "description": "Structured result",
-            "setBy": "Framework",
-            "purpose": "session",
-            "riskLevel": "none",
-            "privacyNote": "",
-        })
+        json_text = json.dumps(
+            {
+                "description": "Structured result",
+                "setBy": "Framework",
+                "purpose": "session",
+                "riskLevel": "none",
+                "privacyNote": "",
+            }
+        )
         mock_response = MagicMock()
         mock_response.text = json_text
 

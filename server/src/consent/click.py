@@ -144,8 +144,12 @@ async def try_click_consent_button(
     if found_in_frame and found_in_frame != page.main_frame:
         log.debug("Trying validated frame first", {"url": found_in_frame.url[:80]})
         strategy = await _try_click_in_frame(
-            found_in_frame, selector, button_text, 3000,
-            deadline=deadline, is_consent_frame=True,
+            found_in_frame,
+            selector,
+            button_text,
+            3000,
+            deadline=deadline,
+            is_consent_frame=True,
         )
         if strategy:
             if await _did_navigate_away(page, original_url):
@@ -178,8 +182,12 @@ async def try_click_consent_button(
             frame_url = frame.url
             log.debug("Checking consent iframe", {"url": frame_url[:80]})
             strategy = await _try_click_in_frame(
-                frame, selector, button_text, 3000,
-                deadline=deadline, is_consent_frame=True,
+                frame,
+                selector,
+                button_text,
+                3000,
+                deadline=deadline,
+                is_consent_frame=True,
             )
             if strategy:
                 if await _did_navigate_away(page, original_url):

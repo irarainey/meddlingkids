@@ -6,8 +6,8 @@ LLM calls, and that the fallback path is exercised for unknown cookies.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -430,13 +430,15 @@ class TestCookieInfoAgentFallbackParsing:
         """When response.value is None but response.text contains
         valid JSON, the agent should parse it manually."""
         agent = CookieInfoAgent.__new__(CookieInfoAgent)
-        json_text = json.dumps({
-            "description": "BBC multivariate testing cookie",
-            "setBy": "BBC",
-            "purpose": "functional",
-            "riskLevel": "none",
-            "privacyNote": "Used for A/B testing.",
-        })
+        json_text = json.dumps(
+            {
+                "description": "BBC multivariate testing cookie",
+                "setBy": "BBC",
+                "purpose": "functional",
+                "riskLevel": "none",
+                "privacyNote": "Used for A/B testing.",
+            }
+        )
         mock_response = MagicMock()
         mock_response.value = None
         mock_response.text = json_text
@@ -452,13 +454,19 @@ class TestCookieInfoAgentFallbackParsing:
     async def test_json_text_fallback_with_markdown_fences(self) -> None:
         """JSON wrapped in markdown code fences should still be parsed."""
         agent = CookieInfoAgent.__new__(CookieInfoAgent)
-        json_text = '```json\n' + json.dumps({
-            "description": "Test cookie",
-            "setBy": "TestService",
-            "purpose": "analytics",
-            "riskLevel": "low",
-            "privacyNote": "",
-        }) + '\n```'
+        json_text = (
+            "```json\n"
+            + json.dumps(
+                {
+                    "description": "Test cookie",
+                    "setBy": "TestService",
+                    "purpose": "analytics",
+                    "riskLevel": "low",
+                    "privacyNote": "",
+                }
+            )
+            + "\n```"
+        )
         mock_response = MagicMock()
         mock_response.value = None
         mock_response.text = json_text
@@ -487,13 +495,15 @@ class TestCookieInfoAgentFallbackParsing:
         """When response.text contains valid JSON, _parse_response
         parses it directly without needing the fallback."""
         agent = CookieInfoAgent.__new__(CookieInfoAgent)
-        json_text = json.dumps({
-            "description": "Structured result",
-            "setBy": "Framework",
-            "purpose": "session",
-            "riskLevel": "none",
-            "privacyNote": "",
-        })
+        json_text = json.dumps(
+            {
+                "description": "Structured result",
+                "setBy": "Framework",
+                "purpose": "session",
+                "riskLevel": "none",
+                "privacyNote": "",
+            }
+        )
         mock_response = MagicMock()
         mock_response.text = json_text
 

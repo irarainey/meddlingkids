@@ -99,7 +99,9 @@ class TestSafeClickSkipSafety:
         first.click = AsyncMock()
 
         result = await click._safe_click(
-            locator, 3000, force_on_timeout=False,
+            locator,
+            3000,
+            force_on_timeout=False,
         )
 
         assert result is False
@@ -115,7 +117,9 @@ class TestSafeClickSkipSafety:
         first.click = AsyncMock()
 
         result = await click._safe_click(
-            locator, 3000, force_on_timeout=True,
+            locator,
+            3000,
+            force_on_timeout=True,
         )
 
         assert result is True
@@ -146,7 +150,10 @@ class TestTryClickInFrameConsentFrame:
         with patch.object(click, "_safe_click", new_callable=AsyncMock) as mock_safe:
             mock_safe.return_value = True
             result = await click._try_click_in_frame(
-                frame, None, "Accept", 3000,
+                frame,
+                None,
+                "Accept",
+                3000,
                 is_consent_frame=True,
             )
 
@@ -171,7 +178,10 @@ class TestTryClickInFrameConsentFrame:
         with patch.object(click, "_safe_click", new_callable=AsyncMock) as mock_safe:
             mock_safe.return_value = True
             result = await click._try_click_in_frame(
-                frame, None, "Accept", 3000,
+                frame,
+                None,
+                "Accept",
+                3000,
                 is_consent_frame=False,
             )
 
@@ -194,7 +204,10 @@ class TestTryClickInFrameConsentFrame:
         with patch.object(click, "_safe_click", new_callable=AsyncMock) as mock_safe:
             mock_safe.return_value = True
             result = await click._try_click_in_frame(
-                frame, "button.fc-cta-consent", None, 3000,
+                frame,
+                "button.fc-cta-consent",
+                None,
+                3000,
                 is_consent_frame=True,
             )
 
