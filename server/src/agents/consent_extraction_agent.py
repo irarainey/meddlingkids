@@ -356,23 +356,30 @@ def _merge_results(
     llm: consent.ConsentDetails,
     local: consent.ConsentDetails,
 ) -> consent.ConsentDetails:
-    """Merge LLM and local-parse results conservatively.
+    """Merge LLM and local-parse results with union semantics.
 
-    The LLM result is authoritative for categories, partners,
-    and purposes.  The local parse only supplements two
-    high-confidence scalar signals that cannot produce false
-    positives:
+    The LLM result is primary.  The local parser supplements
+    it with any purposes or categories it found that the LLM
+    missed.  This ensures that deterministic regex matches
+    (which only fire when the consent-context gate has already
+    confirmed the text is from a consent dialog) are never
+    silently discarded.
+
+    Scalars:
 
     * ``has_manage_options`` — ``True`` if either source
       detected the indicator.
     * ``claimed_partner_count`` — falls back to the local
       count when the LLM didn't extract one.
 
-    Categories, purposes, and partners from the local parse
-    are **not** merged in because the regex patterns can
-    produce false positives on non-consent page text (e.g.
-    news article headlines containing words like "ads" or
-    "analytics").
+    Collections (purposes, categories):
+
+    * Start with the LLM list.
+    * Append any local-parser entries whose normalised names
+      are not already present.
+
+    Partners are taken from the LLM only — the local regex
+    parser's partner extraction is too noisy for union.
 
     Args:
         llm: Result from the LLM vision extraction.
@@ -381,11 +388,27 @@ def _merge_results(
     Returns:
         A ``ConsentDetails`` instance.
     """
+    # ── Union purposes ──────────────────────────────────
+    merged_purposes = list(llm.purposes)
+    existing_lower = {p.lower() for p in merged_purposes}
+    for p in local.purposes:
+        if p.lower() not in existing_lower:
+            merged_purposes.append(p)
+            existing_lower.add(p.lower())
+
+    # ── Union categories ────────────────────────────────
+    merged_categories = list(llm.categories)
+    existing_cat_names = {c.name.lower() for c in merged_categories}
+    for c in local.categories:
+        if c.name.lower() not in existing_cat_names:
+            merged_categories.append(c)
+            existing_cat_names.add(c.name.lower())
+
     return consent.ConsentDetails(
         has_manage_options=llm.has_manage_options or local.has_manage_options,
-        categories=llm.categories,
+        categories=merged_categories,
         partners=llm.partners,
-        purposes=llm.purposes,
+        purposes=merged_purposes,
         raw_text=llm.raw_text,
         claimed_partner_count=llm.claimed_partner_count or local.claimed_partner_count,
         consent_platform=llm.consent_platform,

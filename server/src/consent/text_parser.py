@@ -32,10 +32,30 @@ _CONSENT_CONTEXT_RE = re.compile(
     r"|manage\s+(?:my\s+)?(?:cookie|consent|privacy)"
     r"|accept\s+(?:all\s+)?cookies"
     r"|reject\s+(?:all\s+)?cookies"
+    r"|agree\s+to\s+cookies"
     r"|data\s+processing\s+purposes?"
     r"|legitimate\s+interest"
     r"|tcf|iab\s+(?:europe|framework)"
-    r"|GDPR",
+    r"|GDPR"
+    # CMP-specific indicators
+    r"|quantcast\s+choice"
+    r"|sourcepoint"
+    r"|onetrust"
+    r"|cookiebot"
+    r"|didomi"
+    r"|funding\s+choices"
+    r"|privacy\s+(?:manager|center|centre|notice|wall)"
+    # IAB TCF purpose phrases (standard wording)
+    r"|store\s+and/or\s+access\s+information"
+    r"|select\s+(?:basic|personali[sz]ed)\s+(?:ads?|advertising|content)"
+    r"|create\s+(?:a\s+)?personali[sz]ed\s+(?:ads?|content)\s+profile"
+    r"|measure\s+(?:ad|advertising|content)\s+performance"
+    r"|understand\s+audiences?"
+    r"|develop\s+and\s+improve\s+(?:products?|services?)"
+    r"|use\s+limited\s+data\s+to\s+select"
+    # Vendor / partner list indicators
+    r"|(?:our\s+)?\d+\s*\+?\s*(?:partners?|vendors?)"
+    r"|(?:partner|vendor)\s+list",
     re.IGNORECASE,
 )
 
