@@ -297,7 +297,7 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      Results are AI-generated and may be inaccurate or incomplete. All information should be considered informal and verified independently. Version: Client {{ appVersion }}<span v-if="serverVersion"> : Server {{ serverVersion }}</span>
+      Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Client {{ appVersion }}<span v-if="serverVersion"> : Server {{ serverVersion }}</span>
     </footer>
 </template>
 
