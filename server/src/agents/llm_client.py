@@ -8,7 +8,7 @@ variables, preferring Azure when fully configured.
 
 from __future__ import annotations
 
-from agent_framework import ChatClientProtocol, azure, openai
+from agent_framework import SupportsChatGetResponse, azure, openai
 
 from src.agents import config
 from src.utils import logger
@@ -20,13 +20,13 @@ def get_chat_client(
     agent_name: str | None = None,
     *,
     deployment_override: str | None = None,
-) -> ChatClientProtocol | None:
+) -> SupportsChatGetResponse | None:
     """Create and return a chat client for the configured LLM backend.
 
     Prefers Azure OpenAI when its environment variables are set.
     Falls back to standard OpenAI otherwise.
 
-    Middleware should be added when creating ``ChatAgent`` instances,
+    Middleware should be added when creating ``Agent`` instances,
     not at the client level.
 
     Args:
@@ -35,7 +35,7 @@ def get_chat_client(
             replaces the default ``AZURE_OPENAI_DEPLOYMENT``.
 
     Returns:
-        A ``ChatClientProtocol`` instance, or ``None`` if
+        A ``SupportsChatGetResponse`` instance, or ``None`` if
         configuration is missing.
     """
     azure_cfg = config.AzureOpenAIConfig()
@@ -54,7 +54,7 @@ def _create_azure_client(
     cfg: config.AzureOpenAIConfig,
     agent_name: str | None,
     deployment_override: str | None = None,
-) -> ChatClientProtocol:
+) -> SupportsChatGetResponse:
     """Instantiate an Azure OpenAI chat client.
 
     Args:
@@ -88,7 +88,7 @@ def _create_azure_client(
 def _create_openai_client(
     cfg: config.OpenAIConfig,
     agent_name: str | None,
-) -> ChatClientProtocol:
+) -> SupportsChatGetResponse:
     """Instantiate a standard OpenAI chat client.
 
     Args:

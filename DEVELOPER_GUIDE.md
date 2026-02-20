@@ -429,12 +429,13 @@ App.vue
 AI interactions use the **Microsoft Agent Framework** (`agent-framework-core` package). Each agent subclasses `BaseAgent` and defines its own response model and token limits. System prompts are stored in the `agents/prompts/` directory — one module per agent — keeping prompt text separate from agent logic.
 
 Key framework types used:
-- `agent_framework.ChatAgent` — orchestrates a chat conversation with middleware
-- `agent_framework.ChatClientProtocol` — abstraction over LLM backends (Azure OpenAI, OpenAI)
+- `agent_framework.Agent` — orchestrates a chat conversation with middleware
+- `agent_framework.SupportsChatGetResponse` — abstraction over LLM backends (Azure OpenAI, OpenAI)
 - `agent_framework.ChatMiddleware` — pluggable request/response pipeline
-- `agent_framework.ChatMessage` / `agent_framework.Content` — message types (text + multimodal)
+- `agent_framework.Message` / `agent_framework.Content` — message types (text + multimodal)
 - `agent_framework.ChatOptions` — token limits and structured output (`response_format`)
-- `agent_framework.AgentResponse` — typed response with `try_parse_value()` for Pydantic parsing
+- `agent_framework.AgentResponse` — typed response with `.value` property for automatic Pydantic parsing
+- `agent_framework.AgentSession` — lightweight session container (replaces threads)
 
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
@@ -443,7 +444,7 @@ Key framework types used:
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
-| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Has a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
+| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Uses `run(stream=True)` with a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
 
@@ -451,7 +452,7 @@ Key framework types used:
 |----------------|--------|---------------|
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, and per-agent deployment override support via `config.get_agent_deployment()` |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`) |
-| `LLM Client` | `llm_client.py` | Chat client factory (`ChatClientProtocol`) with `deployment_override` support for per-agent model selection |
+| `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
@@ -587,13 +588,13 @@ Tracking data collected
 build_tracking_summary() → Formatted text for LLM
     │
     ▼
-BaseAgent._build_agent() → Creates ChatAgent (agent_framework.ChatAgent)
-    │                         with ChatClientProtocol + middleware
+BaseAgent._build_agent() → Creates Agent (agent_framework.Agent)
+    │                         with SupportsChatGetResponse client + middleware
     │
     ├── TimingChatMiddleware → Logs duration + records token usage
     ├── RetryChatMiddleware → Handles 429/5xx with backoff + per-call timeout
     │                         + global concurrency limit (max 10 in-flight)
-    └── ChatAgent.run() or run_stream() → LLM chat completion
+    └── Agent.run() or run(stream=True) → LLM chat completion
     │
     ▼
 Parse response (structured JSON via response_format or streamed markdown)

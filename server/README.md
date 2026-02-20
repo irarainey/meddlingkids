@@ -177,14 +177,14 @@ Configuration for all tools is in `pyproject.toml`.
 
 ## Microsoft Agent Framework
 
-The server uses the [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) (`agent-framework-core` package) for all AI-powered analysis.  All agents subclass `BaseAgent`, which provides shared infrastructure for creating `ChatAgent` instances with middleware, structured output, and LLM client management.
+The server uses the [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) (`agent-framework-core` package) for all AI-powered analysis.  All agents subclass `BaseAgent`, which provides shared infrastructure for creating `Agent` instances with middleware, structured output, and LLM client management.
 
 ### How It Works
 
-1. `BaseAgent.initialise()` creates a `ChatClientProtocol` via the `llm_client` factory (supports Azure OpenAI and standard OpenAI)
-2. `BaseAgent._build_agent()` constructs a `ChatAgent` with the agent's system prompt, `ChatOptions` (including `response_format` for structured JSON output), and middleware (`RetryChatMiddleware`, `TimingChatMiddleware`)
+1. `BaseAgent.initialise()` creates a `SupportsChatGetResponse` client via the `llm_client` factory (supports Azure OpenAI and standard OpenAI)
+2. `BaseAgent._build_agent()` constructs an `Agent` with the agent's system prompt, `ChatOptions` (including `response_format` for structured JSON output), and middleware (`RetryChatMiddleware`, `TimingChatMiddleware`)
 3. Agents call `_complete()` for text-only prompts or `_complete_vision()` for multimodal prompts (screenshot + text)
-4. Responses are parsed into Pydantic models via `AgentResponse.try_parse_value()`
+4. Responses are parsed into Pydantic models via the `AgentResponse.value` property
 
 ### Agents
 
@@ -195,7 +195,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
-| `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run_stream()` with a 60 s inactivity timeout) |
+| `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run(stream=True)` with a 60 s inactivity timeout) |
 | `CookieInfoAgent` | Cookie name + domain + value | `CookieInfoResult` | Explains individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not found in known databases |
 | `StorageInfoAgent` | Storage key + type + value | `StorageInfoResult` | Explains individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not found in known databases |
 
