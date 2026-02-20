@@ -30,7 +30,7 @@ uv run playwright install chromium
 
 ### Standard OpenAI (fallback)
 - `OPENAI_API_KEY` - API key for authentication
-- `OPENAI_MODEL` - Model name (must support vision, default: `gpt-5.2-chat`)
+- `OPENAI_MODEL` - Model name (must support vision, e.g., `gpt-5.2-chat`)
 - `OPENAI_BASE_URL` - Optional custom base URL
 
 ### Server
@@ -184,7 +184,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 1. `BaseAgent.initialise()` creates a `SupportsChatGetResponse` client via the `llm_client` factory (supports Azure OpenAI and standard OpenAI)
 2. `BaseAgent._build_agent()` constructs an `Agent` with the agent's system prompt, `ChatOptions` (including `response_format` for structured JSON output), and middleware (`RetryChatMiddleware`, `TimingChatMiddleware`)
 3. Agents call `_complete()` for text-only prompts or `_complete_vision()` for multimodal prompts (screenshot + text)
-4. Responses are parsed into Pydantic models via the `AgentResponse.value` property
+4. Responses are parsed into Pydantic models via `BaseAgent._parse_response()`, which calls `model.model_validate_json(response.text)` directly
 
 ### Agents
 

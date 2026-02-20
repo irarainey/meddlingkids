@@ -112,7 +112,7 @@ meddlingkids/
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache, CMP platform detection)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
-│       ├── pipeline/          # SSE streaming orchestration (phases 1-5)
+│       ├── pipeline/          # SSE streaming orchestration (phases 1-6)
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
