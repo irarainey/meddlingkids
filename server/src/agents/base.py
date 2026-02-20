@@ -55,6 +55,8 @@ class BaseAgent:
     def __init__(self) -> None:
         """Initialise with a shared LLM chat client."""
         self._chat_client: agent_framework.SupportsChatGetResponse | None = None
+        self._fallback_client: agent_framework.SupportsChatGetResponse | None = None
+        self._using_fallback = False
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
         self._retry = middleware_mod.RetryChatMiddleware(
             self.agent_name,
@@ -67,7 +69,11 @@ class BaseAgent:
 
         When the agent's name has a deployment override
         configured via ``config.get_agent_deployment()``,
-        a dedicated client using that deployment is created.
+        a dedicated client using that deployment is created
+        and a fallback client using the default deployment
+        is also prepared.  If the override model fails at
+        runtime with a non-retryable error, the agent
+        switches to the fallback transparently.
 
         Returns:
             ``True`` when the client was created.
@@ -77,12 +83,45 @@ class BaseAgent:
             agent_name=self.agent_name,
             deployment_override=deployment,
         )
+        # When using a deployment override, also prepare a
+        # fallback client on the default deployment so the
+        # agent can recover if the override model is
+        # unsupported.
+        if deployment and self._chat_client is not None:
+            self._fallback_client = llm_client.get_chat_client(
+                agent_name=self.agent_name,
+            )
         return self._chat_client is not None
 
     @property
     def is_configured(self) -> bool:
         """Whether the LLM client is ready."""
         return self._chat_client is not None
+
+    @property
+    def has_fallback(self) -> bool:
+        """Whether a fallback client is available."""
+        return self._fallback_client is not None and not self._using_fallback
+
+    def activate_fallback(self) -> bool:
+        """Switch to the fallback client.
+
+        Called when the primary (override) deployment
+        returns a non-retryable error such as
+        ``OperationNotSupported``.
+
+        Returns:
+            ``True`` when the fallback was activated.
+        """
+        if not self.has_fallback:
+            return False
+        log.warn(
+            f"{self.agent_name}: switching to fallback (default deployment)",
+        )
+        self._chat_client = self._fallback_client
+        self._fallback_client = None
+        self._using_fallback = True
+        return True
 
     # ── Agent construction ──────────────────────────────────────
 

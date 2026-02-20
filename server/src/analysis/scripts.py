@@ -162,6 +162,44 @@ def _infer_from_url(url: str) -> str:
     return "Third-party script"
 
 
+# All possible return values from ``_infer_from_url``.
+# Used to detect fallback descriptions that should NOT
+# be persisted to the script cache.
+_FALLBACK_DESCRIPTIONS: frozenset[str] = frozenset(
+    {
+        "Analytics script",
+        "Tracking script",
+        "Tracking pixel",
+        "Consent/privacy related",
+        "Chat or widget script",
+        "Advertising script",
+        "Social sharing script",
+        "Third-party vendor script",
+        "Browser compatibility polyfill",
+        "Application bundle",
+        "Code-split chunk",
+        "Third-party script",
+    }
+)
+
+
+def is_fallback_description(description: str) -> bool:
+    """Check whether a description is a URL-heuristic fallback.
+
+    Fallback descriptions are generic labels produced by
+    ``_infer_from_url`` when the LLM agent is unavailable
+    or fails.  They should not be cached because they would
+    mask real LLM results once the agent is fixed.
+
+    Args:
+        description: The script description to check.
+
+    Returns:
+        ``True`` when the description matches a known fallback.
+    """
+    return description in _FALLBACK_DESCRIPTIONS
+
+
 # Type alias for progress callback
 ScriptAnalysisProgressCallback = Callable[[str, int, int, str], None]
 
@@ -361,6 +399,7 @@ async def _analyze_unknowns(
 
     cache_hits: int = 0
     cache_hit_scripts: int = 0
+    soft_hits: int = 0
     bases_needing_llm: dict[str, tuple[str, str, str | None, list[int]]] = {}
 
     for base, (script_domain, fetch_url, content, result_indices) in base_to_info.items():
@@ -371,6 +410,8 @@ async def _analyze_unknowns(
             if cached_desc:
                 cache_hits += 1
                 cache_hit_scripts += len(result_indices)
+                if entry.modified:
+                    soft_hits += 1
                 for ri in result_indices:
                     results[ri] = tracking_data.TrackedScript(
                         url=results[ri].url,
@@ -386,10 +427,19 @@ async def _analyze_unknowns(
             "Script cache lookup complete",
             {
                 "hits": cache_hits,
+                "softHits": soft_hits,
                 "misses": len(bases_needing_llm),
                 "scriptDomainsCached": len(cache_entries),
             },
         )
+
+    # Persist cache entries that had soft hits (hash updates)
+    # but have no pending LLM work.  Entries *with* pending
+    # LLM work will be saved later by analyze_with_progress().
+    domains_needing_llm = {sd for _, (sd, _, _, _) in bases_needing_llm.items()}
+    for sd, entry in cache_entries.items():
+        if entry and entry.modified and sd not in domains_needing_llm:
+            script_cache.save(sd, [], existing=entry)
 
     llm_to_analyze = len(bases_needing_llm)
 
@@ -433,8 +483,10 @@ async def _analyze_unknowns(
 
         # Save to cache immediately so partial progress
         # survives if a later call times out or the process
-        # is interrupted.
-        if content:
+        # is interrupted.  Skip caching fallback descriptions
+        # that came from URL heuristics — they would mask
+        # real LLM results once the agent is fixed.
+        if content and not is_fallback_description(description):
             new_entry = script_cache.CachedScript(
                 url=url,
                 content_hash=script_cache.compute_hash(content),

@@ -66,6 +66,11 @@ class ScriptCacheEntry(pydantic.BaseModel):
     domain: str
     scripts: list[CachedScript] = pydantic.Field(default_factory=list)
 
+    # Not serialised — tracks whether in-memory mutations
+    # (e.g. hash updates from soft cache hits) need to be
+    # persisted.
+    modified: bool = pydantic.Field(default=False, exclude=True)
+
 
 # ── File helpers ────────────────────────────────────────────────
 
@@ -151,35 +156,44 @@ def lookup(
     url: str,
     content_hash: str,
 ) -> str | None:
-    """Look up a script in the cache by base URL and content hash.
+    """Look up a script in the cache by base URL.
 
     Query strings and fragments are stripped before comparison
     so that the same script served with different ad-targeting
     or cache-buster parameters hits the cache.
 
-    Returns the cached description if both the base URL and
-    hash match.  Returns ``None`` (cache miss) if:
-    - The base URL is not in the cache, or
-    - The base URL is present but the hash differs (content changed).
+    Returns the cached description when the base URL matches,
+    regardless of whether the content hash is identical.
+    A script's functional purpose does not change when
+    embedded tokens, timestamps, or A/B test variants rotate,
+    so a stale hash should not trigger a costly LLM re-analysis.
 
-    A hash mismatch also removes the stale entry so it will
-    be replaced on save.
+    When the hash differs ("soft hit"), the stored hash is
+    updated in-place and ``entry.modified`` is set so the
+    caller can persist the change.
+
+    Returns ``None`` (cache miss) only when the base URL is
+    not in the cache at all.
     """
     base = strip_query_string(url)
-    for i, cached in enumerate(entry.scripts):
+    for cached in entry.scripts:
         if cached.url != base:
             continue
 
         if cached.content_hash == content_hash:
             return cached.description
 
-        # URL matches but hash differs — invalidate.
+        # URL matches but hash differs — reuse cached
+        # description and update hash.  Ad-tech scripts
+        # frequently embed per-request tokens that change
+        # the hash without altering the script's purpose.
         log.info(
-            "Script content changed, invalidating cache entry",
+            "Script content changed, reusing cached description",
             {"url": base, "oldHash": cached.content_hash, "newHash": content_hash},
         )
-        entry.scripts.pop(i)
-        return None
+        cached.content_hash = content_hash
+        entry.modified = True
+        return cached.description
 
     log.debug("Script cache miss", {"url": base})
     return None
@@ -223,12 +237,24 @@ def save(
             deduped.append(s)
     analyzed = deduped
 
-    new_urls = {s.url for s in analyzed}
-
     # Carry forward entries that weren't re-analysed this run.
+    # Normalise carried-forward URLs too so that old cache
+    # files with query-string variants don't create duplicates.
     carried: list[CachedScript] = []
     if existing:
-        carried = [s for s in existing.scripts if s.url not in new_urls]
+        for s in existing.scripts:
+            base_url = strip_query_string(s.url)
+            if base_url not in seen:
+                seen.add(base_url)
+                carried.append(
+                    CachedScript(
+                        url=base_url,
+                        content_hash=s.content_hash,
+                        description=s.description,
+                    )
+                    if s.url != base_url
+                    else s
+                )
 
     merged = analyzed + carried
 

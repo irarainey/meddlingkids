@@ -9,6 +9,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from src.analysis import script_cache
+from src.analysis.scripts import (
+    _FALLBACK_DESCRIPTIONS,
+    _infer_from_url,
+    is_fallback_description,
+)
 
 # ── URL normalisation ───────────────────────────────────────────
 
@@ -80,7 +85,8 @@ class TestLookup:
         result = script_cache.lookup(entry, "https://example.com/a.js", "abc")
         assert result is None
 
-    def test_cache_miss_hash_mismatch(self) -> None:
+    def test_soft_hit_hash_mismatch(self) -> None:
+        """Hash mismatch returns cached description and updates hash in-place."""
         entry = script_cache.ScriptCacheEntry(
             domain="example.com",
             scripts=[
@@ -88,9 +94,23 @@ class TestLookup:
             ],
         )
         result = script_cache.lookup(entry, "https://example.com/a.js", "new")
-        assert result is None
-        # Stale entry should be removed
-        assert len(entry.scripts) == 0
+        assert result == "Old desc"
+        # Hash should be updated in-place
+        assert entry.scripts[0].content_hash == "new"
+        # Entry should be marked as modified
+        assert entry.modified is True
+
+    def test_soft_hit_does_not_set_modified_on_exact_match(self) -> None:
+        """Exact hash match should not set the modified flag."""
+        entry = script_cache.ScriptCacheEntry(
+            domain="example.com",
+            scripts=[
+                script_cache.CachedScript(url="https://example.com/a.js", content_hash="abc", description="Desc"),
+            ],
+        )
+        result = script_cache.lookup(entry, "https://example.com/a.js", "abc")
+        assert result == "Desc"
+        assert entry.modified is False
 
     def test_cache_hit_with_query_string(self) -> None:
         """Lookup should match when URL has query string but cache stores base URL."""
@@ -234,3 +254,104 @@ class TestScriptCacheIO:
                 "h1",
             )
             assert result == "Ad tracking pixel"
+
+    def test_save_normalizes_carried_forward_urls(self, tmp_path) -> None:
+        """Carried-forward entries with query strings should be normalized."""
+        with patch.object(script_cache, "_CACHE_DIR", tmp_path):
+            # Simulate an old cache file with a query-string-bearing URL.
+            existing = script_cache.ScriptCacheEntry(
+                domain="example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://example.com/old.js?v=1",
+                        content_hash="h0",
+                        description="Old",
+                    ),
+                ],
+            )
+            new_scripts = [
+                script_cache.CachedScript(url="https://example.com/new.js", content_hash="h1", description="New"),
+            ]
+            script_cache.save("example.com", new_scripts, existing=existing)
+
+            loaded = script_cache.load("example.com")
+            assert loaded is not None
+            urls = {s.url for s in loaded.scripts}
+            # The carried-forward URL should have its query string stripped.
+            assert "https://example.com/old.js" in urls
+            assert "https://example.com/old.js?v=1" not in urls
+
+    def test_save_deduplicates_carried_forward(self, tmp_path) -> None:
+        """Carried-forward entries with duplicate base URLs are deduplicated."""
+        with patch.object(script_cache, "_CACHE_DIR", tmp_path):
+            existing = script_cache.ScriptCacheEntry(
+                domain="example.com",
+                scripts=[
+                    script_cache.CachedScript(url="https://example.com/a.js?v=1", content_hash="h1", description="A v1"),
+                    script_cache.CachedScript(url="https://example.com/a.js?v=2", content_hash="h2", description="A v2"),
+                    script_cache.CachedScript(url="https://example.com/b.js", content_hash="h3", description="B"),
+                ],
+            )
+            # Save with no new scripts — just carry forward.
+            script_cache.save("example.com", [], existing=existing)
+
+            loaded = script_cache.load("example.com")
+            assert loaded is not None
+            # Should deduplicate to one entry per base URL.
+            assert len(loaded.scripts) == 2
+            urls = {s.url for s in loaded.scripts}
+            assert "https://example.com/a.js" in urls
+            assert "https://example.com/b.js" in urls
+
+    def test_modified_not_serialised(self) -> None:
+        """The modified flag should not appear in serialised JSON."""
+        entry = script_cache.ScriptCacheEntry(domain="example.com", modified=True)
+        data = entry.model_dump()
+        assert "modified" not in data
+        json_str = entry.model_dump_json()
+        assert "modified" not in json_str
+
+
+# ── Fallback description detection ─────────────────────────────
+
+
+class TestIsFallbackDescription:
+    """Tests for is_fallback_description guard."""
+
+    def test_all_infer_from_url_results_are_fallbacks(self) -> None:
+        """Every value _infer_from_url can produce must be
+        in _FALLBACK_DESCRIPTIONS."""
+        urls = [
+            "https://cdn.example.com/analytics.js",
+            "https://cdn.example.com/tracking.js",
+            "https://cdn.example.com/pixel.js",
+            "https://cdn.example.com/consent.js",
+            "https://cdn.example.com/chat.js",
+            "https://cdn.example.com/ads.js",
+            "https://cdn.example.com/social.js",
+            "https://cdn.example.com/vendor.js",
+            "https://cdn.example.com/polyfill.js",
+            "https://cdn.example.com/bundle.js",
+            "https://cdn.example.com/chunk.js",
+            "https://cdn.example.com/unknown.js",
+        ]
+        for url in urls:
+            desc = _infer_from_url(url)
+            assert is_fallback_description(desc), f"_infer_from_url('{url}') returned '{desc}' which is NOT in _FALLBACK_DESCRIPTIONS"
+
+    def test_llm_description_is_not_fallback(self) -> None:
+        """A real LLM-generated description should not match."""
+        assert is_fallback_description("Google Tag Manager container script") is False
+
+    def test_all_known_fallbacks_detected(self) -> None:
+        """Every entry in _FALLBACK_DESCRIPTIONS is detected."""
+        for desc in _FALLBACK_DESCRIPTIONS:
+            assert is_fallback_description(desc) is True
+
+    def test_empty_string_is_not_fallback(self) -> None:
+        assert is_fallback_description("") is False
+
+    def test_case_sensitive(self) -> None:
+        """Fallback detection is case-sensitive."""
+        assert is_fallback_description("third-party script") is False
+        assert is_fallback_description("Third-party script") is True
