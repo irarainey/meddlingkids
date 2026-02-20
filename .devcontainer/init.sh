@@ -8,6 +8,10 @@
 
 set -e
 
+# Upgrade npm to the latest version
+echo "📦 Upgrading npm to latest..."
+npm install -g npm@latest
+
 # Install Node.js dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
     echo "🔧 Installing npm dependencies..."
