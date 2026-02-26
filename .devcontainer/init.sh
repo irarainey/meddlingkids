@@ -8,6 +8,12 @@
 
 set -e
 
+# Install GitHub Copilot CLI if not present
+if ! command -v github-copilot-cli &> /dev/null && ! command -v copilot &> /dev/null; then
+    echo "🤖 Installing GitHub Copilot CLI..."
+    curl -fsSL https://gh.io/copilot-install | bash
+fi
+
 # Upgrade npm to the latest version
 echo "📦 Upgrading npm to latest..."
 npm install -g npm@latest
