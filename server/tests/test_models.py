@@ -528,16 +528,16 @@ class TestDataCollectionItemRiskCap:
         assert item.risk == "critical"
         assert item.sensitive is True
 
-    def test_user_identifiers_always_high_sensitive(self) -> None:
-        """User Identifiers is always high / sensitive."""
+    def test_user_identifiers_not_hard_overridden(self) -> None:
+        """User Identifiers risk is context-dependent, not overridden."""
         item = report.DataCollectionItem(
             category="User Identifiers",
-            details=["email hash"],
+            details=["pseudonymous analytics UUID"],
             risk="medium",
             sensitive=False,
         )
-        assert item.risk == "high"
-        assert item.sensitive is True
+        assert item.risk == "medium"
+        assert item.sensitive is False
 
     def test_account_consent_always_low(self) -> None:
         """Account & Consent State is always low / not sensitive."""

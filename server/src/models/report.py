@@ -89,7 +89,6 @@ class TrackingTechnologiesSection(pydantic.BaseModel):
 # so that LLM drift cannot produce inconsistent results across runs.
 _CANONICAL_CATEGORY_DEFAULTS: dict[str, tuple[Literal["low", "medium", "high", "critical"], bool]] = {
     "browsing behaviour": ("medium", False),
-    "user identifiers": ("high", True),
     "device information": ("medium", False),
     "location data": ("medium", False),
     "usage analytics": ("medium", False),

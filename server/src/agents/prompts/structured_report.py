@@ -49,7 +49,15 @@ For each data type provide:
 - risk and sensitive: For the standard categories above, use these \
 fixed defaults consistently across every run:
   "Browsing Behaviour"             → risk: "medium", sensitive: false
-  "User Identifiers"               → risk: "high",   sensitive: true
+  "User Identifiers"               → context-dependent:
+    - Pseudonymous first-party IDs (analytics UUIDs, session tokens, \
+audience measurement cookies such as DotMetrics, Chartbeat, ComScore) \
+that stay on a single site → risk: "medium", sensitive: false
+    - Cross-site tracking IDs shared with ad networks, data brokers \
+or identity-resolution services → risk: "high", sensitive: false
+    - Directly identifiable personal data (email hashes, phone hashes, \
+login IDs, government IDs) shared with third parties → risk: "high", \
+sensitive: true
   "Device Information"             → risk: "medium", sensitive: false
   "Location Data"                  → risk: "medium", sensitive: false  \
 (IP-derived approximate location is NOT sensitive; only upgrade to \
