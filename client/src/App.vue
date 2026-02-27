@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -96,6 +96,20 @@ onMounted(async () => {
 
 /** Show the Debug Log tab only when ?debug=true is in the URL. */
 const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
+
+/** Back-to-top button — visible once the user scrolls past 300px. */
+const showBackToTop = ref(false)
+
+function onScroll(): void {
+  showBackToTop.value = window.scrollY > 300
+}
+
+function scrollToTop(): void {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+window.addEventListener('scroll', onScroll, { passive: true })
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 /** Scroll to the screenshot gallery when the first screenshot arrives. */
 watch(
@@ -257,6 +271,7 @@ function onUrlMouseUp(event: Event): void {
           v-if="activeTab === 'cookies'"
           :cookies-by-domain="cookiesByDomain"
           :cookie-count="cookies.length"
+          :analyzed-url="inputValue"
         />
 
         <ConsentTab
@@ -298,7 +313,15 @@ function onUrlMouseUp(event: Event): void {
 
     <footer class="app-footer">
       Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Client {{ appVersion }}<span v-if="serverVersion"> : Server {{ serverVersion }}</span>
+      <br>Scooby-Doo and related imagery are trademarks of and &copy; Warner Bros. Entertainment Inc. Not affiliated with or endorsed by Warner Bros.
+      <br>Licensed under <a href="https://github.com/irarainey/meddlingkids/blob/main/LICENSE" target="_blank" rel="noopener">AGPL v3+</a> · <a href="https://github.com/irarainey/meddlingkids" target="_blank" rel="noopener">Source on GitHub</a>
     </footer>
+
+    <Transition name="fade">
+      <button v-if="showBackToTop" class="back-to-top" title="Back to top" @click="scrollToTop">
+        ↑
+      </button>
+    </Transition>
 </template>
 
 <style scoped>
@@ -450,14 +473,61 @@ function onUrlMouseUp(event: Event): void {
   font-size: 0.7rem;
   padding: 1.5rem 1rem 0.5rem;
   user-select: none;
-  pointer-events: none;
   line-height: 1.4;
+}
+
+.app-footer a {
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: normal;
+  pointer-events: auto;
+}
+
+.app-footer a:hover {
+  color: #7CB8E4;
+  text-decoration: underline;
 }
 
 .app-footer .version {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.6rem;
+}
+
+.back-to-top {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 6px;
+  border: 1px solid #3d4663;
+  background: rgba(42, 47, 69, 0.7);
+  color: #e0e7ff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, border-color 0.2s;
+  z-index: 100;
+}
+
+.back-to-top:hover {
+  background: rgba(42, 47, 69, 0.95);
+  border-color: #7CB8E4;
+  color: #7CB8E4;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 @media (max-width: 900px) {

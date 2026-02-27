@@ -1,5 +1,10 @@
 {
-  "_description": "Known tracking cookie definitions with descriptions, set-by information, purpose categories, risk levels, and privacy notes. Used by the cookie information lookup service to identify well-known cookies without requiring an LLM call. Sources include the Open Cookie Database (jkwakman/Open-Cookie-Database), vendor documentation, and Cookiepedia.",
+  "_description": "Known tracking cookie definitions with descriptions, set-by information, purpose categories, risk levels, and privacy notes. Used by the cookie information lookup service to identify well-known cookies without requiring an LLM call.",
+  "_sources": [
+    "Open Cookie Database (https://github.com/jkwakman/Open-Cookie-Database) — Apache-2.0",
+    "Vendor documentation",
+    "Cookiepedia (https://cookiepedia.co.uk)"
+  ],
   "cookies": {
 
     "_comment_google_analytics": "--- Google Analytics ---",

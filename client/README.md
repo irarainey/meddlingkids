@@ -20,7 +20,8 @@ src/
 ├── main.ts                      # Application entry point
 ├── style.css                    # Global styles
 ├── assets/
-│   └── logo.svg                 # Application logo
+│   ├── logo.svg                 # Application logo
+│   └── mystery_machine.png      # Animated van for progress bar
 ├── components/
 │   ├── index.ts                 # Barrel export
 │   ├── ErrorDialog.vue          # Generic error dialog

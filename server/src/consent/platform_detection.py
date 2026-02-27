@@ -246,6 +246,10 @@ async def detect_platform_from_page(
                     )
                     return profile
             except Exception:
+                log.debug(
+                    "DOM selector probe failed",
+                    {"platform": profile.name, "selector": selector},
+                )
                 continue
 
     # ── Check consent iframes for CMP containers ────────
@@ -277,6 +281,10 @@ async def detect_platform_from_page(
                         )
                         return profile
                 except Exception:
+                    log.debug(
+                        "Iframe selector probe failed",
+                        {"platform": profile.name, "selector": selector},
+                    )
                     continue
             # Even if no container selector matched, the iframe
             # URL itself is strong evidence of the platform.
@@ -322,6 +330,10 @@ async def find_accept_button(
             if await locator.is_visible(timeout=300):
                 return locator, page.main_frame, selector
         except Exception:
+            log.debug(
+                "Accept button selector probe failed",
+                {"platform": profile.name, "selector": selector},
+            )
             continue
 
     # Try consent iframes if the CMP uses them
@@ -338,6 +350,10 @@ async def find_accept_button(
                     if await locator.is_visible(timeout=300):
                         return locator, frame, selector
                 except Exception:
+                    log.debug(
+                        "Accept button iframe selector probe failed",
+                        {"platform": profile.name, "selector": selector},
+                    )
                     continue
 
     return None
@@ -366,6 +382,10 @@ async def find_reject_button(
             if await locator.is_visible(timeout=300):
                 return locator, page.main_frame, selector
         except Exception:
+            log.debug(
+                "Reject button selector probe failed",
+                {"platform": profile.name, "selector": selector},
+            )
             continue
 
     if profile.iframe_patterns:
@@ -381,6 +401,10 @@ async def find_reject_button(
                     if await locator.is_visible(timeout=300):
                         return locator, frame, selector
                 except Exception:
+                    log.debug(
+                        "Reject button iframe selector probe failed",
+                        {"platform": profile.name, "selector": selector},
+                    )
                     continue
 
     return None

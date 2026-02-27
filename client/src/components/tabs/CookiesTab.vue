@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import type { TrackedCookie, CookieInfo } from '../../types'
 import { formatExpiry, truncateValue } from '../../utils'
 
@@ -7,12 +7,43 @@ import { formatExpiry, truncateValue } from '../../utils'
  * Tab panel displaying cookies grouped by domain.
  * Supports click-to-expand cookie information lookup via the server API.
  */
-defineProps<{
+const props = defineProps<{
   /** Cookies grouped by domain */
   cookiesByDomain: Record<string, TrackedCookie[]>
   /** Total number of cookies */
   cookieCount: number
+  /** The URL being analyzed (used to identify first-party domains) */
+  analyzedUrl?: string
 }>()
+
+/** Extract the registrable base domain from a hostname (e.g. "www.bbc.co.uk" → "bbc.co.uk"). */
+function baseDomain(hostname: string): string {
+  const parts = hostname.replace(/^\./, '').split('.')
+  // Handle two-part TLDs like co.uk, com.au, org.uk
+  const twoPartTlds = ['co.uk', 'com.au', 'org.uk', 'co.jp', 'com.br', 'co.nz', 'co.za', 'com.mx']
+  const last2 = parts.slice(-2).join('.')
+  if (twoPartTlds.includes(last2) && parts.length >= 3) {
+    return parts.slice(-3).join('.')
+  }
+  return parts.slice(-2).join('.')
+}
+
+/** The base domain of the analyzed URL, used to detect first-party cookies. */
+const firstPartyDomain = computed(() => {
+  if (!props.analyzedUrl) return ''
+  try {
+    return baseDomain(new URL(props.analyzedUrl).hostname)
+  } catch {
+    return ''
+  }
+})
+
+/** Check whether a cookie domain belongs to the first party. */
+function isFirstParty(domain: string): boolean {
+  if (!firstPartyDomain.value) return false
+  const clean = domain.replace(/^\./, '')
+  return clean === firstPartyDomain.value || clean.endsWith('.' + firstPartyDomain.value)
+}
 
 /** Cache of cookie info results, keyed by "domain|name". */
 const cookieInfoCache = reactive<Record<string, CookieInfo>>({})
@@ -22,6 +53,52 @@ const loadingKeys = reactive<Set<string>>(new Set())
 
 /** Set of cookie keys that are expanded (info panel visible). */
 const expandedKeys = reactive<Set<string>>(new Set())
+
+/** Cache of domain descriptions, keyed by domain. */
+const domainDescriptions = reactive<Record<string, { company: string | null; description: string | null }>>({})
+
+/**
+ * Resolve the description to display for a domain.
+ * First-party domains get a "First-party cookie" label even
+ * if the server lookup returns nothing.
+ */
+function domainDescription(domain: string): string | null {
+  const info = domainDescriptions[domain]
+  if (info?.description) return info.description
+  if (isFirstParty(domain)) return 'First-party cookie'
+  return null
+}
+
+/** Fetch domain descriptions for all visible cookie domains. */
+async function fetchDomainDescriptions(domains: string[]): Promise<void> {
+  const unknown = domains.filter((d) => !(d in domainDescriptions))
+  if (unknown.length === 0) return
+
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/domain-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [domain, info] of Object.entries(data)) {
+        domainDescriptions[domain] = info as { company: string | null; description: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — descriptions are non-critical
+  }
+}
+
+watch(
+  () => Object.keys(props.cookiesByDomain),
+  (domains) => {
+    if (domains.length > 0) fetchDomainDescriptions(domains)
+  },
+  { immediate: true },
+)
 
 function cookieKey(cookie: TrackedCookie): string {
   return `${cookie.domain}|${cookie.name}`
@@ -103,7 +180,12 @@ function riskClass(level: string): string {
     <div v-if="cookieCount === 0" class="empty-state">No cookies detected</div>
     <div v-else class="domain-groups">
       <div v-for="(domainCookies, domain) in cookiesByDomain" :key="domain" class="domain-group">
-        <h3 class="domain-header">{{ domain }} ({{ domainCookies.length }})</h3>
+        <h3 class="domain-header">
+          {{ domain }} ({{ domainCookies.length }})
+          <span v-if="domainDescription(String(domain))" class="domain-description">
+            {{ domainDescription(String(domain)) }}
+          </span>
+        </h3>
         <div
           v-for="cookie in domainCookies"
           :key="`${cookie.domain}-${cookie.name}`"
@@ -168,7 +250,7 @@ function riskClass(level: string): string {
 
 <style scoped>
 .cookie-item {
-  padding: 0.5rem;
+  padding: 0.6rem 0.5rem;
   border-bottom: 1px solid #3d4663;
   font-size: 0.95rem;
 }
@@ -224,10 +306,16 @@ function riskClass(level: string): string {
 .cookie-value {
   color: #9ca3af;
   word-break: break-all;
+  font-family: monospace;
+  font-size: 0.9rem;
+  background: #2a2f45;
+  padding: 0.25rem;
+  border-radius: 4px;
+  margin-top: 0.4rem;
 }
 
 .cookie-meta {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -242,7 +330,7 @@ function riskClass(level: string): string {
 /* Cookie Info Panel */
 .cookie-info-panel {
   margin-top: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.75rem 1rem;
   background: #1a1e30;
   border-radius: 6px;
   border-left: 3px solid #3d4663;
@@ -274,12 +362,13 @@ function riskClass(level: string): string {
 .cookie-info-content {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .info-row {
   display: flex;
   gap: 0.75rem;
+  padding: 0.1rem 0;
 }
 
 .info-label {

@@ -234,6 +234,7 @@ def _build_user_prompt(
         f"{knowledge_section}"
         f"{_build_gdpr_reference()}\n\n"
         f"{loader.build_tracking_cookie_context()}\n\n"
+        f"{loader.build_disconnect_context(tracking_summary.third_party_domains)}\n\n"
         f"{loader.build_media_group_context(tracking_summary.analyzed_url)}\n\n"
         "Please provide a comprehensive privacy analysis"
         " of this tracking data. If consent dialog"

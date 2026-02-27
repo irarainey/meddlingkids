@@ -167,7 +167,7 @@ class TestThirdPartyScoring:
     def test_no_third_parties(self) -> None:
         result = third_party.calculate([], [], "example.com", [])
         assert result.points == 0
-        assert result.max_points == 31
+        assert result.max_points == 48
 
     def test_third_party_domains(self) -> None:
         reqs = [

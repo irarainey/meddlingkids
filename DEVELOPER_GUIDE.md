@@ -524,11 +524,14 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Content |
 |--------|--------|
-| `data/loader.py` | JSON data loader with lazy loading and caching |
+| `data/loader.py` | JSON data loader with caching (`functools.cache`) |
 | `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
-| `data/trackers/tracking-cookies.json` | Known tracking cookie definitions with regex patterns, descriptions, purposes, risk levels, and privacy notes |
-| `data/trackers/tracking-storage.json` | Known tracking storage key definitions (localStorage/sessionStorage) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracking-storage.json` | Known tracking storage key definitions (185 keys) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracker-domains.json` | Known tracker domain database (4,644 domains) from Privacy Badger |
+| `data/trackers/cname-domains.json` | CNAME cloaking tracker domains (122,014 domains) from Privacy Badger and AdGuard |
+| `data/trackers/disconnect-services.json` | Disconnect Tracking Protection list (4,370 domains) |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
 | `data/consent/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
 | `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |

@@ -293,7 +293,7 @@ class StructuredReportAgent(base.BaseAgent):
             if consent_details.consent_platform:
                 consent_sec.consent_platform = consent_details.consent_platform
                 # Look up the CMP's base URL from the partner database.
-                cmp_db = loader.get_partner_database("consent-platforms.json")
+                cmp_db = loader.get_partner_database("consent-providers.json")
                 cmp_lower = consent_details.consent_platform.lower().strip()
                 for key, entry in cmp_db.items():
                     if key in cmp_lower or cmp_lower in key or any(a in cmp_lower for a in entry.aliases):
@@ -796,6 +796,13 @@ def _build_data_context(
     cookie_ctx = loader.build_tracking_cookie_context()
     if cookie_ctx:
         sections.append(cookie_ctx)
+
+    # Append Disconnect tracker classifications for observed domains.
+    disconnect_ctx = loader.build_disconnect_context(
+        tracking_summary.third_party_domains,
+    )
+    if disconnect_ctx:
+        sections.append(disconnect_ctx)
 
     # Append media group context when the domain is recognised.
     media_ctx = loader.build_media_group_context(tracking_summary.analyzed_url)

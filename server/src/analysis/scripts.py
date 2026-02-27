@@ -51,6 +51,33 @@ def _identify_benign_script(url: str) -> str | None:
     return None
 
 
+def _identify_tracker_domain(domain: str) -> str | None:
+    """Check if a script's domain is a known tracker.
+
+    Uses the tracker-domains database and Disconnect services to
+    produce a descriptive label.  Returns ``None`` when the domain
+    is not recognised.
+    """
+    if not loader.is_known_tracker_domain(domain):
+        return None
+
+    category = loader.get_disconnect_category(domain)
+    if category:
+        cat_label = ", ".join(category) if isinstance(category, list) else category
+        services = loader.get_disconnect_services()
+        info = services.get(domain)
+        if not info:
+            from src.utils import url as url_mod
+
+            base = url_mod.get_base_domain(domain)
+            info = services.get(base)
+        company = info.get("company") if info else None
+        if company:
+            return f"Known tracker: {company} ({cat_label})"
+        return f"Known tracker ({cat_label})"
+    return "Known tracking domain"
+
+
 # ============================================================================
 # Content fetching
 # ============================================================================
@@ -252,6 +279,9 @@ def _match_known_patterns(
     """
     unknown_scripts: list[tuple[tracking_data.TrackedScript, int]] = []
     grouped_count = sum(1 for s in grouped.all_scripts if s.is_grouped)
+    tracking_pattern_hits = 0
+    tracker_domain_hits = 0
+    benign_pattern_hits = 0
 
     if on_progress:
         detail = (
@@ -267,6 +297,7 @@ def _match_known_patterns(
 
         tracking_desc = _identify_tracking_script(script.url)
         if tracking_desc:
+            tracking_pattern_hits += 1
             results[i] = tracking_data.TrackedScript(
                 url=script.url,
                 domain=script.domain,
@@ -275,8 +306,20 @@ def _match_known_patterns(
             )
             continue
 
+        tracker_domain_desc = _identify_tracker_domain(script.domain)
+        if tracker_domain_desc:
+            tracker_domain_hits += 1
+            results[i] = tracking_data.TrackedScript(
+                url=script.url,
+                domain=script.domain,
+                description=tracker_domain_desc,
+                resource_type=script.resource_type,
+            )
+            continue
+
         benign_desc = _identify_benign_script(script.url)
         if benign_desc:
+            benign_pattern_hits += 1
             results[i] = tracking_data.TrackedScript(
                 url=script.url,
                 domain=script.domain,
@@ -293,14 +336,35 @@ def _match_known_patterns(
         )
         unknown_scripts.append((script, i))
 
-    known_count = len(grouped.individual_scripts) - len(unknown_scripts)
+    parts: list[str] = []
+    if grouped_count:
+        parts.append(f"{grouped_count} grouped")
+    if tracking_pattern_hits:
+        parts.append(f"{tracking_pattern_hits} tracking")
+    if tracker_domain_hits:
+        parts.append(f"{tracker_domain_hits} known domains")
+    if benign_pattern_hits:
+        parts.append(f"{benign_pattern_hits} benign")
+    summary = ", ".join(parts) if parts else "0 known"
     if on_progress:
         on_progress(
             "matching",
             len(grouped.individual_scripts),
             len(grouped.individual_scripts),
-            f"Grouped {grouped_count} scripts, identified {known_count} known, {len(unknown_scripts)} unknown",
+            f"Identified {summary} — {len(unknown_scripts)} to analyze",
         )
+
+    log.info(
+        "Pattern matching complete",
+        {
+            "grouped": grouped_count,
+            "trackingPatterns": tracking_pattern_hits,
+            "trackerDomains": tracker_domain_hits,
+            "benignPatterns": benign_pattern_hits,
+            "unknown": len(unknown_scripts),
+            "total": len(results),
+        },
+    )
 
     return unknown_scripts
 
@@ -452,12 +516,12 @@ async def _analyze_unknowns(
         if cache_hits:
             on_progress(
                 "analyzing",
-                completed_count,
+                cache_hit_scripts,
                 total_to_analyze,
-                f"{cache_hits} cached, analyzing {llm_to_analyze} unknown scripts...",
+                f"{cache_hit_scripts} from cache, analyzing {llm_to_analyze} with LLM...",
             )
-        else:
-            on_progress("analyzing", 0, total_to_analyze, f"Analyzing {total_to_analyze} unknown scripts...")
+        elif llm_to_analyze:
+            on_progress("analyzing", 0, total_to_analyze, f"Analyzing {llm_to_analyze} scripts with LLM...")
 
     async def analyze_with_progress(
         url: str,

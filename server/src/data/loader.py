@@ -15,7 +15,10 @@ import re
 from typing import Any
 
 from src.models import partners
+from src.utils import logger
 from src.utils import url as url_mod
+
+log = logger.create_logger("DataLoader")
 
 # Resolve path to the data directory (same directory as this module)
 _DATA_DIR = pathlib.Path(__file__).resolve().parent
@@ -40,8 +43,14 @@ def _load_json(relative_path: str) -> Any:
         raise FileNotFoundError(f"Data file not found: {relative_path}")
     with open(full_path, encoding="utf-8") as f:
         try:
-            return json.load(f)
+            data = json.load(f)
+            log.debug("Loaded data file", {"file": relative_path})
+            return data
         except json.JSONDecodeError as exc:
+            log.error(
+                "Invalid JSON in data file",
+                {"file": relative_path, "error": exc.msg},
+            )
             raise json.JSONDecodeError(
                 f"Invalid JSON in {relative_path}: {exc.msg}",
                 exc.doc,
@@ -61,7 +70,7 @@ def _load_script_patterns(filename: str) -> list[partners.ScriptPattern]:
     matching is fast on every subsequent call.
     """
     raw: list[dict[str, str]] = _load_json(f"trackers/{filename}")
-    return [
+    patterns = [
         partners.ScriptPattern(
             pattern=entry["pattern"],
             description=entry["description"],
@@ -69,6 +78,8 @@ def _load_script_patterns(filename: str) -> list[partners.ScriptPattern]:
         )
         for entry in raw
     ]
+    log.info("Script patterns compiled", {"file": filename, "count": len(patterns)})
+    return patterns
 
 
 @functools.cache
@@ -240,6 +251,279 @@ def get_tracking_storage_privacy_map() -> dict[str, str]:
 
 
 # ============================================================================
+# Tracker Domain Loading
+# ============================================================================
+
+
+@functools.cache
+def get_tracker_domains() -> dict[str, str]:
+    """Get known tracker domain classifications.
+
+    Returns a dictionary mapping domain names to their
+    classification (``"block"`` or ``"cookieblock"``).
+    """
+    data: dict[str, Any] = _load_json("trackers/tracker-domains.json")
+    result: dict[str, str] = data.get("domains", {})
+    log.info("Tracker domains loaded", {"count": len(result)})
+    return result
+
+
+def is_known_tracker_domain(domain: str) -> bool:
+    """Check if a domain is a known tracker.
+
+    Checks the exact domain first, then falls back to the
+    registrable base domain for subdomain matching.
+
+    Args:
+        domain: A domain name to look up.
+
+    Returns:
+        True if the domain is classified as a tracker.
+    """
+    tracker_domains = get_tracker_domains()
+    if domain in tracker_domains:
+        return True
+    # Try base domain for subdomain matching
+    from src.utils import url as url_mod
+
+    base = url_mod.get_base_domain(domain)
+    return base in tracker_domains
+
+
+# ============================================================================
+# CNAME Cloaking Domain Loading
+# ============================================================================
+
+
+@functools.cache
+def get_cname_domains() -> dict[str, str]:
+    """Get CNAME-cloaked domain mappings.
+
+    Returns a dictionary mapping first-party subdomains to
+    their actual tracker CNAME destinations.  Used to detect
+    CNAME cloaking where trackers disguise themselves as
+    first-party domains.
+
+    """
+    data: dict[str, Any] = _load_json(
+        "trackers/cname-domains.json",
+    )
+    # Remove the _description metadata key
+    result = {k: v for k, v in data.items() if not k.startswith("_")}
+    log.info("CNAME domains loaded", {"count": len(result)})
+    return result
+
+
+def get_cname_target(domain: str) -> str | None:
+    """Look up the CNAME target for a potentially cloaked domain.
+
+    Args:
+        domain: A domain/subdomain to check for cloaking.
+
+    Returns:
+        The real tracker domain, or ``None`` if not cloaked.
+    """
+    return get_cname_domains().get(domain)
+
+
+# ============================================================================
+# Disconnect Tracking Protection
+# ============================================================================
+
+
+@functools.cache
+def get_disconnect_services() -> dict[str, dict[str, Any]]:
+    """Get Disconnect tracker domain categories.
+
+    Returns a dictionary mapping domain names to their
+    tracking category and operating company.  Categories
+    include Advertising, Analytics, FingerprintingInvasive,
+    Social, Cryptomining, and others.
+
+    """
+    data: dict[str, Any] = _load_json(
+        "trackers/disconnect-services.json",
+    )
+    result: dict[str, dict[str, Any]] = data.get("domains", {})
+    log.info("Disconnect services loaded", {"count": len(result)})
+    return result
+
+
+def get_disconnect_category(domain: str) -> str | list[str] | None:
+    """Get the Disconnect tracking category for a domain.
+
+    Args:
+        domain: A domain name to look up.
+
+    Returns:
+        A category string, list of categories, or ``None``.
+    """
+    services = get_disconnect_services()
+    info = services.get(domain)
+    if info:
+        return info.get("category")
+    # Try base domain
+    from src.utils import url as url_mod
+
+    base = url_mod.get_base_domain(domain)
+    info = services.get(base)
+    if info:
+        return info.get("category")
+    return None
+
+
+def build_disconnect_context(third_party_domains: list[str]) -> str:
+    """Build an LLM-friendly reference section from the Disconnect tracking
+    protection list for the observed third-party domains.
+
+    Looks up each domain in the Disconnect services database and
+    groups matches by category, showing the operating company for
+    each domain.
+
+    Args:
+        third_party_domains: Domains observed as third-party requests.
+
+    Returns:
+        Formatted reference section string, or empty string if
+        no domains match.
+    """
+    services = get_disconnect_services()
+    if not services or not third_party_domains:
+        return ""
+
+    from src.utils import url as url_mod
+
+    # Look up each domain, dedup by (domain, category, company).
+    matches: dict[str, list[tuple[str, str]]] = {}
+    seen: set[str] = set()
+    for domain in third_party_domains:
+        if domain in seen:
+            continue
+        seen.add(domain)
+        info = services.get(domain)
+        if not info:
+            base = url_mod.get_base_domain(domain)
+            info = services.get(base)
+        if not info:
+            continue
+        company = info.get("company", "Unknown")
+        category = info.get("category", "Other")
+        # category may be a string or list
+        cats = category if isinstance(category, list) else [category]
+        for cat in cats:
+            matches.setdefault(cat, []).append((domain, company))
+
+    if not matches:
+        return ""
+
+    lines = [
+        "",
+        "## Known Tracker Domain Classifications (Disconnect)",
+        "The following third-party domains are classified in the Disconnect "
+        "tracking protection list. Use this to accurately identify the "
+        "company and tracking category for each domain rather than guessing. "
+        "Domains not listed here should be classified based on your expert "
+        "knowledge.",
+        "",
+    ]
+
+    for cat in sorted(matches):
+        lines.append(f"### {cat}")
+        # Deduplicate and sort entries within each category.
+        unique = sorted(set(matches[cat]))
+        for domain, company in unique:
+            lines.append(f"- {domain} → {company}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _humanise_disconnect_category(raw: str) -> str:
+    """Convert a Disconnect category slug into a readable label.
+
+    Examples: ``FingerprintingGeneral`` → ``Fingerprinting``,
+    ``Advertising`` → ``Advertising``.
+    """
+    mapping: dict[str, str] = {
+        "FingerprintingGeneral": "Fingerprinting",
+        "FingerprintingInvasive": "Invasive Fingerprinting",
+        "Cryptomining": "Cryptomining",
+        "Social": "Social Media",
+        "ConsentManagers": "Consent Management",
+        "EmailAggressive": "Email Tracking",
+        "Anti-fraud": "Anti-Fraud",
+    }
+    return mapping.get(raw, raw)
+
+
+# Categories that are too generic to be useful as the sole label.
+_GENERIC_CATEGORIES = {"Email", "Content"}
+
+
+def get_domain_description(domain: str) -> dict[str, str | None]:
+    """Build a short description for a domain from known databases.
+
+    Checks Disconnect services (category + company), the partner
+    databases, and the tracker-domains list.  Returns a dict with
+    ``company`` and ``description`` keys (either may be ``None``).
+    """
+    from src.utils import url as url_mod
+
+    # Normalise: cookie domains often have a leading dot (e.g. ".google.com").
+    domain = domain.lstrip(".")
+
+    company: str | None = None
+    description: str | None = None
+
+    # 1. Disconnect services — richest metadata (category + company).
+    services = get_disconnect_services()
+    info = services.get(domain)
+    if not info:
+        base = url_mod.get_base_domain(domain)
+        info = services.get(base)
+    if info:
+        company = info.get("company")
+        raw_cats: str | list[str] = info.get("category", "Tracking")
+        cats = raw_cats if isinstance(raw_cats, list) else [raw_cats]
+        labels = [_humanise_disconnect_category(c) for c in cats if c not in _GENERIC_CATEGORIES]
+        if not labels:
+            labels = [_humanise_disconnect_category(c) for c in cats]
+        cat_label = ", ".join(dict.fromkeys(labels))  # deduplicate, preserve order
+        description = f"{cat_label} service" + (f" by {company}" if company else "")
+        return {"company": company, "description": description}
+
+    # 2. Partner databases — have company name + category.
+    for config in PARTNER_CATEGORIES:
+        db = get_partner_database(config.file)
+        for name, entry in db.items():
+            entry_domain = (entry.url or "").replace("https://", "").replace("http://", "").rstrip("/").split("/")[0].removeprefix("www.")
+            if entry_domain and (entry_domain == domain or entry_domain == url_mod.get_base_domain(domain)):
+                cat_label = config.category.replace("-", " ").title()
+                description = f"{cat_label} service"
+                return {"company": name.title(), "description": description}
+
+    # 3. Tracker-domains — minimal info (block/cookieblock).
+    if is_known_tracker_domain(domain):
+        return {"company": None, "description": "Known tracking domain"}
+
+    return {"company": None, "description": None}
+
+
+def get_storage_key_hint(key: str) -> dict[str, str | None]:
+    """Return a brief hint for a storage key from the tracking-storage database.
+
+    Matches *key* against the compiled tracking-storage patterns.
+    Returns a dict with ``setBy`` and ``description`` (either may
+    be ``None`` when no match is found).
+    """
+    patterns = get_tracking_storage_patterns()
+    for pattern, desc, set_by, _purpose in patterns:
+        if pattern.search(key):
+            return {"setBy": set_by, "description": desc}
+    return {"setBy": None, "description": None}
+
+
+# ============================================================================
 # Partner Data Loading
 # ============================================================================
 
@@ -261,7 +545,9 @@ def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
 @functools.cache
 def get_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
     """Get a partner database by filename (loaded once per filename and cached)."""
-    return _load_partner_database(filename)
+    result = _load_partner_database(filename)
+    log.info("Partner database loaded", {"file": filename, "entries": len(result)})
+    return result
 
 
 # ============================================================================
@@ -319,7 +605,7 @@ PARTNER_CATEGORIES: list[partners.PartnerCategoryConfig] = [
         risk_score=5,
     ),
     partners.PartnerCategoryConfig(
-        file="consent-platforms.json",
+        file="consent-providers.json",
         risk_level="medium",
         category="personalization",
         reason="Consent management platform that may share consent signals",
@@ -368,28 +654,6 @@ def get_gdpr_reference() -> dict[str, Any]:
     return result
 
 
-def get_tcf_purpose_name(purpose_id: int) -> str:
-    """Look up a TCF purpose name by its numeric ID.
-
-    Returns the purpose name or 'Unknown purpose {id}' if not found.
-    """
-    purposes = get_tcf_purposes().get("purposes", {})
-    entry = purposes.get(str(purpose_id))
-    if entry:
-        return str(entry["name"])
-    return f"Unknown purpose {purpose_id}"
-
-
-def get_consent_cookie_names() -> list[str]:
-    """Get the list of known consent-state cookie name patterns.
-
-    Returns patterns that can be used to identify cookies set by
-    CMPs rather than tracking cookies.
-    """
-    data = get_consent_cookies()
-    return list(data.get("consent_cookie_name_patterns", []))
-
-
 # ============================================================================
 # Media Group Profile Loading
 # ============================================================================
@@ -404,7 +668,9 @@ def get_media_groups() -> dict[str, partners.MediaGroupProfile]:
     domains, key vendors, and privacy characteristics.
     """
     raw: dict[str, dict[str, Any]] = _load_json("publishers/media-groups.json")
-    return {key: partners.MediaGroupProfile(**val) for key, val in raw.items()}
+    result = {key: partners.MediaGroupProfile(**val) for key, val in raw.items()}
+    log.info("Media groups loaded", {"count": len(result)})
+    return result
 
 
 def find_media_group_by_domain(domain: str) -> tuple[str, partners.MediaGroupProfile] | None:
@@ -453,7 +719,9 @@ def load_consent_platforms() -> dict[str, Any]:
 
     raw: dict[str, Any] = _load_json("consent/consent-platforms.json")
     platforms: dict[str, Any] = raw.get("platforms", {})
-    return {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
+    result = {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
+    log.info("Consent platforms loaded", {"count": len(result)})
+    return result
 
 
 # ============================================================================

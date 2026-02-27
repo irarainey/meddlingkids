@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import type { StorageItem, StorageInfo } from '../../types'
 import { truncateValue } from '../../utils'
 
@@ -7,7 +7,7 @@ import { truncateValue } from '../../utils'
  * Tab panel displaying localStorage and sessionStorage items.
  * Supports click-to-expand storage key information lookup via the server API.
  */
-defineProps<{
+const props = defineProps<{
   /** localStorage items */
   localStorage: StorageItem[]
   /** sessionStorage items */
@@ -22,6 +22,40 @@ const loadingKeys = reactive<Set<string>>(new Set())
 
 /** Set of storage keys that are expanded (info panel visible). */
 const expandedKeys = reactive<Set<string>>(new Set())
+
+/** Cache of deterministic storage key hints, keyed by key name. */
+const storageKeyHints = reactive<Record<string, { setBy: string | null; description: string | null }>>({})
+
+/** Fetch known descriptions for storage keys from the deterministic endpoint. */
+async function fetchStorageKeyHints(keys: string[]): Promise<void> {
+  const unknown = keys.filter((k) => !(k in storageKeyHints))
+  if (unknown.length === 0) return
+
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/storage-key-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [key, info] of Object.entries(data)) {
+        storageKeyHints[key] = info as { setBy: string | null; description: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — hints are non-critical
+  }
+}
+
+watch(
+  () => [...props.localStorage.map((i) => i.key), ...props.sessionStorage.map((i) => i.key)],
+  (keys) => {
+    if (keys.length > 0) fetchStorageKeyHints(keys)
+  },
+  { immediate: true },
+)
 
 function itemKey(storageType: string, item: StorageItem): string {
   return `${storageType}|${item.key}`
@@ -111,8 +145,12 @@ function riskClass(level: string): string {
             <div class="storage-key">
               <span class="info-toggle" :class="{ expanded: expandedKeys.has(itemKey('localStorage', item)) }" title="Storage key details">ℹ</span>
               {{ item.key }}
+              <span v-if="storageKeyHints[item.key]?.setBy" class="storage-key-hint">— {{ storageKeyHints[item.key]?.setBy }}</span>
             </div>
           </div>
+          <p v-if="storageKeyHints[item.key]?.description" class="domain-description">
+            {{ storageKeyHints[item.key]?.description }}
+          </p>
           <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 512) }}</div>
 
           <!-- Expandable Storage Info Panel -->
@@ -159,8 +197,12 @@ function riskClass(level: string): string {
             <div class="storage-key">
               <span class="info-toggle" :class="{ expanded: expandedKeys.has(itemKey('sessionStorage', item)) }" title="Storage key details">ℹ</span>
               {{ item.key }}
+              <span v-if="storageKeyHints[item.key]?.setBy" class="storage-key-hint">— {{ storageKeyHints[item.key]?.setBy }}</span>
             </div>
           </div>
+          <p v-if="storageKeyHints[item.key]?.description" class="domain-description">
+            {{ storageKeyHints[item.key]?.description }}
+          </p>
           <div class="storage-value" :title="item.value">{{ truncateValue(item.value, 512) }}</div>
 
           <!-- Expandable Storage Info Panel -->
@@ -232,6 +274,12 @@ function riskClass(level: string): string {
   align-items: center;
   gap: 0.4rem;
   transition: color 0.15s;
+}
+
+.storage-key-hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #8892b0;
 }
 
 .info-toggle {

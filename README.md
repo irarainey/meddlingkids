@@ -4,7 +4,7 @@
 
 Zoinks! There's something spooky going on with these websites... but don't worry, gang! This mystery-solving machine pulls the mask off sneaky trackers and exposes the villain underneath. Feed it any URL and watch as we unmask those cookies, scripts, network requests, and shady overlays. And we would have never figured it out if it wasn't for those meddling kids!
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue.svg)
 ![Vue](https://img.shields.io/badge/vue-3.x-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
@@ -118,7 +118,7 @@ meddlingkids/
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
-│       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
+│       │   └── trackers/      # Tracking pattern databases (7 JSON files)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .output/                   # All server output (auto-created, gitignored)
 │   ├── agents/                # Microsoft Agent Framework threads (for debugging and prompt engineering)
@@ -381,4 +381,8 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later).
+
+Scooby-Doo and related imagery are trademarks of and © Warner Bros. Entertainment Inc. Not affiliated with or endorsed by Warner Bros.
+
+Some bundled data files carry their own licenses — see [NOTICE](NOTICE) for details.

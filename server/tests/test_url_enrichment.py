@@ -138,7 +138,7 @@ class TestBuildUrlLookup:
         from src.data import loader
 
         cmp_db = loader.get_partner_database(
-            "consent-platforms.json",
+            "consent-providers.json",
         )
         lookup = _build_url_lookup()
         for key, entry in cmp_db.items():

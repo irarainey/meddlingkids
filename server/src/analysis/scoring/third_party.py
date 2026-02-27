@@ -70,6 +70,19 @@ def calculate(
                     known_trackers.add(m.group(1))
                 break
 
+    # ── Domain-level tracker lookup ──────────────────────────
+    for domain in third_party_domains:
+        if loader.is_known_tracker_domain(domain):
+            known_trackers.add(domain)
+
+    # ── CNAME cloaking detection ────────────────────────────
+    cname_cloaked: set[str] = set()
+    for req in network_requests:
+        cname_target = loader.get_cname_target(req.domain)
+        if cname_target:
+            cname_cloaked.add(req.domain)
+            known_trackers.add(req.domain)
+
     log.debug(
         "Third-party detection",
         data={
@@ -77,6 +90,7 @@ def calculate(
             "third_party_requests": len(third_party_requests),
             "known_trackers": len(known_trackers),
             "tracker_domains": list(known_trackers)[:10],
+            "cname_cloaked": list(cname_cloaked)[:10],
         },
     )
 
@@ -127,13 +141,53 @@ def calculate(
     elif len(known_trackers) > 0:
         points += 2
 
+    # ── CNAME cloaking penalty ──────────────────────────────
+    if len(cname_cloaked) > 5:
+        points += 5
+        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domains detected")
+    elif len(cname_cloaked) > 2:
+        points += 3
+        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domains detected")
+    elif len(cname_cloaked) > 0:
+        points += 2
+        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domain detected")
+
+    # ── Disconnect category penalties ───────────────────────
+    fingerprinting_domains: set[str] = set()
+    cryptomining_domains: set[str] = set()
+    for domain in third_party_domains | known_trackers:
+        category = loader.get_disconnect_category(domain)
+        if category is None:
+            continue
+        cats = category if isinstance(category, list) else [category]
+        if "FingerprintingInvasive" in cats:
+            fingerprinting_domains.add(domain)
+        if "Cryptomining" in cats:
+            cryptomining_domains.add(domain)
+
+    if len(fingerprinting_domains) > 0:
+        fp_pts = min(len(fingerprinting_domains) * 2, 5)
+        points += fp_pts
+        issues.append(f"{len(fingerprinting_domains)} invasive fingerprinting service(s) detected")
+
+    if len(cryptomining_domains) > 0:
+        points += 5
+        issues.append(f"{len(cryptomining_domains)} cryptomining service(s) detected")
+
+    max_points = 48  # 31 base + 5 CNAME + 5 fingerprinting + 5 cryptomining + 2 headroom
+
     log.info(
         "Third-party score",
         data={
             "points": points,
-            "max_points": 31,
+            "max_points": max_points,
             "issue_count": len(issues),
+            "cname_cloaked": len(cname_cloaked),
         },
     )
 
-    return analysis.CategoryScore(points=points, max_points=31, issues=issues)
+    return analysis.CategoryScore(
+        points=points,
+        max_points=max_points,
+        issues=issues,
+    )

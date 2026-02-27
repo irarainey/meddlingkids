@@ -39,6 +39,7 @@ uv run playwright install chromium
 - `WRITE_TO_FILE` - Set to `true` to write logs and reports to files
 - `MAX_CONCURRENT_SESSIONS` - Maximum number of concurrent analysis sessions (default: `3`)
 - `SHOW_UI` - Set to `true` to serve the built client UI from the server (default: `false`)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: `http://localhost:5173,http://localhost:4173`)
 
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
@@ -144,7 +145,14 @@ src/
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
-│   └── trackers/                    # Tracking pattern databases (4 JSON files)
+│   └── trackers/                    # Tracking pattern databases (7 JSON files)
+│       ├── tracking-scripts.json    # 493 regex patterns for known trackers
+│       ├── benign-scripts.json      # 51 patterns for safe libraries
+│       ├── tracking-cookies.json    # Known tracking cookie definitions (137 cookies)
+│       ├── tracking-storage.json    # Known storage key definitions (185 keys)
+│       ├── tracker-domains.json     # Known tracker domain database (4,644 domains)
+│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,014 domains)
+│       └── disconnect-services.json # Disconnect Tracking Protection list (4,370 domains)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
     ├── errors.py                    # Error message extraction and client-safe error sanitisation
@@ -156,6 +164,20 @@ src/
     ├── url.py                       # URL / domain utilities and SSRF prevention (validate_analysis_url)
     └── usage_tracking.py            # Per-session LLM call count and token usage tracking
 ```
+
+## API Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/version` | Returns server version |
+| GET | `/api/open-browser-stream` | SSE endpoint for real-time URL analysis (params: `url`, `device`, `clear-cache`) |
+| POST | `/api/clear-cache` | Clears all analysis caches (scripts, domain, overlay) |
+| POST | `/api/cookie-info` | Looks up cookie information (database-first, LLM fallback) |
+| POST | `/api/storage-info` | Looks up storage key information (database-first, LLM fallback) |
+| POST | `/api/storage-key-info` | Looks up storage key information (alias) |
+| POST | `/api/domain-info` | Looks up domain information |
+| POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
+| GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting
 

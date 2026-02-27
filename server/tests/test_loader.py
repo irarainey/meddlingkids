@@ -147,22 +147,6 @@ class TestGdprTcfData:
         b = loader.get_gdpr_reference()
         assert a is b
 
-    def test_get_tcf_purpose_name_valid(self) -> None:
-        name = loader.get_tcf_purpose_name(1)
-        assert name == "Store and/or access information on a device"
-
-    def test_get_tcf_purpose_name_invalid(self) -> None:
-        name = loader.get_tcf_purpose_name(999)
-        assert name == "Unknown purpose 999"
-
-    def test_get_consent_cookie_names(self) -> None:
-        names = loader.get_consent_cookie_names()
-        assert isinstance(names, list)
-        assert len(names) > 0
-        assert "euconsent" in names
-        assert "OptanonConsent" in names
-        assert "usprivacy" in names
-
 
 class TestGetMediaGroups:
     """Tests for media group profile loading."""
@@ -301,3 +285,184 @@ class TestBuildTrackingCookieContext:
         ctx = loader.build_tracking_cookie_context()
         assert "### Cookie Purpose Risk Levels" in ctx
         assert "analytics:" in ctx or "advertising:" in ctx
+
+
+class TestTrackerDomains:
+    """Tests for tracker domain loading."""
+
+    def test_loads_dict(self) -> None:
+        domains = loader.get_tracker_domains()
+        assert isinstance(domains, dict)
+        assert len(domains) > 0
+
+    def test_cached(self) -> None:
+        a = loader.get_tracker_domains()
+        b = loader.get_tracker_domains()
+        assert a is b
+
+    def test_values_are_block_or_cookieblock(self) -> None:
+        domains = loader.get_tracker_domains()
+        for domain, action in list(domains.items())[:100]:
+            assert action in ("block", "cookieblock"), f"{domain}: unexpected action '{action}'"
+
+    def test_known_tracker_present(self) -> None:
+        domains = loader.get_tracker_domains()
+        assert "doubleclick.net" in domains
+
+    def test_partner_domain_present(self) -> None:
+        domains = loader.get_tracker_domains()
+        assert "fingerprint.com" in domains
+        assert domains["fingerprint.com"] == "cookieblock"
+
+    def test_is_known_tracker_domain_exact(self) -> None:
+        assert loader.is_known_tracker_domain("doubleclick.net") is True
+
+    def test_is_known_tracker_domain_unknown(self) -> None:
+        assert (
+            loader.is_known_tracker_domain(
+                "this-is-not-a-tracker.example",
+            )
+            is False
+        )
+
+
+class TestCnameDomains:
+    """Tests for CNAME-cloaked domain loading."""
+
+    def test_loads_dict(self) -> None:
+        domains = loader.get_cname_domains()
+        assert isinstance(domains, dict)
+        assert len(domains) > 0
+
+    def test_cached(self) -> None:
+        a = loader.get_cname_domains()
+        b = loader.get_cname_domains()
+        assert a is b
+
+    def test_no_metadata_keys(self) -> None:
+        domains = loader.get_cname_domains()
+        for key in domains:
+            assert not key.startswith("_"), f"Metadata key '{key}' should be filtered out"
+
+    def test_values_are_strings(self) -> None:
+        domains = loader.get_cname_domains()
+        for key, val in list(domains.items())[:100]:
+            assert isinstance(val, str), f"{key}: expected str, got {type(val)}"
+
+    def test_get_cname_target_known(self) -> None:
+        # Use a stable entry from the dataset
+        domains = loader.get_cname_domains()
+        first_key = next(iter(domains))
+        target = loader.get_cname_target(first_key)
+        assert target == domains[first_key]
+
+    def test_get_cname_target_unknown(self) -> None:
+        target = loader.get_cname_target("not-cloaked.example.com")
+        assert target is None
+
+
+class TestDisconnectServices:
+    """Tests for Disconnect tracking protection data."""
+
+    def test_loads_dict(self) -> None:
+        services = loader.get_disconnect_services()
+        assert isinstance(services, dict)
+        assert len(services) > 0
+
+    def test_cached(self) -> None:
+        a = loader.get_disconnect_services()
+        b = loader.get_disconnect_services()
+        assert a is b
+
+    def test_entries_have_category(self) -> None:
+        services = loader.get_disconnect_services()
+        for domain, info in list(services.items())[:100]:
+            assert "category" in info, f"{domain}: missing 'category'"
+
+    def test_entries_have_company(self) -> None:
+        services = loader.get_disconnect_services()
+        for domain, info in list(services.items())[:100]:
+            assert "company" in info, f"{domain}: missing 'company'"
+
+    def test_known_tracker_present(self) -> None:
+        services = loader.get_disconnect_services()
+        assert "doubleclick.net" in services
+
+    def test_get_disconnect_category_known(self) -> None:
+        category = loader.get_disconnect_category("doubleclick.net")
+        assert category is not None
+
+    def test_get_disconnect_category_unknown(self) -> None:
+        category = loader.get_disconnect_category(
+            "not-a-tracker.example",
+        )
+        assert category is None
+
+    def test_build_disconnect_context_with_known_domains(self) -> None:
+        ctx = loader.build_disconnect_context(["doubleclick.net"])
+        assert "## Known Tracker Domain Classifications (Disconnect)" in ctx
+        assert "doubleclick.net" in ctx
+        assert "→" in ctx
+
+    def test_build_disconnect_context_groups_by_category(self) -> None:
+        ctx = loader.build_disconnect_context(
+            ["doubleclick.net", "scorecardresearch.com"],
+        )
+        assert "###" in ctx
+
+    def test_build_disconnect_context_empty_for_unknown(self) -> None:
+        ctx = loader.build_disconnect_context(
+            ["not-a-tracker.example"],
+        )
+        assert ctx == ""
+
+    def test_build_disconnect_context_empty_for_empty_list(self) -> None:
+        ctx = loader.build_disconnect_context([])
+        assert ctx == ""
+
+
+class TestGetDomainDescription:
+    def test_disconnect_domain_returns_category_and_company(self) -> None:
+        result = loader.get_domain_description("doubleclick.net")
+        assert result["description"] is not None
+        assert "Google" in (result["company"] or "")
+
+    def test_tracker_domain_returns_known_tracking(self) -> None:
+        """A domain in tracker-domains but not in Disconnect should get a
+        generic 'Known tracking domain' description."""
+        # Find a domain only in tracker-domains, not in disconnect
+        tracker_domains = loader.get_tracker_domains()
+        disconnect = loader.get_disconnect_services()
+        only_tracker = None
+        for domain in tracker_domains:
+            if domain not in disconnect:
+                only_tracker = domain
+                break
+        if only_tracker is None:
+            pytest.skip("No tracker-only domain found for testing")
+        result = loader.get_domain_description(only_tracker)
+        assert result["description"] == "Known tracking domain"
+
+    def test_unknown_domain_returns_none(self) -> None:
+        result = loader.get_domain_description("not-a-real-tracker-xyzzy.example")
+        assert result["company"] is None
+        assert result["description"] is None
+
+
+class TestGetStorageKeyHint:
+    def test_known_ga_key(self) -> None:
+        result = loader.get_storage_key_hint("_ga")
+        assert result["setBy"] is not None
+        assert "Google" in result["setBy"]
+        assert result["description"] is not None
+
+    def test_unknown_key_returns_nones(self) -> None:
+        result = loader.get_storage_key_hint("my_custom_app_setting_12345")
+        assert result["setBy"] is None
+        assert result["description"] is None
+
+    def test_pattern_prefix_match(self) -> None:
+        """_ga_ prefixed keys should match the GA4 pattern."""
+        result = loader.get_storage_key_hint("_ga_ABC123")
+        assert result["setBy"] is not None
+        assert result["description"] is not None

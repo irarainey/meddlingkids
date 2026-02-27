@@ -19,6 +19,7 @@ from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tcf_lookup
+from src.data import loader
 from src.pipeline import stream
 from src.utils import cache, logger
 
@@ -40,7 +41,13 @@ SHOW_UI = os.environ.get("SHOW_UI", "false").lower() == "true"
 async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
     """Log server start on startup."""
     log.section("Meddling Kids Server Started")
-    log.info("Configuration", {"showUi": SHOW_UI})
+    log.info(
+        "Configuration",
+        {
+            "showUi": SHOW_UI,
+            "corsOrigins": _ALLOWED_ORIGINS,
+        },
+    )
     yield
 
 
@@ -93,6 +100,57 @@ async def clear_cache_endpoint() -> dict[str, object]:
     removed = cache.clear_all()
     log.success("Cache cleared via API", {"filesRemoved": removed})
     return {"success": True, "filesRemoved": removed}
+
+
+@app.post("/api/domain-info")
+async def domain_info_endpoint(
+    request: fastapi.Request,
+) -> dict[str, dict[str, str | None]]:
+    """Look up tracker/company info for one or more domains.
+
+    Fast deterministic lookup — no LLM calls.  Checks the
+    Disconnect services database, partner databases, and
+    tracker-domains list to build a one-line description.
+
+    Accepts ``{"domains": ["example.com", ...]}`` and returns
+    a map of domain → ``{company, description}``.
+    """
+    body = await request.json()
+    domains: list[str] = body.get("domains", [])
+    if not domains:
+        raise fastapi.HTTPException(status_code=400, detail="domains list is required")
+
+    result: dict[str, dict[str, str | None]] = {}
+    for domain in domains:
+        d = domain.strip()
+        if d:
+            result[d] = loader.get_domain_description(d)
+    return result
+
+
+@app.post("/api/storage-key-info")
+async def storage_key_info_endpoint(
+    request: fastapi.Request,
+) -> dict[str, dict[str, str | None]]:
+    """Look up known descriptions for storage key names.
+
+    Fast deterministic lookup — no LLM calls.  Matches keys
+    against the tracking-storage pattern database.
+
+    Accepts ``{"keys": ["_ga", ...]}`` and returns a map of
+    key → ``{setBy, description}``.
+    """
+    body = await request.json()
+    keys: list[str] = body.get("keys", [])
+    if not keys:
+        raise fastapi.HTTPException(status_code=400, detail="keys list is required")
+
+    result: dict[str, dict[str, str | None]] = {}
+    for key in keys:
+        k = key.strip()
+        if k:
+            result[k] = loader.get_storage_key_hint(k)
+    return result
 
 
 @app.post("/api/cookie-info")
