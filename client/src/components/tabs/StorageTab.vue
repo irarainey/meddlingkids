@@ -248,7 +248,7 @@ function riskClass(level: string): string {
 
 <style scoped>
 .storage-item {
-  padding: 0.5rem;
+  padding: 0.6rem 0.5rem;
   border-bottom: 1px solid #3d4663;
   font-size: 0.95rem;
 }
@@ -315,13 +315,13 @@ function riskClass(level: string): string {
   background: #2a2f45;
   padding: 0.25rem;
   border-radius: 4px;
-  margin-top: 0.25rem;
+  margin-top: 0.4rem;
 }
 
 /* Storage Info Panel */
 .storage-info-panel {
   margin-top: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.75rem 1rem;
   background: #1a1e30;
   border-radius: 6px;
   border-left: 3px solid #3d4663;
@@ -353,12 +353,13 @@ function riskClass(level: string): string {
 .storage-info-content {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .info-row {
   display: flex;
   gap: 0.75rem;
+  padding: 0.1rem 0;
 }
 
 .info-label {

@@ -319,7 +319,7 @@ function onUrlMouseUp(event: Event): void {
 
     <Transition name="fade">
       <button v-if="showBackToTop" class="back-to-top" title="Back to top" @click="scrollToTop">
-        ↑
+        <span class="chevron-up"></span>
       </button>
     </Transition>
 </template>
@@ -498,8 +498,10 @@ function onUrlMouseUp(event: Event): void {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  box-sizing: border-box;
   border-radius: 6px;
   border: 1px solid #3d4663;
   background: rgba(42, 47, 69, 0.7);
@@ -512,6 +514,16 @@ function onUrlMouseUp(event: Event): void {
   backdrop-filter: blur(6px);
   transition: background 0.2s, border-color 0.2s;
   z-index: 100;
+}
+
+.back-to-top .chevron-up {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-left: 2.5px solid currentColor;
+  border-top: 2.5px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: 3px;
 }
 
 .back-to-top:hover {
