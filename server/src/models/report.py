@@ -223,6 +223,12 @@ class CookieAnalysisSection(pydantic.BaseModel):
     groups: list[CookieGroup] = pydantic.Field(default_factory=list)
     concerning_cookies: list[str] = pydantic.Field(default_factory=list)
 
+    @pydantic.field_validator("groups", mode="after")
+    @classmethod
+    def _drop_empty_groups(cls, v: list[CookieGroup]) -> list[CookieGroup]:
+        """Remove cookie groups with zero cookies."""
+        return [g for g in v if g.cookies]
+
 
 # ── Section 6: Storage Analysis ──────────────────────────────────
 

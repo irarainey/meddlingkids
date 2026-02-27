@@ -308,6 +308,40 @@ class TestPartnerRiskSummary:
 # ── Report Models ───────────────────────────────────────────────
 
 
+class TestCookieAnalysisSectionDropsEmpty:
+    """Empty cookie groups are filtered out on construction."""
+
+    def test_empty_group_removed(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=2,
+            groups=[
+                report.CookieGroup(category="Functional", cookies=["sid"]),
+                report.CookieGroup(category="Social Media", cookies=[], concern_level="high"),
+            ],
+        )
+        assert len(section.groups) == 1
+        assert section.groups[0].category == "Functional"
+
+    def test_all_populated_kept(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=3,
+            groups=[
+                report.CookieGroup(category="Analytics", cookies=["_ga"]),
+                report.CookieGroup(category="Advertising", cookies=["_fbp"]),
+            ],
+        )
+        assert len(section.groups) == 2
+
+    def test_all_empty_yields_no_groups(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=0,
+            groups=[
+                report.CookieGroup(category="Social Media", cookies=[]),
+            ],
+        )
+        assert section.groups == []
+
+
 class TestStructuredReport:
     """Tests for StructuredReport."""
 
