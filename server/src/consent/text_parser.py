@@ -70,7 +70,9 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], str, str, bool]] = [
         re.compile(
             r"(?:strictly\s+)?necessary\s+cookies?"
             r"|essential\s+cookies?"
-            r"|required\s+cookies?",
+            r"|required\s+cookies?"
+            # "Strictly Necessary" is specific enough standalone.
+            r"|strictly\s+necessary",
             re.IGNORECASE,
         ),
         "Strictly Necessary",
@@ -97,7 +99,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], str, str, bool]] = [
     ),
     (
         re.compile(
-            r"(?:targeting|advertising)\s+cookies?"
+            r"(?:targeting|advertising|marketing)\s+cookies?"
             r"|ad\s+cookies?",
             re.IGNORECASE,
         ),
@@ -108,7 +110,8 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], str, str, bool]] = [
     (
         re.compile(
             r"analytics?\s+cookies?"
-            r"|measurement\s+cookies?",
+            r"|measurement\s+cookies?"
+            r"|statistic(?:s|al)\s+cookies?",
             re.IGNORECASE,
         ),
         "Analytics",
@@ -139,20 +142,152 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], str, str, bool]] = [
 
 # ── IAB TCF standard purposes ──────────────────────────────────
 
-_PURPOSE_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"store\s+and/or\s+access\s+information\s+on\s+a\s+device", re.IGNORECASE),
-    re.compile(r"use\s+limited\s+data\s+to\s+select\s+advertising", re.IGNORECASE),
-    re.compile(r"create\s+profiles?\s+for\s+personali[sz]ed\s+advertising", re.IGNORECASE),
-    re.compile(r"use\s+profiles?\s+to\s+select\s+personali[sz]ed\s+advertising", re.IGNORECASE),
-    re.compile(r"create\s+profiles?\s+to\s+personali[sz]e\s+content", re.IGNORECASE),
-    re.compile(r"use\s+profiles?\s+to\s+select\s+personali[sz]ed\s+content", re.IGNORECASE),
-    re.compile(r"measure\s+advertising\s+performance", re.IGNORECASE),
-    re.compile(r"measure\s+content\s+performance", re.IGNORECASE),
-    re.compile(r"understand\s+audiences?\s+through\s+statistics", re.IGNORECASE),
-    re.compile(r"develop\s+and\s+improve\s+(?:products?|services?)", re.IGNORECASE),
-    re.compile(r"use\s+limited\s+data\s+to\s+select\s+content", re.IGNORECASE),
-    re.compile(r"ensure\s+security.*?prevent.*?(?:fraud|spam)", re.IGNORECASE),
+# Each tuple is (pattern, canonical_name).  When a pattern
+# matches, the *canonical_name* is used as the purpose string
+# so that the output is normalised regardless of the wording
+# variation found in the DOM text.
+_PURPOSE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # Purpose 1
+    (
+        re.compile(
+            r"store\s+and/?or\s+access\s+information\s+on\s+a\s+device",
+            re.IGNORECASE,
+        ),
+        "Store and/or access information on a device",
+    ),
+    # Purpose 2
+    (
+        re.compile(
+            r"use\s+limited\s+data\s+to\s+select\s+(?:ads?|advertising)",
+            re.IGNORECASE,
+        ),
+        "Use limited data to select advertising",
+    ),
+    # Purpose 3
+    (
+        re.compile(
+            r"create\s+(?:a\s+)?profiles?\s+for\s+personali[sz]ed\s+(?:ads?|advertising)",
+            re.IGNORECASE,
+        ),
+        "Create profiles for personalised advertising",
+    ),
+    # Purpose 4
+    (
+        re.compile(
+            r"use\s+profiles?\s+to\s+select\s+personali[sz]ed\s+(?:ads?|advertising)",
+            re.IGNORECASE,
+        ),
+        "Use profiles to select personalised advertising",
+    ),
+    # Purpose 5
+    (
+        re.compile(
+            r"create\s+(?:a\s+)?profiles?\s+to\s+personali[sz]e\s+content",
+            re.IGNORECASE,
+        ),
+        "Create profiles to personalise content",
+    ),
+    # Purpose 6
+    (
+        re.compile(
+            r"use\s+profiles?\s+to\s+select\s+personali[sz]ed\s+content",
+            re.IGNORECASE,
+        ),
+        "Use profiles to select personalised content",
+    ),
+    # Purpose 7
+    (
+        re.compile(
+            r"measure\s+(?:ads?|advertising)\s+performance",
+            re.IGNORECASE,
+        ),
+        "Measure advertising performance",
+    ),
+    # Purpose 8
+    (
+        re.compile(
+            r"measure\s+content\s+performance",
+            re.IGNORECASE,
+        ),
+        "Measure content performance",
+    ),
+    # Purpose 9
+    (
+        re.compile(
+            r"understand\s+audiences?\s+(?:through|using|via)\s+statistics",
+            re.IGNORECASE,
+        ),
+        "Understand audiences through statistics",
+    ),
+    # Purpose 10
+    (
+        re.compile(
+            r"develop\s+and\s+improve\s+(?:products?|services?)",
+            re.IGNORECASE,
+        ),
+        "Develop and improve services",
+    ),
+    # Purpose 11
+    (
+        re.compile(
+            r"use\s+limited\s+data\s+to\s+select\s+content",
+            re.IGNORECASE,
+        ),
+        "Use limited data to select content",
+    ),
+    # Special Purpose 1
+    (
+        re.compile(
+            r"ensure\s+security.*?prevent.*?(?:fraud|spam)",
+            re.IGNORECASE,
+        ),
+        "Ensure security, prevent and detect fraud, and fix errors",
+    ),
+    # Special Purpose 2
+    (
+        re.compile(
+            r"technical(?:ly)?\s+deliver\s+(?:ads?|content)",
+            re.IGNORECASE,
+        ),
+        "Technically deliver ads or content",
+    ),
+    # Special Feature 1
+    (
+        re.compile(
+            r"(?:use\s+)?precise\s+geolocation\s+data",
+            re.IGNORECASE,
+        ),
+        "Use precise geolocation data",
+    ),
+    # Special Feature 2
+    (
+        re.compile(
+            r"actively\s+scan\s+device\s+characteristics",
+            re.IGNORECASE,
+        ),
+        "Actively scan device characteristics for identification",
+    ),
 ]
+
+# Numbered purpose references (e.g. "Purpose 1", "Purpose 2:").
+_PURPOSE_NUMBER_MAP: dict[int, str] = {
+    1: "Store and/or access information on a device",
+    2: "Use limited data to select advertising",
+    3: "Create profiles for personalised advertising",
+    4: "Use profiles to select personalised advertising",
+    5: "Create profiles to personalise content",
+    6: "Use profiles to select personalised content",
+    7: "Measure advertising performance",
+    8: "Measure content performance",
+    9: "Understand audiences through statistics",
+    10: "Develop and improve services",
+    11: "Use limited data to select content",
+}
+
+_PURPOSE_NUMBER_RE = re.compile(
+    r"purpose\s+(\d{1,2})\b",
+    re.IGNORECASE,
+)
 
 # ── Manage-options button indicators ───────────────────────────
 
@@ -214,6 +349,7 @@ def parse_consent_text(text: str) -> consent.ConsentDetails:
     partners = _extract_partners(text)
     has_manage = bool(_MANAGE_OPTIONS_RE.search(text))
     partner_count = _extract_partner_count(text)
+    platform = _detect_consent_platform(text)
 
     log.info(
         "Local text parse complete",
@@ -223,6 +359,7 @@ def parse_consent_text(text: str) -> consent.ConsentDetails:
             "partners": len(partners),
             "hasManageOptions": has_manage,
             "claimedPartnerCount": partner_count,
+            "consentPlatform": platform,
         },
     )
 
@@ -233,6 +370,7 @@ def parse_consent_text(text: str) -> consent.ConsentDetails:
         purposes=purposes,
         raw_text=text[:5000],
         claimed_partner_count=partner_count,
+        consent_platform=platform,
     )
 
 
@@ -256,15 +394,25 @@ def _extract_categories(text: str) -> list[consent.ConsentCategory]:
 def _extract_purposes(text: str) -> list[str]:
     """Extract IAB TCF purposes from consent text."""
     found: list[str] = []
-    for pattern in _PURPOSE_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            # Use the matched text as the purpose name.
-            purpose = match.group(0).strip()
-            # Capitalise first letter.
-            purpose = purpose[0].upper() + purpose[1:]
-            if purpose not in found:
-                found.append(purpose)
+    seen: set[str] = set()
+
+    # Pattern-based extraction using canonical names.
+    for pattern, canonical in _PURPOSE_PATTERNS:
+        if pattern.search(text) and canonical.lower() not in seen:
+            seen.add(canonical.lower())
+            found.append(canonical)
+
+    # Numbered purpose references (e.g. "Purpose 1", "Purpose 3:").
+    for match in _PURPOSE_NUMBER_RE.finditer(text):
+        try:
+            num = int(match.group(1))
+        except ValueError:
+            continue
+        canonical = _PURPOSE_NUMBER_MAP.get(num, "")
+        if canonical and canonical.lower() not in seen:
+            seen.add(canonical.lower())
+            found.append(canonical)
+
     return found
 
 
@@ -339,3 +487,31 @@ def _extract_partner_count(text: str) -> int | None:
             except (ValueError, IndexError):
                 continue
     return max(counts) if counts else None
+
+
+# ── Consent platform detection ──────────────────────────────────
+
+# Ordered by specificity: most unique identifiers first.
+_PLATFORM_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bquantcast\s*(?:choice)?\b", re.IGNORECASE), "Quantcast Choice"),
+    (re.compile(r"\bsourcepoint\b", re.IGNORECASE), "Sourcepoint"),
+    (re.compile(r"\bonetrust\b|optanon", re.IGNORECASE), "OneTrust"),
+    (re.compile(r"\bcookiebot\b|\bcybot\b", re.IGNORECASE), "Cookiebot"),
+    (re.compile(r"\bdidomi\b", re.IGNORECASE), "Didomi"),
+    (re.compile(r"\btrust\s*arc\b|\btruste\b", re.IGNORECASE), "TrustArc"),
+    (re.compile(r"\bfunding\s+choices?\b", re.IGNORECASE), "Google Funding Choices"),
+    (re.compile(r"\busercentric[sz]?\b", re.IGNORECASE), "Usercentrics"),
+    (re.compile(r"\bcivic\s*cookie\b", re.IGNORECASE), "Civic Cookie Control"),
+    (re.compile(r"\bketch\b", re.IGNORECASE), "Ketch"),
+]
+
+
+def _detect_consent_platform(text: str) -> str | None:
+    """Detect the consent management platform from DOM text.
+
+    Returns the first matching platform name, or ``None``.
+    """
+    for pattern, name in _PLATFORM_PATTERNS:
+        if pattern.search(text):
+            return name
+    return None
