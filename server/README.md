@@ -97,7 +97,7 @@ src/
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON)
 │   ├── partner_classification.py    # Consent partner risk classification and URL enrichment
 │   ├── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
-│   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners)
+│   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners, CMP platform detection)
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
@@ -213,7 +213,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
-| `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Dual-source consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails (timeout or content filter), the local parse becomes the sole source |
+| `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |

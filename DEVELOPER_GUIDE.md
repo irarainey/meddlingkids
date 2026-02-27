@@ -218,6 +218,7 @@ OverlayPipeline.run()
    │   │       └── Screenshot cropped to consent_bounds before LLM call
    │   │       └── Local regex parser (text_parser) runs alongside LLM
    │   │       └── Results merged (LLM authoritative; local supplements)
+   │   │       └── If vision times out, text-only LLM fallback (10 s) before falling to local parse
    │   │       └── Events yielded when both extraction and next detection complete
    │   │
    │   └── send_event('screenshot', {...}) → Post-dismissal screenshot
@@ -441,7 +442,7 @@ Key framework types used:
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
 | `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
-| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Dual-source consent extraction: a local regex parser (`text_parser`) runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails, the local parse becomes the sole source |
+| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
@@ -482,7 +483,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
 | `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
-| `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (12 patterns), manage-options indicators, partner names, and claimed partner counts from DOM text without any LLM call |
+| `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (15 patterns including special purposes and features), manage-options indicators, partner names, claimed partner counts, and consent platform (10 known CMPs) from DOM text without any LLM call |
 
 **`analysis/`** — Tracking analysis and scoring
 
