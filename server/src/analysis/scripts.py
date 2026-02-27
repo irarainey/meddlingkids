@@ -464,6 +464,7 @@ async def _analyze_unknowns(
     cache_hits: int = 0
     cache_hit_scripts: int = 0
     soft_hits: int = 0
+    hash_dedup_hits: int = 0
     bases_needing_llm: dict[str, tuple[str, str, str | None, list[int]]] = {}
 
     for base, (script_domain, fetch_url, content, result_indices) in base_to_info.items():
@@ -484,14 +485,33 @@ async def _analyze_unknowns(
                         resource_type=results[ri].resource_type,
                     )
                 continue
+
+        # Cross-domain hash lookup: the same script content
+        # may already be described under a different CDN domain.
+        if content:
+            content_hash = script_cache.compute_hash(content)
+            cross_desc = script_cache.lookup_by_hash(cache_entries, content_hash)
+            if cross_desc:
+                hash_dedup_hits += 1
+                cache_hit_scripts += len(result_indices)
+                for ri in result_indices:
+                    results[ri] = tracking_data.TrackedScript(
+                        url=results[ri].url,
+                        domain=results[ri].domain,
+                        description=cross_desc,
+                        resource_type=results[ri].resource_type,
+                    )
+                continue
+
         bases_needing_llm[base] = (script_domain, fetch_url, content, result_indices)
 
-    if cache_hits or bases_needing_llm:
+    if cache_hits or hash_dedup_hits or bases_needing_llm:
         log.info(
             "Script cache lookup complete",
             {
                 "hits": cache_hits,
                 "softHits": soft_hits,
+                "hashDedupHits": hash_dedup_hits,
                 "misses": len(bases_needing_llm),
                 "scriptDomainsCached": len(cache_entries),
             },

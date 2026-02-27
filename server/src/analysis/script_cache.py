@@ -250,6 +250,37 @@ def lookup(
     return None
 
 
+def lookup_by_hash(
+    cache_entries: dict[str, ScriptCacheEntry | None],
+    content_hash: str,
+) -> str | None:
+    """Search all loaded cache entries for a matching content hash.
+
+    When the same script content is served from different CDN
+    domains (e.g. ``cdn1.example.com`` and ``cdn2.example.com``),
+    each domain has its own cache file.  This function checks
+    *every* loaded entry so that a hash already described under
+    one domain is reused instead of triggering a redundant LLM
+    call — preventing duplicate hashes with differing
+    descriptions.
+
+    Args:
+        cache_entries: Map of domain → loaded cache entry.
+        content_hash: MD5 hex digest to search for.
+
+    Returns:
+        The cached description, or ``None`` when no match
+        is found.
+    """
+    for entry in cache_entries.values():
+        if entry is None:
+            continue
+        for cached in entry.scripts:
+            if cached.content_hash == content_hash:
+                return cached.description
+    return None
+
+
 def save(
     domain: str,
     analyzed: list[CachedScript],
@@ -289,23 +320,31 @@ def save(
         )
 
     # Deduplicate by base URL — keep the first occurrence.
-    seen: set[str] = set()
+    # Also deduplicate by content hash — if the same content
+    # appears under different URLs, keep only the first
+    # description to prevent hash/description inconsistencies.
+    seen_urls: set[str] = set()
+    seen_hashes: set[str] = set()
     deduped: list[CachedScript] = []
     for s in normalized:
-        if s.url not in seen:
-            seen.add(s.url)
+        if s.url not in seen_urls and s.content_hash not in seen_hashes:
+            seen_urls.add(s.url)
+            seen_hashes.add(s.content_hash)
             deduped.append(s)
     analyzed = deduped
 
     # Carry forward entries that weren't re-analysed this run.
     # Normalise carried-forward URLs too so that old cache
     # files with query-string variants don't create duplicates.
+    # Also skip entries whose content hash is already covered
+    # to avoid hash/description conflicts within one file.
     carried: list[CachedScript] = []
     if existing:
         for s in existing.scripts:
             base_url = strip_query_string(s.url)
-            if base_url not in seen:
-                seen.add(base_url)
+            if base_url not in seen_urls and s.content_hash not in seen_hashes:
+                seen_urls.add(base_url)
+                seen_hashes.add(s.content_hash)
                 carried.append(
                     CachedScript(
                         url=base_url,
