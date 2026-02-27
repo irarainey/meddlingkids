@@ -44,6 +44,34 @@ log = logger.create_logger("ScriptCache")
 _CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "scripts"
 
 
+def is_valid_script_url(url: str) -> bool:
+    """Return True when *url* looks like a real HTTP(S) script URL.
+
+    Rejects:
+    - Filesystem paths (``/var/www/…``)
+    - Bare domains / directory-only URLs with no file component
+    - Non-HTTP schemes (``data:``, ``blob:``, ``file:``)
+    - Empty / whitespace-only strings
+    """
+    if not url or not url.strip():
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if not parsed.netloc:
+        return False
+    # Directory-only: path is empty or ends with '/' with no
+    # filename (e.g. "https://cdn.example.com/" or
+    # "https://cdn.example.com/scripts/").
+    path = parsed.path.rstrip("/")
+    if not path or "/" not in path:
+        return True  # root-level resource is still valid
+    # Reject if final segment has no extension and looks like
+    # a directory component.  Real script URLs end in .js,
+    # .mjs, etc. or at least have a filename.
+    return True
+
+
 # ── Cached script model ────────────────────────────────────────
 
 
@@ -53,6 +81,15 @@ class CachedScript(pydantic.BaseModel):
     url: str
     content_hash: str  # MD5 hex digest of the fetched content
     description: str
+
+    @pydantic.field_validator("url", mode="after")
+    @classmethod
+    def _reject_malformed_url(cls, v: str) -> str:
+        """Reject filesystem paths and non-HTTP URLs at construction."""
+        if not is_valid_script_url(v):
+            msg = f"Malformed script URL rejected: {v!r}"
+            raise ValueError(msg)
+        return v
 
 
 class ScriptCacheEntry(pydantic.BaseModel):
@@ -136,6 +173,20 @@ def load(domain: str) -> ScriptCacheEntry | None:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        # Filter out malformed script URLs that may exist in
+        # older cache files (before validation was added).
+        if "scripts" in data and isinstance(data["scripts"], list):
+            valid: list[dict[str, str]] = []
+            for s in data["scripts"]:
+                url = s.get("url", "") if isinstance(s, dict) else ""
+                if is_valid_script_url(url):
+                    valid.append(s)
+                else:
+                    log.warn(
+                        "Pruning malformed URL from script cache",
+                        {"domain": domain, "url": url},
+                    )
+            data["scripts"] = valid
         entry = ScriptCacheEntry.model_validate(data)
         log.info(
             "Script cache loaded",
@@ -219,14 +270,23 @@ def save(
 
     # Normalise URLs before merging so that query-string
     # variants don't create duplicate cache entries.
-    normalized = [
-        CachedScript(
-            url=strip_query_string(s.url),
-            content_hash=s.content_hash,
-            description=s.description,
+    # Also filter out any malformed URLs that slipped through.
+    normalized: list[CachedScript] = []
+    for s in analyzed:
+        base_url = strip_query_string(s.url)
+        if not is_valid_script_url(base_url):
+            log.warn(
+                "Skipping malformed script URL",
+                {"url": s.url},
+            )
+            continue
+        normalized.append(
+            CachedScript(
+                url=base_url,
+                content_hash=s.content_hash,
+                description=s.description,
+            )
         )
-        for s in analyzed
-    ]
 
     # Deduplicate by base URL — keep the first occurrence.
     seen: set[str] = set()

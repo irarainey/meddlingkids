@@ -355,3 +355,67 @@ class TestIsFallbackDescription:
         """Fallback detection is case-sensitive."""
         assert is_fallback_description("third-party script") is False
         assert is_fallback_description("Third-party script") is True
+
+
+# ── URL validation ──────────────────────────────────────────────
+
+import pytest
+
+
+class TestIsValidScriptUrl:
+    """Tests for is_valid_script_url."""
+
+    def test_normal_https_url(self) -> None:
+        assert script_cache.is_valid_script_url("https://cdn.example.com/tracker.js") is True
+
+    def test_http_url(self) -> None:
+        assert script_cache.is_valid_script_url("http://cdn.example.com/script.js") is True
+
+    def test_filesystem_path(self) -> None:
+        assert script_cache.is_valid_script_url("/var/www/html/script.js") is False
+
+    def test_data_uri(self) -> None:
+        assert script_cache.is_valid_script_url("data:text/javascript,alert(1)") is False
+
+    def test_blob_uri(self) -> None:
+        assert script_cache.is_valid_script_url("blob:https://example.com/abc") is False
+
+    def test_empty_string(self) -> None:
+        assert script_cache.is_valid_script_url("") is False
+
+    def test_whitespace_only(self) -> None:
+        assert script_cache.is_valid_script_url("   ") is False
+
+    def test_no_scheme(self) -> None:
+        assert script_cache.is_valid_script_url("cdn.example.com/script.js") is False
+
+    def test_root_url(self) -> None:
+        assert script_cache.is_valid_script_url("https://cdn.example.com/") is True
+
+
+class TestCachedScriptRejectsMalformedUrl:
+    """CachedScript validator rejects non-HTTP URLs."""
+
+    def test_valid_url_accepted(self) -> None:
+        s = script_cache.CachedScript(
+            url="https://cdn.example.com/tracker.js",
+            content_hash="abc123",
+            description="Tracking script",
+        )
+        assert s.url == "https://cdn.example.com/tracker.js"
+
+    def test_filesystem_path_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Malformed script URL"):
+            script_cache.CachedScript(
+                url="/var/www/html/script.js",
+                content_hash="abc123",
+                description="Should fail",
+            )
+
+    def test_empty_url_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Malformed script URL"):
+            script_cache.CachedScript(
+                url="",
+                content_hash="abc123",
+                description="Should fail",
+            )
