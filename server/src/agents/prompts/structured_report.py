@@ -46,22 +46,41 @@ For each data type provide:
 "Financial / Payment", "Health & Wellness", "Social Media Signals"
   Only create a new category if the data does not fit any of the above.
 - details: List of specific data points collected
-- risk: Risk level — apply these rules strictly:
+- risk and sensitive: For the standard categories above, use these \
+fixed defaults consistently across every run:
+  "Browsing Behaviour"             → risk: "medium", sensitive: false
+  "User Identifiers"               → risk: "high",   sensitive: true
+  "Device Information"             → risk: "medium", sensitive: false
+  "Location Data"                  → risk: "medium", sensitive: false  \
+(IP-derived approximate location is NOT sensitive; only upgrade to \
+risk "high" + sensitive true if precise GPS geolocation is collected)
+  "Usage Analytics"                → risk: "medium", sensitive: false
+  "Account & Consent State"        → risk: "low",    sensitive: false
+  "Experimentation & Optimisation" → risk: "low",    sensitive: false
+  "Advertising & Retargeting"      → risk: "high",   sensitive: false
+  "Financial / Payment"            → risk: "critical", sensitive: true
+  "Health & Wellness"              → risk: "critical", sensitive: true
+  "Social Media Signals"           → risk: "medium", sensitive: false
+  For any non-standard category, apply the general rules below.
+  General risk rules:
   "low" — functional data, device metadata, or aggregated analytics \
 that do not identify individuals.
   "medium" — pseudonymous identifiers, IP-based location, \
 cross-session analytics, or behavioural profiling.
-  "high" — directly identifiable personal data (email, name, phone), \
-precise geolocation, or data shared with data brokers.
-  "critical" — sensitive personal data (health, biometrics, financial, \
-political, sexual orientation) or data sold to third parties.
-- sensitive: true ONLY for data that is personal or sensitive (e.g. \
-precise location, health information, financial data, biometric \
-identifiers, racial/ethnic origin, political opinions, religious \
-beliefs, sexual orientation, or any data that could directly \
-identify an individual such as email, name, phone number, \
-government ID). Pseudonymous analytics identifiers are NOT \
-sensitive. IP-derived approximate location is NOT sensitive.
+  "high" — advertising, retargeting, cross-site tracking, \
+directly identifiable personal data (email, name, phone), \
+precise geolocation, or data shared with ad networks / data brokers.
+  "critical" — ONLY for genuinely sensitive personal data: health, \
+biometrics, financial, political opinions, sexual orientation, \
+or racial/ethnic origin. Standard advertising and retargeting \
+data is "high", never "critical".
+  General sensitive rule: true ONLY for data that is personal or \
+sensitive (e.g. precise GPS location, health information, financial \
+data, biometric identifiers, racial/ethnic origin, political opinions, \
+religious beliefs, sexual orientation, or any data that could directly \
+identify an individual such as email, name, phone number, government ID). \
+Pseudonymous analytics identifiers are NOT sensitive. IP-derived \
+approximate location is NOT sensitive.
 - shared_with: List of third-party company or service names this data \
 is sent to or shared with, based on the network requests and domains observed. \
 Leave empty if the data stays first-party only.

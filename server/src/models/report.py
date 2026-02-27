@@ -84,6 +84,24 @@ class TrackingTechnologiesSection(pydantic.BaseModel):
 # ── Section 2: Data Collection ──────────────────────────────────
 
 
+# Canonical risk / sensitive defaults for standard data-collection
+# categories.  Enforced by a model validator on DataCollectionItem
+# so that LLM drift cannot produce inconsistent results across runs.
+_CANONICAL_CATEGORY_DEFAULTS: dict[str, tuple[Literal["low", "medium", "high", "critical"], bool]] = {
+    "browsing behaviour":             ("medium",   False),
+    "user identifiers":               ("high",     True),
+    "device information":             ("medium",   False),
+    "location data":                  ("medium",   False),
+    "usage analytics":                ("medium",   False),
+    "account & consent state":        ("low",      False),
+    "experimentation & optimisation": ("low",      False),
+    "advertising & retargeting":      ("high",     False),
+    "financial / payment":            ("critical", True),
+    "health & wellness":              ("critical", True),
+    "social media signals":           ("medium",   False),
+}
+
+
 class DataCollectionItem(pydantic.BaseModel):
     """A type of data being collected."""
 
@@ -94,6 +112,21 @@ class DataCollectionItem(pydantic.BaseModel):
     risk: Literal["low", "medium", "high", "critical"]
     sensitive: bool = False
     shared_with: list[NamedEntity] = pydantic.Field(default_factory=list)
+
+    @pydantic.model_validator(mode="after")
+    def _enforce_canonical_risk(self) -> "DataCollectionItem":
+        """Enforce consistent risk / sensitive for standard categories.
+
+        For well-known categories the canonical values override
+        whatever the LLM returned.  For any other category the
+        general rule applies: 'critical' requires ``sensitive=True``.
+        """
+        defaults = _CANONICAL_CATEGORY_DEFAULTS.get(self.category.lower())
+        if defaults is not None:
+            self.risk, self.sensitive = defaults
+        elif self.risk == "critical" and not self.sensitive:
+            self.risk = "high"
+        return self
 
     @pydantic.field_validator("shared_with", mode="before")
     @classmethod

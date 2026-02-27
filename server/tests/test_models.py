@@ -339,3 +339,143 @@ class TestStructuredReport:
         assert tracker.name == "Google Analytics"
         data = tracker.model_dump(by_alias=True)
         assert "storageKeys" in data
+
+
+class TestDataCollectionItemRiskCap:
+    """Canonical risk / sensitive enforcement for standard categories."""
+
+    # ── Standard category defaults are enforced ─────────────
+
+    def test_device_info_always_medium(self) -> None:
+        """Device Information is always medium / not sensitive,
+        even if the LLM returns 'low'."""
+        item = report.DataCollectionItem(
+            category="Device Information",
+            details=["screen size"],
+            risk="low",
+            sensitive=False,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_location_data_always_medium(self) -> None:
+        """Location Data is always medium / not sensitive,
+        even if the LLM returns 'high' + sensitive."""
+        item = report.DataCollectionItem(
+            category="Location Data",
+            details=["IP geolocation"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_advertising_always_high_not_sensitive(self) -> None:
+        """Advertising & Retargeting is 'high' / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Advertising & Retargeting",
+            details=["ad pixel fired"],
+            risk="critical",
+            sensitive=True,
+        )
+        assert item.risk == "high"
+        assert item.sensitive is False
+
+    def test_health_always_critical_sensitive(self) -> None:
+        """Health & Wellness is always critical / sensitive."""
+        item = report.DataCollectionItem(
+            category="Health & Wellness",
+            details=["heart rate"],
+            risk="low",
+            sensitive=False,
+        )
+        assert item.risk == "critical"
+        assert item.sensitive is True
+
+    def test_financial_always_critical_sensitive(self) -> None:
+        """Financial / Payment is always critical / sensitive."""
+        item = report.DataCollectionItem(
+            category="Financial / Payment",
+            details=["card number"],
+            risk="medium",
+            sensitive=False,
+        )
+        assert item.risk == "critical"
+        assert item.sensitive is True
+
+    def test_user_identifiers_always_high_sensitive(self) -> None:
+        """User Identifiers is always high / sensitive."""
+        item = report.DataCollectionItem(
+            category="User Identifiers",
+            details=["email hash"],
+            risk="medium",
+            sensitive=False,
+        )
+        assert item.risk == "high"
+        assert item.sensitive is True
+
+    def test_account_consent_always_low(self) -> None:
+        """Account & Consent State is always low / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Account & Consent State",
+            details=["consent token"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "low"
+        assert item.sensitive is False
+
+    def test_usage_analytics_always_medium(self) -> None:
+        """Usage Analytics is always medium / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Usage Analytics",
+            details=["page views"],
+            risk="low",
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_social_media_always_medium(self) -> None:
+        """Social Media Signals is always medium / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Social Media Signals",
+            details=["share buttons"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    # ── Case insensitivity ──────────────────────────────────
+
+    def test_case_insensitive_match(self) -> None:
+        """Canonical lookup is case-insensitive."""
+        item = report.DataCollectionItem(
+            category="device information",
+            details=["viewport"],
+            risk="critical",
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    # ── Non-standard categories still get the general guard ─
+
+    def test_unknown_category_critical_requires_sensitive(self) -> None:
+        """Non-standard categories: critical still requires sensitive."""
+        item = report.DataCollectionItem(
+            category="Custom Telemetry",
+            details=["perf metrics"],
+            risk="critical",
+            sensitive=False,
+        )
+        assert item.risk == "high"
+
+    def test_unknown_category_critical_allowed_when_sensitive(self) -> None:
+        """Non-standard categories: critical allowed if sensitive."""
+        item = report.DataCollectionItem(
+            category="Custom Biometric",
+            details=["face scan"],
+            risk="critical",
+            sensitive=True,
+        )
+        assert item.risk == "critical"
