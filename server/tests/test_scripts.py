@@ -60,3 +60,18 @@ class TestIdentifyBenignScript:
             "https://code.jquery.com/jquery-3.6.0.min.js",
         )
         assert desc is None
+
+    def test_ftstatic_identified_as_ft_cdn(self) -> None:
+        """ftstatic.com is a Financial Times CDN, not Freepik."""
+        desc = scripts._identify_benign_script(
+            "https://ajs-assets.ftstatic.com/some-bundle.js",
+        )
+        assert desc is not None
+        assert "Financial Times" in desc
+
+    def test_ftstatic_not_matched_as_tracking(self) -> None:
+        """FT CDN should not be flagged as a tracker."""
+        desc = scripts._identify_tracking_script(
+            "https://ajs-assets.ftstatic.com/main-bundle.js",
+        )
+        assert desc is None
