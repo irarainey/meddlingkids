@@ -61,13 +61,55 @@ def get_base_domain(domain: str) -> str:
 
 
 def is_third_party(request_url: str, page_url: str) -> bool:
-    """Determine if a request URL is from a third-party domain relative to the page URL."""
+    """Determine if a request URL is from a third-party domain.
+
+    Checks the registrable base domain of the request against
+    the page.  Also detects CNAME cloaking: if the request
+    domain maps to a known tracker via CNAME, it is treated
+    as third-party regardless of the apparent domain.
+
+    Args:
+        request_url: The URL of the network request.
+        page_url: The URL of the page being analysed.
+
+    Returns:
+        True if the request is third-party or CNAME-cloaked.
+    """
     try:
         request_domain = extract_domain(request_url)
         page_domain = extract_domain(page_url)
-        return get_base_domain(request_domain) != get_base_domain(page_domain)
+        page_base = get_base_domain(page_domain)
+
+        # Standard third-party check
+        if get_base_domain(request_domain) != page_base:
+            return True
+
+        # CNAME cloaking check: a request that looks
+        # first-party may actually resolve to a tracker.
+        from src.data import loader
+
+        cname_target = loader.get_cname_target(request_domain)
+        if cname_target:
+            return get_base_domain(cname_target) != page_base
+
+        return False
     except Exception:
         return True
+
+
+def get_cname_target(request_url: str) -> str | None:
+    """Return the CNAME tracker destination for a request URL.
+
+    Args:
+        request_url: The URL to check for CNAME cloaking.
+
+    Returns:
+        The real tracker domain, or ``None`` if not cloaked.
+    """
+    from src.data import loader
+
+    domain = extract_domain(request_url)
+    return loader.get_cname_target(domain)
 
 
 # ============================================================================

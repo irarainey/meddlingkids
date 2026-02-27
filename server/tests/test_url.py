@@ -8,6 +8,7 @@ from src.utils.url import (
     UnsafeURLError,
     extract_domain,
     get_base_domain,
+    get_cname_target,
     is_third_party,
     validate_analysis_url,
 )
@@ -109,6 +110,56 @@ class TestIsThirdParty:
 
     def test_empty_urls_are_same_party(self) -> None:
         assert is_third_party("", "") is False
+
+    def test_cname_cloaked_domain_is_third_party(self) -> None:
+        """A first-party subdomain that CNAME-aliases to a tracker
+        should be classified as third-party."""
+        from src.data import loader
+
+        cname_domains = loader.get_cname_domains()
+        if not cname_domains:
+            pytest.skip("No CNAME data available")
+        # Pick the first entry to test with
+        cloaked_subdomain = next(iter(cname_domains))
+        # Build a URL from the cloaked subdomain
+        cloaked_url = f"https://{cloaked_subdomain}/pixel.gif"
+        # The page URL uses the same parent domain
+        parts = cloaked_subdomain.split(".")
+        if len(parts) >= 2:
+            page_domain = ".".join(parts[-2:])
+        else:
+            page_domain = cloaked_subdomain
+        page_url = f"https://www.{page_domain}/"
+        assert is_third_party(cloaked_url, page_url) is True
+
+    def test_uncloaked_first_party_not_affected(self) -> None:
+        """A normal first-party subdomain should not be
+        flagged as third-party by CNAME checking."""
+        assert (
+            is_third_party(
+                "https://cdn.example.com/style.css",
+                "https://www.example.com/page",
+            )
+            is False
+        )
+
+
+class TestGetCnameTarget:
+    """Tests for get_cname_target()."""
+
+    def test_unknown_url_returns_none(self) -> None:
+        assert get_cname_target("https://www.example.com/page") is None
+
+    def test_known_cloaked_url_returns_target(self) -> None:
+        from src.data import loader
+
+        cname_domains = loader.get_cname_domains()
+        if not cname_domains:
+            pytest.skip("No CNAME data available")
+        cloaked = next(iter(cname_domains))
+        expected = cname_domains[cloaked]
+        result = get_cname_target(f"https://{cloaked}/pixel")
+        assert result == expected
 
 
 # ── validate_analysis_url ─────────────────────────────────────────

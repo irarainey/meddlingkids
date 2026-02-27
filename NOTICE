@@ -1,0 +1,97 @@
+Meddling Kids - Third-Party Data Attribution
+=============================================
+
+This project bundles data from several third-party sources under their
+respective licenses. The project code is licensed under the GNU Affero
+General Public License v3.0 or later (AGPL-3.0-or-later). The data files
+listed below are separate works distributed alongside the code under
+their own licenses.
+
+
+Privacy Badger Seed Data (tracker-domains.json)
+-----------------------------------------------
+Copyright (C) 2015 Electronic Frontier Foundation and other contributors
+License: GPL v3+
+Source: https://github.com/EFForg/privacybadger
+Usage: Domain-level tracker classification (block / cookieblock).
+
+
+AdGuard CNAME Trackers (cname-domains.json)
+-------------------------------------------
+Copyright (C) 2021 Adguard Software Ltd
+License: MIT
+Source: https://github.com/AdguardTeam/cname-trackers
+Usage: CNAME-cloaked domain mappings (disguised first-party subdomains
+       to their actual tracker CNAME destinations). Categories include
+       trackers, ads, clickthroughs, and microsites.
+
+The CNAME domains data originates from:
+  AdGuard CNAME Trackers - https://github.com/AdguardTeam/cname-trackers (MIT)
+
+
+Disconnect Tracking Protection (disconnect-services.json)
+---------------------------------------------------------
+Copyright (C) 2010-2026 Disconnect, Inc.
+License: CC BY-NC-SA 4.0
+         https://creativecommons.org/licenses/by-nc-sa/4.0/
+Source: https://github.com/disconnectme/disconnect-tracking-protection
+Usage: Tracker domain categorisation (Advertising, Analytics,
+       FingerprintingInvasive, Social, Cryptomining, etc.) and
+       company attribution.
+
+This data file is a separate work licensed under the Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International license. It is
+NOT covered by the project's AGPL-3.0 license. Commercial use of this
+data file is prohibited by its license.
+
+
+Open Cookie Database (tracking-cookies.json)
+--------------------------------------------
+Copyright (C) 2018 jkwakman and contributors
+License: Apache-2.0
+Source: https://github.com/jkwakman/Open-Cookie-Database
+Usage: Cookie name patterns, descriptions, set-by information, and
+       purpose categories used to identify well-known cookies without
+       requiring an LLM call.
+
+The tracking-cookies.json file was compiled from the Open Cookie
+Database alongside vendor documentation and Cookiepedia
+(https://cookiepedia.co.uk).
+
+
+IAB TCF Specification Data (tcf-purposes.json)
+-----------------------------------------------
+Copyright (C) IAB Europe
+License: Proprietary (publicly available standard)
+Source: https://vendor-list.consensu.org/v3/vendor-list.json
+Specification: IAB Transparency & Consent Framework v2.2 / GVL Spec v3
+Usage: TCF purpose definitions (IDs, names, descriptions),
+       special purposes, features, and special features used as
+       reference data for consent analysis context.
+
+The tcf-purposes.json file contains purpose and feature definitions
+from the IAB TCF specification, extracted from the publicly available
+Global Vendor List (GVL) API. It does NOT include vendor-specific data.
+This data is part of an open industry standard designed for
+programmatic consumption by CMPs, publishers, and vendors.
+
+
+Project-Curated Data
+--------------------
+The following data files were authored for this project and do not
+originate from third-party datasets. They are covered by the project's
+AGPL-3.0-or-later license:
+
+  - trackers/tracking-scripts.json    (493 URL regex patterns)
+  - trackers/benign-scripts.json      (51 benign script patterns)
+  - trackers/tracking-storage.json    (localStorage/sessionStorage keys)
+  - consent/consent-cookies.json      (consent cookie patterns)
+  - consent/consent-platforms.json    (CMP platform signatures)
+  - consent/gdpr-reference.json       (GDPR/ePrivacy regulatory reference)
+  - partners/*.json                   (8 partner classification databases)
+  - publishers/media-groups.json      (UK media group ownership data)
+
+These files were compiled from publicly available information including
+vendor documentation, company websites, regulatory text, and the IAB
+TCF CMP registry. They do not reproduce substantial portions of any
+copyrighted dataset.

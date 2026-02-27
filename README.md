@@ -4,7 +4,7 @@
 
 Zoinks! There's something spooky going on with these websites... but don't worry, gang! This mystery-solving machine pulls the mask off sneaky trackers and exposes the villain underneath. Feed it any URL and watch as we unmask those cookies, scripts, network requests, and shady overlays. And we would have never figured it out if it wasn't for those meddling kids!
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue.svg)
 ![Vue](https://img.shields.io/badge/vue-3.x-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.x-blue.svg)
@@ -15,7 +15,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 
 - 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
 - 📱 **Device Emulation** — Test as iPhone, iPad, Android Phone, Android Tablet, Windows Chrome, or macOS Safari
-- 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details using dual-source extraction (LLM vision + local regex parser) with screenshot cropping to the dialog bounding box
+- 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details using three-tier extraction (LLM vision → text-only LLM fallback → local regex parser) with screenshot cropping to the dialog bounding box
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
@@ -34,7 +34,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Overlay Detection** — AI analyzes the page for overlays (cookie consent, sign-in, newsletter, paywall, age verification)
-6. **Overlay Interaction** — Attempts to dismiss detected overlays and captures changes. Consent dialog screenshots are cropped to the dialog bounding box before AI extraction, with a local regex fallback if the LLM is unavailable
+6. **Overlay Interaction** — Attempts to dismiss detected overlays and captures changes. Consent dialog screenshots are cropped to the dialog bounding box before AI extraction. If the vision call times out, a text-only LLM fallback is attempted before falling to the local regex parser
 7. **Data Collection** — Captures cookies, scripts, network requests, and storage
 8. **Privacy Score** — Generates a 0-100 privacy score with Scooby-Doo themed rating
 9. **Privacy Analysis** — AI reviews collected data for privacy concerns
@@ -118,7 +118,7 @@ meddlingkids/
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
-│       │   └── trackers/      # Tracking pattern databases (4 JSON files: scripts, benign scripts, cookies, storage)
+│       │   └── trackers/      # Tracking pattern databases (7 JSON files)
 │       └── utils/             # Cross-cutting utilities (logging, errors, URL, images, cache, LLM usage tracking)
 ├── .output/                   # All server output (auto-created, gitignored)
 │   ├── agents/                # Microsoft Agent Framework threads (for debugging and prompt engineering)
@@ -381,4 +381,8 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later).
+
+Scooby-Doo and related imagery are trademarks of and © Warner Bros. Entertainment Inc. Not affiliated with or endorsed by Warner Bros.
+
+Some bundled data files carry their own licenses — see [NOTICE](NOTICE) for details.

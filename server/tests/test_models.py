@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pydantic
 import pytest
 
 from src.models import analysis, browser, consent, partners, report, tracking_data
@@ -156,6 +157,96 @@ class TestConsentPartner:
         assert partner.risk_score is None
         assert partner.concerns is None
 
+    def test_headline_rejected_as_name(self) -> None:
+        """A news headline should be rejected by the validator."""
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="Britain evacuates staff from Iran amid rising tensions",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_headline_with_ellipsis_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="Breaking news: government announces...",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_short_name_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="A",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_long_sentence_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="This is a very long sentence that has more than eight words in it definitely",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_valid_company_names_accepted(self) -> None:
+        """Real consent partner names should pass validation."""
+        valid_names = [
+            "Google",
+            "Facebook",
+            "The Trade Desk",
+            "Integral Ad Science",
+            "Amazon Advertising",
+            "Criteo SA",
+            "Index Exchange",
+            "DoubleVerify",
+        ]
+        for name in valid_names:
+            partner = consent.ConsentPartner(
+                name=name,
+                purpose="",
+                data_collected=[],
+            )
+            assert partner.name == name
+
+
+class TestIsPlausiblePartnerName:
+    """Tests for the is_plausible_partner_name helper."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Google",
+            "Facebook",
+            "The Trade Desk",
+            "Integral Ad Science",
+            "Amazon Advertising",
+            "Criteo SA",
+            "1plusX AG",
+            "33Across",
+        ],
+    )
+    def test_valid_names(self, name: str) -> None:
+        assert consent.is_plausible_partner_name(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Britain evacuates staff from Iran amid tensions",
+            "Government announces new policy on immigration",
+            "Police warn residents about flooding risks",
+            "Markets crash as recession fears grow",
+            "Scientists reveal new climate data...",
+            "Breaking news!",
+            "",
+            "A",
+            "This is a sentence with way too many words to be a company name for real",
+        ],
+    )
+    def test_invalid_names(self, name: str) -> None:
+        assert consent.is_plausible_partner_name(name) is False
+
 
 # ── Analysis Models ─────────────────────────────────────────────
 
@@ -308,6 +399,40 @@ class TestPartnerRiskSummary:
 # ── Report Models ───────────────────────────────────────────────
 
 
+class TestCookieAnalysisSectionDropsEmpty:
+    """Empty cookie groups are filtered out on construction."""
+
+    def test_empty_group_removed(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=2,
+            groups=[
+                report.CookieGroup(category="Functional", cookies=["sid"]),
+                report.CookieGroup(category="Social Media", cookies=[], concern_level="high"),
+            ],
+        )
+        assert len(section.groups) == 1
+        assert section.groups[0].category == "Functional"
+
+    def test_all_populated_kept(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=3,
+            groups=[
+                report.CookieGroup(category="Analytics", cookies=["_ga"]),
+                report.CookieGroup(category="Advertising", cookies=["_fbp"]),
+            ],
+        )
+        assert len(section.groups) == 2
+
+    def test_all_empty_yields_no_groups(self) -> None:
+        section = report.CookieAnalysisSection(
+            total=0,
+            groups=[
+                report.CookieGroup(category="Social Media", cookies=[]),
+            ],
+        )
+        assert section.groups == []
+
+
 class TestStructuredReport:
     """Tests for StructuredReport."""
 
@@ -339,3 +464,143 @@ class TestStructuredReport:
         assert tracker.name == "Google Analytics"
         data = tracker.model_dump(by_alias=True)
         assert "storageKeys" in data
+
+
+class TestDataCollectionItemRiskCap:
+    """Canonical risk / sensitive enforcement for standard categories."""
+
+    # ── Standard category defaults are enforced ─────────────
+
+    def test_device_info_always_medium(self) -> None:
+        """Device Information is always medium / not sensitive,
+        even if the LLM returns 'low'."""
+        item = report.DataCollectionItem(
+            category="Device Information",
+            details=["screen size"],
+            risk="low",
+            sensitive=False,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_location_data_always_medium(self) -> None:
+        """Location Data is always medium / not sensitive,
+        even if the LLM returns 'high' + sensitive."""
+        item = report.DataCollectionItem(
+            category="Location Data",
+            details=["IP geolocation"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_advertising_always_high_not_sensitive(self) -> None:
+        """Advertising & Retargeting is 'high' / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Advertising & Retargeting",
+            details=["ad pixel fired"],
+            risk="critical",
+            sensitive=True,
+        )
+        assert item.risk == "high"
+        assert item.sensitive is False
+
+    def test_health_always_critical_sensitive(self) -> None:
+        """Health & Wellness is always critical / sensitive."""
+        item = report.DataCollectionItem(
+            category="Health & Wellness",
+            details=["heart rate"],
+            risk="low",
+            sensitive=False,
+        )
+        assert item.risk == "critical"
+        assert item.sensitive is True
+
+    def test_financial_always_critical_sensitive(self) -> None:
+        """Financial / Payment is always critical / sensitive."""
+        item = report.DataCollectionItem(
+            category="Financial / Payment",
+            details=["card number"],
+            risk="medium",
+            sensitive=False,
+        )
+        assert item.risk == "critical"
+        assert item.sensitive is True
+
+    def test_user_identifiers_not_hard_overridden(self) -> None:
+        """User Identifiers risk is context-dependent, not overridden."""
+        item = report.DataCollectionItem(
+            category="User Identifiers",
+            details=["pseudonymous analytics UUID"],
+            risk="medium",
+            sensitive=False,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_account_consent_always_low(self) -> None:
+        """Account & Consent State is always low / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Account & Consent State",
+            details=["consent token"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "low"
+        assert item.sensitive is False
+
+    def test_usage_analytics_always_medium(self) -> None:
+        """Usage Analytics is always medium / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Usage Analytics",
+            details=["page views"],
+            risk="low",
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    def test_social_media_always_medium(self) -> None:
+        """Social Media Signals is always medium / not sensitive."""
+        item = report.DataCollectionItem(
+            category="Social Media Signals",
+            details=["share buttons"],
+            risk="high",
+            sensitive=True,
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    # ── Case insensitivity ──────────────────────────────────
+
+    def test_case_insensitive_match(self) -> None:
+        """Canonical lookup is case-insensitive."""
+        item = report.DataCollectionItem(
+            category="device information",
+            details=["viewport"],
+            risk="critical",
+        )
+        assert item.risk == "medium"
+        assert item.sensitive is False
+
+    # ── Non-standard categories still get the general guard ─
+
+    def test_unknown_category_critical_requires_sensitive(self) -> None:
+        """Non-standard categories: critical still requires sensitive."""
+        item = report.DataCollectionItem(
+            category="Custom Telemetry",
+            details=["perf metrics"],
+            risk="critical",
+            sensitive=False,
+        )
+        assert item.risk == "high"
+
+    def test_unknown_category_critical_allowed_when_sensitive(self) -> None:
+        """Non-standard categories: critical allowed if sensitive."""
+        item = report.DataCollectionItem(
+            category="Custom Biometric",
+            details=["face scan"],
+            risk="critical",
+            sensitive=True,
+        )
+        assert item.risk == "critical"

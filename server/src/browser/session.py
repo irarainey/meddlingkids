@@ -181,8 +181,11 @@ class BrowserSession:
                 **launch_kwargs,  # type: ignore[arg-type]
             )
             log.info("Launched real Chrome browser")
-        except Exception:
-            log.info("Real Chrome not available, falling back to bundled Chromium")
+        except Exception as exc:
+            log.info(
+                "Real Chrome not available, falling back to bundled Chromium",
+                {"reason": str(exc)[:120]},
+            )
             br = await pw.chromium.launch(
                 **launch_kwargs  # type: ignore[arg-type]
             )

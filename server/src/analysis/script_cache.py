@@ -44,6 +44,34 @@ log = logger.create_logger("ScriptCache")
 _CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "scripts"
 
 
+def is_valid_script_url(url: str) -> bool:
+    """Return True when *url* looks like a real HTTP(S) script URL.
+
+    Rejects:
+    - Filesystem paths (``/var/www/…``)
+    - Bare domains / directory-only URLs with no file component
+    - Non-HTTP schemes (``data:``, ``blob:``, ``file:``)
+    - Empty / whitespace-only strings
+    """
+    if not url or not url.strip():
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if not parsed.netloc:
+        return False
+    # Directory-only: path is empty or ends with '/' with no
+    # filename (e.g. "https://cdn.example.com/" or
+    # "https://cdn.example.com/scripts/").
+    path = parsed.path.rstrip("/")
+    if not path or "/" not in path:
+        return True  # root-level resource is still valid
+    # Reject if final segment has no extension and looks like
+    # a directory component.  Real script URLs end in .js,
+    # .mjs, etc. or at least have a filename.
+    return True
+
+
 # ── Cached script model ────────────────────────────────────────
 
 
@@ -53,6 +81,15 @@ class CachedScript(pydantic.BaseModel):
     url: str
     content_hash: str  # MD5 hex digest of the fetched content
     description: str
+
+    @pydantic.field_validator("url", mode="after")
+    @classmethod
+    def _reject_malformed_url(cls, v: str) -> str:
+        """Reject filesystem paths and non-HTTP URLs at construction."""
+        if not is_valid_script_url(v):
+            msg = f"Malformed script URL rejected: {v!r}"
+            raise ValueError(msg)
+        return v
 
 
 class ScriptCacheEntry(pydantic.BaseModel):
@@ -136,6 +173,20 @@ def load(domain: str) -> ScriptCacheEntry | None:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        # Filter out malformed script URLs that may exist in
+        # older cache files (before validation was added).
+        if "scripts" in data and isinstance(data["scripts"], list):
+            valid: list[dict[str, str]] = []
+            for s in data["scripts"]:
+                url = s.get("url", "") if isinstance(s, dict) else ""
+                if is_valid_script_url(url):
+                    valid.append(s)
+                else:
+                    log.warn(
+                        "Pruning malformed URL from script cache",
+                        {"domain": domain, "url": url},
+                    )
+            data["scripts"] = valid
         entry = ScriptCacheEntry.model_validate(data)
         log.info(
             "Script cache loaded",
@@ -199,6 +250,37 @@ def lookup(
     return None
 
 
+def lookup_by_hash(
+    cache_entries: dict[str, ScriptCacheEntry | None],
+    content_hash: str,
+) -> str | None:
+    """Search all loaded cache entries for a matching content hash.
+
+    When the same script content is served from different CDN
+    domains (e.g. ``cdn1.example.com`` and ``cdn2.example.com``),
+    each domain has its own cache file.  This function checks
+    *every* loaded entry so that a hash already described under
+    one domain is reused instead of triggering a redundant LLM
+    call — preventing duplicate hashes with differing
+    descriptions.
+
+    Args:
+        cache_entries: Map of domain → loaded cache entry.
+        content_hash: MD5 hex digest to search for.
+
+    Returns:
+        The cached description, or ``None`` when no match
+        is found.
+    """
+    for entry in cache_entries.values():
+        if entry is None:
+            continue
+        for cached in entry.scripts:
+            if cached.content_hash == content_hash:
+                return cached.description
+    return None
+
+
 def save(
     domain: str,
     analyzed: list[CachedScript],
@@ -219,33 +301,50 @@ def save(
 
     # Normalise URLs before merging so that query-string
     # variants don't create duplicate cache entries.
-    normalized = [
-        CachedScript(
-            url=strip_query_string(s.url),
-            content_hash=s.content_hash,
-            description=s.description,
+    # Also filter out any malformed URLs that slipped through.
+    normalized: list[CachedScript] = []
+    for s in analyzed:
+        base_url = strip_query_string(s.url)
+        if not is_valid_script_url(base_url):
+            log.warn(
+                "Skipping malformed script URL",
+                {"url": s.url},
+            )
+            continue
+        normalized.append(
+            CachedScript(
+                url=base_url,
+                content_hash=s.content_hash,
+                description=s.description,
+            )
         )
-        for s in analyzed
-    ]
 
     # Deduplicate by base URL — keep the first occurrence.
-    seen: set[str] = set()
+    # Also deduplicate by content hash — if the same content
+    # appears under different URLs, keep only the first
+    # description to prevent hash/description inconsistencies.
+    seen_urls: set[str] = set()
+    seen_hashes: set[str] = set()
     deduped: list[CachedScript] = []
     for s in normalized:
-        if s.url not in seen:
-            seen.add(s.url)
+        if s.url not in seen_urls and s.content_hash not in seen_hashes:
+            seen_urls.add(s.url)
+            seen_hashes.add(s.content_hash)
             deduped.append(s)
     analyzed = deduped
 
     # Carry forward entries that weren't re-analysed this run.
     # Normalise carried-forward URLs too so that old cache
     # files with query-string variants don't create duplicates.
+    # Also skip entries whose content hash is already covered
+    # to avoid hash/description conflicts within one file.
     carried: list[CachedScript] = []
     if existing:
         for s in existing.scripts:
             base_url = strip_query_string(s.url)
-            if base_url not in seen:
-                seen.add(base_url)
+            if base_url not in seen_urls and s.content_hash not in seen_hashes:
+                seen_urls.add(base_url)
+                seen_hashes.add(s.content_hash)
                 carried.append(
                     CachedScript(
                         url=base_url,

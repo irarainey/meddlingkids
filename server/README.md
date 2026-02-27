@@ -39,6 +39,7 @@ uv run playwright install chromium
 - `WRITE_TO_FILE` - Set to `true` to write logs and reports to files
 - `MAX_CONCURRENT_SESSIONS` - Maximum number of concurrent analysis sessions (default: `3`)
 - `SHOW_UI` - Set to `true` to serve the built client UI from the server (default: `false`)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: `http://localhost:5173,http://localhost:4173`)
 
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
@@ -96,7 +97,7 @@ src/
 │   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON)
 │   ├── partner_classification.py    # Consent partner risk classification and URL enrichment
 │   ├── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
-│   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners)
+│   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners, CMP platform detection)
 ├── analysis/                        # Tracking analysis & scoring
 │   ├── tracking.py                  # Streaming LLM tracking analysis
 │   ├── scripts.py                   # Script identification (patterns → cache → LLM helpers)
@@ -144,7 +145,14 @@ src/
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
-│   └── trackers/                    # Tracking pattern databases (4 JSON files)
+│   └── trackers/                    # Tracking pattern databases (7 JSON files)
+│       ├── tracking-scripts.json    # 493 regex patterns for known trackers
+│       ├── benign-scripts.json      # 51 patterns for safe libraries
+│       ├── tracking-cookies.json    # Known tracking cookie definitions (137 cookies)
+│       ├── tracking-storage.json    # Known storage key definitions (185 keys)
+│       ├── tracker-domains.json     # Known tracker domain database (4,644 domains)
+│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,014 domains)
+│       └── disconnect-services.json # Disconnect Tracking Protection list (4,370 domains)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
     ├── errors.py                    # Error message extraction and client-safe error sanitisation
@@ -156,6 +164,20 @@ src/
     ├── url.py                       # URL / domain utilities and SSRF prevention (validate_analysis_url)
     └── usage_tracking.py            # Per-session LLM call count and token usage tracking
 ```
+
+## API Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/version` | Returns server version |
+| GET | `/api/open-browser-stream` | SSE endpoint for real-time URL analysis (params: `url`, `device`, `clear-cache`) |
+| POST | `/api/clear-cache` | Clears all analysis caches (scripts, domain, overlay) |
+| POST | `/api/cookie-info` | Looks up cookie information (database-first, LLM fallback) |
+| POST | `/api/storage-info` | Looks up storage key information (database-first, LLM fallback) |
+| POST | `/api/storage-key-info` | Looks up storage key information (alias) |
+| POST | `/api/domain-info` | Looks up domain information |
+| POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
+| GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting
 
@@ -191,7 +213,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
-| `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Dual-source consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails (timeout or content filter), the local parse becomes the sole source |
+| `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |

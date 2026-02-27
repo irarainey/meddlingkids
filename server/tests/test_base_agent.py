@@ -223,6 +223,7 @@ class TestFallbackClient:
         assert result is True
         assert agent._chat_client is primary
         assert agent._fallback_client is fallback
+        assert agent._deployment == "codex-mini"
         assert mock_get.call_count == 2
         # First call with override, second without.
         mock_get.assert_any_call(

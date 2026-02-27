@@ -549,6 +549,399 @@
       "description": "Prebid.js header bidding — cached bid responses, timeout settings, or ad-unit configuration.",
       "setBy": "Prebid.js",
       "purpose": "advertising"
+    },
+
+    "_comment_google_tag_manager": "--- Google Tag Manager ---",
+
+    "_gtm": {
+      "pattern": "^_gtm",
+      "description": "Google Tag Manager container state or data-layer snapshot stored in localStorage.",
+      "setBy": "Google Tag Manager",
+      "purpose": "analytics"
+    },
+    "gtm_": {
+      "pattern": "^gtm_",
+      "description": "Google Tag Manager internal state — tag firing history or debug data.",
+      "setBy": "Google Tag Manager",
+      "purpose": "analytics"
+    },
+    "google_tag_manager": {
+      "pattern": "google.?tag.?manager",
+      "description": "Google Tag Manager configuration or tag firing state.",
+      "setBy": "Google Tag Manager",
+      "purpose": "analytics"
+    },
+
+    "_comment_google_publisher": "--- Google Publisher Tags / Ad Manager ---",
+
+    "googletag": {
+      "pattern": "googletag",
+      "description": "Google Publisher Tags (GPT) — ad slot configuration, targeting parameters, or ad refresh state.",
+      "setBy": "Google Ad Manager",
+      "purpose": "advertising"
+    },
+    "gpt_": {
+      "pattern": "^gpt_",
+      "description": "Google Publisher Tags internal storage — ad targeting data or slot-level settings.",
+      "setBy": "Google Ad Manager",
+      "purpose": "advertising"
+    },
+
+    "_comment_didomi": "--- Didomi (Consent) ---",
+
+    "didomi_token": {
+      "pattern": "didomi",
+      "description": "Didomi consent management — stores user consent choices and vendor permissions.",
+      "setBy": "Didomi",
+      "purpose": "consent"
+    },
+    "euconsent-v2": {
+      "pattern": "euconsent",
+      "description": "IAB TCF v2 consent string — encoded vendor permissions from the consent management platform.",
+      "setBy": "IAB TCF CMP",
+      "purpose": "consent"
+    },
+
+    "_comment_sourcepoint": "--- Sourcepoint (Consent) ---",
+
+    "sp_": {
+      "pattern": "^sp_",
+      "description": "Sourcepoint consent management — user privacy preferences and consent state.",
+      "setBy": "Sourcepoint",
+      "purpose": "consent"
+    },
+    "_sp_": {
+      "pattern": "^_sp_",
+      "description": "Sourcepoint internal consent storage — consent string or message display state.",
+      "setBy": "Sourcepoint",
+      "purpose": "consent"
+    },
+    "consentUUID": {
+      "pattern": "consentUUID",
+      "description": "Sourcepoint consent UUID — unique identifier for the user's consent record.",
+      "setBy": "Sourcepoint",
+      "purpose": "consent"
+    },
+
+    "_comment_liveramp": "--- LiveRamp ---",
+
+    "_lr_": {
+      "pattern": "^_lr_",
+      "description": "LiveRamp identity resolution — authenticated traffic solution (ATS) envelope or identity token.",
+      "setBy": "LiveRamp",
+      "purpose": "identity-resolution"
+    },
+    "ats-": {
+      "pattern": "^ats-",
+      "description": "LiveRamp ATS — authenticated identity envelope for cross-site ad targeting.",
+      "setBy": "LiveRamp",
+      "purpose": "identity-resolution"
+    },
+
+    "_comment_id5": "--- ID5 ---",
+
+    "id5": {
+      "pattern": "id5",
+      "description": "ID5 universal ID — probabilistic or deterministic identity for programmatic advertising.",
+      "setBy": "ID5",
+      "purpose": "identity-resolution"
+    },
+
+    "_comment_trade_desk": "--- The Trade Desk ---",
+
+    "_ttd_": {
+      "pattern": "^_ttd_",
+      "description": "The Trade Desk unified ID — cross-site identity token for programmatic ad buying.",
+      "setBy": "The Trade Desk",
+      "purpose": "identity-resolution"
+    },
+    "tdid": {
+      "pattern": "tdid",
+      "description": "The Trade Desk unified ID cookie data mirrored to localStorage.",
+      "setBy": "The Trade Desk",
+      "purpose": "identity-resolution"
+    },
+
+    "_comment_magnite": "--- Magnite / Rubicon ---",
+
+    "rpb": {
+      "pattern": "^rpb",
+      "description": "Magnite (Rubicon Project) ad exchange — bid data or auction state.",
+      "setBy": "Magnite",
+      "purpose": "advertising"
+    },
+    "rubicon": {
+      "pattern": "rubicon",
+      "description": "Magnite (Rubicon Project) — cached bid responses or ad-exchange configuration.",
+      "setBy": "Magnite",
+      "purpose": "advertising"
+    },
+
+    "_comment_index_exchange": "--- Index Exchange ---",
+
+    "ixid": {
+      "pattern": "ix[_-]?id|IndexExchange",
+      "description": "Index Exchange — identity envelope or bid cache for header bidding.",
+      "setBy": "Index Exchange",
+      "purpose": "advertising"
+    },
+
+    "_comment_moat": "--- Moat (Oracle) ---",
+
+    "moat": {
+      "pattern": "moat",
+      "description": "Moat ad verification — viewability measurement and anti-fraud signals.",
+      "setBy": "Moat (Oracle)",
+      "purpose": "analytics"
+    },
+
+    "_comment_comscore": "--- comScore ---",
+
+    "_comscore": {
+      "pattern": "_comscore|scorecardresearch",
+      "description": "comScore / Scorecard Research — audience measurement and cross-site analytics.",
+      "setBy": "comScore",
+      "purpose": "analytics"
+    },
+
+    "_comment_ias": "--- Integral Ad Science ---",
+
+    "__ias_": {
+      "pattern": "__ias",
+      "description": "Integral Ad Science — ad fraud detection, viewability, and brand safety signals.",
+      "setBy": "IAS",
+      "purpose": "analytics"
+    },
+
+    "_comment_bluekai": "--- Oracle / BlueKai ---",
+
+    "bkdc": {
+      "pattern": "bkdc|bluekai",
+      "description": "Oracle BlueKai — user profile segments and data management platform state.",
+      "setBy": "Oracle (BlueKai)",
+      "purpose": "advertising"
+    },
+
+    "_comment_piano": "--- Piano / AT Internet ---",
+
+    "piano": {
+      "pattern": "piano|^_pcid|^atid",
+      "description": "Piano analytics — user engagement tracking, paywall state, or AT Internet visitor ID.",
+      "setBy": "Piano",
+      "purpose": "analytics"
+    },
+    "pa_vid": {
+      "pattern": "^pa_vid|^pa_user",
+      "description": "Piano Analytics visitor ID — persistent identifier for audience measurement.",
+      "setBy": "Piano",
+      "purpose": "analytics"
+    },
+
+    "_comment_teads": "--- Teads ---",
+
+    "teads": {
+      "pattern": "teads",
+      "description": "Teads video advertising — ad impression data, viewability signals, or creative state.",
+      "setBy": "Teads",
+      "purpose": "advertising"
+    },
+
+    "_comment_amazon": "--- Amazon Ads ---",
+
+    "_amzn": {
+      "pattern": "^_?amzn",
+      "description": "Amazon advertising — visitor identity, shopping interests, or ad attribution data.",
+      "setBy": "Amazon Ads",
+      "purpose": "advertising"
+    },
+    "amzn-x": {
+      "pattern": "amzn-x",
+      "description": "Amazon cross-domain ad tracking — links browsing sessions for ad targeting.",
+      "setBy": "Amazon Ads",
+      "purpose": "advertising"
+    },
+
+    "_comment_consent_generic": "--- Generic Consent Patterns ---",
+
+    "__tcfapi": {
+      "pattern": "__tcfapi|tcData",
+      "description": "IAB Transparency and Consent Framework — cached consent API responses.",
+      "setBy": "IAB TCF CMP",
+      "purpose": "consent"
+    },
+    "sp_consent": {
+      "pattern": "consent.?string|consent.?data|consent.?status",
+      "description": "Consent management storage — encoded user privacy preferences.",
+      "setBy": "Website",
+      "purpose": "consent"
+    },
+
+    "_comment_generic_tracking": "--- Generic Tracking Patterns ---",
+
+    "tracking_id": {
+      "pattern": "tracking.?id",
+      "description": "Tracking identifier — used to correlate user activity across page views.",
+      "setBy": "Website",
+      "purpose": "analytics"
+    },
+    "campaign_": {
+      "pattern": "campaign|utm_",
+      "description": "Marketing campaign attribution data — tracks which campaign or link brought the user.",
+      "setBy": "Website",
+      "purpose": "analytics"
+    },
+    "ab_test": {
+      "pattern": "ab.?test|experiment|variant",
+      "description": "A/B testing state — stores which experiment variant the user was assigned to.",
+      "setBy": "Website",
+      "purpose": "analytics"
+    },
+    "clientId": {
+      "pattern": "client.?id",
+      "description": "Client identifier — a persistent or session-scoped ID for the current browser.",
+      "setBy": "Website",
+      "purpose": "analytics"
+    },
+
+    "_comment_sharethis": "--- ShareThis / AddThis ---",
+
+    "sharethis": {
+      "pattern": "sharethis|__st_",
+      "description": "ShareThis social sharing widget — tracks share clicks and user engagement.",
+      "setBy": "ShareThis",
+      "purpose": "social-media"
+    },
+    "addthis": {
+      "pattern": "addthis|_at\\.",
+      "description": "AddThis social sharing widget — shares, follows, and audience targeting data.",
+      "setBy": "AddThis (Oracle)",
+      "purpose": "social-media"
+    },
+
+    "_comment_smart_adserver": "--- Smart AdServer (Equativ) ---",
+
+    "smart_": {
+      "pattern": "^smart_|^sas_",
+      "description": "Smart AdServer (Equativ) — ad targeting, bidding cache, or campaign state.",
+      "setBy": "Equativ (Smart)",
+      "purpose": "advertising"
+    },
+
+    "_comment_xandr": "--- Xandr (Microsoft) ---",
+
+    "xandr": {
+      "pattern": "xandr|appnexus|apn_",
+      "description": "Xandr (Microsoft Advertising) — programmatic bidding data or user segments.",
+      "setBy": "Xandr (Microsoft)",
+      "purpose": "advertising"
+    },
+
+    "_comment_salesforce": "--- Salesforce ---",
+
+    "sfdc": {
+      "pattern": "sfdc|__sf_|pardot",
+      "description": "Salesforce marketing or Pardot — lead tracking, web activity, or form data.",
+      "setBy": "Salesforce",
+      "purpose": "analytics"
+    },
+
+    "_comment_new_relic": "--- New Relic ---",
+
+    "NRBA": {
+      "pattern": "^NR[A-Z]|newrelic",
+      "description": "New Relic browser agent — real-user monitoring (RUM) session and performance data.",
+      "setBy": "New Relic",
+      "purpose": "analytics"
+    },
+
+    "_comment_datadog": "--- Datadog ---",
+
+    "dd_": {
+      "pattern": "^dd_|^_dd_",
+      "description": "Datadog RUM — real-user monitoring session data, performance metrics, or error tracking.",
+      "setBy": "Datadog",
+      "purpose": "analytics"
+    },
+
+    "_comment_mouseflow": "--- Mouseflow ---",
+
+    "mf_": {
+      "pattern": "^mf_|mouseflow",
+      "description": "Mouseflow session replay — records mouse movements, clicks, scrolls, and form interactions.",
+      "setBy": "Mouseflow",
+      "purpose": "analytics"
+    },
+
+    "_comment_clarity": "--- Microsoft Clarity ---",
+
+    "_clsk": {
+      "pattern": "^_cl|^CLID",
+      "description": "Microsoft Clarity — session replay and heatmap analytics, tracks clicks and scroll depth.",
+      "setBy": "Microsoft Clarity",
+      "purpose": "analytics"
+    },
+
+    "_comment_lucky_orange": "--- Lucky Orange ---",
+
+    "lo_": {
+      "pattern": "^lo_|lucky.?orange",
+      "description": "Lucky Orange session replay — records user sessions for UX analysis.",
+      "setBy": "Lucky Orange",
+      "purpose": "analytics"
+    },
+
+    "_comment_sentry": "--- Sentry ---",
+
+    "sentry": {
+      "pattern": "sentry",
+      "description": "Sentry error monitoring — tracks uncaught exceptions and performance spans.",
+      "setBy": "Sentry",
+      "purpose": "functional"
+    },
+
+    "_comment_cookieyes": "--- CookieYes ---",
+
+    "cookieyes": {
+      "pattern": "cookieyes|cky-consent",
+      "description": "CookieYes consent management — stores cookie consent preferences.",
+      "setBy": "CookieYes",
+      "purpose": "consent"
+    },
+
+    "_comment_onetrust_bangroupstate": "--- OneTrust (additional) ---",
+
+    "OTBannerGroupState": {
+      "pattern": "OTBanner|OTGPCRecord|OT_",
+      "description": "OneTrust consent management — banner display state, consent group preferences, or GPC signal.",
+      "setBy": "OneTrust",
+      "purpose": "consent"
+    },
+
+    "_comment_usercentrics": "--- Usercentrics ---",
+
+    "usercentrics": {
+      "pattern": "usercentrics|^uc_",
+      "description": "Usercentrics consent management — user consent choices and service permissions.",
+      "setBy": "Usercentrics",
+      "purpose": "consent"
+    },
+
+    "_comment_iubenda": "--- iubenda ---",
+
+    "iubenda": {
+      "pattern": "iubenda|_iub_cs",
+      "description": "iubenda consent management — cookie consent solution preferences and policy acceptance.",
+      "setBy": "iubenda",
+      "purpose": "consent"
+    },
+
+    "_comment_consentmanager": "--- consentmanager ---",
+
+    "cmpEvent": {
+      "pattern": "^cmp|consentmanager",
+      "description": "Consent management platform event state — consent dialog interactions and choices.",
+      "setBy": "CMP",
+      "purpose": "consent"
     }
   },
   "risk_levels": {

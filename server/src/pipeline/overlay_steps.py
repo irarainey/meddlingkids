@@ -29,7 +29,7 @@ ConsentBounds = tuple[int, int, int, int] | None
 if TYPE_CHECKING:
     from src.pipeline.overlay_pipeline import OverlayHandlingResult
 
-log = logger.create_logger("Overlays")
+log = logger.create_logger("OverlaySteps")
 
 
 # ====================================================================

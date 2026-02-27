@@ -218,6 +218,7 @@ OverlayPipeline.run()
    │   │       └── Screenshot cropped to consent_bounds before LLM call
    │   │       └── Local regex parser (text_parser) runs alongside LLM
    │   │       └── Results merged (LLM authoritative; local supplements)
+   │   │       └── If vision times out, text-only LLM fallback (10 s) before falling to local parse
    │   │       └── Events yielded when both extraction and next detection complete
    │   │
    │   └── send_event('screenshot', {...}) → Post-dismissal screenshot
@@ -441,7 +442,7 @@ Key framework types used:
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
 | `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
-| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Dual-source consent extraction: a local regex parser (`text_parser`) runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM fails, the local parse becomes the sole source |
+| `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
@@ -482,7 +483,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
 | `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
-| `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (12 patterns), manage-options indicators, partner names, and claimed partner counts from DOM text without any LLM call |
+| `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (15 patterns including special purposes and features), manage-options indicators, partner names, claimed partner counts, and consent platform (10 known CMPs) from DOM text without any LLM call |
 
 **`analysis/`** — Tracking analysis and scoring
 
@@ -524,11 +525,14 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Content |
 |--------|--------|
-| `data/loader.py` | JSON data loader with lazy loading and caching |
+| `data/loader.py` | JSON data loader with caching (`functools.cache`) |
 | `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
-| `data/trackers/tracking-cookies.json` | Known tracking cookie definitions with regex patterns, descriptions, purposes, risk levels, and privacy notes |
-| `data/trackers/tracking-storage.json` | Known tracking storage key definitions (localStorage/sessionStorage) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracking-storage.json` | Known tracking storage key definitions (185 keys) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
+| `data/trackers/tracker-domains.json` | Known tracker domain database (4,644 domains) from Privacy Badger |
+| `data/trackers/cname-domains.json` | CNAME cloaking tracker domains (122,014 domains) from Privacy Badger and AdGuard |
+| `data/trackers/disconnect-services.json` | Disconnect Tracking Protection list (4,370 domains) |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
 | `data/consent/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
 | `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |

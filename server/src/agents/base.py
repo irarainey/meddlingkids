@@ -57,6 +57,7 @@ class BaseAgent:
         self._chat_client: agent_framework.SupportsChatGetResponse | None = None
         self._fallback_client: agent_framework.SupportsChatGetResponse | None = None
         self._using_fallback = False
+        self._deployment: str | None = None
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
         self._retry = middleware_mod.RetryChatMiddleware(
             self.agent_name,
@@ -79,6 +80,7 @@ class BaseAgent:
             ``True`` when the client was created.
         """
         deployment = config.get_agent_deployment(self.agent_name)
+        self._deployment = deployment
         self._chat_client = llm_client.get_chat_client(
             agent_name=self.agent_name,
             deployment_override=deployment,

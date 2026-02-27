@@ -202,5 +202,9 @@
   {
     "pattern": "plyr",
     "description": "Plyr video player - does not track users"
+  },
+  {
+    "pattern": "ftstatic\\.com",
+    "description": "Financial Times CDN - publisher asset delivery (not tracking)"
   }
 ]

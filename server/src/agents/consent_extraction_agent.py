@@ -23,6 +23,26 @@ from src.utils import errors, image, json_parsing, logger
 
 log = logger.create_logger("ConsentExtractionAgent")
 
+
+def _safe_partner(name: str, purpose: str, data_collected: list[str]) -> consent.ConsentPartner | None:
+    """Build a ``ConsentPartner``, returning ``None`` when validation fails.
+
+    The model validator rejects headline-like names (e.g.
+    news article titles captured from surrounding page
+    content).  This helper catches those rejections so the
+    caller can silently skip the entry.
+    """
+    try:
+        return consent.ConsentPartner(
+            name=name,
+            purpose=purpose,
+            data_collected=data_collected,
+        )
+    except pydantic.ValidationError:
+        log.debug("Rejected non-partner name", {"name": name})
+        return None
+
+
 # Pre-load JavaScript snippets evaluated in the browser.
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
@@ -204,9 +224,17 @@ class ConsentExtractionAgent(base.BaseAgent):
             is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
             if is_timeout:
                 log.warn(
-                    "Consent extraction timed out — using local parse",
+                    "Vision timed out — trying text-only LLM fallback",
                     {"error": error_msg},
                 )
+                # ── Text-only LLM fallback ──────────────
+                text_result = await self._text_only_fallback(
+                    consent_text,
+                    local_result,
+                )
+                if text_result is not None:
+                    return text_result
+                log.info("Text-only fallback failed — using local parse only")
             else:
                 log.error(
                     "Consent extraction failed — using local parse",
@@ -218,6 +246,64 @@ class ConsentExtractionAgent(base.BaseAgent):
             if not local_result.claimed_partner_count:
                 local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
             return local_result
+
+    async def _text_only_fallback(
+        self,
+        consent_text: str,
+        local_result: consent.ConsentDetails,
+    ) -> consent.ConsentDetails | None:
+        """Attempt a fast text-only LLM call when vision times out.
+
+        Uses a shorter timeout (10 s) since there is no image
+        to process.  Returns the merged result on success, or
+        ``None`` when the text-only call also fails.
+        """
+        if not consent_text.strip():
+            return None
+
+        try:
+            response = await asyncio.wait_for(
+                self._complete(
+                    user_prompt=(
+                        "Analyze this cookie consent dialog"
+                        " text to find ALL information about"
+                        " tracking, partners, and data"
+                        " collection.\n\n"
+                        "Extracted text from consent"
+                        f" elements:\n{consent_text}\n\n"
+                        "Return a detailed JSON object with"
+                        " categories, partners, purposes,"
+                        " and any manage options button."
+                    ),
+                    response_model=_ConsentExtractionResponse,
+                ),
+                timeout=10,
+            )
+            parsed = self._parse_response(response, _ConsentExtractionResponse)
+            if parsed:
+                llm_text_result = _to_domain(parsed, consent_text)
+                result = _merge_results(llm_text_result, local_result)
+                log.info(
+                    "Text-only LLM fallback succeeded",
+                    {
+                        "categories": len(result.categories),
+                        "partners": len(result.partners),
+                        "purposes": len(result.purposes),
+                        "claimedPartnerCount": result.claimed_partner_count,
+                    },
+                )
+                return result
+
+            # Structured parse failed — try manual JSON parse.
+            text_fallback = _parse_text_fallback(response.text, consent_text)
+            if text_fallback.categories or text_fallback.purposes:
+                return _merge_results(text_fallback, local_result)
+        except Exception as fallback_err:
+            log.debug(
+                "Text-only LLM fallback failed",
+                {"error": errors.get_error_message(fallback_err)},
+            )
+        return None
 
 
 # ── Helpers ─────────────────────────────────────────────────────
@@ -298,14 +384,7 @@ def _to_domain(
             )
             for c in r.categories
         ],
-        partners=[
-            consent.ConsentPartner(
-                name=p.name,
-                purpose=p.purpose,
-                data_collected=p.dataCollected,
-            )
-            for p in r.partners
-        ],
+        partners=[p for p in (_safe_partner(p.name, p.purpose, p.dataCollected) for p in r.partners) if p is not None],
         purposes=r.purposes,
         raw_text=raw_text[:5000],
         claimed_partner_count=(r.claimedPartnerCount or _extract_partner_count_from_text(raw_text)),
@@ -338,12 +417,16 @@ def _parse_text_fallback(
                 for c in raw.get("categories", [])
             ],
             partners=[
-                consent.ConsentPartner(
-                    name=p.get("name", ""),
-                    purpose=p.get("purpose", ""),
-                    data_collected=p.get("dataCollected", []),
+                p
+                for p in (
+                    _safe_partner(
+                        c.get("name", ""),
+                        c.get("purpose", ""),
+                        c.get("dataCollected", []),
+                    )
+                    for c in raw.get("partners", [])
                 )
-                for p in raw.get("partners", [])
+                if p is not None
             ],
             purposes=raw.get("purposes", []),
             raw_text=raw_text[:5000],
@@ -411,7 +494,7 @@ def _merge_results(
         purposes=merged_purposes,
         raw_text=llm.raw_text,
         claimed_partner_count=llm.claimed_partner_count or local.claimed_partner_count,
-        consent_platform=llm.consent_platform,
+        consent_platform=llm.consent_platform or local.consent_platform,
     )
 
 

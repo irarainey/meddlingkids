@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from src.analysis import script_cache
 from src.analysis.scripts import (
     _FALLBACK_DESCRIPTIONS,
@@ -312,7 +314,169 @@ class TestScriptCacheIO:
         assert "modified" not in json_str
 
 
-# ── Fallback description detection ─────────────────────────────
+# ── Cross-domain hash deduplication ─────────────────────────────
+
+
+class TestLookupByHash:
+    """Tests for cross-domain content-hash lookup."""
+
+    def test_finds_hash_in_loaded_entries(self) -> None:
+        """lookup_by_hash returns description when hash matches any entry."""
+        entries: dict[str, script_cache.ScriptCacheEntry | None] = {
+            "cdn1.example.com": script_cache.ScriptCacheEntry(
+                domain="cdn1.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn1.example.com/lib.js",
+                        content_hash="abc123",
+                        description="Utility library",
+                    ),
+                ],
+            ),
+            "cdn2.example.com": None,
+        }
+        result = script_cache.lookup_by_hash(entries, "abc123")
+        assert result == "Utility library"
+
+    def test_returns_none_when_no_match(self) -> None:
+        entries: dict[str, script_cache.ScriptCacheEntry | None] = {
+            "cdn.example.com": script_cache.ScriptCacheEntry(
+                domain="cdn.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn.example.com/a.js",
+                        content_hash="aaa",
+                        description="Script A",
+                    ),
+                ],
+            ),
+        }
+        result = script_cache.lookup_by_hash(entries, "zzz999")
+        assert result is None
+
+    def test_skips_none_entries(self) -> None:
+        entries: dict[str, script_cache.ScriptCacheEntry | None] = {
+            "unknown": None,
+            "cdn.example.com": script_cache.ScriptCacheEntry(
+                domain="cdn.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn.example.com/x.js",
+                        content_hash="match",
+                        description="Matched",
+                    ),
+                ],
+            ),
+        }
+        result = script_cache.lookup_by_hash(entries, "match")
+        assert result == "Matched"
+
+    def test_returns_first_match_across_domains(self) -> None:
+        """When the same hash exists in multiple domains, the first is returned."""
+        entries: dict[str, script_cache.ScriptCacheEntry | None] = {
+            "cdn1.example.com": script_cache.ScriptCacheEntry(
+                domain="cdn1.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn1.example.com/shared.js",
+                        content_hash="shared_hash",
+                        description="First description",
+                    ),
+                ],
+            ),
+            "cdn2.example.com": script_cache.ScriptCacheEntry(
+                domain="cdn2.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn2.example.com/shared.js",
+                        content_hash="shared_hash",
+                        description="Second description",
+                    ),
+                ],
+            ),
+        }
+        result = script_cache.lookup_by_hash(entries, "shared_hash")
+        assert result is not None
+
+    def test_empty_entries(self) -> None:
+        result = script_cache.lookup_by_hash({}, "abc")
+        assert result is None
+
+
+class TestSaveHashDedup:
+    """Tests for content-hash deduplication during save."""
+
+    def test_same_hash_different_urls_deduplicated(self, tmp_path) -> None:
+        """Two scripts with the same hash but different URLs keep only one."""
+        with patch.object(script_cache, "_CACHE_DIR", tmp_path):
+            analyzed = [
+                script_cache.CachedScript(
+                    url="https://cdn.example.com/a.js",
+                    content_hash="same_hash",
+                    description="Description A",
+                ),
+                script_cache.CachedScript(
+                    url="https://cdn.example.com/b.js",
+                    content_hash="same_hash",
+                    description="Description B",
+                ),
+            ]
+            script_cache.save("cdn.example.com", analyzed)
+
+            loaded = script_cache.load("cdn.example.com")
+            assert loaded is not None
+            assert len(loaded.scripts) == 1
+            # First entry wins
+            assert loaded.scripts[0].description == "Description A"
+
+    def test_different_hashes_both_kept(self, tmp_path) -> None:
+        """Scripts with different hashes are both preserved."""
+        with patch.object(script_cache, "_CACHE_DIR", tmp_path):
+            analyzed = [
+                script_cache.CachedScript(
+                    url="https://cdn.example.com/a.js",
+                    content_hash="hash_a",
+                    description="Script A",
+                ),
+                script_cache.CachedScript(
+                    url="https://cdn.example.com/b.js",
+                    content_hash="hash_b",
+                    description="Script B",
+                ),
+            ]
+            script_cache.save("cdn.example.com", analyzed)
+
+            loaded = script_cache.load("cdn.example.com")
+            assert loaded is not None
+            assert len(loaded.scripts) == 2
+
+    def test_carried_forward_hash_conflict_resolved(self, tmp_path) -> None:
+        """Carried-forward entry with same hash as new entry is dropped."""
+        with patch.object(script_cache, "_CACHE_DIR", tmp_path):
+            existing = script_cache.ScriptCacheEntry(
+                domain="cdn.example.com",
+                scripts=[
+                    script_cache.CachedScript(
+                        url="https://cdn.example.com/old.js",
+                        content_hash="dup_hash",
+                        description="Old description",
+                    ),
+                ],
+            )
+            new_scripts = [
+                script_cache.CachedScript(
+                    url="https://cdn.example.com/new.js",
+                    content_hash="dup_hash",
+                    description="New description",
+                ),
+            ]
+            script_cache.save("cdn.example.com", new_scripts, existing=existing)
+
+            loaded = script_cache.load("cdn.example.com")
+            assert loaded is not None
+            # New entry wins; old carried-forward with same hash is dropped
+            assert len(loaded.scripts) == 1
+            assert loaded.scripts[0].description == "New description"
 
 
 class TestIsFallbackDescription:
@@ -355,3 +519,65 @@ class TestIsFallbackDescription:
         """Fallback detection is case-sensitive."""
         assert is_fallback_description("third-party script") is False
         assert is_fallback_description("Third-party script") is True
+
+
+# ── URL validation ──────────────────────────────────────────────
+
+
+class TestIsValidScriptUrl:
+    """Tests for is_valid_script_url."""
+
+    def test_normal_https_url(self) -> None:
+        assert script_cache.is_valid_script_url("https://cdn.example.com/tracker.js") is True
+
+    def test_http_url(self) -> None:
+        assert script_cache.is_valid_script_url("http://cdn.example.com/script.js") is True
+
+    def test_filesystem_path(self) -> None:
+        assert script_cache.is_valid_script_url("/var/www/html/script.js") is False
+
+    def test_data_uri(self) -> None:
+        assert script_cache.is_valid_script_url("data:text/javascript,alert(1)") is False
+
+    def test_blob_uri(self) -> None:
+        assert script_cache.is_valid_script_url("blob:https://example.com/abc") is False
+
+    def test_empty_string(self) -> None:
+        assert script_cache.is_valid_script_url("") is False
+
+    def test_whitespace_only(self) -> None:
+        assert script_cache.is_valid_script_url("   ") is False
+
+    def test_no_scheme(self) -> None:
+        assert script_cache.is_valid_script_url("cdn.example.com/script.js") is False
+
+    def test_root_url(self) -> None:
+        assert script_cache.is_valid_script_url("https://cdn.example.com/") is True
+
+
+class TestCachedScriptRejectsMalformedUrl:
+    """CachedScript validator rejects non-HTTP URLs."""
+
+    def test_valid_url_accepted(self) -> None:
+        s = script_cache.CachedScript(
+            url="https://cdn.example.com/tracker.js",
+            content_hash="abc123",
+            description="Tracking script",
+        )
+        assert s.url == "https://cdn.example.com/tracker.js"
+
+    def test_filesystem_path_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Malformed script URL"):
+            script_cache.CachedScript(
+                url="/var/www/html/script.js",
+                content_hash="abc123",
+                description="Should fail",
+            )
+
+    def test_empty_url_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Malformed script URL"):
+            script_cache.CachedScript(
+                url="",
+                content_hash="abc123",
+                description="Should fail",
+            )

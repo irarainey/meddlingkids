@@ -1661,7 +1661,7 @@
   },
   {
     "pattern": "permutive\\.com",
-    "description": "Permutive: Publisher data platform with edge-based cohort targeting."
+    "description": "Permutive: First-party audience segmentation platform. Runs on-device (edge computing) to build publisher cohorts without cross-site identity resolution."
   },
   {
     "pattern": "optable\\.co",

@@ -1,7 +1,8 @@
 """Tests for src.agents.script_analysis_agent.
 
 Covers the ``_is_model_error`` helper and the
-``ScriptAnalysisAgent.analyze_one`` fallback behaviour.
+``ScriptAnalysisAgent.analyze_one`` behaviour including
+model-error fallback.
 """
 
 from __future__ import annotations

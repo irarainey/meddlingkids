@@ -325,19 +325,6 @@
     ],
     "url": "https://www.appdynamics.com"
   },
-  "optimizely": {
-    "concerns": [
-      "A/B testing",
-      "User bucketing",
-      "Behavior tracking",
-      "Session data"
-    ],
-    "aliases": [
-      "optimizely inc",
-      "episerver"
-    ],
-    "url": "https://www.optimizely.com"
-  },
   "vwo": {
     "concerns": [
       "A/B testing",

@@ -363,6 +363,7 @@ async def _safe_click(
         await first.click(timeout=timeout)
         return True
     except Exception:
+        log.debug("Click failed on element", {"locator": str(locator)})
         return False
 
 

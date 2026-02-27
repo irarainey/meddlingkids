@@ -20,6 +20,9 @@ from src.utils import logger
 
 log = logger.create_logger("Agent-Config")
 
+# Used by validate_llm_config and get_agent_deployment to
+# surface configuration details during startup diagnostics.
+
 # ── Agent names ─────────────────────────────────────────────────────
 AGENT_TRACKING_ANALYSIS = "TrackingAnalysisAgent"
 AGENT_SUMMARY_FINDINGS = "SummaryFindingsAgent"
@@ -54,6 +57,11 @@ def get_agent_deployment(agent_name: str) -> str | None:
         return None
 
     value = os.environ.get(env_var, "").strip()
+    if value:
+        log.info(
+            "Agent deployment override active",
+            {"agent": agent_name, "deployment": value},
+        )
     return value or None
 
 
@@ -123,11 +131,23 @@ def validate_llm_config() -> str | None:
     Returns:
         An error message string when misconfigured, or ``None`` if valid.
     """
-    if AzureOpenAIConfig().validate_config():
-        return None
-    if OpenAIConfig().validate_config():
+    azure_cfg = AzureOpenAIConfig()
+    if azure_cfg.validate_config():
+        log.info(
+            "LLM backend configured",
+            {"provider": "Azure OpenAI", "deployment": azure_cfg.deployment},
+        )
         return None
 
+    openai_cfg = OpenAIConfig()
+    if openai_cfg.validate_config():
+        log.info(
+            "LLM backend configured",
+            {"provider": "OpenAI", "model": openai_cfg.model or "default"},
+        )
+        return None
+
+    log.warn("No LLM backend configured")
     return (
         "LLM is not configured. Please set one of the following:\n"
         "  Azure OpenAI: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY,"
