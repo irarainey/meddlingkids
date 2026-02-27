@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import pydantic
 
 from src.models import analysis, browser, consent, partners, report, tracking_data
 
@@ -155,6 +156,96 @@ class TestConsentPartner:
         assert partner.risk_category is None
         assert partner.risk_score is None
         assert partner.concerns is None
+
+    def test_headline_rejected_as_name(self) -> None:
+        """A news headline should be rejected by the validator."""
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="Britain evacuates staff from Iran amid rising tensions",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_headline_with_ellipsis_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="Breaking news: government announces...",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_short_name_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="A",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_long_sentence_rejected(self) -> None:
+        with pytest.raises(pydantic.ValidationError, match="headline"):
+            consent.ConsentPartner(
+                name="This is a very long sentence that has more than eight words in it definitely",
+                purpose="",
+                data_collected=[],
+            )
+
+    def test_valid_company_names_accepted(self) -> None:
+        """Real consent partner names should pass validation."""
+        valid_names = [
+            "Google",
+            "Facebook",
+            "The Trade Desk",
+            "Integral Ad Science",
+            "Amazon Advertising",
+            "Criteo SA",
+            "Index Exchange",
+            "DoubleVerify",
+        ]
+        for name in valid_names:
+            partner = consent.ConsentPartner(
+                name=name,
+                purpose="",
+                data_collected=[],
+            )
+            assert partner.name == name
+
+
+class TestIsPlausiblePartnerName:
+    """Tests for the is_plausible_partner_name helper."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Google",
+            "Facebook",
+            "The Trade Desk",
+            "Integral Ad Science",
+            "Amazon Advertising",
+            "Criteo SA",
+            "1plusX AG",
+            "33Across",
+        ],
+    )
+    def test_valid_names(self, name: str) -> None:
+        assert consent.is_plausible_partner_name(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Britain evacuates staff from Iran amid tensions",
+            "Government announces new policy on immigration",
+            "Police warn residents about flooding risks",
+            "Markets crash as recession fears grow",
+            "Scientists reveal new climate data...",
+            "Breaking news!",
+            "",
+            "A",
+            "This is a sentence with way too many words to be a company name for real",
+        ],
+    )
+    def test_invalid_names(self, name: str) -> None:
+        assert consent.is_plausible_partner_name(name) is False
 
 
 # ── Analysis Models ─────────────────────────────────────────────

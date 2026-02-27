@@ -290,6 +290,8 @@ def _extract_partners(text: str) -> list[consent.ConsentPartner]:
             for line in list_text.strip().splitlines():
                 name = line.strip().rstrip(",;.")
                 if name and len(name) > 2 and len(name) < 100 and not _PARTNER_EXCLUDE_RE.search(name) and name not in seen:
+                    if not consent.is_plausible_partner_name(name):
+                        continue
                     seen.add(name)
                     partners.append(
                         consent.ConsentPartner(

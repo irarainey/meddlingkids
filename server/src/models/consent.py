@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 import pydantic
@@ -85,6 +86,15 @@ class ConsentPartner(pydantic.BaseModel):
     url: str = ""
     privacy_url: str = ""
 
+    @pydantic.field_validator("name", mode="after")
+    @classmethod
+    def _reject_non_partner_name(cls, v: str) -> str:
+        """Reject values that look like article headlines, not company names."""
+        if not is_plausible_partner_name(v):
+            msg = f"Value rejected as partner name (looks like a headline): {v!r}"
+            raise ValueError(msg)
+        return v.strip()
+
 
 class ConsentDetails(pydantic.BaseModel):
     """Detailed information extracted from a cookie consent dialog."""
@@ -114,3 +124,55 @@ class ConsentDetails(pydantic.BaseModel):
             raw_text=raw_text,
             claimed_partner_count=claimed_partner_count,
         )
+
+
+# ── Partner name plausibility check ─────────────────────────────
+
+# Sentence-like patterns: verbs, articles, and punctuation that
+# appear in headlines / prose but not in company names.
+_HEADLINE_RE = re.compile(
+    r"\b(?:evacuate|announce|report|warn|launch|reveal|confirm"
+    r"|says?|said|told|claim|deny|vote|strike|attack|kill|arrest"
+    r"|flee|condemn|urge|suspend|ban|approve|reject|sign"
+    r"|explode|collapse|crash|burn|flood|earthquake|storm|die)"
+    r"s?\b",
+    re.IGNORECASE,
+)
+
+# Maximum word count for a plausible company/vendor name.
+# Real partners: "Google", "The Trade Desk", "Integral Ad Science".
+_MAX_PARTNER_WORDS = 8
+
+# Minimum length for a partner name.
+_MIN_PARTNER_LENGTH = 2
+
+
+def is_plausible_partner_name(name: str) -> bool:
+    """Return ``True`` when *name* looks like a company name.
+
+    Rejects values that resemble article headlines or prose
+    sentences, which the LLM may extract from surrounding
+    page content.
+
+    Heuristics:
+
+    * **Too long:** More than ``_MAX_PARTNER_WORDS`` words.
+      Real vendor names rarely exceed 5-6 words.
+    * **Too short:** Fewer than ``_MIN_PARTNER_LENGTH`` chars.
+    * **Headline verbs:** Contains common news-headline verbs
+      ("evacuates", "announces", "reports", etc.).
+    * **Trailing ellipsis/punctuation:** Ends with ``...`` or
+      ``!`` — typical of truncated headlines, not company
+      names.
+    """
+    stripped = name.strip()
+    if len(stripped) < _MIN_PARTNER_LENGTH:
+        return False
+    words = stripped.split()
+    if len(words) > _MAX_PARTNER_WORDS:
+        return False
+    if stripped.endswith("...") or stripped.endswith("!"):
+        return False
+    if _HEADLINE_RE.search(stripped):
+        return False
+    return True

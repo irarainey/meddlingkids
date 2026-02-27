@@ -23,6 +23,25 @@ from src.utils import errors, image, json_parsing, logger
 
 log = logger.create_logger("ConsentExtractionAgent")
 
+
+def _safe_partner(name: str, purpose: str, data_collected: list[str]) -> consent.ConsentPartner | None:
+    """Build a ``ConsentPartner``, returning ``None`` when validation fails.
+
+    The model validator rejects headline-like names (e.g.
+    news article titles captured from surrounding page
+    content).  This helper catches those rejections so the
+    caller can silently skip the entry.
+    """
+    try:
+        return consent.ConsentPartner(
+            name=name,
+            purpose=purpose,
+            data_collected=data_collected,
+        )
+    except pydantic.ValidationError:
+        log.debug("Rejected non-partner name", {"name": name})
+        return None
+
 # Pre-load JavaScript snippets evaluated in the browser.
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
@@ -299,12 +318,12 @@ def _to_domain(
             for c in r.categories
         ],
         partners=[
-            consent.ConsentPartner(
-                name=p.name,
-                purpose=p.purpose,
-                data_collected=p.dataCollected,
+            p
+            for p in (
+                _safe_partner(p.name, p.purpose, p.dataCollected)
+                for p in r.partners
             )
-            for p in r.partners
+            if p is not None
         ],
         purposes=r.purposes,
         raw_text=raw_text[:5000],
@@ -338,12 +357,16 @@ def _parse_text_fallback(
                 for c in raw.get("categories", [])
             ],
             partners=[
-                consent.ConsentPartner(
-                    name=p.get("name", ""),
-                    purpose=p.get("purpose", ""),
-                    data_collected=p.get("dataCollected", []),
+                p
+                for p in (
+                    _safe_partner(
+                        c.get("name", ""),
+                        c.get("purpose", ""),
+                        c.get("dataCollected", []),
+                    )
+                    for c in raw.get("partners", [])
                 )
-                for p in raw.get("partners", [])
+                if p is not None
             ],
             purposes=raw.get("purposes", []),
             raw_text=raw_text[:5000],

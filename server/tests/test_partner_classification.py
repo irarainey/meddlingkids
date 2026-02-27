@@ -39,37 +39,37 @@ class TestClassifyByPurpose:
         assert result.category == "data-broker"
 
     def test_cross_site(self) -> None:
-        result = _classify_by_purpose(_partner("X", "cross-site"), "cross-site")
+        result = _classify_by_purpose(_partner("TrackCo", "cross-site"), "cross-site")
         assert result is not None
         assert result.risk_level == "high"
         assert result.category == "cross-site-tracking"
 
     def test_advertising(self) -> None:
-        result = _classify_by_purpose(_partner("Ad", "advertising"), "advertising")
+        result = _classify_by_purpose(_partner("AdTech", "advertising"), "advertising")
         assert result is not None
         assert result.risk_level == "medium"
         assert result.category == "advertising"
 
     def test_analytics(self) -> None:
-        result = _classify_by_purpose(_partner("A", "analytics"), "analytics")
+        result = _classify_by_purpose(_partner("AnalyticsCo", "analytics"), "analytics")
         assert result is not None
         assert result.risk_level == "medium"
         assert result.category == "analytics"
 
     def test_fraud_prevention(self) -> None:
-        result = _classify_by_purpose(_partner("F", "fraud"), "fraud")
+        result = _classify_by_purpose(_partner("FraudGuard", "fraud"), "fraud")
         assert result is not None
         assert result.risk_level == "low"
         assert result.category == "fraud-prevention"
 
     def test_content_delivery(self) -> None:
-        result = _classify_by_purpose(_partner("C", "cdn"), "cdn")
+        result = _classify_by_purpose(_partner("CDNCo", "cdn"), "cdn")
         assert result is not None
         assert result.risk_level == "low"
         assert result.category == "content-delivery"
 
     def test_unknown_purpose_returns_none(self) -> None:
-        assert _classify_by_purpose(_partner("X", "something"), "something") is None
+        assert _classify_by_purpose(_partner("UnknownCo", "something"), "something") is None
 
 
 # ── classify_partner_by_pattern_sync ──────────────────────────
