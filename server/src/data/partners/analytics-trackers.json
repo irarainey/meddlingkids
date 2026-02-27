@@ -1019,5 +1019,18 @@
       "permutive ltd"
     ],
     "url": "https://permutive.com"
+  },
+  "optimizely": {
+    "concerns": [
+      "A/B testing and experimentation platform",
+      "User bucketing and variation assignment",
+      "Conversion tracking for experiments",
+      "Feature flagging and progressive rollout"
+    ],
+    "aliases": [
+      "optimizely inc",
+      "episerver"
+    ],
+    "url": "https://www.optimizely.com"
   }
 }

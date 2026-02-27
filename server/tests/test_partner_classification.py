@@ -149,3 +149,37 @@ class TestPermutiveClassification:
         assert result is not None
         assert result.category != "identity-resolution"
         assert result.risk_level != "critical"
+
+
+# ── Optimizely classification ─────────────────────────────────
+
+
+class TestOptimizelyClassification:
+    """Optimizely must be classified as analytics, not advertising
+    or session-replay / cross-site-tracking."""
+
+    def test_optimizely_is_analytics(self) -> None:
+        p = _partner("Optimizely", "A/B testing")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category == "analytics"
+        assert result.risk_level == "medium"
+
+    def test_optimizely_inc_alias(self) -> None:
+        p = _partner("Optimizely Inc", "experimentation")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category == "analytics"
+
+    def test_episerver_alias(self) -> None:
+        p = _partner("Episerver", "content optimization")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category == "analytics"
+
+    def test_optimizely_not_advertising(self) -> None:
+        p = _partner("Optimizely", "experimentation")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category != "advertising"
+        assert result.category != "cross-site-tracking"
