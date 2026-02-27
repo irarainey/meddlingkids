@@ -528,5 +528,72 @@ class TestGenerateSummary:
         assert "session recording" in summary
 
     def test_fingerprint_override(self) -> None:
-        summary = calculator._generate_summary("example.com", 80, ["Fingerprinting detected"])
+        summary = calculator._generate_summary(
+            "example.com", 80, ["Fingerprinting detected"],
+            fingerprint_points=5,
+        )
         assert "fingerprinting" in summary
+
+    def test_no_advertising_when_zero_points(self) -> None:
+        """Advertising should not appear when advertising_points is 0."""
+        summary = calculator._generate_summary(
+            "example.com", 50, [],
+            advertising_points=0,
+            third_party_points=5,
+        )
+        assert "advertising" not in summary
+        assert "third-party analytics" in summary
+
+    def test_advertising_mentioned_when_points_positive(self) -> None:
+        """Advertising should appear when advertising_points > 0."""
+        summary = calculator._generate_summary(
+            "example.com", 50, [],
+            advertising_points=5,
+        )
+        assert "advertising networks" in summary
+
+    def test_multiple_categories_combined(self) -> None:
+        """Multiple active categories should all appear."""
+        summary = calculator._generate_summary(
+            "example.com", 60, [],
+            advertising_points=3,
+            fingerprint_points=4,
+            social_media_points=2,
+        )
+        assert "advertising networks" in summary
+        assert "device fingerprinting" in summary
+        assert "social media trackers" in summary
+
+    def test_standard_analytics_fallback(self) -> None:
+        """When score >= 20 but no specific category has points, use 'standard analytics'."""
+        summary = calculator._generate_summary("example.com", 30, [])
+        assert "standard analytics" in summary
+
+    def test_low_score_privacy_respecting(self) -> None:
+        """Scores below 20 should say 'privacy-respecting'."""
+        summary = calculator._generate_summary("example.com", 10, [])
+        assert "privacy-respecting" in summary
+
+    def test_fingerprint_override_requires_points(self) -> None:
+        """Fingerprint top-factor override only fires when fingerprint_points > 0."""
+        summary = calculator._generate_summary(
+            "example.com", 80, ["Fingerprinting detected"],
+            fingerprint_points=0,
+        )
+        assert "cross-site tracking" not in summary
+
+    def test_ad_network_override_requires_points(self) -> None:
+        """Ad-network top-factor override only fires when advertising_points > 0."""
+        summary = calculator._generate_summary(
+            "example.com", 80, ["Ad network doubleclick.net"],
+            advertising_points=0,
+        )
+        assert "doubleclick" not in summary
+
+    def test_ad_network_override_with_points(self) -> None:
+        """Ad-network top-factor override should fire when advertising_points > 0."""
+        summary = calculator._generate_summary(
+            "example.com", 80, ["Ad network doubleclick.net"],
+            advertising_points=5,
+        )
+        assert "doubleclick" in summary

@@ -157,7 +157,15 @@ def calculate_privacy_score(
     if sensitive_data_score.issues:
         factors.extend(sensitive_data_score.issues[:1])
 
-    summary = _generate_summary(site_hostname, total_score, factors)
+    summary = _generate_summary(
+        site_hostname,
+        total_score,
+        factors,
+        advertising_points=advertising_score.points,
+        fingerprint_points=fingerprint_score.points,
+        social_media_points=social_media_score.points,
+        third_party_points=third_party_score.points,
+    )
 
     log.success(
         "Privacy score calculated",
@@ -219,13 +227,26 @@ def _generate_summary(
     site_name: str,
     score: int,
     factors: list[str],
+    *,
+    advertising_points: int = 0,
+    fingerprint_points: int = 0,
+    social_media_points: int = 0,
+    third_party_points: int = 0,
 ) -> str:
     """Generate a human-readable summary sentence.
+
+    The description is built from the categories that actually
+    scored points so it never claims advertising when none
+    was detected.
 
     Args:
         site_name: The hostname of the analysed site.
         score: The final 0–100 curved score.
         factors: Top contributing factor descriptions.
+        advertising_points: Raw points from advertising category.
+        fingerprint_points: Raw points from fingerprinting category.
+        social_media_points: Raw points from social media category.
+        third_party_points: Raw points from third-party category.
 
     Returns:
         A single-sentence summary of the privacy risk.
@@ -234,26 +255,42 @@ def _generate_summary(
 
     if score >= 80:
         severity = "extensive"
-        description = "with aggressive cross-site tracking and data sharing"
     elif score >= 60:
         severity = "significant"
-        description = "with multiple advertising networks and third-party trackers"
     elif score >= 40:
         severity = "moderate"
-        description = "with standard analytics and some advertising trackers"
     elif score >= 20:
         severity = "limited"
-        description = "with basic analytics and minimal third-party presence"
     else:
         severity = "minimal"
-        description = "with privacy-respecting practices"
 
+    # Build description from actual detections
+    if score < 20:
+        description = "with privacy-respecting practices"
+    else:
+        # Collect what was actually found
+        parts: list[str] = []
+        if third_party_points > 0 and advertising_points == 0:
+            parts.append("third-party analytics")
+        if advertising_points > 0:
+            parts.append("advertising networks")
+        if fingerprint_points > 0:
+            parts.append("device fingerprinting")
+        if social_media_points > 0:
+            parts.append("social media trackers")
+
+        if not parts:
+            parts.append("standard analytics")
+
+        description = f"with {', '.join(parts)}"
+
+    # Override with top factor if especially notable
     top_factor = (factors[0] if factors else "").lower()
     if "session replay" in top_factor:
         description = "including session recording that captures your interactions"
-    elif "fingerprint" in top_factor:
+    elif "fingerprint" in top_factor and fingerprint_points > 0:
         description = "including device fingerprinting for cross-site tracking"
-    elif "ad network" in top_factor:
+    elif "ad network" in top_factor and advertising_points > 0:
         description = f"including {top_factor}"
 
     return f"{site_name} has {severity} tracking {description}."
