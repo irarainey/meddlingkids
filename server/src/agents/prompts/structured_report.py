@@ -78,6 +78,13 @@ by tracking scripts
 Do not fabricate data types or sharing relationships. Only describe what can be \
 reasonably inferred from the cookies, scripts, storage, and network requests provided.
 
+IMPORTANT: If the site has zero cookies, zero tracking scripts, zero browser \
+storage entries, and zero third-party domains, return an EMPTY items list. \
+Do not infer data collection from standard HTTP/TCP-IP mechanics that apply \
+to every web server (such as IP addresses being visible to the server, \
+user-agent headers sent by browsers, or web server access logs). These are \
+inherent to the HTTP protocol, not active data collection by the site.
+
 Focus on factual observations from the cookies, scripts, storage, and network \
 requests provided. Be specific about which cookies, storage keys, or network \
 requests indicate each type of data collection and sharing.
