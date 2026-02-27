@@ -122,3 +122,30 @@ class TestGetPartnerRiskSummary:
         ps = [_partner(f"HighRisk-{i}", "cross-site tracking") for i in range(10)]
         summary = get_partner_risk_summary(ps)
         assert len(summary.worst_partners) <= 5
+
+
+# ── Permutive classification ──────────────────────────────────
+
+
+class TestPermutiveClassification:
+    """Permutive must be classified as analytics, not identity-resolution."""
+
+    def test_permutive_is_analytics(self) -> None:
+        p = _partner("Permutive", "audience segmentation")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category == "analytics"
+        assert result.risk_level == "medium"
+
+    def test_permutive_inc_alias(self) -> None:
+        p = _partner("Permutive Inc", "data platform")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category == "analytics"
+
+    def test_permutive_not_identity_resolution(self) -> None:
+        p = _partner("Permutive Ltd", "cohort targeting")
+        result = classify_partner_by_pattern_sync(p)
+        assert result is not None
+        assert result.category != "identity-resolution"
+        assert result.risk_level != "critical"

@@ -1005,5 +1005,19 @@
       "miaozhen technology"
     ],
     "url": "https://www.miaozhen.com"
+  },
+  "permutive": {
+    "concerns": [
+      "First-party audience segmentation runs on-device",
+      "Cohort-based targeting without cross-site identity",
+      "Publisher data platform with edge computing",
+      "Data clean room for publisher-advertiser collaboration",
+      "Curated audience segments shared with advertisers"
+    ],
+    "aliases": [
+      "permutive inc",
+      "permutive ltd"
+    ],
+    "url": "https://permutive.com"
   }
 }
