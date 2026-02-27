@@ -173,6 +173,4 @@ def is_plausible_partner_name(name: str) -> bool:
         return False
     if stripped.endswith("...") or stripped.endswith("!"):
         return False
-    if _HEADLINE_RE.search(stripped):
-        return False
-    return True
+    return not _HEADLINE_RE.search(stripped)

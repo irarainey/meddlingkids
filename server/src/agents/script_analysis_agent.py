@@ -8,8 +8,6 @@ deployments (e.g. Codex models).
 
 from __future__ import annotations
 
-import json
-
 import pydantic
 
 from src.agents import base, config
@@ -158,7 +156,6 @@ class ScriptAnalysisAgent(base.BaseAgent):
 
         return None
 
-
     async def _try_complete_codex(
         self,
         user_message: str,
@@ -194,11 +191,7 @@ class ScriptAnalysisAgent(base.BaseAgent):
                 log.error("Cannot access underlying SDK client for Codex completion")
                 return None
 
-        prompt = (
-            f"{self.instructions}\n\n"
-            f"{user_message}\n\n"
-            "Respond with ONLY a JSON object: {{\"description\": \"...\"}}"
-        )
+        prompt = f'{self.instructions}\n\n{user_message}\n\nRespond with ONLY a JSON object: {{{{"description": "..."}}}}'
         log.debug("Codex completion", {"url": url, "deployment": self._deployment})
 
         response = await sdk_client.completions.create(
@@ -216,7 +209,7 @@ class ScriptAnalysisAgent(base.BaseAgent):
 
         raw = json_parsing.load_json_from_text(text)
         if isinstance(raw, dict) and raw.get("description"):
-            return raw["description"]
+            return str(raw["description"])
 
         # If the response isn't valid JSON, use the raw text
         # as the description (Codex may return plain text).

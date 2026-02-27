@@ -14,7 +14,6 @@ import pytest
 
 from src.agents import script_analysis_agent
 
-
 # ── _is_codex_deployment ─────────────────────────────────────
 
 
@@ -239,7 +238,7 @@ class TestCodexCompletionPath:
         choice.text = '{"description": "Google Analytics tracking"}'
         completion.choices = [choice]
 
-        sdk_client = codex_agent._chat_client.client
+        sdk_client = codex_agent._chat_client.client  # type: ignore[union-attr]
         sdk_client.completions.create = mock.AsyncMock(
             return_value=completion,
         )
@@ -262,7 +261,7 @@ class TestCodexCompletionPath:
         choice.text = "Facebook Pixel tracking script"
         completion.choices = [choice]
 
-        sdk_client = codex_agent._chat_client.client
+        sdk_client = codex_agent._chat_client.client  # type: ignore[union-attr]
         sdk_client.completions.create = mock.AsyncMock(
             return_value=completion,
         )
@@ -283,7 +282,7 @@ class TestCodexCompletionPath:
         choice.text = ""
         completion.choices = [choice]
 
-        sdk_client = codex_agent._chat_client.client
+        sdk_client = codex_agent._chat_client.client  # type: ignore[union-attr]
         sdk_client.completions.create = mock.AsyncMock(
             return_value=completion,
         )
@@ -299,7 +298,7 @@ class TestCodexCompletionPath:
         codex_agent: script_analysis_agent.ScriptAnalysisAgent,
     ) -> None:
         """Codex model error triggers fallback to chat model."""
-        sdk_client = codex_agent._chat_client.client
+        sdk_client = codex_agent._chat_client.client  # type: ignore[union-attr]
         sdk_client.completions.create = mock.AsyncMock(
             side_effect=Exception("OperationNotSupported"),
         )

@@ -88,17 +88,17 @@ class TrackingTechnologiesSection(pydantic.BaseModel):
 # categories.  Enforced by a model validator on DataCollectionItem
 # so that LLM drift cannot produce inconsistent results across runs.
 _CANONICAL_CATEGORY_DEFAULTS: dict[str, tuple[Literal["low", "medium", "high", "critical"], bool]] = {
-    "browsing behaviour":             ("medium",   False),
-    "user identifiers":               ("high",     True),
-    "device information":             ("medium",   False),
-    "location data":                  ("medium",   False),
-    "usage analytics":                ("medium",   False),
-    "account & consent state":        ("low",      False),
-    "experimentation & optimisation": ("low",      False),
-    "advertising & retargeting":      ("high",     False),
-    "financial / payment":            ("critical", True),
-    "health & wellness":              ("critical", True),
-    "social media signals":           ("medium",   False),
+    "browsing behaviour": ("medium", False),
+    "user identifiers": ("high", True),
+    "device information": ("medium", False),
+    "location data": ("medium", False),
+    "usage analytics": ("medium", False),
+    "account & consent state": ("low", False),
+    "experimentation & optimisation": ("low", False),
+    "advertising & retargeting": ("high", False),
+    "financial / payment": ("critical", True),
+    "health & wellness": ("critical", True),
+    "social media signals": ("medium", False),
 }
 
 
@@ -114,7 +114,7 @@ class DataCollectionItem(pydantic.BaseModel):
     shared_with: list[NamedEntity] = pydantic.Field(default_factory=list)
 
     @pydantic.model_validator(mode="after")
-    def _enforce_canonical_risk(self) -> "DataCollectionItem":
+    def _enforce_canonical_risk(self) -> DataCollectionItem:
         """Enforce consistent risk / sensitive for standard categories.
 
         For well-known categories the canonical values override

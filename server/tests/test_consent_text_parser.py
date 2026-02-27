@@ -190,10 +190,7 @@ class TestPurposeExtraction:
 
     def test_purpose_numbers_dedup_with_text(self) -> None:
         """Numbered reference should not duplicate a text-matched purpose."""
-        text = (
-            "Purpose 1: Store and/or access information on a device. "
-            "Store and/or access information on a device."
-        )
+        text = "Purpose 1: Store and/or access information on a device. Store and/or access information on a device."
         purposes = text_parser._extract_purposes(text)
         assert purposes.count("Store and/or access information on a device") == 1
 

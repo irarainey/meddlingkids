@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from src.analysis import script_cache
 from src.analysis.scripts import (
     _FALLBACK_DESCRIPTIONS,
@@ -520,8 +522,6 @@ class TestIsFallbackDescription:
 
 
 # ── URL validation ──────────────────────────────────────────────
-
-import pytest
 
 
 class TestIsValidScriptUrl:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 import pydantic
+import pytest
 
 from src.models import analysis, browser, consent, partners, report, tracking_data
 

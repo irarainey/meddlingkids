@@ -529,7 +529,9 @@ class TestGenerateSummary:
 
     def test_fingerprint_override(self) -> None:
         summary = calculator._generate_summary(
-            "example.com", 80, ["Fingerprinting detected"],
+            "example.com",
+            80,
+            ["Fingerprinting detected"],
             fingerprint_points=5,
         )
         assert "fingerprinting" in summary
@@ -537,7 +539,9 @@ class TestGenerateSummary:
     def test_no_advertising_when_zero_points(self) -> None:
         """Advertising should not appear when advertising_points is 0."""
         summary = calculator._generate_summary(
-            "example.com", 50, [],
+            "example.com",
+            50,
+            [],
             advertising_points=0,
             third_party_points=5,
         )
@@ -547,7 +551,9 @@ class TestGenerateSummary:
     def test_advertising_mentioned_when_points_positive(self) -> None:
         """Advertising should appear when advertising_points > 0."""
         summary = calculator._generate_summary(
-            "example.com", 50, [],
+            "example.com",
+            50,
+            [],
             advertising_points=5,
         )
         assert "advertising networks" in summary
@@ -555,7 +561,9 @@ class TestGenerateSummary:
     def test_multiple_categories_combined(self) -> None:
         """Multiple active categories should all appear."""
         summary = calculator._generate_summary(
-            "example.com", 60, [],
+            "example.com",
+            60,
+            [],
             advertising_points=3,
             fingerprint_points=4,
             social_media_points=2,
@@ -577,7 +585,9 @@ class TestGenerateSummary:
     def test_fingerprint_override_requires_points(self) -> None:
         """Fingerprint top-factor override only fires when fingerprint_points > 0."""
         summary = calculator._generate_summary(
-            "example.com", 80, ["Fingerprinting detected"],
+            "example.com",
+            80,
+            ["Fingerprinting detected"],
             fingerprint_points=0,
         )
         assert "cross-site tracking" not in summary
@@ -585,7 +595,9 @@ class TestGenerateSummary:
     def test_ad_network_override_requires_points(self) -> None:
         """Ad-network top-factor override only fires when advertising_points > 0."""
         summary = calculator._generate_summary(
-            "example.com", 80, ["Ad network doubleclick.net"],
+            "example.com",
+            80,
+            ["Ad network doubleclick.net"],
             advertising_points=0,
         )
         assert "doubleclick" not in summary
@@ -593,7 +605,9 @@ class TestGenerateSummary:
     def test_ad_network_override_with_points(self) -> None:
         """Ad-network top-factor override should fire when advertising_points > 0."""
         summary = calculator._generate_summary(
-            "example.com", 80, ["Ad network doubleclick.net"],
+            "example.com",
+            80,
+            ["Ad network doubleclick.net"],
             advertising_points=5,
         )
         assert "doubleclick" in summary

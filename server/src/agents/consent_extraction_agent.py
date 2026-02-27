@@ -42,6 +42,7 @@ def _safe_partner(name: str, purpose: str, data_collected: list[str]) -> consent
         log.debug("Rejected non-partner name", {"name": name})
         return None
 
+
 # Pre-load JavaScript snippets evaluated in the browser.
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
@@ -383,14 +384,7 @@ def _to_domain(
             )
             for c in r.categories
         ],
-        partners=[
-            p
-            for p in (
-                _safe_partner(p.name, p.purpose, p.dataCollected)
-                for p in r.partners
-            )
-            if p is not None
-        ],
+        partners=[p for p in (_safe_partner(p.name, p.purpose, p.dataCollected) for p in r.partners) if p is not None],
         purposes=r.purposes,
         raw_text=raw_text[:5000],
         claimed_partner_count=(r.claimedPartnerCount or _extract_partner_count_from_text(raw_text)),
