@@ -172,7 +172,7 @@ async def run_ai_analysis(
         progress_queue.put_nowait(
             sse_helpers.format_progress_event(
                 "report-section",
-                f"Building report: {label} ({done}/{total})...",
+                f"Building report: {label}...",
                 90 + int((done / total) * 4),  # 90-94
             )
         )
@@ -287,7 +287,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-matching",
-                        detail or "Grouping and identifying scripts...",
+                        "Identifying known scripts...",
                         77,
                     )
                 )
@@ -296,7 +296,7 @@ def _launch_concurrent_tasks(
             progress_queue.put_nowait(
                 sse_helpers.format_progress_event(
                     "script-fetching",
-                    detail or f"Fetching script {current}/{total}...",
+                    "Fetching script contents...",
                     pct,
                 )
             )
@@ -305,7 +305,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail or "Analyzing scripts...",
+                        "All scripts identified from known patterns",
                         82,
                     )
                 )
@@ -314,7 +314,7 @@ def _launch_concurrent_tasks(
                 progress_queue.put_nowait(
                     sse_helpers.format_progress_event(
                         "script-analysis",
-                        detail or f"Analyzing script {current}/{total}...",
+                        "Analyzing scripts...",
                         pct,
                     )
                 )
