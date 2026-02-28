@@ -1,6 +1,8 @@
-"""Tests for _merge_results in consent_extraction_agent."""
+"""Tests for _merge_results and helpers in consent_extraction_agent."""
 
 from __future__ import annotations
+
+import pytest
 
 from src.agents import consent_extraction_agent
 from src.models import consent
@@ -156,3 +158,58 @@ class TestMergeResults:
         assert len(result.categories) == 2
         assert result.has_manage_options is True
         assert result.claimed_partner_count == 842
+
+
+class TestIsRequiredCategory:
+    """Tests for _is_required_category deterministic detection."""
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Strictly Necessary",
+            "Strictly necessary cookies",
+            "strictly necessary",
+            "Essential cookies",
+            "essential",
+            "Required cookies",
+            "Always active",
+            "Necessary cookies",
+        ],
+    )
+    def test_required_categories_detected(self, name: str) -> None:
+        assert consent_extraction_agent._is_required_category(name) is True
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Analytics",
+            "Performance cookies",
+            "Targeting / Advertising",
+            "Functional cookies",
+            "Social Media",
+            "Personalisation",
+            "Marketing",
+        ],
+    )
+    def test_optional_categories_not_flagged(self, name: str) -> None:
+        assert consent_extraction_agent._is_required_category(name) is False
+
+    def test_to_domain_forces_required_for_necessary(self) -> None:
+        """_to_domain should set required=True even when LLM said False."""
+        response = consent_extraction_agent._ConsentExtractionResponse(
+            categories=[
+                consent_extraction_agent._CategoryResponse(
+                    name="Strictly necessary cookies",
+                    description="Essential for site function.",
+                    required=False,  # LLM got it wrong
+                ),
+                consent_extraction_agent._CategoryResponse(
+                    name="Analytics",
+                    description="Usage tracking.",
+                    required=False,
+                ),
+            ],
+        )
+        result = consent_extraction_agent._to_domain(response, "test")
+        assert result.categories[0].required is True
+        assert result.categories[1].required is False

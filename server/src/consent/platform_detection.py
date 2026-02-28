@@ -133,8 +133,10 @@ def detect_platform_from_cookies(
 _MEDIA_GROUP_CMP_MAP: dict[str, str] = {
     "sourcepoint": "sourcepoint",
     "onetrust": "onetrust",
-    "quantcast choice": "quantcast_choice",
-    "quantcast": "quantcast_choice",
+    "inmobi choice": "inmobi_choice",
+    "inmobi": "inmobi_choice",
+    "quantcast choice": "inmobi_choice",
+    "quantcast": "inmobi_choice",
     "cookiebot": "cookiebot",
     "didomi": "didomi",
     "trustarc": "trustarc",

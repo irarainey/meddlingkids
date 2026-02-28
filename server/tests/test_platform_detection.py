@@ -55,9 +55,9 @@ class TestGetPlatformProfile:
         assert profile.key == "onetrust"
 
     def test_space_to_underscore(self) -> None:
-        profile = platform_detection.get_platform_profile("quantcast choice")
+        profile = platform_detection.get_platform_profile("inmobi choice")
         assert profile is not None
-        assert profile.key == "quantcast_choice"
+        assert profile.key == "inmobi_choice"
 
     def test_missing_key_returns_none(self) -> None:
         assert platform_detection.get_platform_profile("nonexistent_cmp") is None
@@ -137,7 +137,7 @@ class TestProfileDataQuality:
     EXPECTED_PLATFORMS: ClassVar[list[str]] = [
         "sourcepoint",
         "onetrust",
-        "quantcast_choice",
+        "inmobi_choice",
         "cookiebot",
         "didomi",
         "trustarc",
@@ -272,7 +272,7 @@ class TestDetectPlatformFromCookies:
         ]
         result = platform_detection.detect_platform_from_cookies(cookies)
         assert result is not None
-        assert result.key == "quantcast_choice"
+        assert result.key == "inmobi_choice"
 
     def test_most_hits_wins(self) -> None:
         """When cookies match multiple CMPs, the one with most hits wins."""
@@ -300,11 +300,11 @@ class TestDetectPlatformFromDomain:
         result = platform_detection.detect_platform_from_domain("random-unknown-site.xyz")
         assert result is None
 
-    def test_reach_plc_domain_returns_quantcast_choice(self) -> None:
-        """mirror.co.uk is a Reach plc site using Quantcast Choice (IAB CMP ID 10)."""
+    def test_reach_plc_domain_returns_inmobi_choice(self) -> None:
+        """mirror.co.uk is a Reach plc site using InMobi Choice (formerly Quantcast Choice, IAB CMP ID 10)."""
         result = platform_detection.detect_platform_from_domain("mirror.co.uk")
         assert result is not None
-        assert result.key == "quantcast_choice"
+        assert result.key == "inmobi_choice"
 
     def test_dmg_media_domain_returns_none_for_custom_cmp(self) -> None:
         """dailymail.co.uk is a DMG Media site using a custom in-house CMP."""
@@ -332,7 +332,9 @@ class TestMediaGroupCmpMap:
     def test_onetrust_in_map(self) -> None:
         assert "onetrust" in platform_detection._MEDIA_GROUP_CMP_MAP
 
-    def test_quantcast_variants_in_map(self) -> None:
+    def test_inmobi_choice_variants_in_map(self) -> None:
+        assert "inmobi choice" in platform_detection._MEDIA_GROUP_CMP_MAP
+        assert "inmobi" in platform_detection._MEDIA_GROUP_CMP_MAP
         assert "quantcast choice" in platform_detection._MEDIA_GROUP_CMP_MAP
         assert "quantcast" in platform_detection._MEDIA_GROUP_CMP_MAP
 

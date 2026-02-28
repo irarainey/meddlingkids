@@ -102,12 +102,12 @@
       ],
       "notes": "OneTrust renders in the main frame — no iframe needed. The banner container is #onetrust-banner-sdk with accept/reject/settings buttons as direct children. Cookie categories use group IDs like C0001 (strictly necessary), C0002 (performance), C0003 (functional), C0004 (targeting). The OptanonConsent cookie encodes group consent states."
     },
-    "quantcast_choice": {
-      "name": "Quantcast Choice",
-      "vendor": "Quantcast International Limited",
-      "privacy_url": "https://www.quantcast.com/privacy/",
+    "inmobi_choice": {
+      "name": "InMobi Choice",
+      "vendor": "InMobi Pte Ltd (formerly Quantcast International Limited)",
+      "privacy_url": "https://www.inmobi.com/privacy-policy",
       "tcf_registered": true,
-      "description": "TCF-native CMP from the Quantcast advertising platform. Renders consent dialogs in the main frame using the #qc-cmp2-ui container. Common on mid-tier publishers and sites using Quantcast for audience measurement.",
+      "description": "TCF-native CMP formerly known as Quantcast Choice, acquired by InMobi in 2023. Renders consent dialogs in the main frame using the #qc-cmp2-ui container. Common on mid-tier publishers. Legacy deployments still reference quantcast.com domains.",
       "iframe_patterns": [
         "quantcast.mgr.consensu.org"
       ],
@@ -139,7 +139,7 @@
         "button.css-1x3sa6k",
         "button[mode='link']"
       ],
-      "notes": "Quantcast Choice renders in the main frame. Button classes are dynamically generated (css-*) so role/text-based locators are more reliable. The accept button typically has mode='primary' attribute. Recent versions use a two-step flow: summary → purposes."
+      "notes": "InMobi Choice (formerly Quantcast Choice) renders in the main frame. Button classes are dynamically generated (css-*) so role/text-based locators are more reliable. The accept button typically has mode='primary' attribute. Recent versions use a two-step flow: summary → purposes."
     },
     "cookiebot": {
       "name": "Cookiebot",

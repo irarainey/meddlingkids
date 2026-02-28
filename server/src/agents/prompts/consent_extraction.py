@@ -39,6 +39,15 @@ function properly."
 - If the dialog provides no description for a category, use \
 an empty string rather than inventing one.
 
+CATEGORY REQUIRED FLAG:
+- Set "required" to true for categories that are essential \
+for the website to function and cannot be opted out of. \
+These are typically labelled "Strictly necessary", \
+"Essential", "Required", or "Always active".
+- Set "required" to false for all other categories \
+(analytics, advertising, functional, personalisation, \
+social media, etc.).
+
 PURPOSES:
 - Only extract genuine data-processing or data-collection \
 purposes — actions that describe what your data is used for.

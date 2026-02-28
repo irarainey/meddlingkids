@@ -633,7 +633,7 @@
   },
   {
     "pattern": "quantcast\\.com.*choice|quantcast\\.mgr",
-    "description": "Quantcast Choice: Consent management with audience measurement and tracking."
+    "description": "InMobi Choice (formerly Quantcast Choice): Consent management with audience measurement and tracking."
   },
   {
     "pattern": "sourcepoint\\.com|cdn\\.privacy-mgmt",

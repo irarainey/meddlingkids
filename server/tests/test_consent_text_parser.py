@@ -47,6 +47,7 @@ class TestConsentContextGate:
     @pytest.mark.parametrize(
         "text",
         [
+            "InMobi Choice consent platform",
             "Quantcast Choice consent platform",
             "Sourcepoint CMP",
             "OneTrust cookie banner",
@@ -58,7 +59,8 @@ class TestConsentContextGate:
             "Privacy Notice",
         ],
         ids=[
-            "quantcast",
+            "inmobi-choice",
+            "quantcast-legacy",
             "sourcepoint",
             "onetrust",
             "cookiebot",
@@ -132,8 +134,9 @@ class TestConsentContextGate:
         text = "Home News Sport Business Opinion Arts Travel"
         assert text_parser._CONSENT_CONTEXT_RE.search(text) is None
 
-    def test_quantcast_choice_dialog_text(self) -> None:
-        """Regression: Quantcast Choice consent text was previously
+    def test_inmobi_choice_dialog_text(self) -> None:
+        """Regression: InMobi Choice (formerly Quantcast Choice)
+        consent text was previously
         rejected by the gate because it didn't contain any of the
         original trigger phrases."""
         text = (
@@ -321,7 +324,8 @@ class TestConsentPlatformDetection:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
-            ("Powered by Quantcast Choice", "Quantcast Choice"),
+            ("Powered by InMobi Choice", "InMobi Choice"),
+            ("Powered by Quantcast Choice", "InMobi Choice"),
             ("OneTrust cookie banner", "OneTrust"),
             ("Sourcepoint consent manager", "Sourcepoint"),
             ("Cookiebot dialogue", "Cookiebot"),
@@ -334,7 +338,8 @@ class TestConsentPlatformDetection:
             ("Ketch privacy preferences", "Ketch"),
         ],
         ids=[
-            "quantcast",
+            "inmobi-choice",
+            "quantcast-legacy",
             "onetrust",
             "sourcepoint",
             "cookiebot",
@@ -370,7 +375,7 @@ class TestConsentPlatformDetection:
 class TestFullParseTcfDialog:
     """Integration tests simulating realistic TCF consent text."""
 
-    def test_quantcast_style_dialog(self) -> None:
+    def test_inmobi_choice_style_dialog(self) -> None:
         text = (
             "We and our 842 partners need your consent to store "
             "and/or access information on a device for the purposes "
@@ -387,7 +392,7 @@ class TestFullParseTcfDialog:
         result = text_parser.parse_consent_text(text)
         assert result.claimed_partner_count == 842
         assert len(result.purposes) >= 5
-        assert result.consent_platform == "Quantcast Choice"
+        assert result.consent_platform == "InMobi Choice"
         assert result.has_manage_options is True
         assert any("geolocation" in p.lower() for p in result.purposes)
 

@@ -50,17 +50,19 @@
     "url": "https://trustarc.com",
     "privacy_url": "https://trustarc.com/privacy-policy/"
   },
-  "quantcast choice": {
+  "inmobi choice": {
     "concerns": [
       "Consent management",
       "TCF",
-      "Part of Quantcast tracking"
+      "Part of InMobi (formerly Quantcast) tracking"
     ],
     "aliases": [
+      "inmobi cmp",
+      "quantcast choice",
       "quantcast cmp"
     ],
-    "url": "https://www.quantcast.com",
-    "privacy_url": "https://www.quantcast.com/privacy/"
+    "url": "https://www.inmobi.com",
+    "privacy_url": "https://www.inmobi.com/privacy-policy/"
   },
   "didomi": {
     "concerns": [
