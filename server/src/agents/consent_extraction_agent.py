@@ -293,6 +293,12 @@ class ConsentExtractionAgent(base.BaseAgent):
                 local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
             return local_result
 
+        # All vision attempts failed without raising — fall
+        # back to the local parse result.
+        if not local_result.claimed_partner_count:
+            local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
+        return local_result
+
     async def _text_only_fallback(
         self,
         consent_text: str,
@@ -351,9 +357,13 @@ class ConsentExtractionAgent(base.BaseAgent):
                     return _merge_results(text_fallback, local_result)
             except Exception as fallback_err:
                 error_msg = errors.get_error_message(fallback_err)
-                is_timeout = isinstance(
-                    fallback_err, (asyncio.TimeoutError, TimeoutError),
-                ) or "timed out" in error_msg.lower()
+                is_timeout = (
+                    isinstance(
+                        fallback_err,
+                        (asyncio.TimeoutError, TimeoutError),
+                    )
+                    or "timed out" in error_msg.lower()
+                )
                 if is_timeout and attempt < max_text_attempts:
                     log.warn(
                         "Text-only LLM fallback timed out — retrying",
