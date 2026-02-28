@@ -67,6 +67,13 @@ _session_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_SESSIONS)
 # screenshot overhead.
 _REFRESH_INTERVAL_SECONDS = 3.0
 
+# Timeout (ms) for screenshots taken by the background
+# refresher.  Lower than the default 15 000 ms so that
+# heavy ad-stack pages (e.g. Bristol Post with ~2 300
+# requests) don't block the refresher for the full
+# Playwright timeout on every attempt.
+_REFRESH_SCREENSHOT_TIMEOUT_MS = 5_000
+
 # Maximum screenshot updates per stage.  Each pipeline stage
 # (page load, analysis) gets its own fresh cap so the UI stays
 # responsive throughout the run.
@@ -127,7 +134,10 @@ async def _screenshot_refresher(
     while updates_sent < remaining:
         await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
         try:
-            screenshot = await session.take_screenshot(full_page=False)
+            screenshot = await session.take_screenshot(
+                full_page=False,
+                timeout=_REFRESH_SCREENSHOT_TIMEOUT_MS,
+            )
             new_hash = hashlib.md5(screenshot).hexdigest()
             if new_hash != current_hash:
                 current_hash = new_hash
@@ -506,6 +516,11 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
     # When no overlays were found the page is unchanged from the
     # initial capture (Phase 3), so we skip the redundant work.
     if ctx.overlay_count > 0:
+        yield sse_helpers.format_progress_event(
+            "post-overlay-capture",
+            "Capturing page data...",
+            72,
+        )
         await session.capture_current_cookies()
         ctx.storage = await session.capture_storage()
     else:

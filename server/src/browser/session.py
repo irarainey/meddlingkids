@@ -32,7 +32,7 @@ MAX_TRACKED_SCRIPTS = 1000
 # Per-operation timeout (seconds) for graceful browser cleanup.
 # If any single close/stop call exceeds this, we abandon it and
 # move on to the next step so the server doesn't hang.
-_CLOSE_TIMEOUT_SECONDS = 5
+_CLOSE_TIMEOUT_SECONDS = 8
 
 # Timeout (seconds) for Playwright startup.  If the Playwright
 # server process doesn't respond within this window (e.g. due
