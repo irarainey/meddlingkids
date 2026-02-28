@@ -174,7 +174,7 @@ OverlayPipeline.run()
    │   ├── If known CMP found → try deterministic accept button click
    │   ├── Authoritative platform identity: if the domain lookup identifies
    │   │   one CMP (e.g. Sourcepoint) but the DOM contains a different
-   │   │   CMP’s selectors (e.g. Quantcast Choice embedded via
+   │   │   CMP’s selectors (e.g. InMobi Choice embedded via
    │   │   Sourcepoint), the media-group identity is preserved for
    │   │   reporting while the DOM CMP’s selectors are used for button
    │   │   click

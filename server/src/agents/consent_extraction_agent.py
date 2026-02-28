@@ -43,6 +43,31 @@ def _safe_partner(name: str, purpose: str, data_collected: list[str]) -> consent
         return None
 
 
+# ── Required-category detection ─────────────────────────────
+
+# Names that indicate the category is non-optional (must be
+# accepted for the site to function).  Matched case-insensitively
+# against category names returned by the LLM to deterministically
+# correct the ``required`` flag — the LLM sets it inconsistently.
+_REQUIRED_CATEGORY_RE = re.compile(
+    r"(?:strictly\s+)?necessary"
+    r"|essential"
+    r"|required"
+    r"|always\s+active",
+    re.IGNORECASE,
+)
+
+
+def _is_required_category(name: str) -> bool:
+    """Return ``True`` when *name* describes a required category.
+
+    Matches common labels such as "Strictly necessary cookies",
+    "Essential cookies", or "Required" — regardless of how the
+    LLM set the ``required`` flag.
+    """
+    return bool(_REQUIRED_CATEGORY_RE.search(name))
+
+
 # Pre-load JavaScript snippets evaluated in the browser.
 _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
@@ -172,62 +197,83 @@ class ConsentExtractionAgent(base.BaseAgent):
         log.start_timer("vision-extraction")
         log.info("Analysing consent dialog with vision...")
 
-        try:
-            response = await asyncio.wait_for(
-                self._complete_vision(
-                    user_text=(
-                        "Analyze this cookie consent dialog"
-                        " screenshot and extracted text to"
-                        " find ALL information about tracking,"
-                        " partners, and data collection.\n\n"
-                        "Extracted text from consent"
-                        f" elements:\n{consent_text}\n\n"
-                        "Return a detailed JSON object with"
-                        " categories, partners, purposes, and"
-                        " any manage options button."
+        vision_user_text = (
+            "Analyze this cookie consent dialog"
+            " screenshot and extracted text to"
+            " find ALL information about tracking,"
+            " partners, and data collection.\n\n"
+            "Extracted text from consent"
+            f" elements:\n{consent_text}\n\n"
+            "Return a detailed JSON object with"
+            " categories, partners, purposes, and"
+            " any manage options button."
+        )
+
+        vision_timeout = 30
+        max_vision_attempts = 2
+        last_error: Exception | None = None
+
+        for attempt in range(1, max_vision_attempts + 1):
+            try:
+                response = await asyncio.wait_for(
+                    self._complete_vision(
+                        user_text=vision_user_text,
+                        screenshot=llm_screenshot,
                     ),
-                    screenshot=llm_screenshot,
-                ),
-                timeout=20,
-            )
-            log.end_timer(
-                "vision-extraction",
-                "Vision extraction complete",
-            )
-
-            parsed = self._parse_response(response, _ConsentExtractionResponse)
-            if parsed:
-                llm_result = _to_domain(parsed, consent_text)
-                result = _merge_results(llm_result, local_result)
-                log.info(
-                    "Extraction result (LLM + local merge)",
-                    {
-                        "categories": len(result.categories),
-                        "partners": len(result.partners),
-                        "purposes": len(result.purposes),
-                        "hasManageOptions": result.has_manage_options,
-                        "claimedPartnerCount": result.claimed_partner_count,
-                    },
+                    timeout=vision_timeout,
                 )
-                return result
+                log.end_timer(
+                    "vision-extraction",
+                    "Vision extraction complete",
+                )
 
-            # Fallback: manual parse from text
-            log.debug("Structured parse failed, trying text fallback")
-            llm_result = _parse_text_fallback(response.text, consent_text)
-            return _merge_results(llm_result, local_result)
-        except Exception as error:
-            log.end_timer(
-                "vision-extraction",
-                "Vision extraction failed",
-            )
-            error_msg = errors.get_error_message(error)
-            is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
-            if is_timeout:
+                parsed = self._parse_response(response, _ConsentExtractionResponse)
+                if parsed:
+                    llm_result = _to_domain(parsed, consent_text)
+                    result = _merge_results(llm_result, local_result)
+                    log.info(
+                        "Extraction result (LLM + local merge)",
+                        {
+                            "categories": len(result.categories),
+                            "partners": len(result.partners),
+                            "purposes": len(result.purposes),
+                            "hasManageOptions": result.has_manage_options,
+                            "claimedPartnerCount": result.claimed_partner_count,
+                        },
+                    )
+                    return result
+
+                # Fallback: manual parse from text
+                log.debug("Structured parse failed, trying text fallback")
+                llm_result = _parse_text_fallback(response.text, consent_text)
+                return _merge_results(llm_result, local_result)
+            except Exception as error:
+                last_error = error
+                error_msg = errors.get_error_message(error)
+                is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
+                if is_timeout and attempt < max_vision_attempts:
+                    log.warn(
+                        "Vision timed out — retrying",
+                        {"attempt": attempt, "error": error_msg},
+                    )
+                    continue
+                if not is_timeout:
+                    # Non-timeout error — break immediately.
+                    break
                 log.warn(
                     "Vision timed out — trying text-only LLM fallback",
-                    {"error": error_msg},
+                    {"attempt": attempt, "error": error_msg},
                 )
-                # ── Text-only LLM fallback ──────────────
+
+        # ── Vision exhausted — try text-only LLM ───────
+        log.end_timer(
+            "vision-extraction",
+            "Vision extraction failed",
+        )
+        if last_error is not None:
+            error_msg = errors.get_error_message(last_error)
+            is_timeout = isinstance(last_error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
+            if is_timeout:
                 text_result = await self._text_only_fallback(
                     consent_text,
                     local_result,
@@ -247,62 +293,87 @@ class ConsentExtractionAgent(base.BaseAgent):
                 local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
             return local_result
 
+        # All vision attempts failed without raising — fall
+        # back to the local parse result.
+        if not local_result.claimed_partner_count:
+            local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
+        return local_result
+
     async def _text_only_fallback(
         self,
         consent_text: str,
         local_result: consent.ConsentDetails,
     ) -> consent.ConsentDetails | None:
-        """Attempt a fast text-only LLM call when vision times out.
+        """Attempt a text-only LLM call when vision times out.
 
-        Uses a shorter timeout (10 s) since there is no image
-        to process.  Returns the merged result on success, or
-        ``None`` when the text-only call also fails.
+        Tries up to two attempts with a 20 s timeout each.
+        Returns the merged result on success, or ``None``
+        when both attempts fail.
         """
         if not consent_text.strip():
             return None
 
-        try:
-            response = await asyncio.wait_for(
-                self._complete(
-                    user_prompt=(
-                        "Analyze this cookie consent dialog"
-                        " text to find ALL information about"
-                        " tracking, partners, and data"
-                        " collection.\n\n"
-                        "Extracted text from consent"
-                        f" elements:\n{consent_text}\n\n"
-                        "Return a detailed JSON object with"
-                        " categories, partners, purposes,"
-                        " and any manage options button."
-                    ),
-                    response_model=_ConsentExtractionResponse,
-                ),
-                timeout=10,
-            )
-            parsed = self._parse_response(response, _ConsentExtractionResponse)
-            if parsed:
-                llm_text_result = _to_domain(parsed, consent_text)
-                result = _merge_results(llm_text_result, local_result)
-                log.info(
-                    "Text-only LLM fallback succeeded",
-                    {
-                        "categories": len(result.categories),
-                        "partners": len(result.partners),
-                        "purposes": len(result.purposes),
-                        "claimedPartnerCount": result.claimed_partner_count,
-                    },
-                )
-                return result
+        text_user_prompt = (
+            "Analyze this cookie consent dialog"
+            " text to find ALL information about"
+            " tracking, partners, and data"
+            " collection.\n\n"
+            "Extracted text from consent"
+            f" elements:\n{consent_text}\n\n"
+            "Return a detailed JSON object with"
+            " categories, partners, purposes,"
+            " and any manage options button."
+        )
+        text_timeout = 20
+        max_text_attempts = 2
 
-            # Structured parse failed — try manual JSON parse.
-            text_fallback = _parse_text_fallback(response.text, consent_text)
-            if text_fallback.categories or text_fallback.purposes:
-                return _merge_results(text_fallback, local_result)
-        except Exception as fallback_err:
-            log.debug(
-                "Text-only LLM fallback failed",
-                {"error": errors.get_error_message(fallback_err)},
-            )
+        for attempt in range(1, max_text_attempts + 1):
+            try:
+                response = await asyncio.wait_for(
+                    self._complete(
+                        user_prompt=text_user_prompt,
+                        response_model=_ConsentExtractionResponse,
+                    ),
+                    timeout=text_timeout,
+                )
+                parsed = self._parse_response(response, _ConsentExtractionResponse)
+                if parsed:
+                    llm_text_result = _to_domain(parsed, consent_text)
+                    result = _merge_results(llm_text_result, local_result)
+                    log.info(
+                        "Text-only LLM fallback succeeded",
+                        {
+                            "categories": len(result.categories),
+                            "partners": len(result.partners),
+                            "purposes": len(result.purposes),
+                            "claimedPartnerCount": result.claimed_partner_count,
+                        },
+                    )
+                    return result
+
+                # Structured parse failed — try manual JSON parse.
+                text_fallback = _parse_text_fallback(response.text, consent_text)
+                if text_fallback.categories or text_fallback.purposes:
+                    return _merge_results(text_fallback, local_result)
+            except Exception as fallback_err:
+                error_msg = errors.get_error_message(fallback_err)
+                is_timeout = (
+                    isinstance(
+                        fallback_err,
+                        (asyncio.TimeoutError, TimeoutError),
+                    )
+                    or "timed out" in error_msg.lower()
+                )
+                if is_timeout and attempt < max_text_attempts:
+                    log.warn(
+                        "Text-only LLM fallback timed out — retrying",
+                        {"attempt": attempt, "error": error_msg},
+                    )
+                    continue
+                log.debug(
+                    "Text-only LLM fallback failed",
+                    {"attempt": attempt, "error": error_msg},
+                )
         return None
 
 
@@ -380,7 +451,7 @@ def _to_domain(
             consent.ConsentCategory(
                 name=c.name,
                 description=c.description,
-                required=c.required,
+                required=c.required or _is_required_category(c.name),
             )
             for c in r.categories
         ],
@@ -412,7 +483,7 @@ def _parse_text_fallback(
                 consent.ConsentCategory(
                     name=c.get("name", ""),
                     description=c.get("description", ""),
-                    required=c.get("required", False),
+                    required=c.get("required", False) or _is_required_category(c.get("name", "")),
                 )
                 for c in raw.get("categories", [])
             ],

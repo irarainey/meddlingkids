@@ -166,7 +166,7 @@
       "2chill.co.uk",
       "reachplc.com"
     ],
-    "consent_platform": "Quantcast Choice",
+    "consent_platform": "InMobi Choice",
     "key_vendors": [
       "Google",
       "Quantcast",
@@ -187,7 +187,7 @@
     "privacy_characteristics": [
       "UK's largest commercial national and regional news publisher",
       "Over 100 regional and national titles",
-      "Uses Quantcast Choice CMP (IAB CMP ID 10) for consent management",
+      "Uses InMobi Choice CMP (formerly Quantcast Choice, IAB CMP ID 10) for consent management",
       "Extensive use of Permutive for on-device audience segmentation",
       "Member of Ozone Project publisher advertising alliance",
       "Uses Lotame DMP for data management and audience insight",
@@ -839,7 +839,7 @@
       "Experian",
       "ZoomInfo",
       "InMobi",
-      "Quantcast Choice",
+      "InMobi Choice",
       "HubSpot",
       "OneTrust"
     ],

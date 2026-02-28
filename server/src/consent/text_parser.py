@@ -39,6 +39,7 @@ _CONSENT_CONTEXT_RE = re.compile(
     r"|GDPR"
     # CMP-specific indicators
     r"|quantcast\s+choice"
+    r"|inmobi\s+(?:choice|cmp)"
     r"|sourcepoint"
     r"|onetrust"
     r"|cookiebot"
@@ -493,7 +494,8 @@ def _extract_partner_count(text: str) -> int | None:
 
 # Ordered by specificity: most unique identifiers first.
 _PLATFORM_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bquantcast\s*(?:choice)?\b", re.IGNORECASE), "Quantcast Choice"),
+    (re.compile(r"\binmobi\s*(?:choice|cmp)\b", re.IGNORECASE), "InMobi Choice"),
+    (re.compile(r"\bquantcast\s*(?:choice)?\b", re.IGNORECASE), "InMobi Choice"),
     (re.compile(r"\bsourcepoint\b", re.IGNORECASE), "Sourcepoint"),
     (re.compile(r"\bonetrust\b|optanon", re.IGNORECASE), "OneTrust"),
     (re.compile(r"\bcookiebot\b|\bcybot\b", re.IGNORECASE), "Cookiebot"),

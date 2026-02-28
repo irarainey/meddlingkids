@@ -39,7 +39,7 @@ CONSENT_HOST_EXCLUDE: tuple[str, ...] = (
 # Well-known container selectors for consent dialogs in the
 # main frame (not inside iframes).
 CONSENT_CONTAINER_SELECTORS: tuple[str, ...] = (
-    "#qc-cmp2-ui",  # Quantcast
+    "#qc-cmp2-ui",  # InMobi Choice (formerly Quantcast Choice)
     "#onetrust-banner-sdk",  # OneTrust
     "#CybotCookiebotDialog",  # Cookiebot
     '[class*="consent"]',  # Generic

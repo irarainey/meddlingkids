@@ -242,6 +242,12 @@ class TestIsPlausiblePartnerName:
             "",
             "A",
             "This is a sentence with way too many words to be a company name for real",
+            # Civic / political entities (not data-processing partners)
+            "Bristol City Council",
+            "Labour Party",
+            "Conservative Party",
+            "Politics",
+            "Commenting content",
         ],
     )
     def test_invalid_names(self, name: str) -> None:

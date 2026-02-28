@@ -141,7 +141,7 @@ async def _wait_for_consent_dialog_ready(
 ) -> None:
     """Wait for a consent dialog to become interactive and rendered.
 
-    Consent dialogs loaded via iframes (Quantcast, OneTrust, etc.)
+    Consent dialogs loaded via iframes (InMobi Choice, OneTrust, etc.)
     often render their container/header before the buttons load.
     Even after button elements appear in the DOM they may not be
     visually painted yet (CSS/fonts still loading).  This function

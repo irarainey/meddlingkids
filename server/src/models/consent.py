@@ -139,6 +139,17 @@ _HEADLINE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Names that are clearly not data-processing partners — civic
+# bodies, political entities, and generic topic labels that the
+# LLM may extract from surrounding page content.
+_NON_PARTNER_RE = re.compile(
+    r"\b(?:council|government|parliament|ministry|department"
+    r"|party|politics|election|borough|county|police"
+    r"|commenting\s+content|read\s+more|subscribe)"
+    r"\b",
+    re.IGNORECASE,
+)
+
 # Maximum word count for a plausible company/vendor name.
 # Real partners: "Google", "The Trade Desk", "Integral Ad Science".
 _MAX_PARTNER_WORDS = 8
@@ -172,5 +183,7 @@ def is_plausible_partner_name(name: str) -> bool:
     if len(words) > _MAX_PARTNER_WORDS:
         return False
     if stripped.endswith("...") or stripped.endswith("!"):
+        return False
+    if _NON_PARTNER_RE.search(stripped):
         return False
     return not _HEADLINE_RE.search(stripped)
