@@ -1,21 +1,23 @@
-"""
-Browser session management for concurrent analysis support.
-Each BrowserSession instance manages its own isolated browser state,
-allowing multiple concurrent URL analyses without interference.
+"""Browser session management for concurrent analysis support.
+
+Each ``BrowserSession`` wraps an isolated ``BrowserContext``
+(like a fresh incognito window) that shares a single Chrome
+instance managed by :class:`~src.browser.manager.PlaywrightManager`.
+
+Creating a context per request is fast (~50 ms) and provides
+full cookie/storage isolation without the overhead of starting
+a new Chromium process per scan.
 """
 
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import os
-import signal
 from datetime import UTC, datetime
 from typing import Literal, Self
 
 from playwright import async_api
 
-from src.browser import access_detection, device_configs
+from src.browser import access_detection
 from src.models import browser, tracking_data
 from src.utils import image, logger
 from src.utils import url as url_mod
@@ -29,16 +31,8 @@ log = logger.create_logger("BrowserSession")
 MAX_TRACKED_REQUESTS = 5000
 MAX_TRACKED_SCRIPTS = 1000
 
-# Per-operation timeout (seconds) for graceful browser cleanup.
-# If any single close/stop call exceeds this, we abandon it and
-# move on to the next step so the server doesn't hang.
+# Per-operation timeout (seconds) for graceful context cleanup.
 _CLOSE_TIMEOUT_SECONDS = 8
-
-# Timeout (seconds) for Playwright startup.  If the Playwright
-# server process doesn't respond within this window (e.g. due
-# to a crashed display server or resource exhaustion), we fail
-# fast rather than hanging.
-_PLAYWRIGHT_START_TIMEOUT_SECONDS = 15
 
 # Timeout (seconds) for data-capture calls (cookies, storage).
 # These go through CDP to the renderer; on ad-heavy pages the
@@ -49,18 +43,21 @@ _CAPTURE_TIMEOUT_SECONDS = 10
 
 
 class BrowserSession:
-    """
-    Manages an isolated browser session for a single URL analysis.
+    """Isolated session for a single URL analysis.
+
+    Wraps a ``BrowserContext`` + ``Page`` created by
+    :class:`~src.browser.manager.PlaywrightManager`.  Each
+    session has its own cookies, storage, and tracking state.
+
+    Use :meth:`bind_context` (called by the manager) to
+    attach a context and page after construction.
     """
 
     def __init__(self) -> None:
         """Initialise a new browser session with empty state."""
-        self._playwright: async_api.Playwright | None = None
-        self._browser: async_api.Browser | None = None
         self._context: async_api.BrowserContext | None = None
         self._page: async_api.Page | None = None
         self._current_page_url: str = ""
-        self._browser_pid: int | None = None
 
         self._tracked_cookies: list[tracking_data.TrackedCookie] = []
         self._tracked_scripts: list[tracking_data.TrackedScript] = []
@@ -109,219 +106,25 @@ class BrowserSession:
         self._current_page_url = url
 
     # ==========================================================================
-    # Browser Lifecycle
+    # Context Binding (called by PlaywrightManager)
     # ==========================================================================
 
-    async def launch_browser(self, device_type: browser.DeviceType = "ipad") -> None:
-        """Launch a new Chromium browser instance with device emulation."""
-        # Determine the display for headed mode without mutating
-        # the process-global environment (which would race with
-        # concurrent sessions).
-        display = os.environ.get("DISPLAY", "")
-        if not display or display in (":0", ":1"):
-            display = os.environ.get("XVFB_DISPLAY", ":99")
+    def bind_context(
+        self,
+        context: async_api.BrowserContext,
+        page: async_api.Page,
+    ) -> None:
+        """Attach a browser context and page to this session.
 
-        log.info("Launching browser", {"deviceType": device_type})
-        if device_type not in device_configs.DEVICE_CONFIGS:
-            raise ValueError(f"Unknown device type {device_type!r}. Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}")
-        device_config = device_configs.DEVICE_CONFIGS[device_type]
-
-        # Close existing resources
-        if self._context:
-            with contextlib.suppress(Exception):
-                await self._context.close()
-            self._context = None
-        if self._browser:
-            with contextlib.suppress(Exception):
-                await self._browser.close()
-            self._browser = None
-        if self._playwright:
-            with contextlib.suppress(Exception):
-                await self._playwright.stop()
-            self._playwright = None
-        self._page = None
-
-        try:
-            pw = await asyncio.wait_for(
-                async_api.async_playwright().start(),
-                timeout=_PLAYWRIGHT_START_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            log.error(
-                "Playwright startup timed out",
-                {"timeoutSeconds": _PLAYWRIGHT_START_TIMEOUT_SECONDS},
-            )
-            raise RuntimeError(
-                f"Playwright failed to start within {_PLAYWRIGHT_START_TIMEOUT_SECONDS}s — the display server may be unresponsive"
-            ) from None
-        self._playwright = pw
-
-        # Prefer real Chrome over Playwright's bundled Chromium.
-        # Real Chrome has genuine TLS fingerprints (JA3/JA4)
-        # that CDN-level bot detectors like Tollbit trust,
-        # whereas bundled Chromium has a distinct fingerprint
-        # that is trivially identified as automated.
-        #
-        # Install real Chrome via: playwright install chrome
-        # Falls back to bundled Chromium if Chrome is not
-        # available.
-        # Pass the display env to Playwright so each session
-        # uses the correct virtual display without mutating
-        # the process-global environment.
-        launch_env = {**os.environ, "DISPLAY": display}
-
-        launch_kwargs: dict[str, object] = {
-            "headless": False,
-            "args": [
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--disable-extensions",
-            ],
-            "env": launch_env,
-        }
-
-        try:
-            br = await pw.chromium.launch(
-                channel="chrome",
-                **launch_kwargs,  # type: ignore[arg-type]
-            )
-            log.info("Launched real Chrome browser")
-        except Exception as exc:
-            log.info(
-                "Real Chrome not available, falling back to bundled Chromium",
-                {"reason": str(exc)[:120]},
-            )
-            br = await pw.chromium.launch(
-                **launch_kwargs  # type: ignore[arg-type]
-            )
-        self._browser = br
-
-        # Track the browser process PID so we can force-kill
-        # it as a last resort if graceful shutdown hangs.
-        # Uses Playwright internals — deliberately untyped.
-        try:
-            bproc = getattr(br, "_impl_obj", None)  # type: ignore[union-attr]
-            conn = getattr(bproc, "_connection", None)  # type: ignore[union-attr]
-            transport = getattr(conn, "_transport", None)  # type: ignore[union-attr]
-            server_proc = getattr(transport, "_proc", None)  # type: ignore[union-attr]
-            if server_proc and hasattr(server_proc, "pid"):
-                self._browser_pid = server_proc.pid
-        except Exception:
-            self._browser_pid = None
-
-        # Do NOT override user_agent here.  When using real
-        # Chrome (channel="chrome"), the browser generates its
-        # own UA string that matches its TLS fingerprint.  A
-        # mismatched UA (e.g. Safari on iPad) vs Chrome TLS
-        # handshake is a top bot-detection signal.
-        self._context = await br.new_context(
-            viewport={
-                "width": device_config.viewport.width,
-                "height": device_config.viewport.height,
-            },
-            device_scale_factor=device_config.device_scale_factor,
-            is_mobile=device_config.is_mobile,
-            has_touch=device_config.has_touch,
-            locale="en-GB",
-            timezone_id="Europe/London",
-            java_script_enabled=True,
-        )
-
-        self._page = await self._context.new_page()
-        log.debug(
-            "Browser launched",
-            {
-                "viewport": f"{device_config.viewport.width}x{device_config.viewport.height}",
-                "deviceType": device_type,
-                "isMobile": device_config.is_mobile,
-            },
-        )
-
-        # ── Anti-bot-detection hardening ─────────────────
-        # Mask automation signals that paywall and bot-detection
-        # services (e.g. Piano / Arkose on telegraph.co.uk)
-        # use to fingerprint Playwright/headless browsers.
-        await self._context.add_init_script("""
-            // 1. Remove webdriver flag
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-
-            // 2. Fake plugins array (headless has zero)
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [
-                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-                    { name: 'Native Client', filename: 'internal-nacl-plugin' },
-                ],
-            });
-
-            // 3. Fake languages
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['en-GB', 'en-US', 'en'],
-            });
-
-            // 4. Permissions API — deny 'notifications' query
-            //    (bot detectors probe this; real browsers return 'prompt')
-            const originalQuery = window.navigator.permissions?.query;
-            if (originalQuery) {
-                window.navigator.permissions.query = (params) =>
-                    params.name === 'notifications'
-                        ? Promise.resolve({ state: Notification.permission })
-                        : originalQuery.call(window.navigator.permissions, params);
-            }
-
-            // 5. Ensure window.chrome exists (Chromium-specific)
-            if (!window.chrome) {
-                window.chrome = { runtime: {} };
-            }
-
-            // 6. Spoof WebGL renderer to mask headless GPU
-            const getParameter = WebGLRenderingContext.prototype.getParameter;
-            WebGLRenderingContext.prototype.getParameter = function (param) {
-                if (param === 37445) return 'Google Inc. (Intel)';
-                if (param === 37446) return 'ANGLE (Intel, Mesa Intel(R) UHD Graphics, OpenGL 4.6)';
-                return getParameter.call(this, param);
-            };
-
-            // 7. Spoof AudioContext to produce stable,
-            //    realistic fingerprints (bot detectors hash
-            //    the output of an OfflineAudioContext render
-            //    to identify headless/virtual environments).
-            const origGetFloatFreqData =
-                AnalyserNode.prototype.getFloatFrequencyData;
-            AnalyserNode.prototype.getFloatFrequencyData = function (arr) {
-                origGetFloatFreqData.call(this, arr);
-                // Inject tiny noise so the hash looks organic
-                for (let i = 0; i < arr.length; i++) {
-                    arr[i] += 0.01 * (Math.random() - 0.5);
-                }
-            };
-
-            // 8. MediaDevices — report a realistic set of
-            //    media devices (camera + mic + speakers).
-            //    Headless environments often report zero
-            //    devices, which is a bot signal.
-            if (navigator.mediaDevices?.enumerateDevices) {
-                const origEnum = navigator.mediaDevices.enumerateDevices.bind(
-                    navigator.mediaDevices,
-                );
-                navigator.mediaDevices.enumerateDevices = async () => {
-                    const real = await origEnum();
-                    if (real.length > 0) return real;
-                    // Return plausible defaults when none exist
-                    return [
-                        { deviceId: 'default', kind: 'audioinput',  label: '', groupId: 'g1' },
-                        { deviceId: 'default', kind: 'audiooutput', label: '', groupId: 'g1' },
-                        { deviceId: 'default', kind: 'videoinput',  label: '', groupId: 'g2' },
-                    ];
-                };
-            }
-        """)
-
-        # Set up request tracking
-        self._page.on("request", self._on_request)
-        self._page.on("response", self._on_response)
+        Called by :meth:`PlaywrightManager.create_session` after
+        creating the context with device emulation and anti-bot
+        init scripts.  Registers the network request/response
+        listeners needed for tracking.
+        """
+        self._context = context
+        self._page = page
+        page.on("request", self._on_request)
+        page.on("response", self._on_response)
 
     def _on_request(self, request: async_api.Request) -> None:
         """Handle intercepted network requests."""
@@ -644,10 +447,25 @@ class BrowserSession:
         return image.screenshot_to_data_url(screenshot_bytes)
 
     async def get_page_content(self) -> str:
-        """Get the full HTML content of the current page."""
+        """Get the full HTML content of the current page.
+
+        Wrapped in a timeout so an unresponsive browser
+        (e.g. overwhelmed by ad-heavy pages) doesn't stall
+        the pipeline indefinitely.
+        """
         if not self._page:
             raise RuntimeError("No browser session active")
-        return await self._page.content()
+        try:
+            return await asyncio.wait_for(
+                self._page.content(),
+                timeout=_CAPTURE_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            log.warn(
+                "Page content capture timed out — browser may be unresponsive",
+                {"timeoutSeconds": _CAPTURE_TIMEOUT_SECONDS},
+            )
+            return ""
 
     # ==========================================================================
     # Page Interaction Helpers
@@ -665,11 +483,33 @@ class BrowserSession:
     async def wait_for_load_state(
         self,
         state: Literal["domcontentloaded", "load", "networkidle"] = "load",
-    ) -> None:
-        """Wait for a specific page load state."""
+        *,
+        timeout: int = 30_000,
+    ) -> bool:
+        """Wait for a specific page load state.
+
+        Args:
+            state: The load state to wait for.
+            timeout: Maximum wait in milliseconds.  Defaults to
+                30 000 ms.  Pass ``0`` to disable.
+
+        Returns:
+            ``True`` if the state was reached, ``False`` on timeout.
+        """
         if not self._page:
             raise RuntimeError("No browser session active")
-        await self._page.wait_for_load_state(state)
+        try:
+            await self._page.wait_for_load_state(
+                state,
+                timeout=timeout if timeout > 0 else None,
+            )
+            return True
+        except Exception:
+            log.debug(
+                "Load state wait timed out",
+                {"state": state, "timeoutMs": timeout},
+            )
+            return False
 
     # ==========================================================================
     # Cleanup
@@ -685,19 +525,18 @@ class BrowserSession:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        """Ensure browser resources are released on exit."""
+        """Ensure session resources are released on exit."""
         await self.close()
 
     async def close(self) -> None:
-        """Close the browser and clean up all resources.
+        """Close the browser context for this session.
 
-        Each cleanup step is wrapped in a per-operation timeout
-        so that a hung Chrome process cannot block the server
-        indefinitely.  If all graceful steps fail, a SIGKILL
-        is sent to the browser process as a last resort.
+        Only tears down the per-request context — the shared
+        Chrome browser remains running for future requests.
+        Context close is fast (~50 ms) compared to shutting
+        down the entire browser (~8 s).
         """
         log.debug("Closing browser session")
-        graceful_ok = True
 
         if self._page:
             self._page.remove_listener("request", self._on_request)
@@ -718,87 +557,13 @@ class BrowserSession:
                     "Context close timed out",
                     {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
                 )
-                graceful_ok = False
-            except Exception as exc:
-                log.debug(
-                    "Context close error (non-fatal)",
-                    {"error": str(exc)},
-                )
+            except (asyncio.CancelledError, Exception):
+                # Starlette cancel-scopes and task teardown can
+                # interrupt the close — non-fatal because the
+                # shared browser remains and the context will be
+                # garbage-collected.
+                pass
             self._context = None
 
-        if self._browser:
-            try:
-                await asyncio.wait_for(
-                    self._browser.close(),
-                    timeout=_CLOSE_TIMEOUT_SECONDS,
-                )
-            except TimeoutError:
-                log.warn(
-                    "Browser close timed out",
-                    {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
-                )
-                graceful_ok = False
-            except Exception as exc:
-                log.debug(
-                    "Browser close error (non-fatal)",
-                    {"error": str(exc)},
-                )
-            self._browser = None
-
-        if self._playwright:
-            try:
-                await asyncio.wait_for(
-                    self._playwright.stop(),
-                    timeout=_CLOSE_TIMEOUT_SECONDS,
-                )
-            except TimeoutError:
-                log.warn(
-                    "Playwright stop timed out",
-                    {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
-                )
-                graceful_ok = False
-            except Exception as exc:
-                log.debug(
-                    "Playwright stop error (non-fatal)",
-                    {"error": str(exc)},
-                )
-            self._playwright = None
-
-        # Last-resort: force-kill the browser process tree
-        # when graceful shutdown failed.  This prevents
-        # zombie Chrome processes from accumulating across
-        # runs and exhausting system resources.
-        if not graceful_ok:
-            self._force_kill_browser_process()
-
         self.clear_tracking_data()
-        self._browser_pid = None
         log.debug("Browser session closed")
-
-    def _force_kill_browser_process(self) -> None:
-        """Send SIGKILL to the browser process as a last resort.
-
-        Called only when graceful close timed out or failed.
-        Uses the PID captured at launch time.
-        """
-        pid = self._browser_pid
-        if not pid:
-            log.debug("No browser PID available for force-kill")
-            return
-
-        try:
-            os.kill(pid, signal.SIGKILL)
-            log.warn(
-                "Force-killed browser process",
-                {"pid": pid},
-            )
-        except ProcessLookupError:
-            log.debug(
-                "Browser process already exited",
-                {"pid": pid},
-            )
-        except OSError as exc:
-            log.warn(
-                "Failed to force-kill browser process",
-                {"pid": pid, "error": str(exc)},
-            )

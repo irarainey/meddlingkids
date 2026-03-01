@@ -106,8 +106,11 @@ async def detect_overlay(
     page = session.get_page()
     if page is not None:
         try:
-            raw = await page.evaluate(
-                consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
+            raw = await asyncio.wait_for(
+                page.evaluate(
+                    consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
+                ),
+                timeout=10,
             )
             if raw and isinstance(raw, dict):
                 crop_box: tuple[int, int, int, int] = (
@@ -300,7 +303,10 @@ async def capture_consent_content(
     # Locate the consent dialog bounding box for screenshot cropping.
     consent_bounds: ConsentBounds = None
     try:
-        raw = await page.evaluate(consent_extraction_agent._GET_CONSENT_BOUNDS_JS)
+        raw = await asyncio.wait_for(
+            page.evaluate(consent_extraction_agent._GET_CONSENT_BOUNDS_JS),
+            timeout=10,
+        )
         if raw and isinstance(raw, dict):
             consent_bounds = (
                 int(raw["left"]),

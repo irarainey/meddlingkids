@@ -56,7 +56,6 @@ async def run_ai_analysis(
     storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
-    overlay_count: int = 0,
     pre_consent_stats: analysis.PreConsentStats | None = None,
     *,
     decoded_cookies: dict[str, object] | None = None,
@@ -71,6 +70,11 @@ async def run_ai_analysis(
     # context.  Earlier phases capture at specific checkpoints
     # (initial load, after overlay click) but deferred scripts
     # and post-consent tracking may have added more since then.
+    yield sse_helpers.format_progress_event(
+        "final-capture",
+        "Capturing final page state...",
+        75,
+    )
     await session.capture_current_cookies()
     storage = await session.capture_storage()
 
@@ -95,7 +99,7 @@ async def run_ai_analysis(
     yield sse_helpers.format_progress_event(
         "analysis-start",
         "Starting analysis...",
-        75,
+        76,
     )
 
     log.info("Starting AI analysis")
@@ -237,7 +241,6 @@ async def run_ai_analysis(
         storage,
         url,
         consent_details,
-        overlay_count,
         analysis_result,
         script_result,
         tracking_summary,
@@ -877,7 +880,6 @@ async def _score_and_summarise(
     storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
-    overlay_count: int,
     analysis_result: analysis.TrackingAnalysisResult,
     script_result: scripts.ScriptAnalysisResult,
     tracking_summary: analysis.TrackingSummary,
@@ -991,7 +993,6 @@ async def _score_and_summarise(
         score_breakdown,
         consent_details,
         script_result,
-        overlay_count,
         analysis_success=bool(full_text),
         final_cookies=final_cookies,
         final_requests=final_requests,
@@ -1006,7 +1007,6 @@ def _build_complete_payload(
     score_breakdown: analysis.ScoreBreakdown,
     consent_details: consent.ConsentDetails | None,
     script_result: scripts.ScriptAnalysisResult,
-    overlay_count: int,
     analysis_success: bool = True,
     final_cookies: list[tracking_data.TrackedCookie] | None = None,
     final_requests: list[tracking_data.NetworkRequest] | None = None,
@@ -1034,7 +1034,7 @@ def _build_complete_payload(
     return sse_helpers.format_sse_event(
         "complete",
         {
-            "message": ("Tracking analyzed after dismissing overlays" if overlay_count > 0 else "Tracking analyzed"),
+            "message": "Investigation complete!",
             "structuredReport": (structured_report.model_dump(by_alias=True) if analysis_success and structured_report else None),
             "summaryFindings": ([{"type": f.type, "text": f.text} for f in summary_findings] if analysis_success else None),
             "privacyScore": (privacy_score if analysis_success else None),

@@ -73,6 +73,10 @@ _SCRIPTS_DIR = pathlib.Path(__file__).parent / "scripts"
 _EXTRACT_CONSENT_JS = (_SCRIPTS_DIR / "extract_consent_text.js").read_text()
 _EXTRACT_IFRAME_JS = (_SCRIPTS_DIR / "extract_iframe_text.js").read_text()
 _GET_CONSENT_BOUNDS_JS = (_SCRIPTS_DIR / "get_consent_bounds.js").read_text()
+
+# Timeout (seconds) for individual page.evaluate calls during
+# consent text extraction.  Prevents hangs on unresponsive browsers.
+_EVALUATE_TIMEOUT_SECONDS: int = 10
 # ── Structured output models ───────────────────────────────────
 
 
@@ -575,7 +579,9 @@ async def _extract_consent_text(
     """Extract text from consent-related DOM elements.
 
     Combines text from main-page selectors and consent
-    iframes into a single string.
+    iframes into a single string.  Each evaluate call is
+    individually bounded so an unresponsive browser cannot
+    hang the entire extraction.
 
     Args:
         page: Playwright page to extract from.
@@ -583,14 +589,24 @@ async def _extract_consent_text(
     Returns:
         Combined consent text, truncated to 50 000 chars.
     """
-    main_page_text: str = await page.evaluate(_EXTRACT_CONSENT_JS)
+    try:
+        main_page_text: str = await asyncio.wait_for(
+            page.evaluate(_EXTRACT_CONSENT_JS),
+            timeout=_EVALUATE_TIMEOUT_SECONDS,
+        )
+    except (TimeoutError, Exception) as exc:
+        log.warn("Main-page consent text extraction failed", {"error": str(exc)})
+        main_page_text = ""
 
     iframe_texts: list[str] = []
     for frame in page.frames:
         if not constants.is_consent_frame(frame, page.main_frame):
             continue
         try:
-            iframe_text: str = await frame.evaluate(_EXTRACT_IFRAME_JS)
+            iframe_text: str = await asyncio.wait_for(
+                frame.evaluate(_EXTRACT_IFRAME_JS),
+                timeout=_EVALUATE_TIMEOUT_SECONDS,
+            )
             if iframe_text:
                 iframe_texts.append(f"[CONSENT IFRAME]:\n{iframe_text}")
         except Exception as exc:

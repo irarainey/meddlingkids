@@ -11,6 +11,7 @@ variable binding, type coercion, and validation.
 
 from __future__ import annotations
 
+import functools
 import os
 
 import pydantic
@@ -125,8 +126,13 @@ class OpenAIConfig(pydantic_settings.BaseSettings):
         return bool(self.api_key.get_secret_value())
 
 
+@functools.lru_cache(maxsize=1)
 def validate_llm_config() -> str | None:
     """Check if an LLM backend is properly configured.
+
+    The result is cached after the first call — environment
+    variables are read once at startup and do not change at
+    runtime.
 
     Returns:
         An error message string when misconfigured, or ``None`` if valid.

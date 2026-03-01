@@ -359,6 +359,135 @@ def _looks_like_ac_string(value: str) -> bool:
     return "~" in value and len(value) >= 3
 
 
+# ── Heuristic plausibility checks ───────────────────────
+# When the heuristic scanner (Tier 3) tries to decode random
+# cookie values as TC Strings, many base64-ish values can be
+# parsed into a bit structure that *looks* like a TC String
+# but contains nonsensical metadata.  These checks reject
+# obvious false positives.
+#
+# NOTE: These checks are intentionally NOT applied to Tier 1
+# (named lookup) or Tier 2 (CMP-aware) since cookies found
+# at well-known locations are expected to be valid.
+
+# Cookies with these names are well-known ad-tech / analytics
+# cookies that should NEVER be treated as TC String sources.
+_HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
+    {
+        # Advertising / bidding identifiers
+        "pid",
+        "TDCPM",
+        "TDID",
+        "uid",
+        "uuid",
+        "uuid2",
+        "anj",
+        "uids",
+        "tuuid",
+        "c",
+        "r",
+        "t",
+        "id",
+        "i",
+        "u",
+        "IDE",
+        "DSID",
+        "FLC",
+        "MUID",
+        "ANONCHK",
+        "_uetvid",
+        "_uetsid",
+        # Google Analytics / Ads
+        "_ga",
+        "_gid",
+        "_gat",
+        "_gcl_au",
+        "_gcl_aw",
+        "_gac",
+        "NID",
+        "SID",
+        "HSID",
+        "SSID",
+        "APISID",
+        "SAPISID",
+        "1P_JAR",
+        "CONSENT",
+        "DV",
+        "SIDCC",
+        "SOCS",
+        # Facebook
+        "_fbp",
+        "_fbc",
+        "fr",
+        "sb",
+        "datr",
+        # General session / auth
+        "session",
+        "sess",
+        "sid",
+        "token",
+        "auth",
+        "csrf",
+    }
+)
+
+
+def _is_plausible_tc_decode(decoded: TcStringData) -> bool:
+    """Check whether a decoded TC String is structurally plausible.
+
+    Validates metadata fields that, for a genuine TC String,
+    must fall within well-defined ranges.  Rejects nonsensical
+    values that arise when a random base64 cookie is
+    force-decoded as a bit structure.
+
+    Checks performed:
+
+    1. **Language & country codes** — the TC String stores
+       ``consentLanguage`` and ``publisherCountryCode`` as
+       pairs of 6-bit letter indices (A=0 … Z=25).  Codes
+       outside A–Z indicate garbage data.
+    2. **Vendor list version** — the GVL is currently at
+       version ~290.  A value > 1500 is implausible.
+    3. **TCF policy version** — currently 2 or 4.  Values
+       > 10 are implausible.
+    4. **Timestamps** — ``created`` and ``lastUpdated`` should
+       fall between 2018 (TCF launch) and 2050.
+
+    Returns:
+        ``True`` if the decoded data looks like a genuine
+        TC String, ``False`` otherwise.
+    """
+    # Check language / country codes are A–Z only
+    lang = decoded.consent_language
+    if not lang or len(lang) != 2 or not lang.isalpha() or not lang.isupper():
+        return False
+
+    country = decoded.publisher_country_code
+    if not country or len(country) != 2 or not country.isalpha() or not country.isupper():
+        return False
+
+    # Vendor list version in plausible range (1–1500)
+    if decoded.vendor_list_version < 1 or decoded.vendor_list_version > 1500:
+        return False
+
+    # TCF policy version should be small (1–10)
+    if decoded.tcf_policy_version < 1 or decoded.tcf_policy_version > 10:
+        return False
+
+    # Timestamps should be after 2018-01-01 and before 2100-01-01
+    for ts in (decoded.created, decoded.last_updated):
+        if not ts:
+            return False
+        try:
+            dt = datetime.fromisoformat(ts)
+            if dt.year < 2018 or dt.year > 2100:
+                return False
+        except (ValueError, TypeError):
+            return False
+
+    return True
+
+
 def find_tc_string_in_cookies(
     cookies: Sequence[object],
 ) -> str | None:
@@ -641,9 +770,14 @@ def scan_for_tc_string(
 ) -> tuple[str, str] | None:
     """Scan all cookie and localStorage values for a TC String.
 
-    Attempts to decode each value as a TC String.  Returns the
-    first successful decode.  This is more expensive than named
-    lookups but catches TC strings stored under unknown keys.
+    Attempts to decode each value as a TC String, then applies
+    plausibility checks to reject false positives (random
+    base64 values that happen to parse as a bit structure).
+    Returns the first plausible decode.
+
+    Cookies in ``_HEURISTIC_SKIP_COOKIE_NAMES`` are skipped
+    to avoid wasting cycles on well-known ad-tech identifiers
+    that are never TC Strings.
 
     Args:
         cookies: Browser cookies.
@@ -657,7 +791,22 @@ def scan_for_tc_string(
         name, value = _extract_name_value(cookie)
         if not value or not _looks_like_tc_string(value):
             continue
-        if decode_tc_string(value) is not None:
+        if name.lower() in _HEURISTIC_SKIP_COOKIE_NAMES or name in _HEURISTIC_SKIP_COOKIE_NAMES:
+            continue
+        decoded = decode_tc_string(value)
+        if decoded is not None:
+            if not _is_plausible_tc_decode(decoded):
+                log.debug(
+                    "Heuristic scan rejected implausible TC decode",
+                    {
+                        "cookie": name,
+                        "cmpId": decoded.cmp_id,
+                        "vendorListVersion": decoded.vendor_list_version,
+                        "consentLanguage": decoded.consent_language,
+                        "publisherCountry": decoded.publisher_country_code,
+                    },
+                )
+                continue
             log.info(
                 "TC String found by heuristic scan",
                 {"source": f"{name} cookie", "length": len(value)},
@@ -669,7 +818,20 @@ def scan_for_tc_string(
         name, value = _extract_name_value(item)
         if not value or not _looks_like_tc_string(value):
             continue
-        if decode_tc_string(value) is not None:
+        decoded = decode_tc_string(value)
+        if decoded is not None:
+            if not _is_plausible_tc_decode(decoded):
+                log.debug(
+                    "Heuristic scan rejected implausible TC decode",
+                    {
+                        "key": name,
+                        "cmpId": decoded.cmp_id,
+                        "vendorListVersion": decoded.vendor_list_version,
+                        "consentLanguage": decoded.consent_language,
+                        "publisherCountry": decoded.publisher_country_code,
+                    },
+                )
+                continue
             log.info(
                 "TC String found by heuristic scan",
                 {"source": f"localStorage[{name}]", "length": len(value)},

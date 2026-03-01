@@ -18,6 +18,7 @@ from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
+from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
 from src.utils import cache, logger
@@ -38,7 +39,7 @@ SHOW_UI = os.environ.get("SHOW_UI", "false").lower() == "true"
 
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
-    """Log server start on startup."""
+    """Start shared browser on startup, stop on shutdown."""
     log.section("Meddling Kids Server Started")
     log.info(
         "Configuration",
@@ -47,7 +48,17 @@ async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
             "corsOrigins": _ALLOWED_ORIGINS,
         },
     )
+
+    # Start the shared Playwright + Chrome instance once.
+    # All analysis requests will reuse this browser and
+    # create lightweight, isolated contexts per scan.
+    pw_manager = manager.PlaywrightManager.get_instance()
+    await pw_manager.start()
+
     yield
+
+    # Graceful shutdown: close the shared browser + Playwright.
+    await pw_manager.stop()
 
 
 app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)

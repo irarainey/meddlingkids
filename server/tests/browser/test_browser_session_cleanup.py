@@ -1,8 +1,10 @@
-"""Tests for BrowserSession cleanup and resource disposal.
+"""Tests for BrowserSession cleanup and PlaywrightManager lifecycle.
 
-Validates that close() handles graceful shutdown, timeouts on
-hung processes, and OS-level force-kill as a last resort.
-Also tests browser_phases.launch_browser retry logic.
+Validates that:
+- BrowserSession.close() reliably releases the per-request context
+- PlaywrightManager starts/stops the shared browser correctly
+- PlaywrightManager auto-recovers when Chrome crashes
+- PlaywrightManager force-kills on shutdown timeout
 """
 
 from __future__ import annotations
@@ -13,8 +15,12 @@ from unittest import mock
 
 import pytest
 
+from src.browser import manager as manager_mod
 from src.browser import session as session_mod
-from src.pipeline import browser_phases
+
+# ====================================================================
+# BrowserSession.close()
+# ====================================================================
 
 
 class TestBrowserSessionClose:
@@ -22,11 +28,9 @@ class TestBrowserSessionClose:
 
     @pytest.mark.asyncio()
     async def test_close_on_fresh_session_is_noop(self) -> None:
-        """Closing a never-launched session must not raise."""
+        """Closing a never-bound session must not raise."""
         session = session_mod.BrowserSession()
         await session.close()
-        assert session._playwright is None
-        assert session._browser is None
         assert session._context is None
         assert session._page is None
 
@@ -53,25 +57,16 @@ class TestBrowserSessionClose:
         assert session._page is None
 
     @pytest.mark.asyncio()
-    async def test_close_calls_each_layer(self) -> None:
-        """Close must shut down context, browser, and playwright."""
+    async def test_close_closes_context(self) -> None:
+        """Close must shut down the context."""
         session = session_mod.BrowserSession()
         ctx = mock.AsyncMock()
-        br = mock.AsyncMock()
-        pw = mock.AsyncMock()
-
         session._context = ctx
-        session._browser = br
-        session._playwright = pw
 
         await session.close()
 
         ctx.close.assert_awaited_once()
-        br.close.assert_awaited_once()
-        pw.stop.assert_awaited_once()
         assert session._context is None
-        assert session._browser is None
-        assert session._playwright is None
 
     @pytest.mark.asyncio()
     async def test_close_handles_context_timeout(self) -> None:
@@ -83,12 +78,7 @@ class TestBrowserSessionClose:
 
         ctx = mock.AsyncMock()
         ctx.close = hang_forever
-        br = mock.AsyncMock()
-        pw = mock.AsyncMock()
         session._context = ctx
-        session._browser = br
-        session._playwright = pw
-        session._browser_pid = None
 
         # close() should complete within a reasonable time
         # (not hang for the full 3600s).
@@ -97,69 +87,20 @@ class TestBrowserSessionClose:
             timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
         )
         assert session._context is None
-        br.close.assert_awaited_once()
 
     @pytest.mark.asyncio()
-    async def test_close_handles_browser_timeout(self) -> None:
-        """If browser.close() hangs, close must still finish."""
-        session = session_mod.BrowserSession()
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        br = mock.AsyncMock()
-        br.close = hang_forever
-        pw = mock.AsyncMock()
-        session._browser = br
-        session._playwright = pw
-        session._browser_pid = None
-
-        await asyncio.wait_for(
-            session.close(),
-            timeout=session_mod._CLOSE_TIMEOUT_SECONDS * 2 + 5,
-        )
-        assert session._browser is None
-        pw.stop.assert_awaited_once()
-
-    @pytest.mark.asyncio()
-    async def test_close_force_kills_on_timeout(self) -> None:
-        """When graceful close times out, SIGKILL the process."""
-        session = session_mod.BrowserSession()
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        br = mock.AsyncMock()
-        br.close = hang_forever
-        pw = mock.AsyncMock()
-        session._browser = br
-        session._playwright = pw
-        session._browser_pid = 99999
-
-        with mock.patch("os.kill") as mock_kill:
-            await asyncio.wait_for(
-                session.close(),
-                timeout=session_mod._CLOSE_TIMEOUT_SECONDS * 3 + 10,
-            )
-            mock_kill.assert_called_once_with(
-                99999,
-                signal.SIGKILL,
-            )
-
-    @pytest.mark.asyncio()
-    async def test_force_kill_handles_missing_process(
+    async def test_close_continues_after_context_error(
         self,
     ) -> None:
-        """Force-kill must not raise when the process is gone."""
+        """An exception in context.close() must not stop cleanup."""
         session = session_mod.BrowserSession()
-        session._browser_pid = 99999
+        ctx = mock.AsyncMock()
+        ctx.close.side_effect = RuntimeError("oops")
+        session._context = ctx
 
-        with mock.patch(
-            "os.kill",
-            side_effect=ProcessLookupError,
-        ):
-            # Should not raise.
-            session._force_kill_browser_process()
+        await session.close()
+
+        assert session._context is None
 
     @pytest.mark.asyncio()
     async def test_close_clears_tracking_data(self) -> None:
@@ -171,7 +112,6 @@ class TestBrowserSessionClose:
             mock.MagicMock(),
         )
         session._seen_script_urls.add("https://x.com/a.js")
-        session._browser_pid = 12345
 
         await session.close()
 
@@ -179,27 +119,6 @@ class TestBrowserSessionClose:
         assert len(session._tracked_scripts) == 0
         assert len(session._tracked_network_requests) == 0
         assert len(session._seen_script_urls) == 0
-        assert session._browser_pid is None
-
-    @pytest.mark.asyncio()
-    async def test_close_continues_after_context_error(
-        self,
-    ) -> None:
-        """An exception in context.close() must not stop cleanup."""
-        session = session_mod.BrowserSession()
-        ctx = mock.AsyncMock()
-        ctx.close.side_effect = RuntimeError("oops")
-        br = mock.AsyncMock()
-        pw = mock.AsyncMock()
-        session._context = ctx
-        session._browser = br
-        session._playwright = pw
-
-        await session.close()
-
-        # Browser and playwright must still be closed.
-        br.close.assert_awaited_once()
-        pw.stop.assert_awaited_once()
 
 
 class TestBrowserSessionContextManager:
@@ -233,103 +152,384 @@ class TestBrowserSessionContextManager:
             mock_close.assert_awaited_once()
 
 
-class TestPlaywrightStartTimeout:
-    """Validates that Playwright startup is time-bounded."""
+class TestBindContext:
+    """Validates bind_context registers listeners correctly."""
 
-    def test_timeout_constant_is_positive(self) -> None:
-        """Sanity-check: the timeout must be a positive value."""
-        assert session_mod._PLAYWRIGHT_START_TIMEOUT_SECONDS > 0
+    def test_bind_sets_context_and_page(self) -> None:
+        """bind_context must store the context and page."""
+        session = session_mod.BrowserSession()
+        ctx = mock.MagicMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
 
-    def test_close_timeout_constant_is_positive(self) -> None:
-        """Sanity-check: close timeout must be positive."""
-        assert session_mod._CLOSE_TIMEOUT_SECONDS > 0
+        session.bind_context(ctx, page)
+
+        assert session._context is ctx
+        assert session._page is page
+
+    def test_bind_registers_listeners(self) -> None:
+        """bind_context must register request/response listeners."""
+        session = session_mod.BrowserSession()
+        ctx = mock.MagicMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
+
+        session.bind_context(ctx, page)
+
+        page.on.assert_any_call("request", session._on_request)
+        page.on.assert_any_call("response", session._on_response)
 
 
-class TestBrowserLaunchRetry:
-    """Validates browser_phases.launch_browser retry logic."""
+# ====================================================================
+# PlaywrightManager lifecycle
+# ====================================================================
+
+
+class TestPlaywrightManagerSingleton:
+    """Validates singleton pattern."""
+
+    def test_get_instance_returns_same_object(self) -> None:
+        """Successive calls return the same instance."""
+        manager_mod.PlaywrightManager.reset_instance()
+        m1 = manager_mod.PlaywrightManager.get_instance()
+        m2 = manager_mod.PlaywrightManager.get_instance()
+        assert m1 is m2
+        manager_mod.PlaywrightManager.reset_instance()
+
+    def test_reset_instance_clears_singleton(self) -> None:
+        """reset_instance creates a fresh object on next call."""
+        manager_mod.PlaywrightManager.reset_instance()
+        m1 = manager_mod.PlaywrightManager.get_instance()
+        manager_mod.PlaywrightManager.reset_instance()
+        m2 = manager_mod.PlaywrightManager.get_instance()
+        assert m1 is not m2
+        manager_mod.PlaywrightManager.reset_instance()
+
+
+class TestPlaywrightManagerStop:
+    """Validates stop() safely shuts down browser + Playwright."""
 
     @pytest.mark.asyncio()
-    async def test_succeeds_on_first_attempt(self) -> None:
-        """No retry needed when launch succeeds immediately."""
-        session = mock.AsyncMock(spec=session_mod.BrowserSession)
-        session.launch_browser = mock.AsyncMock()
+    async def test_stop_closes_browser_and_playwright(self) -> None:
+        """stop() must close both browser and Playwright."""
+        mgr = manager_mod.PlaywrightManager()
+        br = mock.AsyncMock()
+        br.is_connected.return_value = True
+        pw = mock.AsyncMock()
+        mgr._browser = br
+        mgr._playwright = pw
+        mgr._started = True
 
-        await browser_phases.launch_browser(session, "ipad")
+        await mgr.stop()
 
-        session.launch_browser.assert_awaited_once_with("ipad")
-        session.close.assert_not_awaited()
+        br.close.assert_awaited_once()
+        pw.stop.assert_awaited_once()
+        assert mgr._browser is None
+        assert mgr._playwright is None
 
     @pytest.mark.asyncio()
-    async def test_retries_after_first_failure(self) -> None:
-        """A transient failure triggers cleanup and retry."""
-        session = mock.AsyncMock(spec=session_mod.BrowserSession)
-        session.launch_browser = mock.AsyncMock(
-            side_effect=[RuntimeError("crash"), None],
+    async def test_stop_on_fresh_manager_is_noop(self) -> None:
+        """Stopping a never-started manager must not raise."""
+        mgr = manager_mod.PlaywrightManager()
+        await mgr.stop()
+        assert mgr._browser is None
+
+    @pytest.mark.asyncio()
+    async def test_stop_handles_browser_timeout(self) -> None:
+        """If browser.close() hangs, stop must still finish."""
+        mgr = manager_mod.PlaywrightManager()
+
+        async def hang_forever() -> None:
+            await asyncio.sleep(3600)
+
+        br = mock.AsyncMock()
+        br.close = hang_forever
+        pw = mock.AsyncMock()
+        mgr._browser = br
+        mgr._playwright = pw
+        mgr._browser_pid = None
+        mgr._started = True
+
+        await asyncio.wait_for(
+            mgr.stop(),
+            timeout=manager_mod._STOP_TIMEOUT_SECONDS * 2 + 10,
         )
+        assert mgr._browser is None
+        pw.stop.assert_awaited_once()
 
-        # Patch the delay so the test doesn't wait.
-        with mock.patch.object(
-            browser_phases,
-            "_RETRY_DELAY_SECONDS",
-            0,
+    @pytest.mark.asyncio()
+    async def test_stop_force_kills_on_timeout(self) -> None:
+        """When graceful close times out, SIGKILL the process."""
+        mgr = manager_mod.PlaywrightManager()
+
+        async def hang_forever() -> None:
+            await asyncio.sleep(3600)
+
+        br = mock.AsyncMock()
+        br.close = hang_forever
+        pw = mock.AsyncMock()
+        mgr._browser = br
+        mgr._playwright = pw
+        mgr._browser_pid = 99999
+        mgr._started = True
+
+        with (
+            mock.patch("os.getpgid", return_value=999),
+            mock.patch("os.kill") as mock_kill,
         ):
-            await browser_phases.launch_browser(
-                session,
-                "ipad",
+            await asyncio.wait_for(
+                mgr.stop(),
+                timeout=manager_mod._STOP_TIMEOUT_SECONDS * 3 + 10,
+            )
+            mock_kill.assert_called_once_with(
+                99999,
+                signal.SIGKILL,
             )
 
-        assert session.launch_browser.await_count == 2
-        # Cleanup must be called between attempts.
-        session.close.assert_awaited_once()
+
+class TestPlaywrightManagerCreateSession:
+    """Validates create_session() creates isolated sessions."""
 
     @pytest.mark.asyncio()
-    async def test_raises_after_all_attempts_fail(self) -> None:
-        """When all attempts fail, the last error propagates."""
-        session = mock.AsyncMock(spec=session_mod.BrowserSession)
-        session.launch_browser = mock.AsyncMock(
-            side_effect=RuntimeError("display dead"),
-        )
+    async def test_create_session_returns_bound_session(self) -> None:
+        """create_session must return a session with page + listeners."""
+        mgr = manager_mod.PlaywrightManager()
+        br = mock.AsyncMock()
+        br.is_connected = mock.Mock(return_value=True)
+        ctx = mock.AsyncMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
+        br.new_context.return_value = ctx
+        ctx.new_page.return_value = page
+        mgr._browser = br
+        mgr._started = True
+
+        session = await mgr.create_session("ipad")
+
+        assert session._context is ctx
+        assert session._page is page
+        page.on.assert_any_call("request", session._on_request)
+        page.on.assert_any_call("response", session._on_response)
+
+    @pytest.mark.asyncio()
+    async def test_create_session_invalid_device_raises(self) -> None:
+        """Unknown device types must raise ValueError."""
+        mgr = manager_mod.PlaywrightManager()
+        br = mock.AsyncMock()
+        br.is_connected = mock.Mock(return_value=True)
+        mgr._browser = br
+        mgr._started = True
+
+        with pytest.raises(ValueError, match="Unknown device type"):
+            await mgr.create_session("nokia3310")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio()
+    async def test_create_session_restarts_dead_browser(self) -> None:
+        """If the browser is disconnected, it should be restarted."""
+        mgr = manager_mod.PlaywrightManager()
+        br_dead = mock.AsyncMock()
+        # is_connected() is synchronous in Playwright — use a plain Mock
+        br_dead.is_connected = mock.Mock(return_value=False)
+        mgr._browser = br_dead
+        mgr._started = True
+
+        # _ensure_browser calls _stop_internal + _start_browser
+        # when the browser is disconnected; mock both.
+        br_new = mock.AsyncMock()
+        br_new.is_connected = mock.Mock(return_value=True)
+        ctx = mock.AsyncMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
+        br_new.new_context.return_value = ctx
+        ctx.new_page.return_value = page
+
+        async def do_restart() -> None:
+            mgr._browser = br_new
 
         with (
             mock.patch.object(
-                browser_phases,
-                "_RETRY_DELAY_SECONDS",
-                0,
-            ),
-            pytest.raises(
-                RuntimeError,
-                match="display dead",
-            ),
+                mgr,
+                "_stop_internal",
+                new_callable=mock.AsyncMock,
+            ) as mock_stop,
+            mock.patch.object(
+                mgr,
+                "_start_browser",
+                new_callable=mock.AsyncMock,
+                side_effect=do_restart,
+            ) as mock_start,
         ):
-            await browser_phases.launch_browser(
-                session,
-                "ipad",
-            )
+            session = await mgr.create_session("ipad")
 
-        assert session.launch_browser.await_count == browser_phases._MAX_LAUNCH_ATTEMPTS
+            mock_stop.assert_awaited_once()
+            mock_start.assert_awaited_once()
+            assert session._context is ctx
+
+
+class TestForceKillProcessGroup:
+    """Validates _force_kill_browser_process kills safely."""
+
+    def test_uses_killpg_when_different_pgid(self) -> None:
+        """os.killpg is used when Chrome has its own process group."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr._browser_pid = 42
+
+        def fake_getpgid(pid: int) -> int:
+            return 42 if pid == 42 else 1
+
+        with (
+            mock.patch("os.killpg") as mock_killpg,
+            mock.patch("os.getpgid", side_effect=fake_getpgid),
+            mock.patch("os.kill") as mock_kill,
+        ):
+            mgr._force_kill_browser_process()
+            mock_killpg.assert_called_once_with(42, signal.SIGKILL)
+            mock_kill.assert_not_called()
+
+    def test_skips_killpg_when_same_pgid(self) -> None:
+        """os.killpg must NOT be used when Chrome shares the server's pgid."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr._browser_pid = 42
+
+        with (
+            mock.patch("os.killpg") as mock_killpg,
+            mock.patch("os.getpgid", return_value=999),
+            mock.patch("os.kill") as mock_kill,
+        ):
+            mgr._force_kill_browser_process()
+            mock_killpg.assert_not_called()
+            mock_kill.assert_called_once_with(42, signal.SIGKILL)
+
+    def test_falls_back_to_single_kill(self) -> None:
+        """If getpgid raises, falls back to os.kill."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr._browser_pid = 42
+
+        with (
+            mock.patch("os.killpg") as mock_killpg,
+            mock.patch("os.getpgid", side_effect=PermissionError),
+            mock.patch("os.kill") as mock_kill,
+        ):
+            mgr._force_kill_browser_process()
+            mock_killpg.assert_not_called()
+            mock_kill.assert_called_once_with(42, signal.SIGKILL)
+
+    def test_noop_without_pid(self) -> None:
+        """No-op when no PID is available."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr._browser_pid = None
+
+        with (
+            mock.patch("os.killpg") as mock_killpg,
+            mock.patch("os.kill") as mock_kill,
+        ):
+            mgr._force_kill_browser_process()
+            mock_killpg.assert_not_called()
+            mock_kill.assert_not_called()
+
+    def test_handles_missing_process(self) -> None:
+        """Force-kill must not raise when the process is gone."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr._browser_pid = 99999
+
+        with (
+            mock.patch("os.getpgid", side_effect=ProcessLookupError),
+            mock.patch("os.kill", side_effect=ProcessLookupError),
+        ):
+            # Should not raise.
+            mgr._force_kill_browser_process()
+
+
+# ====================================================================
+# BrowserSession data-capture timeout tests
+# ====================================================================
+
+
+class TestGetPageContentTimeout:
+    """Validates that get_page_content is bounded by a timeout."""
 
     @pytest.mark.asyncio()
-    async def test_cleanup_failure_between_retries_is_non_fatal(
-        self,
-    ) -> None:
-        """If cleanup between retries fails, retry still proceeds."""
-        session = mock.AsyncMock(spec=session_mod.BrowserSession)
-        session.launch_browser = mock.AsyncMock(
-            side_effect=[RuntimeError("crash"), None],
-        )
-        session.close = mock.AsyncMock(
-            side_effect=RuntimeError("cleanup boom"),
-        )
+    async def test_returns_empty_on_timeout(self) -> None:
+        """When page.content() hangs, return an empty string."""
+        session = session_mod.BrowserSession()
 
-        with mock.patch.object(
-            browser_phases,
-            "_RETRY_DELAY_SECONDS",
-            0,
-        ):
-            await browser_phases.launch_browser(
-                session,
-                "ipad",
-            )
+        async def hang_forever() -> str:
+            await asyncio.sleep(3600)
+            return "<html></html>"
 
-        # Second attempt must succeed despite cleanup failure.
-        assert session.launch_browser.await_count == 2
+        page = mock.AsyncMock()
+        page.content = hang_forever
+        session._page = page
+
+        result = await asyncio.wait_for(
+            session.get_page_content(),
+            timeout=session_mod._CAPTURE_TIMEOUT_SECONDS + 5,
+        )
+        assert result == ""
+
+    @pytest.mark.asyncio()
+    async def test_returns_content_on_success(self) -> None:
+        """Normal page.content() returns the HTML."""
+        session = session_mod.BrowserSession()
+        page = mock.AsyncMock()
+        page.content.return_value = "<html><body>Hello</body></html>"
+        session._page = page
+
+        result = await session.get_page_content()
+        assert result == "<html><body>Hello</body></html>"
+
+    @pytest.mark.asyncio()
+    async def test_raises_without_page(self) -> None:
+        """Must raise RuntimeError when no page is active."""
+        session = session_mod.BrowserSession()
+        with pytest.raises(RuntimeError, match="No browser session active"):
+            await session.get_page_content()
+
+
+class TestWaitForLoadState:
+    """Validates wait_for_load_state returns bool and respects timeout."""
+
+    @pytest.mark.asyncio()
+    async def test_returns_true_on_success(self) -> None:
+        """Successfully reaching a load state returns True."""
+        session = session_mod.BrowserSession()
+        page = mock.AsyncMock()
+        session._page = page
+
+        result = await session.wait_for_load_state("load")
+        assert result is True
+        page.wait_for_load_state.assert_awaited_once()
+
+    @pytest.mark.asyncio()
+    async def test_returns_false_on_timeout(self) -> None:
+        """A timeout from Playwright returns False."""
+        session = session_mod.BrowserSession()
+        page = mock.AsyncMock()
+        page.wait_for_load_state.side_effect = TimeoutError("timed out")
+        session._page = page
+
+        result = await session.wait_for_load_state("networkidle", timeout=100)
+        assert result is False
+
+    @pytest.mark.asyncio()
+    async def test_raises_without_page(self) -> None:
+        """Must raise RuntimeError when no page is active."""
+        session = session_mod.BrowserSession()
+        with pytest.raises(RuntimeError, match="No browser session active"):
+            await session.wait_for_load_state()
+
+
+class TestCloseTimeoutConstant:
+    """Validates timeout constants are positive."""
+
+    def test_session_close_timeout_is_positive(self) -> None:
+        """Session close timeout must be positive."""
+        assert session_mod._CLOSE_TIMEOUT_SECONDS > 0
+
+    def test_manager_stop_timeout_is_positive(self) -> None:
+        """Manager stop timeout must be positive."""
+        assert manager_mod._STOP_TIMEOUT_SECONDS > 0
+
+    def test_start_timeout_is_positive(self) -> None:
+        """Playwright start timeout must be positive."""
+        assert manager_mod._START_TIMEOUT_SECONDS > 0

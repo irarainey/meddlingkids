@@ -616,3 +616,172 @@ class TestScanForAcString:
         """A plain number without tilde should not match."""
         cookies = [{"name": "c", "value": "12345"}]
         assert tc_string.scan_for_ac_string(cookies, []) is None
+
+
+# ====================================================================
+# TC String plausibility validation
+# ====================================================================
+
+
+class TestIsPlausibleTcDecode:
+    """Tests for _is_plausible_tc_decode false-positive filtering."""
+
+    def _make_tc_data(self, **overrides: object) -> tc_string.TcStringData:
+        """Create a plausible TcStringData with optional overrides."""
+        defaults: dict[str, object] = {
+            "version": 2,
+            "created": "2024-06-15T10:00:00+00:00",
+            "last_updated": "2024-06-15T10:00:00+00:00",
+            "cmp_id": 68,
+            "cmp_version": 1,
+            "consent_screen": 0,
+            "consent_language": "EN",
+            "vendor_list_version": 187,
+            "tcf_policy_version": 2,
+            "is_service_specific": False,
+            "use_non_standard_stacks": False,
+            "publisher_country_code": "GB",
+            "purpose_consents": [1, 2, 3],
+            "purpose_legitimate_interests": [],
+            "special_feature_opt_ins": [],
+            "vendor_consents": [1, 2],
+            "vendor_legitimate_interests": [],
+            "raw_string": "fake",
+        }
+        defaults.update(overrides)
+        return tc_string.TcStringData(**defaults)  # type: ignore[arg-type]
+
+    def test_plausible_data_passes(self) -> None:
+        """A well-formed TC string should be accepted."""
+        data = self._make_tc_data()
+        assert tc_string._is_plausible_tc_decode(data) is True
+
+    def test_real_minimal_passes(self) -> None:
+        """The _TC_MINIMAL test string should be plausible."""
+        decoded = tc_string.decode_tc_string(_TC_MINIMAL)
+        assert decoded is not None
+        assert tc_string._is_plausible_tc_decode(decoded) is True
+
+    def test_real_broad_passes(self) -> None:
+        """The _TC_BROAD test string should be plausible."""
+        decoded = tc_string.decode_tc_string(_TC_BROAD)
+        assert decoded is not None
+        assert tc_string._is_plausible_tc_decode(decoded) is True
+
+    def test_rejects_invalid_consent_language(self) -> None:
+        """Non-letter consent language should be rejected."""
+        data = self._make_tc_data(consent_language="1Z")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_lowercase_consent_language(self) -> None:
+        """Lowercase language code should be rejected."""
+        data = self._make_tc_data(consent_language="en")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_invalid_country_code(self) -> None:
+        """Non-letter country code should be rejected."""
+        data = self._make_tc_data(publisher_country_code="[B")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_empty_country_code(self) -> None:
+        data = self._make_tc_data(publisher_country_code="")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_high_vendor_list_version(self) -> None:
+        """vendorListVersion > 1500 is implausible (current ~290)."""
+        data = self._make_tc_data(vendor_list_version=3336)
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_zero_vendor_list_version(self) -> None:
+        data = self._make_tc_data(vendor_list_version=0)
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_high_tcf_policy_version(self) -> None:
+        """tcfPolicyVersion > 10 is implausible."""
+        data = self._make_tc_data(tcf_policy_version=42)
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_zero_tcf_policy_version(self) -> None:
+        data = self._make_tc_data(tcf_policy_version=0)
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_old_timestamp(self) -> None:
+        """Dates before 2018 (pre-TCF) should be rejected."""
+        data = self._make_tc_data(created="2010-01-01T00:00:00+00:00")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_far_future_timestamp(self) -> None:
+        """Dates after 2100 should be rejected."""
+        data = self._make_tc_data(last_updated="2200-01-01T00:00:00+00:00")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_rejects_empty_timestamp(self) -> None:
+        data = self._make_tc_data(created="")
+        assert tc_string._is_plausible_tc_decode(data) is False
+
+    def test_accepts_reasonable_future_timestamp(self) -> None:
+        """A timestamp a few years in the future should be accepted."""
+        data = self._make_tc_data(created="2053-03-12T00:00:00+00:00")
+        assert tc_string._is_plausible_tc_decode(data) is True
+
+    def test_accepts_vendor_list_version_at_boundary(self) -> None:
+        """vendorListVersion=1500 (upper limit) should be accepted."""
+        data = self._make_tc_data(vendor_list_version=1500)
+        assert tc_string._is_plausible_tc_decode(data) is True
+
+
+# ====================================================================
+# Heuristic scanner skip-list
+# ====================================================================
+
+
+class TestHeuristicScanSkipList:
+    """Tests for _HEURISTIC_SKIP_COOKIE_NAMES filtering."""
+
+    def test_skips_pid_cookie(self) -> None:
+        """pid cookie (Pubmatic etc.) should be skipped."""
+        cookies = [{"name": "pid", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_skips_tdcpm_cookie(self) -> None:
+        """TDCPM cookie (The Trade Desk) should be skipped."""
+        cookies = [{"name": "TDCPM", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_skips_ga_cookie(self) -> None:
+        """_ga cookie (Google Analytics) should be skipped."""
+        cookies = [{"name": "_ga", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_skips_fbp_cookie(self) -> None:
+        """_fbp cookie (Facebook Pixel) should be skipped."""
+        cookies = [{"name": "_fbp", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_skips_session_cookie(self) -> None:
+        """session cookie should be skipped."""
+        cookies = [{"name": "session", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_allows_non_skiplisted_cookie(self) -> None:
+        """A cookie not in the skip-list should be scanned."""
+        cookies = [{"name": "my_consent_data", "value": _TC_MINIMAL}]
+        result = tc_string.scan_for_tc_string(cookies, [])
+        assert result is not None
+        assert "my_consent_data" in result[0]
+
+    def test_falls_through_to_valid_cookie(self) -> None:
+        """Should skip blacklisted cookies and find valid ones."""
+        cookies = [
+            {"name": "pid", "value": _TC_MINIMAL},
+            {"name": "TDCPM", "value": _TC_MINIMAL},
+            {"name": "real_consent", "value": _TC_MINIMAL},
+        ]
+        result = tc_string.scan_for_tc_string(cookies, [])
+        assert result is not None
+        assert "real_consent" in result[0]
+
+    def test_case_insensitive_skip(self) -> None:
+        """Skip-list should match case-insensitively."""
+        cookies = [{"name": "PID", "value": _TC_MINIMAL}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
