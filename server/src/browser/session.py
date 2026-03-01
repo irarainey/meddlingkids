@@ -40,6 +40,13 @@ _CLOSE_TIMEOUT_SECONDS = 8
 # fast rather than hanging.
 _PLAYWRIGHT_START_TIMEOUT_SECONDS = 15
 
+# Timeout (seconds) for data-capture calls (cookies, storage).
+# These go through CDP to the renderer; on ad-heavy pages the
+# browser can become unresponsive for tens of seconds.  A
+# bounded timeout prevents Phase 4/5 from stalling the entire
+# SSE stream.
+_CAPTURE_TIMEOUT_SECONDS = 10
+
 
 class BrowserSession:
     """
@@ -501,11 +508,26 @@ class BrowserSession:
     # ==========================================================================
 
     async def capture_current_cookies(self) -> None:
-        """Capture all cookies from the current browser context."""
+        """Capture all cookies from the current browser context.
+
+        Wrapped in a timeout so an unresponsive browser doesn't
+        stall the pipeline indefinitely.
+        """
         if not self._context:
             return
 
-        cookies = await self._context.cookies()
+        try:
+            cookies = await asyncio.wait_for(
+                self._context.cookies(),
+                timeout=_CAPTURE_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            log.warn(
+                "Cookie capture timed out — browser may be unresponsive",
+                {"timeoutSeconds": _CAPTURE_TIMEOUT_SECONDS},
+            )
+            return
+
         log.debug("Captured raw cookies from browser", {"count": len(cookies)})
         now = datetime.now(UTC).isoformat()
 
@@ -534,26 +556,33 @@ class BrowserSession:
                 self._tracked_cookies.append(tracked)
 
     async def capture_storage(self) -> tracking_data.CapturedStorage:
-        """Capture localStorage and sessionStorage contents."""
+        """Capture localStorage and sessionStorage contents.
+
+        Wrapped in a timeout so an unresponsive browser doesn't
+        stall the pipeline indefinitely.
+        """
         if not self._page:
             return tracking_data.CapturedStorage()
 
         try:
-            storage_data = await self._page.evaluate(
-                """() => {
-                    const getItems = (s) => {
-                        const items = [];
-                        for (let i = 0; i < s.length; i++) {
-                            const key = s.key(i);
-                            if (key) items.push({ key, value: s.getItem(key) || '' });
-                        }
-                        return items;
-                    };
-                    return {
-                        localStorage: getItems(window.localStorage),
-                        sessionStorage: getItems(window.sessionStorage),
-                    };
-                }"""
+            storage_data = await asyncio.wait_for(
+                self._page.evaluate(
+                    """() => {
+                        const getItems = (s) => {
+                            const items = [];
+                            for (let i = 0; i < s.length; i++) {
+                                const key = s.key(i);
+                                if (key) items.push({ key, value: s.getItem(key) || '' });
+                            }
+                            return items;
+                        };
+                        return {
+                            localStorage: getItems(window.localStorage),
+                            sessionStorage: getItems(window.sessionStorage),
+                        };
+                    }"""
+                ),
+                timeout=_CAPTURE_TIMEOUT_SECONDS,
             )
 
             now = datetime.now(UTC).isoformat()
@@ -566,6 +595,12 @@ class BrowserSession:
                     for item in storage_data["sessionStorage"]
                 ],
             )
+        except TimeoutError:
+            log.warn(
+                "Storage capture timed out — browser may be unresponsive",
+                {"timeoutSeconds": _CAPTURE_TIMEOUT_SECONDS},
+            )
+            return tracking_data.CapturedStorage()
         except Exception as exc:
             log.warn("Failed to capture storage", {"error": str(exc)})
             return tracking_data.CapturedStorage()

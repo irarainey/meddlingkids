@@ -76,10 +76,13 @@ async def detect_overlay(
 
     # Use a viewport-only screenshot for faster detection.
     # Overlays always cover the viewport, so full-page is unnecessary.
+    # Timeout is 15s — shorter than the default 30s because this
+    # is only a verification step; if the renderer is struggling
+    # we want to fail fast rather than stall the pipeline.
     try:
         viewport_screenshot = await session.take_screenshot(
             full_page=False,
-            timeout=30_000,
+            timeout=15_000,
         )
     except Exception as exc:
         log.warn(
