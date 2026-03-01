@@ -1,16 +1,51 @@
 <script setup lang="ts">
+import { reactive, watch } from 'vue'
 import type { NetworkRequest } from '../../types'
 import { getResourceTypeIcon, truncateValue } from '../../utils'
 
 /**
  * Tab panel displaying network requests grouped by domain.
  */
-defineProps<{
+const props = defineProps<{
   /** Network requests grouped by domain */
   networkByDomain: Record<string, NetworkRequest[]>
   /** Filtered network requests */
   filteredNetworkRequests: NetworkRequest[]
 }>()
+
+/** Cached domain info keyed by domain. */
+const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null }>>({})
+
+/** Fetch company/description info for all visible domains. */
+async function fetchDomainInfo(domains: string[]): Promise<void> {
+  const unknown = domains.filter((d) => !(d in domainInfo))
+  if (unknown.length === 0) return
+
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/domain-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [domain, info] of Object.entries(data)) {
+        domainInfo[domain] = info as { company: string | null; description: string | null; url: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — enrichment is non-critical
+  }
+}
+
+watch(
+  () => Object.keys(props.networkByDomain),
+  (domains) => {
+    if (domains.length > 0) fetchDomainInfo(domains)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -25,8 +60,22 @@ defineProps<{
       </p>
       <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
-          <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
-          {{ domain }} ({{ domainRequests.length }})
+          <div class="domain-header-line">
+            <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
+            {{ domain }} ({{ domainRequests.length }})
+          </div>
+          <div v-if="domainInfo[String(domain)]?.company || domainInfo[String(domain)]?.description" class="domain-org-info">
+            <span class="org-caption">Vendor:</span>
+            <a
+              v-if="domainInfo[String(domain)]?.company && domainInfo[String(domain)]?.url"
+              :href="domainInfo[String(domain)]!.url!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="org-name-link"
+            >{{ domainInfo[String(domain)]!.company }}</a>
+            <span v-else-if="domainInfo[String(domain)]?.company" class="org-name">{{ domainInfo[String(domain)]!.company }}</span>
+            <span v-if="domainInfo[String(domain)]?.description" class="org-description">{{ domainInfo[String(domain)]!.description }}</span>
+          </div>
         </h3>
         <div v-for="request in domainRequests" :key="`${request.method}-${request.url}`" class="network-item">
           <div class="network-item-header">
@@ -152,5 +201,55 @@ defineProps<{
   color: #d1d5db;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+/* ── Domain Organisation Info ────────────────── */
+.domain-org-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.org-caption {
+  color: #6b7280;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.org-name-link {
+  color: #a5b4fc;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.org-name-link:hover {
+  text-decoration: underline;
+  color: #c7d2fe;
+}
+
+.org-name {
+  color: #a5b4fc;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.org-description {
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.org-name-link + .org-description::before,
+.org-name + .org-description::before {
+  content: '·';
+  margin-right: 0.35rem;
+  color: #4b5563;
 }
 </style>

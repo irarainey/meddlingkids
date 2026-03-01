@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import type { StorageItem, StorageInfo } from '../../types'
-import { truncateValue } from '../../utils'
+import type { StorageItem, StorageInfo, StructuredReport } from '../../types'
+import { truncateValue, stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying localStorage and sessionStorage items.
@@ -12,6 +12,8 @@ const props = defineProps<{
   localStorage: StorageItem[]
   /** sessionStorage items */
   sessionStorage: StorageItem[]
+  /** Structured report for the AI storage analysis section */
+  structuredReport?: StructuredReport | null
 }>()
 
 /** Cache of storage info results, keyed by "storageType|key". */
@@ -134,10 +136,55 @@ function riskClass(level: string): string {
 
 <template>
   <div class="tab-content">
-    <div v-if="localStorage.length === 0 && sessionStorage.length === 0" class="empty-state">
+    <div v-if="localStorage.length === 0 && sessionStorage.length === 0 && !(structuredReport && (structuredReport.storageAnalysis.localStorageCount > 0 || structuredReport.storageAnalysis.sessionStorageCount > 0))" class="empty-state">
       No storage data detected
     </div>
-    <div v-else class="domain-groups">
+
+    <!-- ── Overview ──────────────────────────────── -->
+    <section
+      v-if="structuredReport && (structuredReport.storageAnalysis.localStorageCount > 0
+        || structuredReport.storageAnalysis.sessionStorageCount > 0)"
+      class="ai-storage-analysis"
+    >
+      <h2 class="ai-section-title">💾 Overview</h2>
+      <p class="ai-section-subtitle">
+        Analysis of localStorage and sessionStorage usage patterns determined
+        by AI examination of key names and values.
+      </p>
+      <div class="storage-ai-stats">
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.localStorageCount }}</span>
+          <span class="ai-stat-label">localStorage items</span>
+        </div>
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.sessionStorageCount }}</span>
+          <span class="ai-stat-label">sessionStorage items</span>
+        </div>
+      </div>
+      <p v-if="structuredReport.storageAnalysis.summary" class="ai-section-summary">
+        {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
+      </p>
+      <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="storage-ai-concerns">
+        <h3>localStorage Concerns</h3>
+        <ul>
+          <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
+        </ul>
+      </div>
+      <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-ai-concerns">
+        <h3>sessionStorage Concerns</h3>
+        <ul>
+          <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── Analysis ──────────────────────────────── -->
+    <section v-if="localStorage.length > 0 || sessionStorage.length > 0" class="storage-analysis-section">
+      <h2 class="ai-section-title">🔍 Analysis</h2>
+      <p class="ai-section-subtitle">
+        All storage keys set by the page, with expandable details for each item.
+      </p>
+      <div class="domain-groups">
       <div v-if="localStorage.length > 0" class="domain-group">
         <h3 class="domain-header">📦 Local Storage ({{ localStorage.length }})</h3>
         <div v-for="item in localStorage" :key="item.key" class="storage-item">
@@ -243,6 +290,7 @@ function riskClass(level: string): string {
         </div>
       </div>
     </div>
+    </section>
   </div>
 </template>
 
@@ -410,5 +458,96 @@ function riskClass(level: string): string {
 .risk-critical {
   background: #4a1a2e;
   color: #f472b6;
+}
+
+/* ── AI Storage Analysis ─────────────────────── */
+.ai-storage-analysis,
+.storage-analysis-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #1e2235;
+  border-radius: 8px;
+  border: 1px solid #2d3350;
+}
+
+.ai-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e0e7ff;
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-section-subtitle {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.ai-section-summary {
+  color: #c5ccdf;
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.source-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.source-ai {
+  background: #1a2e3d;
+  color: #22d3ee;
+}
+
+.storage-ai-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-stat-card {
+  background: #252a40;
+  border: 1px solid #2d3350;
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  flex: 1;
+}
+
+.ai-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #7CB8E4;
+}
+
+.ai-stat-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.storage-ai-concerns {
+  margin-top: 0.5rem;
+}
+
+.storage-ai-concerns h3 {
+  font-size: 0.95rem;
+  color: #7CB8E4;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.storage-ai-concerns ul {
+  margin: 0.25rem 0 0 1.25rem;
+  font-size: 0.95rem;
+  color: #b0bcd5;
 }
 </style>

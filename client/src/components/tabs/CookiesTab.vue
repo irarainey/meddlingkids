@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import type { TrackedCookie, CookieInfo, DecodedCookies } from '../../types'
-import { formatExpiry, truncateValue } from '../../utils'
+import type { TrackedCookie, CookieInfo, DecodedCookies, StructuredReport } from '../../types'
+import { formatExpiry, truncateValue, stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying cookies grouped by domain.
@@ -16,6 +16,8 @@ const props = defineProps<{
   analyzedUrl?: string
   /** Decoded privacy cookies (USP, GPP, GA, Facebook, Google Ads, CMP, etc.) */
   decodedCookies?: DecodedCookies | null
+  /** Structured report for the AI cookie analysis section */
+  structuredReport?: StructuredReport | null
 }>()
 
 /** Extract the registrable base domain from a hostname (e.g. "www.bbc.co.uk" → "bbc.co.uk"). */
@@ -175,15 +177,87 @@ function riskClass(level: string): string {
   }
   return classes[level] || 'risk-low'
 }
+
+/** Colour-coded severity/risk badge class for AI analysis. */
+function severityClass(level: string): string {
+  switch (level) {
+    case 'critical':
+    case 'very-high':
+      return 'badge-critical'
+    case 'high':
+      return 'badge-high'
+    case 'medium':
+      return 'badge-medium'
+    case 'low':
+      return 'badge-low'
+    case 'none':
+      return 'badge-none'
+    default:
+      return 'badge-medium'
+  }
+}
+
+/** Human-readable label for risk levels. */
+function riskLabel(level: string): string {
+  switch (level) {
+    case 'very-high':
+      return 'Very High'
+    case 'critical':
+      return 'Critical'
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+    case 'none':
+      return 'None'
+    default:
+      return level
+  }
+}
 </script>
 
 <template>
   <div class="tab-content">
-    <div v-if="cookieCount === 0 && !decodedCookies" class="empty-state">No cookies detected</div>
+    <div v-if="cookieCount === 0 && !decodedCookies && !structuredReport" class="empty-state">No cookies detected</div>
+
+    <!-- ── Overview (AI Cookie Analysis) ──────────── -->
+    <section v-if="structuredReport && structuredReport.cookieAnalysis.groups.length > 0" class="ai-cookie-analysis">
+      <h2 class="section-title">🍪 Overview
+        <span class="count-badge">{{ structuredReport.cookieAnalysis.total }} cookies</span>
+      </h2>
+      <p class="section-subtitle">
+        Cookie categories and risk levels determined by AI analysis of cookie
+        names, domains, and values.
+      </p>
+      <div
+        v-for="(group, i) in structuredReport.cookieAnalysis.groups"
+        :key="i"
+        class="cookie-ai-group"
+      >
+        <div class="cookie-ai-group-header">
+          <h3>{{ group.category }}</h3>
+          <span class="badge" :class="severityClass(group.concernLevel)">{{ riskLabel(group.concernLevel) }}</span>
+          <span v-if="group.lifespan" class="lifespan-tag">⏱ {{ group.lifespan }}</span>
+        </div>
+        <div class="cookie-ai-names">
+          <code v-for="cookie in group.cookies" :key="cookie">{{ cookie }}</code>
+        </div>
+      </div>
+      <div v-if="structuredReport.cookieAnalysis.concerningCookies.length" class="concerning-section">
+        <h3>⚠️ Concerning Cookies</h3>
+        <ul>
+          <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
+            {{ stripMarkdown(concern) }}
+          </li>
+        </ul>
+      </div>
+    </section>
 
     <!-- ── Decoded Privacy Cookies ───────────────── -->
     <section v-if="decodedCookies && Object.keys(decodedCookies).length > 0" class="decoded-cookies-section">
-      <h2 class="section-title">🔍 Decoded Privacy Cookies <span class="source-badge source-cookie">from cookies</span></h2>
+      <h2 class="section-title">🔍 Decoded Privacy Cookies</h2>
       <p class="section-subtitle">
         Privacy-relevant cookies found on this site, decoded from
         their raw values into human-readable data. These cookies are set by
@@ -402,8 +476,14 @@ function riskClass(level: string): string {
       </div>
     </section>
 
-    <div v-if="cookieCount === 0 && decodedCookies" />
-    <div v-else-if="cookieCount > 0" class="domain-groups">
+    <!-- ── Analysis (cookie listing by domain) ───── -->
+    <section v-if="cookieCount > 0" class="cookie-analysis-section">
+      <h2 class="section-title">🔎 Analysis</h2>
+      <p class="section-subtitle">
+        All cookies set on this site, grouped by domain.
+        Click a cookie to look up its purpose and risk level.
+      </p>
+      <div class="domain-groups">
       <div v-for="(domainCookies, domain) in cookiesByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
           {{ domain }} ({{ domainCookies.length }})
@@ -470,6 +550,7 @@ function riskClass(level: string): string {
         </div>
       </div>
     </div>
+    </section>
   </div>
 </template>
 
@@ -649,6 +730,131 @@ function riskClass(level: string): string {
 /* ── Decoded Privacy Cookies ─────────────────── */
 .decoded-cookies-section {
   margin-bottom: 1.5rem;
+}
+
+/* ── Cookie Analysis (domain listing) ────────── */
+.cookie-analysis-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #1e2235;
+  border-radius: 8px;
+  border: 1px solid #2d3350;
+}
+
+/* ── AI Cookie Analysis ──────────────────────── */
+.ai-cookie-analysis {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #1e2235;
+  border-radius: 8px;
+  border: 1px solid #2d3350;
+}
+
+.cookie-ai-group {
+  margin-bottom: 0.75rem;
+}
+
+.cookie-ai-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cookie-ai-group-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #7CB8E4;
+}
+
+.lifespan-tag {
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+.cookie-ai-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.cookie-ai-names code {
+  background: #2a2f45;
+  color: #7CB8E4;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.concerning-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #2d3350;
+}
+
+.concerning-section h3 {
+  font-size: 0.95rem;
+  color: #7CB8E4;
+  margin: 0 0 0.5rem;
+}
+
+.concerning-section ul {
+  margin: 0.25rem 0 0 1.25rem;
+  font-size: 0.95rem;
+  color: #fdba74;
+}
+
+.count-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #2a3555;
+  color: #7CB8E4;
+  margin-left: auto;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-critical {
+  background: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.badge-high {
+  background: #431407;
+  color: #fdba74;
+  border: 1px solid #f97316;
+}
+
+.badge-medium {
+  background: #422006;
+  color: #fde047;
+  border: 1px solid #eab308;
+}
+
+.badge-low {
+  background: #052e16;
+  color: #86efac;
+  border: 1px solid #22c55e;
+}
+
+.badge-none {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #475569;
 }
 
 .section-title {

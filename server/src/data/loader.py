@@ -487,7 +487,8 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
 
     Checks Disconnect services (category + company), the partner
     databases, and the tracker-domains list.  Returns a dict with
-    ``company`` and ``description`` keys (either may be ``None``).
+    ``company``, ``description``, and ``url`` keys (any may be
+    ``None``).
     """
     from src.utils import url as url_mod
 
@@ -512,7 +513,9 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
             labels = [_humanise_disconnect_category(c) for c in cats]
         cat_label = ", ".join(dict.fromkeys(labels))  # deduplicate, preserve order
         description = f"{cat_label} service" + (f" by {company}" if company else "")
-        return {"company": company, "description": description}
+        # Construct a URL from the domain for Disconnect entries.
+        url = f"https://{domain}"
+        return {"company": company, "description": description, "url": url}
 
     # 2. Partner databases — have company name + category.
     for config in PARTNER_CATEGORIES:
@@ -522,13 +525,14 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
             if entry_domain and (entry_domain == domain or entry_domain == url_mod.get_base_domain(domain)):
                 cat_label = config.category.replace("-", " ").title()
                 description = f"{cat_label} service"
-                return {"company": name.title(), "description": description}
+                url = entry.url or f"https://{domain}"
+                return {"company": name.title(), "description": description, "url": url}
 
     # 3. Tracker-domains — minimal info (block/cookieblock).
     if is_known_tracker_domain(domain):
-        return {"company": None, "description": "Known tracking domain"}
+        return {"company": None, "description": "Known tracking domain", "url": None}
 
-    return {"company": None, "description": None}
+    return {"company": None, "description": None, "url": None}
 
 
 def get_storage_key_hint(key: str) -> dict[str, str | None]:

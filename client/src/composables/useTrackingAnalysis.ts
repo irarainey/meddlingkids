@@ -66,7 +66,7 @@ export function useTrackingAnalysis() {
   const networkRequests = ref<NetworkRequest[]>([])
 
   /** Currently active tab */
-  const activeTab = ref<TabId>('analysis')
+  const activeTab = ref<TabId>('summary')
 
   /** Structured analysis report */
   const structuredReport = ref<StructuredReport | null>(null)
@@ -473,7 +473,7 @@ export function useTrackingAnalysis() {
             debugLog.value = data.debugLog
           }
 
-          activeTab.value = 'analysis'
+          activeTab.value = 'summary'
           statusMessage.value = data.message
           progressPercent.value = 100
           hasCompleted = true

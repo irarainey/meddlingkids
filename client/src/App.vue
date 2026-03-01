@@ -8,7 +8,7 @@ import {
   ScoreDialog,
   PageErrorDialog,
   ErrorDialog,
-  AnalysisTab,
+  SummaryTab,
   ConsentTab,
   CookiesTab,
   DebugLogTab,
@@ -206,10 +206,10 @@ function onUrlMouseUp(event: Event): void {
       <div ref="tabsRef" class="tabs">
           <button
             class="tab"
-            :class="{ active: activeTab === 'analysis', highlight: structuredReport || summaryFindings.length > 0 }"
-            @click="activeTab = 'analysis'"
+            :class="{ active: activeTab === 'summary', highlight: structuredReport || summaryFindings.length > 0 }"
+            @click="activeTab = 'summary'"
           >
-            📋 Analysis
+            📋 Summary
           </button>
           <button v-if="consentDetails" class="tab" :class="{ active: activeTab === 'consent' }" @click="activeTab = 'consent'">
             🎯 Consent
@@ -235,8 +235,8 @@ function onUrlMouseUp(event: Event): void {
         </div>
 
         <!-- Tab Content Panels -->
-        <AnalysisTab
-          v-if="activeTab === 'analysis'"
+        <SummaryTab
+          v-if="activeTab === 'summary'"
           :is-analyzing="isLoading && progressStep === 'analysis'"
           :analysis-error="analysisError"
           :structured-report="structuredReport"
@@ -251,17 +251,20 @@ function onUrlMouseUp(event: Event): void {
           :cookie-count="cookies.length"
           :analyzed-url="inputValue"
           :decoded-cookies="decodedCookies"
+          :structured-report="structuredReport"
         />
 
         <ConsentTab
           v-show="activeTab === 'consent'"
           :consent-details="consentDetails"
+          :structured-report="structuredReport"
         />
 
         <StorageTab
           v-if="activeTab === 'storage'"
           :local-storage="localStorage"
           :session-storage="sessionStorage"
+          :structured-report="structuredReport"
         />
 
         <NetworkTab

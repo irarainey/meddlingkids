@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ConsentDetails, TcfPurpose, TcfLookupResult, TcValidationResult, TcValidationFinding, AcStringData } from '../../types'
+import type { ConsentDetails, TcfPurpose, TcfLookupResult, TcValidationResult, TcValidationFinding, AcStringData, StructuredReport } from '../../types'
+import { stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying consent dialog details with IAB TCF purpose breakdown.
@@ -15,6 +16,8 @@ import type { ConsentDetails, TcfPurpose, TcfLookupResult, TcValidationResult, T
 const props = defineProps<{
   /** Extracted consent details (may be null if not yet captured) */
   consentDetails: ConsentDetails | null
+  /** Structured report for the AI consent analysis and vendor sections */
+  structuredReport?: StructuredReport | null
 }>()
 
 /** Cached TCF purpose lookup results. */
@@ -209,6 +212,45 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   if (consented) return 'Consent'
   if (li) return 'Legitimate Interest only'
   return 'No consent'
+}
+
+/** Colour-coded severity badge class for AI analysis sections. */
+function aiSeverityClass(level: string): string {
+  switch (level) {
+    case 'critical':
+    case 'very-high':
+      return 'ai-badge-critical'
+    case 'high':
+      return 'ai-badge-high'
+    case 'medium':
+      return 'ai-badge-medium'
+    case 'low':
+      return 'ai-badge-low'
+    case 'none':
+      return 'ai-badge-none'
+    default:
+      return 'ai-badge-medium'
+  }
+}
+
+/** Human-readable label for AI risk levels. */
+function aiRiskLabel(level: string): string {
+  switch (level) {
+    case 'very-high':
+      return 'Very High'
+    case 'critical':
+      return 'Critical'
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+    case 'none':
+      return 'None'
+    default:
+      return level
+  }
 }
 </script>
 
@@ -626,6 +668,88 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 </div>
               </div>
             </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── AI Consent Analysis ─────────────────────── -->
+      <section v-if="structuredReport && structuredReport.consentAnalysis.hasConsentDialog" class="ai-consent-section">
+        <h2 class="section-title">🎯 Consent Dialog Analysis <span class="source-badge source-ai">from AI</span></h2>
+        <p class="section-subtitle">
+          AI-generated analysis of how the consent dialog compares to actual
+          tracking behaviour observed on the site. Highlights discrepancies
+          between claimed and actual data practices.
+        </p>
+        <div class="ai-consent-stats">
+          <div class="ai-stat-card">
+            <span class="ai-stat-value">{{ structuredReport.consentAnalysis.partnersDisclosed }}</span>
+            <span class="ai-stat-label">Partners Disclosed</span>
+          </div>
+        </div>
+        <p v-if="structuredReport.consentAnalysis.consentPlatform" class="consent-platform-note">
+          Consent is managed by
+          <a
+            v-if="structuredReport.consentAnalysis.consentPlatformUrl"
+            :href="structuredReport.consentAnalysis.consentPlatformUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="consent-platform-link"
+          >{{ structuredReport.consentAnalysis.consentPlatform }}</a>
+          <template v-else>{{ structuredReport.consentAnalysis.consentPlatform }}</template>.
+        </p>
+        <p v-if="structuredReport.consentAnalysis.summary" class="ai-section-summary">
+          {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
+        </p>
+        <div v-if="structuredReport.consentAnalysis.discrepancies.length" class="discrepancies">
+          <h3>⚠️ Discrepancies Found</h3>
+          <div
+            v-for="(d, i) in structuredReport.consentAnalysis.discrepancies"
+            :key="i"
+            class="discrepancy-card"
+          >
+            <span class="ai-badge" :class="aiSeverityClass(d.severity)">{{ aiRiskLabel(d.severity) }}</span>
+            <div class="discrepancy-detail">
+              <div class="discrepancy-row">
+                <span class="discrepancy-label">Claimed:</span>
+                <span>{{ stripMarkdown(d.claimed) }}</span>
+              </div>
+              <div class="discrepancy-row">
+                <span class="discrepancy-label">Actual:</span>
+                <span>{{ stripMarkdown(d.actual) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── AI Top Vendors ──────────────────────────── -->
+      <section v-if="structuredReport && structuredReport.keyVendors.vendors.length > 0" class="ai-vendors-section">
+        <h2 class="section-title">🏢 Top Vendors and Partners <span class="source-badge source-ai">from AI</span>
+          <span class="ai-count-badge">{{ structuredReport.keyVendors.vendors.length }}</span>
+        </h2>
+        <p class="section-subtitle">
+          Key vendors and partners identified by AI analysis, including their
+          roles and privacy implications.
+        </p>
+        <div class="ai-vendor-grid">
+          <div
+            v-for="vendor in structuredReport.keyVendors.vendors"
+            :key="vendor.name"
+            class="ai-vendor-card"
+          >
+            <div class="ai-vendor-header">
+              <a v-if="vendor.url" :href="vendor.url" target="_blank" rel="noopener noreferrer" class="ai-vendor-link">
+                {{ vendor.name }}
+              </a>
+              <strong v-else>{{ vendor.name }}</strong>
+              <a v-if="vendor.policyUrl" :href="vendor.policyUrl" target="_blank" rel="noopener noreferrer" class="vendor-policy-link" title="Privacy policy">🔒</a>
+              <span v-if="vendor.category" class="vendor-category-badge" :class="vendorCategoryClass(vendor.category)">{{ vendor.category }}</span>
+              <span class="ai-vendor-role">{{ vendor.role }}</span>
+            </div>
+            <p class="ai-vendor-impact">{{ stripMarkdown(vendor.privacyImpact) }}</p>
+            <div v-if="vendor.concerns?.length" class="ai-vendor-concerns">
+              <span v-for="(concern, i) in vendor.concerns" :key="i" class="concern-tag">⚠️ {{ concern }}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -1498,6 +1622,209 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 .tc-na {
   color: #4b5563;
+}
+
+/* ── AI Consent Analysis ─────────────────────── */
+.ai-consent-section,
+.ai-vendors-section {
+  border-top: 1px solid #3d4663;
+  padding-top: 1rem;
+}
+
+.ai-consent-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-stat-card {
+  background: #1a1e30;
+  border: 1px solid #2d3350;
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  flex: 1;
+}
+
+.ai-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #7CB8E4;
+}
+
+.ai-stat-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.ai-section-summary {
+  color: #c5ccdf;
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.consent-platform-note {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.consent-platform-link {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.consent-platform-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Discrepancies ───────────────────────────── */
+.discrepancies {
+  margin-top: 0.75rem;
+}
+
+.discrepancies h3 {
+  font-size: 0.95rem;
+  color: #7CB8E4;
+  margin: 0 0 0.5rem;
+}
+
+.discrepancy-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: #1a1e30;
+  border: 1px solid #2d3350;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.discrepancy-detail {
+  flex: 1;
+}
+
+.discrepancy-row {
+  font-size: 0.95rem;
+  margin: 0.15rem 0;
+}
+
+.discrepancy-label {
+  font-weight: 600;
+  color: #7c8ab8;
+  margin-right: 0.35rem;
+}
+
+/* ── AI Badges ───────────────────────────────── */
+.ai-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ai-badge-critical {
+  background: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.ai-badge-high {
+  background: #431407;
+  color: #fdba74;
+  border: 1px solid #f97316;
+}
+
+.ai-badge-medium {
+  background: #422006;
+  color: #fde047;
+  border: 1px solid #eab308;
+}
+
+.ai-badge-low {
+  background: #052e16;
+  color: #86efac;
+  border: 1px solid #22c55e;
+}
+
+.ai-badge-none {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #475569;
+}
+
+.ai-count-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #2a3555;
+  color: #7CB8E4;
+  margin-left: auto;
+}
+
+/* ── AI Vendor Grid ──────────────────────────── */
+.ai-vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.5rem;
+}
+
+.ai-vendor-card {
+  background: #1a1e30;
+  border: 1px solid #2d3350;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.ai-vendor-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ai-vendor-header strong {
+  color: #f0f4ff;
+  font-size: 0.95rem;
+}
+
+.ai-vendor-link {
+  color: #7CB8E4;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ai-vendor-link:hover {
+  text-decoration: underline;
+  color: #a0d0ff;
+}
+
+.ai-vendor-role {
+  font-size: 0.82rem;
+  color: #7CB8E4;
+  background: #2a3555;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+.ai-vendor-impact {
+  color: #b0bcd5;
+  font-size: 0.88rem;
+  margin: 0.35rem 0 0 0;
+}
+
+.ai-vendor-concerns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
 }
 
 </style>
