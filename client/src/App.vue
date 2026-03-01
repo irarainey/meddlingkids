@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -71,29 +71,6 @@ const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
 
 const appVersion = __APP_VERSION__
-const serverVersion = ref('')
-
-onMounted(async () => {
-  const apiBase = import.meta.env.VITE_API_URL || ''
-  const maxAttempts = 5
-  const delayMs = 3000
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const res = await fetch(`${apiBase}/api/version`)
-      if (res.ok) {
-        const data = await res.json()
-        serverVersion.value = data.version
-        return
-      }
-    } catch {
-      // Server not ready yet — retry after a short delay
-    }
-    if (attempt < maxAttempts) {
-      await new Promise(r => setTimeout(r, delayMs))
-    }
-  }
-})
 
 /** Show the Debug Log tab only when ?debug=true is in the URL. */
 const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
@@ -314,7 +291,7 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Client {{ appVersion }}<span v-if="serverVersion"> : Server {{ serverVersion }}</span>
+      Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Version {{ appVersion }}
       <br>Scooby-Doo and related imagery are trademarks of and &copy; Warner Bros. Entertainment Inc. Not affiliated with or endorsed by Warner Bros.
       <br>Licensed under <a href="https://github.com/irarainey/meddlingkids/blob/main/LICENSE" target="_blank" rel="noopener">AGPL v3+</a> · <a href="https://github.com/irarainey/meddlingkids" target="_blank" rel="noopener">Source on GitHub</a>
     </footer>

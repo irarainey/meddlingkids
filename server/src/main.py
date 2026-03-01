@@ -9,7 +9,6 @@ import contextlib
 import os
 import pathlib
 from collections.abc import AsyncGenerator
-from importlib import metadata
 
 import dotenv
 import fastapi
@@ -86,12 +85,6 @@ async def disable_static_cache(
 # ============================================================================
 # API Routes
 # ============================================================================
-
-
-@app.get("/api/version")
-async def version_endpoint() -> dict[str, str]:
-    """Return the server version from pyproject.toml."""
-    return {"version": metadata.version("server")}
 
 
 @app.post("/api/clear-cache")
