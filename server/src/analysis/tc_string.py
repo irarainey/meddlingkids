@@ -302,6 +302,63 @@ def decode_tc_string(tc_string: str) -> TcStringData | None:
 # ====================================================================
 
 
+def _extract_name_value(item: object) -> tuple[str, str]:
+    """Extract ``(name, value)`` from a cookie or storage item.
+
+    Supports both dict and attribute-based access patterns so
+    the same helper works for ``TrackedCookie``, ``StorageItem``,
+    and plain dicts.
+    """
+    if isinstance(item, dict):
+        name = str(item.get("name", item.get("key", "")))
+        value = str(item.get("value", ""))
+    else:
+        name = str(
+            getattr(item, "name", getattr(item, "key", "")),
+        )
+        value = str(getattr(item, "value", ""))
+    return name, value
+
+
+# ── Well-known cookie names for TC/AC strings ───────────
+# Some CMPs store consent strings under non-standard cookie
+# names.  The canonical name is ``euconsent-v2`` but variants
+# exist in the wild.
+_TC_STRING_COOKIE_NAMES: frozenset[str] = frozenset(
+    {
+        "euconsent-v2",
+    }
+)
+
+# ── Well-known localStorage keys for TC strings ─────────
+# CMPs such as DMG Media Privacy (used by Daily Mail, Metro)
+# and Google Funding Choices persist the TC String in
+# localStorage rather than (or in addition to) cookies.
+_TC_STRING_STORAGE_KEYS: frozenset[str] = frozenset(
+    {
+        "mol.ads.cmp.tcf.tcstring",
+        "au/consent_tcf",
+    }
+)
+
+# ── Well-known localStorage keys for AC strings ─────────
+_AC_STRING_STORAGE_KEYS: frozenset[str] = frozenset(
+    {
+        "mol.ads.cmp.tcf.addtl",
+    }
+)
+
+
+def _looks_like_tc_string(value: str) -> bool:
+    """Quick heuristic: a TC String is Base64url, ≥10 chars."""
+    return len(value) >= 10 and not value.startswith("{")
+
+
+def _looks_like_ac_string(value: str) -> bool:
+    """Quick heuristic: an AC String matches ``{version}~...``."""
+    return "~" in value and len(value) >= 3
+
+
 def find_tc_string_in_cookies(
     cookies: Sequence[object],
 ) -> str | None:
@@ -319,18 +376,34 @@ def find_tc_string_in_cookies(
         The TC String value, or ``None`` if not found.
     """
     for cookie in cookies:
-        name: str = ""
-        value: str = ""
-        # Support both dict and object access patterns
-        if isinstance(cookie, dict):
-            name = cookie.get("name", "")
-            value = cookie.get("value", "")
-        else:
-            name = str(getattr(cookie, "name", ""))
-            value = str(getattr(cookie, "value", ""))
-
-        if name == "euconsent-v2" and value:
+        name, value = _extract_name_value(cookie)
+        if name in _TC_STRING_COOKIE_NAMES and value:
             return value
+
+    return None
+
+
+def find_tc_string_in_storage(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Find the TC String in localStorage items.
+
+    Some CMPs (e.g. DMG Media Privacy, Google Funding Choices)
+    store the TC String in ``localStorage`` under well-known
+    keys rather than in the standard ``euconsent-v2`` cookie.
+
+    Args:
+        storage_items: List of storage item objects with ``key``
+            and ``value`` attributes or keys.
+
+    Returns:
+        A ``(key_name, tc_string)`` tuple, or ``None`` if no
+        TC String was found in storage.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if name in _TC_STRING_STORAGE_KEYS and value and _looks_like_tc_string(value):
+            return name, value
 
     return None
 
@@ -434,17 +507,214 @@ def find_ac_string_in_cookies(
         The AC String value, or ``None`` if not found.
     """
     for cookie in cookies:
-        name: str = ""
-        value: str = ""
-        # Support both dict and object access patterns
-        if isinstance(cookie, dict):
-            name = cookie.get("name", "")
-            value = cookie.get("value", "")
-        else:
-            name = str(getattr(cookie, "name", ""))
-            value = str(getattr(cookie, "value", ""))
-
+        name, value = _extract_name_value(cookie)
         if name == "addtl_consent" and value:
             return value
+
+    return None
+
+
+def find_ac_string_in_storage(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Find the AC String in localStorage items.
+
+    Some CMPs (e.g. DMG Media Privacy) store the Google
+    Additional Consent Mode string in ``localStorage`` under
+    well-known keys rather than in the ``addtl_consent`` cookie.
+
+    Args:
+        storage_items: List of storage item objects with ``key``
+            and ``value`` attributes or keys.
+
+    Returns:
+        A ``(key_name, ac_string)`` tuple, or ``None`` if no
+        AC String was found in storage.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if name in _AC_STRING_STORAGE_KEYS and value and _looks_like_ac_string(value):
+            return name, value
+
+    return None
+
+
+# ====================================================================
+# Three-tier TC/AC String discovery
+# ====================================================================
+# The discovery cascade is:
+#   1. **Named lookup** — check hardcoded well-known cookie names
+#      and localStorage keys (fast path, already implemented above).
+#   2. **CMP-aware lookup** — if a consent platform profile was
+#      detected, check its ``tc_string_sources`` for CMP-specific
+#      cookie names and localStorage keys.
+#   3. **Heuristic scan** — brute-force scan of *all* cookie values
+#      and localStorage values, attempting to decode each as a
+#      TC String or AC String.  Only used when the first two tiers
+#      return nothing.
+# ====================================================================
+
+
+def find_tc_string_by_profile(
+    cookies: Sequence[object],
+    storage_items: Sequence[object],
+    tc_sources: dict[str, list[str]],
+) -> tuple[str, str] | None:
+    """Find TC String using CMP-specific source locations.
+
+    Checks cookie names from ``tc_sources["cookies"]`` and
+    localStorage keys from ``tc_sources["storage_keys"]``.
+
+    Args:
+        cookies: Browser cookies.
+        storage_items: localStorage items.
+        tc_sources: The ``tc_string_sources`` dict from the
+            detected CMP profile.
+
+    Returns:
+        A ``(source_label, tc_string)`` tuple, or ``None``.
+    """
+    # Check CMP-specific cookie names
+    cookie_names = set(tc_sources.get("cookies", []))
+    if cookie_names:
+        for cookie in cookies:
+            name, value = _extract_name_value(cookie)
+            if name in cookie_names and value and _looks_like_tc_string(value):
+                return f"{name} cookie", value
+
+    # Check CMP-specific localStorage keys
+    storage_keys = set(tc_sources.get("storage_keys", []))
+    if storage_keys:
+        for item in storage_items:
+            name, value = _extract_name_value(item)
+            if name in storage_keys and value and _looks_like_tc_string(value):
+                return f"localStorage[{name}]", value
+
+    return None
+
+
+def find_ac_string_by_profile(
+    cookies: Sequence[object],
+    storage_items: Sequence[object],
+    tc_sources: dict[str, list[str]],
+) -> tuple[str, str] | None:
+    """Find AC String using CMP-specific source locations.
+
+    Checks cookie names from ``tc_sources["ac_cookies"]`` and
+    localStorage keys from ``tc_sources["ac_storage_keys"]``.
+
+    Args:
+        cookies: Browser cookies.
+        storage_items: localStorage items.
+        tc_sources: The ``tc_string_sources`` dict from the
+            detected CMP profile.
+
+    Returns:
+        A ``(source_label, ac_string)`` tuple, or ``None``.
+    """
+    cookie_names = set(tc_sources.get("ac_cookies", []))
+    if cookie_names:
+        for cookie in cookies:
+            name, value = _extract_name_value(cookie)
+            if name in cookie_names and value and _looks_like_ac_string(value):
+                return f"{name} cookie", value
+
+    storage_keys = set(tc_sources.get("ac_storage_keys", []))
+    if storage_keys:
+        for item in storage_items:
+            name, value = _extract_name_value(item)
+            if name in storage_keys and value and _looks_like_ac_string(value):
+                return f"localStorage[{name}]", value
+
+    return None
+
+
+# ── Heuristic scanners ──────────────────────────────────
+# These scan *all* values looking for structurally valid
+# TC/AC strings.  Used as the final fallback when named and
+# CMP-specific lookups both fail.
+
+
+def scan_for_tc_string(
+    cookies: Sequence[object],
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Scan all cookie and localStorage values for a TC String.
+
+    Attempts to decode each value as a TC String.  Returns the
+    first successful decode.  This is more expensive than named
+    lookups but catches TC strings stored under unknown keys.
+
+    Args:
+        cookies: Browser cookies.
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, tc_string)`` tuple, or ``None``.
+    """
+    # Scan cookies first (more common location)
+    for cookie in cookies:
+        name, value = _extract_name_value(cookie)
+        if not value or not _looks_like_tc_string(value):
+            continue
+        if decode_tc_string(value) is not None:
+            log.info(
+                "TC String found by heuristic scan",
+                {"source": f"{name} cookie", "length": len(value)},
+            )
+            return f"{name} cookie (scanned)", value
+
+    # Then scan localStorage
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not _looks_like_tc_string(value):
+            continue
+        if decode_tc_string(value) is not None:
+            log.info(
+                "TC String found by heuristic scan",
+                {"source": f"localStorage[{name}]", "length": len(value)},
+            )
+            return f"localStorage[{name}] (scanned)", value
+
+    return None
+
+
+def scan_for_ac_string(
+    cookies: Sequence[object],
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Scan all cookie and localStorage values for an AC String.
+
+    Attempts to decode each value as an AC String.  Returns the
+    first successful decode.
+
+    Args:
+        cookies: Browser cookies.
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, ac_string)`` tuple, or ``None``.
+    """
+    for cookie in cookies:
+        name, value = _extract_name_value(cookie)
+        if not value or not _looks_like_ac_string(value):
+            continue
+        if decode_ac_string(value) is not None:
+            log.info(
+                "AC String found by heuristic scan",
+                {"source": f"{name} cookie", "length": len(value)},
+            )
+            return f"{name} cookie (scanned)", value
+
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not _looks_like_ac_string(value):
+            continue
+        if decode_ac_string(value) is not None:
+            log.info(
+                "AC String found by heuristic scan",
+                {"source": f"localStorage[{name}]", "length": len(value)},
+            )
+            return f"localStorage[{name}] (scanned)", value
 
     return None

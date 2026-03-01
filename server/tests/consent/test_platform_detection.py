@@ -115,6 +115,7 @@ class TestConsentPlatformProfile:
         assert profile.vendor == ""
         assert profile.privacy_url == ""
         assert profile.tcf_registered is False
+        assert profile.cmp_id is None
         assert profile.description == ""
         assert profile.iframe_patterns == []
         assert profile.container_selectors == []
@@ -124,6 +125,18 @@ class TestConsentPlatformProfile:
         assert profile.reject_button_patterns == []
         assert profile.manage_button_patterns == []
         assert profile.notes == ""
+
+    def test_cmp_id_field(self) -> None:
+        """Verify cmp_id is populated from data."""
+        data = {"name": "TestCMP", "tcf_registered": True, "cmp_id": 42}
+        profile = platform_detection.ConsentPlatformProfile("test_cmp", data)
+        assert profile.cmp_id == 42
+
+    def test_cmp_id_none_when_absent(self) -> None:
+        """Verify cmp_id defaults to None when not in data."""
+        data = {"name": "TestCMP", "tcf_registered": True}
+        profile = platform_detection.ConsentPlatformProfile("test_cmp", data)
+        assert profile.cmp_id is None
 
 
 # ────────────────────────────────────────────────────────────
@@ -210,6 +223,33 @@ class TestProfileDataQuality:
         profile = platform_detection.get_platform_profile("onetrust")
         assert profile is not None
         assert profile.iframe_patterns == []
+
+    def test_all_tcf_registered_have_cmp_id(self) -> None:
+        """Every TCF-registered CMP must have an IAB CMP ID from the CMP List API."""
+        profiles = platform_detection.get_platform_profiles()
+        for key, profile in profiles.items():
+            if profile.tcf_registered:
+                assert profile.cmp_id is not None, f"TCF-registered CMP '{key}' is missing cmp_id"
+                assert profile.cmp_id > 0, f"CMP '{key}' has invalid cmp_id: {profile.cmp_id}"
+
+    def test_non_tcf_cmps_have_no_cmp_id(self) -> None:
+        """Non-TCF CMPs should not have an IAB CMP ID."""
+        profiles = platform_detection.get_platform_profiles()
+        for key, profile in profiles.items():
+            if not profile.tcf_registered:
+                assert profile.cmp_id is None, f"Non-TCF CMP '{key}' should not have cmp_id"
+
+    def test_consentmanager_has_cmpconsent_cookie(self) -> None:
+        """consentmanager uses __cmpconsent for TC strings (from Open Cookie Database)."""
+        profile = platform_detection.get_platform_profile("consentmanager")
+        assert profile is not None
+        assert "__cmpconsent" in profile.tc_string_sources.get("cookies", [])
+
+    def test_cmp_ids_are_unique(self) -> None:
+        """Each CMP ID must be unique across all profiles."""
+        profiles = platform_detection.get_platform_profiles()
+        ids = [p.cmp_id for p in profiles.values() if p.cmp_id is not None]
+        assert len(ids) == len(set(ids)), f"Duplicate CMP IDs: {ids}"
 
 
 # ────────────────────────────────────────────────────────────

@@ -114,6 +114,7 @@ def validate_tc_consent(
     matched_purpose_ids: set[int],
     claimed_partner_count: int | None = None,
     ac_vendor_count: int | None = None,
+    detected_cmp_id: int | None = None,
 ) -> TcValidationResult:
     """Cross-reference TC String data against consent dialog content.
 
@@ -128,6 +129,8 @@ def validate_tc_consent(
         ac_vendor_count: Number of non-IAB vendors from the
             Google Additional Consent Mode (AC String), or
             ``None`` if no AC String was found.
+        detected_cmp_id: IAB CMP ID from the detected CMP
+            profile, or ``None`` if the CMP was not identified.
 
     Returns:
         Structured validation result with purpose signals,
@@ -149,6 +152,32 @@ def validate_tc_consent(
     vendor_li_count = int(_raw_li_count) if isinstance(_raw_li_count, (int, float, str)) else 0
 
     tc_purpose_ids = set(tc_purpose_consents) | set(tc_purpose_lis)
+
+    # ── CMP ID cross-validation ──────────────────────────
+    # When we detected a CMP profile with a known IAB CMP ID,
+    # verify that the TC String's embedded cmpId matches.  A
+    # mismatch may indicate a misconfigured CMP or a stale TC
+    # String from a previous CMP deployment.
+    if detected_cmp_id is not None:
+        _raw_cmp_id = tc_string_data.get("cmpId")
+        tc_cmp_id = int(_raw_cmp_id) if isinstance(_raw_cmp_id, (int, float)) else None
+        if tc_cmp_id is not None and tc_cmp_id != detected_cmp_id:
+            findings.append(
+                TcValidationFinding(
+                    severity="info",
+                    category="cmp-id-mismatch",
+                    title="TC String CMP ID differs from detected CMP",
+                    detail=(
+                        f"The TC String was created by CMP ID {tc_cmp_id}, "
+                        f"but the detected CMP on this page has IAB CMP ID "
+                        f"{detected_cmp_id}. This may indicate that the site "
+                        f"recently switched CMP providers and the TC String "
+                        f"was carried over from the previous deployment, or "
+                        f"that the CMP is operating with a different "
+                        f"registered identity."
+                    ),
+                ),
+            )
 
     # ── Build purpose signals ────────────────────────────
     # Cover all 11 TCF purposes, marking consent/LI/disclosed status

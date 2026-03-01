@@ -29,6 +29,7 @@ from src.agents import config
 from src.analysis import cookie_decoders, tc_string, tc_validation, tcf_lookup, tracking_summary, vendor_lookup
 from src.browser import device_configs
 from src.browser import session as browser_session
+from src.consent import platform_detection
 from src.models import analysis, browser, consent, tracking_data
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache, errors, logger, usage_tracking
@@ -548,8 +549,23 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
         # cookie containing the TC String.  Decode it and attach
         # the structured data to the consent details so the
         # client has exact purpose/vendor consent signals.
+        #
+        # Discovery uses a 3-tier cascade:
+        #   1. Named lookups — standard cookie/storage names
+        #      (euconsent-v2, addtl_consent, etc.)
+        #   2. CMP-aware lookups — keys from the detected CMP
+        #      profile in consent-platforms.json
+        #   3. Heuristic scan — brute-force decode of every
+        #      cookie/storage value to catch unknown names
         if ctx.consent_details is not None:
             tracked_cookies = session.get_tracked_cookies()
+            local_storage = ctx.storage.local_storage if ctx.storage else []
+
+            # Resolve CMP profile for tier-2 lookups
+            cmp_profile = platform_detection.detect_platform_from_cookies(
+                [c.model_dump() for c in tracked_cookies],
+            )
+            tc_sources = cmp_profile.tc_string_sources if cmp_profile else {}
 
             # ── AC String decoding ───────────────────────
             # The addtl_consent cookie stores Google's
@@ -558,11 +574,35 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
             # through a Google-certified CMP.  Decode first so
             # the vendor count is available for TC validation.
             ac_vendor_count: int | None = None
-            ac_raw = tc_string.find_ac_string_in_cookies(
-                tracked_cookies,
-            )
+            ac_result_pair: tuple[str, str] | None = None
+
+            # Tier 1 — named lookups
+            ac_raw = tc_string.find_ac_string_in_cookies(tracked_cookies)
             if ac_raw:
-                ac_decoded = tc_string.decode_ac_string(ac_raw)
+                ac_result_pair = ("addtl_consent cookie", ac_raw)
+            if not ac_result_pair:
+                ac_storage = tc_string.find_ac_string_in_storage(local_storage)
+                if ac_storage:
+                    ac_result_pair = (f"localStorage[{ac_storage[0]}]", ac_storage[1])
+
+            # Tier 2 — CMP-aware lookups
+            if not ac_result_pair and tc_sources:
+                ac_result_pair = tc_string.find_ac_string_by_profile(
+                    tracked_cookies,
+                    local_storage,
+                    tc_sources,
+                )
+
+            # Tier 3 — heuristic scan
+            if not ac_result_pair:
+                ac_result_pair = tc_string.scan_for_ac_string(
+                    tracked_cookies,
+                    local_storage,
+                )
+
+            if ac_result_pair:
+                ac_source, ac_raw_value = ac_result_pair
+                ac_decoded = tc_string.decode_ac_string(ac_raw_value)
                 if ac_decoded:
                     ac_data = ac_decoded.model_dump(by_alias=True)
 
@@ -576,17 +616,41 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                     ctx.consent_details.ac_string_data = ac_data
                     ac_vendor_count = ac_decoded.vendor_count
                     log.info(
-                        "AC String decoded from addtl_consent cookie",
+                        f"AC String decoded from {ac_source}",
                         {
                             "version": ac_decoded.version,
                             "vendorCount": ac_decoded.vendor_count,
                         },
                     )
 
-            tc_raw = tc_string.find_tc_string_in_cookies(
-                tracked_cookies,
-            )
+            # ── TC String decoding ───────────────────────
+            tc_result_pair: tuple[str, str] | None = None
+
+            # Tier 1 — named lookups
+            tc_raw = tc_string.find_tc_string_in_cookies(tracked_cookies)
             if tc_raw:
+                tc_result_pair = ("euconsent-v2 cookie", tc_raw)
+            if not tc_result_pair:
+                tc_storage = tc_string.find_tc_string_in_storage(local_storage)
+                if tc_storage:
+                    tc_result_pair = (f"localStorage[{tc_storage[0]}]", tc_storage[1])
+
+            # Tier 2 — CMP-aware lookups
+            if not tc_result_pair and tc_sources:
+                tc_result_pair = tc_string.find_tc_string_by_profile(
+                    tracked_cookies,
+                    local_storage,
+                    tc_sources,
+                )
+
+            # Tier 3 — heuristic scan
+            if not tc_result_pair:
+                tc_result_pair = tc_string.scan_for_tc_string(
+                    tracked_cookies,
+                    local_storage,
+                )
+            if tc_result_pair:
+                tc_source, tc_raw = tc_result_pair
                 decoded = tc_string.decode_tc_string(tc_raw)
                 if decoded:
                     tc_data = decoded.model_dump(
@@ -607,7 +671,7 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
 
                     ctx.consent_details.tc_string_data = tc_data
                     log.info(
-                        "TC String decoded from euconsent-v2 cookie",
+                        f"TC String decoded from {tc_source}",
                         {
                             "version": decoded.version,
                             "cmpId": decoded.cmp_id,
@@ -631,6 +695,7 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                         matched_purpose_ids=matched_ids,
                         claimed_partner_count=ctx.consent_details.claimed_partner_count,
                         ac_vendor_count=ac_vendor_count,
+                        detected_cmp_id=cmp_profile.cmp_id if cmp_profile else None,
                     )
                     ctx.consent_details.tc_validation = validation.model_dump(
                         by_alias=True,

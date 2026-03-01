@@ -601,3 +601,65 @@ class TestEdgeCases:
         p7 = next(ps for ps in result.purpose_signals if ps.id == 7)
         assert p7.consented is True
         assert p7.legitimate_interest is True
+
+
+# ====================================================================
+# CMP ID cross-validation
+# ====================================================================
+
+
+class TestCmpIdCrossValidation:
+    """Verify CMP ID mismatch detection between TC String and detected CMP."""
+
+    def test_no_detected_cmp_id_no_finding(self) -> None:
+        """When the CMP was not identified, no CMP ID finding is produced."""
+        tc_data = _make_tc_data()
+        result = validate_tc_consent(
+            tc_string_data=tc_data,
+            dialog_purposes=[],
+            matched_purpose_ids=set(),
+            detected_cmp_id=None,
+        )
+        cmp_findings = [f for f in result.findings if f.category == "cmp-id-mismatch"]
+        assert cmp_findings == []
+
+    def test_matching_cmp_id_no_finding(self) -> None:
+        """When the TC String cmpId matches the detected CMP, no finding."""
+        tc_data = _make_tc_data()  # cmpId=300 by default
+        result = validate_tc_consent(
+            tc_string_data=tc_data,
+            dialog_purposes=[],
+            matched_purpose_ids=set(),
+            detected_cmp_id=300,
+        )
+        cmp_findings = [f for f in result.findings if f.category == "cmp-id-mismatch"]
+        assert cmp_findings == []
+
+    def test_mismatched_cmp_id_produces_finding(self) -> None:
+        """When the TC String cmpId differs from detected CMP, an info finding is raised."""
+        tc_data = _make_tc_data()  # cmpId=300
+        result = validate_tc_consent(
+            tc_string_data=tc_data,
+            dialog_purposes=[],
+            matched_purpose_ids=set(),
+            detected_cmp_id=28,  # OneTrust
+        )
+        cmp_findings = [f for f in result.findings if f.category == "cmp-id-mismatch"]
+        assert len(cmp_findings) == 1
+        finding = cmp_findings[0]
+        assert finding.severity == "info"
+        assert "300" in finding.detail
+        assert "28" in finding.detail
+
+    def test_missing_cmp_id_in_tc_data_no_finding(self) -> None:
+        """When TC data has no cmpId field, no mismatch finding."""
+        tc_data = _make_tc_data()
+        del tc_data["cmpId"]
+        result = validate_tc_consent(
+            tc_string_data=tc_data,
+            dialog_purposes=[],
+            matched_purpose_ids=set(),
+            detected_cmp_id=28,
+        )
+        cmp_findings = [f for f in result.findings if f.category == "cmp-id-mismatch"]
+        assert cmp_findings == []

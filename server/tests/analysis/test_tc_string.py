@@ -323,3 +323,296 @@ class TestFindAcStringInCookies:
         cookies = [FakeCookie("addtl_consent", _AC_SIMPLE)]
         result = tc_string.find_ac_string_in_cookies(cookies)  # type: ignore[arg-type]
         assert result == _AC_SIMPLE
+
+
+# ====================================================================
+# localStorage-based TC String lookup
+# ====================================================================
+
+
+class TestFindTcStringInStorage:
+    """Tests for finding TC strings in localStorage items."""
+
+    def test_finds_dmg_media_key(self) -> None:
+        """DMG Media CMP stores TC string under mol.ads.cmp.tcf.tcstring."""
+        items = [
+            {"key": "other_key", "value": "abc"},
+            {"key": "mol.ads.cmp.tcf.tcstring", "value": _TC_MINIMAL},
+        ]
+        result = tc_string.find_tc_string_in_storage(items)
+        assert result is not None
+        assert result == ("mol.ads.cmp.tcf.tcstring", _TC_MINIMAL)
+
+    def test_finds_au_consent_tcf_key(self) -> None:
+        """Some CMPs store TC string under au/consent_tcf."""
+        items = [{"key": "au/consent_tcf", "value": _TC_MINIMAL}]
+        result = tc_string.find_tc_string_in_storage(items)
+        assert result is not None
+        assert result == ("au/consent_tcf", _TC_MINIMAL)
+
+    def test_returns_none_when_missing(self) -> None:
+        items = [{"key": "unrelated_key", "value": "value"}]
+        assert tc_string.find_tc_string_in_storage(items) is None
+
+    def test_returns_none_for_empty_list(self) -> None:
+        assert tc_string.find_tc_string_in_storage([]) is None
+
+    def test_returns_none_for_empty_value(self) -> None:
+        items = [
+            {"key": "mol.ads.cmp.tcf.tcstring", "value": ""},
+        ]
+        assert tc_string.find_tc_string_in_storage(items) is None
+
+    def test_rejects_json_values(self) -> None:
+        """JSON blobs should not be treated as TC strings."""
+        items = [
+            {
+                "key": "mol.ads.cmp.tcf.tcstring",
+                "value": '{"consent": true}',
+            },
+        ]
+        assert tc_string.find_tc_string_in_storage(items) is None
+
+    def test_rejects_short_values(self) -> None:
+        """Values too short to be a TC string should be rejected."""
+        items = [
+            {"key": "mol.ads.cmp.tcf.tcstring", "value": "CP"},
+        ]
+        assert tc_string.find_tc_string_in_storage(items) is None
+
+    def test_supports_object_access(self) -> None:
+        """Storage item objects with attribute access (StorageItem)."""
+
+        class FakeStorageItem:
+            def __init__(self, key: str, value: str) -> None:
+                self.key = key
+                self.value = value
+
+        items = [
+            FakeStorageItem(
+                "mol.ads.cmp.tcf.tcstring",
+                _TC_MINIMAL,
+            ),
+        ]
+        result = tc_string.find_tc_string_in_storage(items)  # type: ignore[arg-type]
+        assert result is not None
+        assert result[1] == _TC_MINIMAL
+
+
+# ====================================================================
+# localStorage-based AC String lookup
+# ====================================================================
+
+
+class TestFindAcStringInStorage:
+    """Tests for finding AC strings in localStorage items."""
+
+    def test_finds_dmg_media_key(self) -> None:
+        """DMG Media CMP stores AC string under mol.ads.cmp.tcf.addtl."""
+        items = [
+            {"key": "other_key", "value": "abc"},
+            {"key": "mol.ads.cmp.tcf.addtl", "value": _AC_SIMPLE},
+        ]
+        result = tc_string.find_ac_string_in_storage(items)
+        assert result is not None
+        assert result == ("mol.ads.cmp.tcf.addtl", _AC_SIMPLE)
+
+    def test_returns_none_when_missing(self) -> None:
+        items = [{"key": "unrelated_key", "value": "value"}]
+        assert tc_string.find_ac_string_in_storage(items) is None
+
+    def test_returns_none_for_empty_list(self) -> None:
+        assert tc_string.find_ac_string_in_storage([]) is None
+
+    def test_returns_none_for_empty_value(self) -> None:
+        items = [
+            {"key": "mol.ads.cmp.tcf.addtl", "value": ""},
+        ]
+        assert tc_string.find_ac_string_in_storage(items) is None
+
+    def test_rejects_values_without_tilde(self) -> None:
+        """AC strings must contain a tilde separator."""
+        items = [
+            {"key": "mol.ads.cmp.tcf.addtl", "value": "notvalid"},
+        ]
+        assert tc_string.find_ac_string_in_storage(items) is None
+
+    def test_supports_object_access(self) -> None:
+        """Storage item objects with attribute access."""
+
+        class FakeStorageItem:
+            def __init__(self, key: str, value: str) -> None:
+                self.key = key
+                self.value = value
+
+        items = [
+            FakeStorageItem("mol.ads.cmp.tcf.addtl", _AC_SIMPLE),
+        ]
+        result = tc_string.find_ac_string_in_storage(items)  # type: ignore[arg-type]
+        assert result is not None
+        assert result[1] == _AC_SIMPLE
+
+
+# ====================================================================
+# CMP-aware TC String lookup
+# ====================================================================
+
+
+class TestFindTcStringByProfile:
+    """Tests for CMP-profile-aware TC string discovery."""
+
+    def test_finds_tc_in_cookie_by_profile(self) -> None:
+        """Profile specifies a cookie name that contains a TC string."""
+        cookies = [{"name": "euconsent-v2", "value": _TC_MINIMAL}]
+        tc_sources = {"cookies": ["euconsent-v2"]}
+        result = tc_string.find_tc_string_by_profile(cookies, [], tc_sources)
+        assert result is not None
+        assert result == ("euconsent-v2 cookie", _TC_MINIMAL)
+
+    def test_finds_tc_in_storage_by_profile(self) -> None:
+        """Profile specifies a localStorage key that contains a TC string."""
+        storage = [{"key": "mol.ads.cmp.tcf.tcstring", "value": _TC_MINIMAL}]
+        tc_sources = {"storage_keys": ["mol.ads.cmp.tcf.tcstring"]}
+        result = tc_string.find_tc_string_by_profile([], storage, tc_sources)
+        assert result is not None
+        assert result == ("localStorage[mol.ads.cmp.tcf.tcstring]", _TC_MINIMAL)
+
+    def test_returns_none_when_key_absent(self) -> None:
+        """No match if the specified key is not in the data."""
+        cookies = [{"name": "other", "value": "val"}]
+        tc_sources = {"cookies": ["euconsent-v2"]}
+        assert tc_string.find_tc_string_by_profile(cookies, [], tc_sources) is None
+
+    def test_returns_none_for_empty_sources(self) -> None:
+        """Empty tc_sources dict → no match."""
+        cookies = [{"name": "euconsent-v2", "value": _TC_MINIMAL}]
+        assert tc_string.find_tc_string_by_profile(cookies, [], {}) is None
+
+    def test_skips_invalid_values(self) -> None:
+        """JSON or short values should be rejected even if key matches."""
+        cookies = [{"name": "euconsent-v2", "value": '{"json": true}'}]
+        tc_sources = {"cookies": ["euconsent-v2"]}
+        assert tc_string.find_tc_string_by_profile(cookies, [], tc_sources) is None
+
+    def test_prefers_cookie_over_storage(self) -> None:
+        """Cookie match should be returned before checking storage."""
+        cookies = [{"name": "euconsent-v2", "value": _TC_MINIMAL}]
+        storage = [{"key": "tc_key", "value": _TC_BROAD}]
+        tc_sources = {
+            "cookies": ["euconsent-v2"],
+            "storage_keys": ["tc_key"],
+        }
+        result = tc_string.find_tc_string_by_profile(cookies, storage, tc_sources)
+        assert result is not None
+        assert result[0] == "euconsent-v2 cookie"
+
+
+# ====================================================================
+# CMP-aware AC String lookup
+# ====================================================================
+
+
+class TestFindAcStringByProfile:
+    """Tests for CMP-profile-aware AC string discovery."""
+
+    def test_finds_ac_in_cookie_by_profile(self) -> None:
+        cookies = [{"name": "addtl_consent", "value": _AC_SIMPLE}]
+        tc_sources = {"ac_cookies": ["addtl_consent"]}
+        result = tc_string.find_ac_string_by_profile(cookies, [], tc_sources)
+        assert result is not None
+        assert result == ("addtl_consent cookie", _AC_SIMPLE)
+
+    def test_finds_ac_in_storage_by_profile(self) -> None:
+        storage = [{"key": "mol.ads.cmp.tcf.addtl", "value": _AC_SIMPLE}]
+        tc_sources = {"ac_storage_keys": ["mol.ads.cmp.tcf.addtl"]}
+        result = tc_string.find_ac_string_by_profile([], storage, tc_sources)
+        assert result is not None
+        assert result == ("localStorage[mol.ads.cmp.tcf.addtl]", _AC_SIMPLE)
+
+    def test_returns_none_when_key_absent(self) -> None:
+        cookies = [{"name": "other", "value": "val"}]
+        tc_sources = {"ac_cookies": ["addtl_consent"]}
+        assert tc_string.find_ac_string_by_profile(cookies, [], tc_sources) is None
+
+    def test_returns_none_for_empty_sources(self) -> None:
+        assert tc_string.find_ac_string_by_profile([], [], {}) is None
+
+
+# ====================================================================
+# Heuristic TC String scanner
+# ====================================================================
+
+
+class TestScanForTcString:
+    """Tests for the brute-force TC string heuristic scanner."""
+
+    def test_finds_tc_in_unknown_cookie(self) -> None:
+        """Scanner should decode a valid TC string stored under any name."""
+        cookies = [{"name": "mystery_cookie", "value": _TC_MINIMAL}]
+        result = tc_string.scan_for_tc_string(cookies, [])
+        assert result is not None
+        assert result[0] == "mystery_cookie cookie (scanned)"
+        assert result[1] == _TC_MINIMAL
+
+    def test_finds_tc_in_unknown_storage_key(self) -> None:
+        """Scanner should find TC string in unknown localStorage key."""
+        storage = [{"key": "custom_key_42", "value": _TC_MINIMAL}]
+        result = tc_string.scan_for_tc_string([], storage)
+        assert result is not None
+        assert result[0] == "localStorage[custom_key_42] (scanned)"
+        assert result[1] == _TC_MINIMAL
+
+    def test_returns_none_when_no_tc_strings(self) -> None:
+        """Scanner should not match random values."""
+        cookies = [{"name": "session", "value": "abc123"}]
+        storage = [{"key": "prefs", "value": '{"dark": true}'}]
+        assert tc_string.scan_for_tc_string(cookies, storage) is None
+
+    def test_skips_json_values(self) -> None:
+        """JSON blobs should be skipped by the heuristic filter."""
+        cookies = [{"name": "data", "value": '{"consent": true}'}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_skips_short_values(self) -> None:
+        """Very short strings cannot be valid TC strings."""
+        cookies = [{"name": "c", "value": "CP"}]
+        assert tc_string.scan_for_tc_string(cookies, []) is None
+
+    def test_prefers_cookie_over_storage(self) -> None:
+        """Cookie match should be returned first."""
+        cookies = [{"name": "tc_cookie", "value": _TC_MINIMAL}]
+        storage = [{"key": "tc_storage", "value": _TC_BROAD}]
+        result = tc_string.scan_for_tc_string(cookies, storage)
+        assert result is not None
+        assert result[0] == "tc_cookie cookie (scanned)"
+
+
+# ====================================================================
+# Heuristic AC String scanner
+# ====================================================================
+
+
+class TestScanForAcString:
+    """Tests for the brute-force AC string heuristic scanner."""
+
+    def test_finds_ac_in_unknown_cookie(self) -> None:
+        cookies = [{"name": "weird_ac", "value": _AC_SIMPLE}]
+        result = tc_string.scan_for_ac_string(cookies, [])
+        assert result is not None
+        assert result[0] == "weird_ac cookie (scanned)"
+        assert result[1] == _AC_SIMPLE
+
+    def test_finds_ac_in_unknown_storage_key(self) -> None:
+        storage = [{"key": "custom_ac", "value": _AC_SIMPLE}]
+        result = tc_string.scan_for_ac_string([], storage)
+        assert result is not None
+        assert result[0] == "localStorage[custom_ac] (scanned)"
+
+    def test_returns_none_when_no_ac_strings(self) -> None:
+        cookies = [{"name": "session", "value": "abc123"}]
+        assert tc_string.scan_for_ac_string(cookies, []) is None
+
+    def test_skips_non_ac_values(self) -> None:
+        """A plain number without tilde should not match."""
+        cookies = [{"name": "c", "value": "12345"}]
+        assert tc_string.scan_for_ac_string(cookies, []) is None
