@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { StructuredReport, TrackerEntry, SummaryFinding, SummaryFindingType } from '../../types'
+import type { StructuredReport, SummaryFinding, SummaryFindingType } from '../../types'
 import { getExclamation, getRiskLevel, getScoreClass, stripMarkdown } from '../../utils'
-import TrackerCategorySection from '../TrackerCategorySection.vue'
 
 /**
  * Tab panel displaying a high-level privacy summary.
@@ -65,18 +64,6 @@ function riskLabel(level: string): string {
     default:
       return level
   }
-}
-
-/** Flat list of all trackers across all categories. */
-function allTrackers(report: StructuredReport): TrackerEntry[] {
-  const t = report.trackingTechnologies
-  return [
-    ...t.analytics,
-    ...t.advertising,
-    ...t.identityResolution,
-    ...t.socialMedia,
-    ...t.other,
-  ]
 }
 
 /** Map summary finding type to badge class. */
@@ -235,21 +222,6 @@ function platformUrl(name: string): string {
             <span class="badge" :class="severityClass(r.severity)">{{ riskLabel(r.severity) }}</span>
           </li>
         </ul>
-      </section>
-
-      <!-- ── Section 3: Tracking Technologies ───────────────── -->
-      <section v-if="allTrackers(structuredReport).length > 0" class="report-section">
-        <h2>
-          <span class="section-icon">📡</span>
-          Tracking Technologies
-          <span class="count-badge">{{ allTrackers(structuredReport).length }} detected</span>
-        </h2>
-
-        <TrackerCategorySection title="📊 Analytics & Measurement" :trackers="structuredReport.trackingTechnologies.analytics" />
-        <TrackerCategorySection title="📢 Advertising Networks" :trackers="structuredReport.trackingTechnologies.advertising" />
-        <TrackerCategorySection title="🔗 Identity Resolution" :trackers="structuredReport.trackingTechnologies.identityResolution" />
-        <TrackerCategorySection title="💬 Social Media" :trackers="structuredReport.trackingTechnologies.socialMedia" />
-        <TrackerCategorySection title="🔧 Other Technologies" :trackers="structuredReport.trackingTechnologies.other" />
       </section>
 
       <!-- ── Section 4: Data Collection ──────────────────────── -->
