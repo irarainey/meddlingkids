@@ -59,6 +59,7 @@ class TestCheckForAccessDeniedTimeout:
     @pytest.mark.asyncio()
     async def test_returns_no_denial_on_title_timeout(self) -> None:
         """A hung page.title() must not block; assume no denial."""
+
         async def hang() -> str:
             await asyncio.sleep(3600)
             return "ok"
@@ -75,6 +76,7 @@ class TestCheckForAccessDeniedTimeout:
     @pytest.mark.asyncio()
     async def test_returns_no_denial_on_evaluate_timeout(self) -> None:
         """A hung page.evaluate() must not block; assume no denial."""
+
         async def hang(*_args: object, **_kwargs: object) -> str:
             await asyncio.sleep(3600)
             return ""

@@ -196,9 +196,7 @@ class PlaywrightManager:
                         "Browser start failed after all attempts",
                         {"attempts": _MAX_START_ATTEMPTS, "error": str(exc)[:200]},
                     )
-        raise RuntimeError(
-            f"Failed to start browser after {_MAX_START_ATTEMPTS} attempts: {last_error}"
-        )
+        raise RuntimeError(f"Failed to start browser after {_MAX_START_ATTEMPTS} attempts: {last_error}")
 
     async def _start_single_attempt(self) -> None:
         """One attempt at starting Playwright + Chrome."""
@@ -213,9 +211,7 @@ class PlaywrightManager:
                 timeout=_START_TIMEOUT_SECONDS,
             )
         except TimeoutError:
-            raise RuntimeError(
-                f"Playwright failed to start within {_START_TIMEOUT_SECONDS}s"
-            ) from None
+            raise RuntimeError(f"Playwright failed to start within {_START_TIMEOUT_SECONDS}s") from None
         self._playwright = pw
 
         launch_env = {**os.environ, "DISPLAY": display}
@@ -294,10 +290,7 @@ class PlaywrightManager:
             A ready-to-use ``BrowserSession`` with an active page.
         """
         if device_type not in device_configs.DEVICE_CONFIGS:
-            raise ValueError(
-                f"Unknown device type {device_type!r}. "
-                f"Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}"
-            )
+            raise ValueError(f"Unknown device type {device_type!r}. Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}")
         device_config = device_configs.DEVICE_CONFIGS[device_type]
         br = await self._ensure_browser()
 
