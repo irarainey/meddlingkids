@@ -154,6 +154,21 @@ function acStringData(): AcStringData | null {
 const showTcVendors = ref(false)
 const showAcProviders = ref(false)
 
+/** CSS class for vendor category badges. */
+function vendorCategoryClass(category: string): string {
+  const map: Record<string, string> = {
+    'Ad Network': 'vendor-cat-ad',
+    'Analytics': 'vendor-cat-analytics',
+    'Data Broker': 'vendor-cat-broker',
+    'Identity Tracker': 'vendor-cat-identity',
+    'Session Replay': 'vendor-cat-replay',
+    'Social Tracker': 'vendor-cat-social',
+    'Mobile SDK': 'vendor-cat-mobile',
+    'Consent Provider': 'vendor-cat-consent',
+  }
+  return map[category] ?? 'vendor-cat-other'
+}
+
 /** Severity icon for TC validation findings. */
 function findingSeverityIcon(severity: TcValidationFinding['severity']): string {
   const icons: Record<string, string> = {
@@ -389,7 +404,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 class="vendor-name-item"
               >
                 <span class="vendor-id">#{{ v.id }}</span>
-                <span class="vendor-name">{{ v.name }}</span>
+                <a v-if="v.url" :href="v.url" target="_blank" rel="noopener" class="vendor-name vendor-name-link">{{ v.name }}</a>
+                <span v-else class="vendor-name">{{ v.name }}</span>
+                <span v-if="v.category" class="vendor-category-badge" :class="vendorCategoryClass(v.category)">{{ v.category }}</span>
+                <span v-if="v.concerns?.length" class="vendor-concern" :title="v.concerns.join('; ')">{{ v.concerns[0] }}</span>
               </div>
               <div v-if="consentDetails.tcStringData.unresolvedVendorConsentCount" class="vendor-unresolved-note">
                 + {{ consentDetails.tcStringData.unresolvedVendorConsentCount }} vendor ID{{ consentDetails.tcStringData.unresolvedVendorConsentCount === 1 ? '' : 's' }} not listed in the IAB Global Vendor List
@@ -411,8 +429,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 class="vendor-name-item"
               >
                 <span class="vendor-id">#{{ p.id }}</span>
-                <span class="vendor-name">{{ p.name }}</span>
-                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔗</a>
+                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-name vendor-name-link" title="Privacy policy">{{ p.name }}</a>
+                <span v-else class="vendor-name">{{ p.name }}</span>
+                <span v-if="p.category" class="vendor-category-badge" :class="vendorCategoryClass(p.category)">{{ p.category }}</span>
+                <span v-if="p.concerns?.length" class="vendor-concern" :title="p.concerns.join('; ')">{{ p.concerns[0] }}</span>
               </div>
               <div v-if="acStringData()!.unresolvedProviderCount" class="vendor-unresolved-note">
                 + {{ acStringData()!.unresolvedProviderCount }} provider ID{{ acStringData()!.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
@@ -452,8 +472,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 class="vendor-name-item"
               >
                 <span class="vendor-id">#{{ p.id }}</span>
-                <span class="vendor-name">{{ p.name }}</span>
-                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔗</a>
+                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-name vendor-name-link" title="Privacy policy">{{ p.name }}</a>
+                <span v-else class="vendor-name">{{ p.name }}</span>
+                <span v-if="p.category" class="vendor-category-badge" :class="vendorCategoryClass(p.category)">{{ p.category }}</span>
+                <span v-if="p.concerns?.length" class="vendor-concern" :title="p.concerns.join('; ')">{{ p.concerns[0] }}</span>
               </div>
               <div v-if="acStringData()!.unresolvedProviderCount" class="vendor-unresolved-note">
                 + {{ acStringData()!.unresolvedProviderCount }} provider ID{{ acStringData()!.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
@@ -1194,12 +1216,13 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .vendor-toggle-btn {
-  background: transparent;
-  border: 1px solid #374151;
+  background: #1f2937;
+  border: 1px solid #4b5563;
   border-radius: 4px;
-  color: #9ca3af;
+  color: #e5e7eb;
   font-size: 0.78rem;
-  padding: 0.3rem 0.65rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
   cursor: pointer;
   transition: all 0.15s ease;
   width: 100%;
@@ -1207,19 +1230,19 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .vendor-toggle-btn:hover {
-  background: #1f2937;
-  color: #e5e7eb;
-  border-color: #4b5563;
+  background: #374151;
+  color: #f9fafb;
+  border-color: #6b7280;
 }
 
 .vendor-toggle-btn.ac-toggle:hover {
-  border-color: #6366f1;
+  border-color: #818cf8;
 }
 
 .vendor-name-list {
-  max-height: 240px;
+  max-height: 320px;
   overflow-y: auto;
-  border: 1px solid #374151;
+  border: 1px solid #4b5563;
   border-top: none;
   border-radius: 0 0 4px 4px;
   background: #111827;
@@ -1229,10 +1252,18 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.3rem 0.75rem;
   font-size: 0.75rem;
   color: #d1d5db;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid #1e293b;
+}
+
+.vendor-name-item:nth-child(even) {
+  background: #1a2332;
+}
+
+.vendor-name-item:hover {
+  background: #1e293b;
 }
 
 .vendor-name-item:last-child {
@@ -1250,6 +1281,17 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   flex: 1;
 }
 
+.vendor-name-link {
+  color: #93c5fd;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.vendor-name-link:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+
 .vendor-policy-link {
   font-size: 0.7rem;
   text-decoration: none;
@@ -1259,6 +1301,39 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 .vendor-policy-link:hover {
   opacity: 1;
+}
+
+/* ── Vendor Enrichment Badges ──────────────── */
+.vendor-category-badge {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.vendor-cat-ad { background: #7c2d1240; color: #fca5a5; }
+.vendor-cat-broker { background: #7c2d1240; color: #f87171; }
+.vendor-cat-identity { background: #78350f40; color: #fbbf24; }
+.vendor-cat-replay { background: #78350f40; color: #fcd34d; }
+.vendor-cat-analytics { background: #1e3a5f40; color: #93c5fd; }
+.vendor-cat-social { background: #312e8140; color: #a5b4fc; }
+.vendor-cat-mobile { background: #14532d40; color: #86efac; }
+.vendor-cat-consent { background: #1f293740; color: #9ca3af; }
+.vendor-cat-other { background: #1f293740; color: #9ca3af; }
+
+.vendor-concern {
+  font-size: 0.62rem;
+  color: #9ca3af;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+  flex-shrink: 1;
 }
 
 .vendor-unresolved-note {
@@ -1417,4 +1492,5 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 .tc-na {
   color: #4b5563;
 }
+
 </style>

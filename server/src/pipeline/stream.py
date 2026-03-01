@@ -26,7 +26,7 @@ from typing import cast
 from urllib import parse
 
 from src.agents import config
-from src.analysis import tc_string, tc_validation, tcf_lookup, tracking_summary, vendor_lookup
+from src.analysis import cookie_decoders, tc_string, tc_validation, tcf_lookup, tracking_summary, vendor_lookup
 from src.browser import device_configs
 from src.browser import session as browser_session
 from src.models import analysis, browser, consent, tracking_data
@@ -102,6 +102,7 @@ class _StreamContext:
     consent_details: consent.ConsentDetails | None = None
     overlay_count: int = 0
     overlay_result: overlay_pipeline.OverlayHandlingResult | None = None
+    decoded_cookies: dict[str, object] | None = None
     aborted: bool = False
 
 
@@ -625,8 +626,11 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                             },
                         )
 
-            # Re-emit consent details with TC/AC data attached
-            if ctx.consent_details.tc_string_data or ctx.consent_details.ac_string_data:
+            # Re-emit consent details with TC/AC data
+            if (
+                ctx.consent_details.tc_string_data
+                or ctx.consent_details.ac_string_data
+            ):
                 yield sse_helpers.format_sse_event(
                     "consentDetails",
                     sse_helpers.serialize_consent_details(
@@ -635,6 +639,25 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                 )
     else:
         log.info("No overlays dismissed — page state unchanged, skipping re-capture")
+
+    # ── Privacy cookie decoding ──────────────────────────
+    # Scan all captured cookies for privacy-relevant signals
+    # (USP, GPP, GA, Facebook, Google Ads, OneTrust, Cookiebot,
+    # Google SOCS, etc.).  This runs regardless of whether a
+    # consent dialog was found or overlays were dismissed.
+    _tracked = session.get_tracked_cookies()
+    if _tracked:
+        decoded = cookie_decoders.decode_all_privacy_cookies(_tracked)
+        if decoded:
+            ctx.decoded_cookies = decoded
+            log.info(
+                "Privacy cookies decoded",
+                {"decoders": list(decoded.keys())},
+            )
+            yield sse_helpers.format_sse_event(
+                "decodedCookies",
+                decoded,
+            )
 
     if page and ctx.overlay_result.failed:
         if ctx.consent_details:
@@ -742,6 +765,7 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
         ctx.consent_details,
         ctx.overlay_count,
         ctx.pre_consent_stats,
+        decoded_cookies=ctx.decoded_cookies,
     ):
         yield event
         for refresh_event in _drain_queue(refresh_queue):

@@ -209,20 +209,32 @@ export interface TcStringData {
 
 /**
  * A vendor ID resolved to a company name via the IAB GVL
- * or Google ATP provider list.
+ * or Google ATP provider list, optionally enriched with
+ * classification metadata from the partner databases.
  */
 export interface ResolvedVendor {
   id: number
   name: string
+  /** Company homepage URL from partner databases */
+  url?: string
+  /** Classification category (e.g. "Ad Network", "Data Broker") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
 }
 
 /**
- * A Google ATP provider ID resolved to a name and policy URL.
+ * A Google ATP provider ID resolved to a name and policy URL,
+ * optionally enriched with classification metadata.
  */
 export interface ResolvedAcProvider {
   id: number
   name: string
   policy_url: string
+  /** Classification category (e.g. "Ad Network", "Analytics") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
 }
 
 /**
@@ -302,6 +314,145 @@ export interface ConsentDetails {
   tcValidation?: TcValidationResult | null
   /** Decoded AC String data from the addtl_consent cookie (Google Additional Consent Mode) */
   acStringData?: AcStringData | null
+}
+
+// ============================================================================
+// Decoded Privacy Cookie Types
+// ============================================================================
+
+/** USP String (CCPA) decoded from the usprivacy cookie */
+export interface UspStringData {
+  version: number
+  noticeGiven: boolean
+  optedOut: boolean
+  lspaCovered: boolean
+  noticeLabel: string
+  optOutLabel: string
+  lspaLabel: string
+  rawString: string
+}
+
+/** GPP section info */
+export interface GppSection {
+  id: number
+  name: string
+}
+
+/** GPP String (Global Privacy Platform) decoded from __gpp / __gpp_sid */
+export interface GppStringData {
+  version?: number
+  segmentCount: number
+  sectionIds: number[]
+  sections: GppSection[]
+  rawString: string
+}
+
+/** Google Analytics _ga cookie decoded data */
+export interface GoogleAnalyticsData {
+  clientId: string
+  firstVisitTimestamp: number | null
+  firstVisit: string | null
+  rawValue: string
+}
+
+/** Facebook _fbp browser ID decoded data */
+export interface FbpData {
+  browserId: string
+  createdTimestamp: number
+  created: string | null
+  rawValue: string
+}
+
+/** Facebook _fbc click ID decoded data */
+export interface FbcData {
+  fbclid: string
+  clickTimestamp: number
+  clicked: string | null
+  rawValue: string
+}
+
+/** Facebook pixel cookies combined */
+export interface FacebookPixelData {
+  fbp?: FbpData | null
+  fbc?: FbcData | null
+}
+
+/** Google Ads _gcl_au conversion linker */
+export interface GclAuData {
+  version: string
+  createdTimestamp: number
+  created: string | null
+  rawValue: string
+}
+
+/** Google Ads _gcl_aw click cookie */
+export interface GclAwData {
+  gclid: string
+  clickTimestamp: number
+  clicked: string | null
+  rawValue: string
+}
+
+/** Google Ads cookies combined */
+export interface GoogleAdsData {
+  gclAu?: GclAuData | null
+  gclAw?: GclAwData | null
+}
+
+/** OneTrust consent category */
+export interface OneTrustCategory {
+  id: string
+  name: string
+  consented: boolean
+}
+
+/** OneTrust OptanonConsent decoded data */
+export interface OneTrustData {
+  categories: OneTrustCategory[]
+  datestamp: string | null
+  isGpcApplied: boolean
+  consentId: string | null
+  rawValue: string
+}
+
+/** Cookiebot consent category */
+export interface CookiebotCategory {
+  name: string
+  consented: boolean
+}
+
+/** Cookiebot CookieConsent decoded data */
+export interface CookiebotData {
+  categories: CookiebotCategory[]
+  stamp: string | null
+  utc: string | null
+  rawValue: string
+}
+
+/** Google SOCS consent cookie decoded data */
+export interface GoogleSocsData {
+  consentMode: string
+  modeChar: string
+  rawValue: string
+}
+
+/** GPC / DNT detection result */
+export interface GpcDntData {
+  gpcEnabled: boolean
+  dntEnabled: boolean
+}
+
+/** Container for all decoded privacy cookies */
+export interface DecodedCookies {
+  uspString?: UspStringData | null
+  gppString?: GppStringData | null
+  googleAnalytics?: GoogleAnalyticsData | null
+  facebookPixel?: FacebookPixelData | null
+  googleAds?: GoogleAdsData | null
+  oneTrust?: OneTrustData | null
+  cookiebot?: CookiebotData | null
+  googleSocs?: GoogleSocsData | null
+  gpcDnt?: GpcDntData | null
 }
 
 // ============================================================================

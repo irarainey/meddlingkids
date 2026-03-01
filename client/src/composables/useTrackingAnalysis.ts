@@ -10,6 +10,7 @@ import type {
   StorageItem,
   NetworkRequest,
   ConsentDetails,
+  DecodedCookies,
   ScreenshotModal,
   TabId,
   SummaryFinding,
@@ -81,6 +82,8 @@ export function useTrackingAnalysis() {
   const showScoreDialog = ref(false)
   /** Consent details extracted from the page */
   const consentDetails = ref<ConsentDetails | null>(null)
+  /** Decoded privacy cookies (USP, GPP, GA, Facebook, etc.) */
+  const decodedCookies = ref<DecodedCookies | null>(null)
   
   /** Page error information (access denied, server error, etc.) */
   const pageError = ref<PageError | null>(null)
@@ -259,6 +262,7 @@ export function useTrackingAnalysis() {
     privacySummary.value = ''
     showScoreDialog.value = false
     consentDetails.value = null
+    decodedCookies.value = null
     pageError.value = null
     showPageErrorDialog.value = false
     errorDialog.value = null
@@ -407,6 +411,15 @@ export function useTrackingAnalysis() {
         }
       })
 
+      eventSource.addEventListener('decodedCookies', (event) => {
+        try {
+          const data = JSON.parse(event.data) as DecodedCookies
+          decodedCookies.value = data
+        } catch {
+          console.error('[SSE] Failed to parse decodedCookies event')
+        }
+      })
+
       eventSource.addEventListener('complete', (event) => {
         try {
           clearTimeout(connectionTimeout)
@@ -427,6 +440,9 @@ export function useTrackingAnalysis() {
           }
           if (data.consentDetails) {
             consentDetails.value = data.consentDetails
+          }
+          if (data.decodedCookies) {
+            decodedCookies.value = data.decodedCookies
           }
           // Update final tracking data — the complete event
           // carries the definitive snapshot captured right before
@@ -617,6 +633,7 @@ export function useTrackingAnalysis() {
     privacySummary,
     showScoreDialog,
     consentDetails,
+    decodedCookies,
     pageError,
     showPageErrorDialog,
     errorDialog,

@@ -34,6 +34,7 @@ const {
   networkRequests,
   activeTab,
   consentDetails,
+  decodedCookies,
   structuredReport,
   analysisError,
   summaryFindings,
@@ -272,6 +273,7 @@ function onUrlMouseUp(event: Event): void {
           :cookies-by-domain="cookiesByDomain"
           :cookie-count="cookies.length"
           :analyzed-url="inputValue"
+          :decoded-cookies="decodedCookies"
         />
 
         <ConsentTab
