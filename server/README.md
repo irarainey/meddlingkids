@@ -111,6 +111,10 @@ src/
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   ├── tcf_lookup.py                # TCF purpose matching (purpose strings → IAB TCF v2.2 taxonomy)
+│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL)
+│   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
+│   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
+│   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
@@ -141,17 +145,19 @@ src/
 │   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
 │   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
 │   │   ├── gdpr-reference.json      # GDPR lawful bases, principles, and ePrivacy cookie categories
-│   │   └── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
+│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
+│   │   ├── gvl-vendors.json         # IAB Global Vendor List — 1,111 vendor ID→name mappings
+│   │   └── google-atp-providers.json # Google Additional Consent providers — 598 provider ID→name mappings
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Tracking pattern databases (7 JSON files)
 │       ├── tracking-scripts.json    # 493 regex patterns for known trackers
-│       ├── benign-scripts.json      # 51 patterns for safe libraries
+│       ├── benign-scripts.json      # 52 patterns for safe libraries
 │       ├── tracking-cookies.json    # Known tracking cookie definitions (137 cookies)
 │       ├── tracking-storage.json    # Known storage key definitions (185 keys)
 │       ├── tracker-domains.json     # Known tracker domain database (4,644 domains)
-│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,014 domains)
+│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,018 domains)
 │       └── disconnect-services.json # Disconnect Tracking Protection list (4,370 domains)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
@@ -169,7 +175,6 @@ src/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/version` | Returns server version |
 | GET | `/api/open-browser-stream` | SSE endpoint for real-time URL analysis (params: `url`, `device`, `clear-cache`) |
 | POST | `/api/clear-cache` | Clears all analysis caches (scripts, domain, overlay) |
 | POST | `/api/cookie-info` | Looks up cookie information (database-first, LLM fallback) |
@@ -177,6 +182,7 @@ src/
 | POST | `/api/storage-key-info` | Looks up storage key information (alias) |
 | POST | `/api/domain-info` | Looks up domain information |
 | POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
+| POST | `/api/tc-string-decode` | Decodes an IAB TCF v2 TC String (deterministic, no LLM) |
 | GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting

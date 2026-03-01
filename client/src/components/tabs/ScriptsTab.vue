@@ -72,12 +72,12 @@ defineProps<{
 
 <style scoped>
 .section-header {
-  color: #f0f0f0;
-  font-size: 1rem;
-  font-weight: 600;
+  color: var(--section-title-color);
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
   margin: 1rem 0 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #4a5568;
+  border-bottom: 2px solid var(--border-accent);
 }
 
 .grouped-scripts-section {
@@ -85,7 +85,7 @@ defineProps<{
 }
 
 .script-group {
-  background: #2a3142;
+  background: var(--surface-panel);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -104,7 +104,7 @@ defineProps<{
 }
 
 .group-count {
-  color: #9ca3af;
+  color: var(--muted-light);
   font-size: 0.9rem;
   background: #374151;
   padding: 0.125rem 0.5rem;
@@ -112,8 +112,8 @@ defineProps<{
 }
 
 .group-description {
-  color: #9ca3af;
-  font-size: 0.95rem;
+  color: var(--body-color);
+  font-size: var(--body-size);
   margin-bottom: 0.25rem;
 }
 
@@ -128,7 +128,7 @@ defineProps<{
 }
 
 .group-examples summary {
-  color: #60a5fa;
+  color: var(--link-color);
   cursor: pointer;
 }
 
@@ -143,7 +143,7 @@ defineProps<{
 }
 
 .example-url a {
-  color: #9ca3af;
+  color: var(--muted-light);
   text-decoration: none;
   word-break: break-all;
 }
@@ -154,7 +154,7 @@ defineProps<{
 
 .script-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -169,7 +169,7 @@ defineProps<{
 }
 
 .script-url {
-  color: #60a5fa;
+  color: var(--link-color);
   word-break: break-all;
   text-decoration: none;
 }
@@ -179,7 +179,7 @@ defineProps<{
 }
 
 .script-description {
-  color: #9ca3af;
+  color: var(--body-color);
   font-size: 0.9rem;
   font-style: italic;
 }

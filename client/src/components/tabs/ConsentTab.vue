@@ -617,7 +617,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   min-width: 7rem;
@@ -634,34 +634,34 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .meta-label {
-  font-size: 0.7rem;
-  color: #6b7280;
+  font-size: var(--stat-label-size);
+  color: var(--stat-label-color);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .meta-value {
-  font-size: 1.3rem;
+  font-size: var(--stat-value-size);
   font-weight: 700;
-  color: #e0e7ff;
+  color: var(--stat-value-color);
 }
 
 /* ── Overview Summary ────────────────────────── */
 .overview-summary {
-  color: #c5ccdf;
+  color: var(--summary-color);
   font-size: 0.92rem;
   line-height: 1.5;
   margin: 0.75rem 0 0;
   padding: 0.65rem 0.85rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
 }
 
 /* ── Section Titles ──────────────────────────── */
 .section-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #e0e7ff;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
   margin: 0 0 0.25rem;
   display: flex;
   align-items: center;
@@ -669,15 +669,15 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .section-subtitle {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
   margin: 0 0 0.75rem;
   line-height: 1.4;
 }
 
 .section-subtitle code {
   font-size: 0.78rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   padding: 0.1rem 0.35rem;
   border-radius: 3px;
   color: #d1d5db;
@@ -690,11 +690,11 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── Data Source Badges ──────────────────────── */
 .source-badge {
-  font-size: 0.6rem;
+  font-size: var(--source-badge-size);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.15rem 0.45rem;
+  padding: var(--source-badge-padding);
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -716,7 +716,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── TCF Purpose Cards ──────────────────────── */
 .tcf-section {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border-separator);
   padding-top: 1rem;
 }
 
@@ -732,8 +732,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #3d4663;
-  border-top-color: #7CB8E4;
+  border: 2px solid var(--border-separator);
+  border-top-color: var(--link-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -751,10 +751,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── Unified Purpose Card ────────────────────── */
 .purpose-card {
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
   padding: 0.6rem 0.85rem;
-  border-left: 4px solid #3d4663;
+  border-left: 4px solid var(--border-separator);
 }
 
 .purpose-card.risk-low { border-left-color: #22d3ee; }
@@ -780,8 +780,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   letter-spacing: 0.04em;
   padding: 0.12rem 0.45rem;
   border-radius: 4px;
-  background: #2a2f45;
-  color: #9ca3af;
+  background: var(--surface-code);
+  color: var(--muted-light);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -845,8 +845,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .purpose-description {
-  font-size: 0.82rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
   margin: 0.3rem 0 0;
   line-height: 1.35;
 }
@@ -870,7 +870,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
-  background: #2a2f45;
+  background: var(--surface-code);
   color: #d1d5db;
 }
 
@@ -884,28 +884,28 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 .unmatched-section {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border-separator);
 }
 
 .unmatched-title {
-  font-size: 0.95rem;
+  font-size: var(--subheading-size);
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--subheading-color);
   margin: 0 0 0.25rem;
 }
 
 .unmatched-item {
   padding: 0.4rem 0.75rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 4px;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
   margin-bottom: 0.35rem;
 }
 
 /* ── Consent Categories ─────────────────────── */
 .categories-section {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border-separator);
   padding-top: 1rem;
 }
 
@@ -916,7 +916,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .category-card {
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
   padding: 0.6rem 0.85rem;
 }
@@ -949,33 +949,33 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   text-transform: uppercase;
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
-  background: #2a2f45;
-  color: #6b7280;
+  background: var(--surface-code);
+  color: var(--muted-color);
 }
 
 .category-desc {
-  font-size: 0.82rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
   margin: 0.3rem 0 0;
   line-height: 1.3;
 }
 
 /* ── TC String / Purpose Matrix ────────────── */
 .tc-verification-section {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border-separator);
   padding-top: 1rem;
 }
 
 .tc-subsection-title {
-  font-size: 0.95rem;
+  font-size: var(--subheading-size);
   font-weight: 600;
-  color: #e0e7ff;
+  color: var(--subheading-color);
   margin: 0.75rem 0 0.2rem;
 }
 
 .tc-subsection-desc {
-  font-size: 0.8rem;
-  color: #6b7280;
+  font-size: var(--body-size);
+  color: var(--muted-color);
   margin: 0 0 0.5rem;
   line-height: 1.4;
 }
@@ -990,7 +990,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 .tc-finding {
   border-radius: 6px;
   padding: 0.6rem 0.85rem;
-  border-left: 4px solid #3d4663;
+  border-left: 4px solid var(--border-separator);
 }
 
 .tc-finding.finding-critical {
@@ -1044,8 +1044,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .tc-finding-detail {
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
   margin: 0;
   line-height: 1.4;
 }
@@ -1056,11 +1056,11 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--muted-light);
 }
 
 .tc-legend-item {
@@ -1081,13 +1081,13 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── Vendors Section ───────────────────────── */
 .vendors-section {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border-separator);
   padding-top: 1rem;
 }
 
 /* ── Vendor Summary ────────────────────────── */
 .vendor-summary {
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   margin-bottom: 0.25rem;
@@ -1115,9 +1115,9 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .vendor-summary-value {
-  font-size: 1.4rem;
+  font-size: var(--stat-value-size);
   font-weight: 700;
-  color: #e0e7ff;
+  color: var(--stat-value-color);
 }
 
 .vendor-summary-warn .vendor-summary-value {
@@ -1125,8 +1125,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .vendor-summary-label {
-  font-size: 0.68rem;
-  color: #6b7280;
+  font-size: var(--stat-label-size);
+  color: var(--stat-label-color);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -1145,7 +1145,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   border-radius: 16px;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #2a2f45;
+  background: var(--surface-panel);
   color: #d1d5db;
 }
 
@@ -1263,13 +1263,13 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 }
 
 .vendor-name-link {
-  color: #93c5fd;
+  color: var(--link-color);
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .vendor-name-link:hover {
-  color: #bfdbfe;
+  color: var(--link-hover);
   text-decoration: underline;
 }
 

@@ -101,27 +101,28 @@ watch(
 
 <style scoped>
 .filter-note {
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--muted-light);
   margin: 0 0 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #2a2f45;
+  background: var(--surface-panel);
   border-radius: 6px;
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid var(--border-accent);
 }
 
 .third-party-badge {
   background: #ef4444;
   color: white;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
+  font-weight: 600;
   margin-right: 0.5rem;
 }
 
 .network-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -137,41 +138,41 @@ watch(
 }
 
 .resource-type {
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--muted-light);
   min-width: 80px;
 }
 
 .request-method {
   font-size: 0.8rem;
   font-weight: 600;
-  background: #3d4663;
+  background: var(--border-separator);
   color: #c7d2fe;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
 
 .pre-consent-badge {
-  font-size: 0.75rem;
+  font-size: var(--badge-size);
   font-weight: 600;
   background: #7c2d12;
   color: #fed7aa;
   padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: help;
 }
 
 .duplicate-badge {
-  font-size: 0.8rem;
+  font-size: var(--badge-size);
   font-weight: 600;
   background: #854d0e;
   color: #fef08a;
   padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .request-url {
-  color: #60a5fa;
+  color: var(--link-color);
   word-break: break-all;
   text-decoration: none;
   font-size: 0.9rem;
@@ -184,7 +185,7 @@ watch(
 .post-data {
   margin-top: 0.35rem;
   padding: 0.35rem 0.5rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   border-radius: 4px;
   border-left: 3px solid #f59e0b;
 }
@@ -197,7 +198,7 @@ watch(
 }
 
 .post-data-value {
-  font-size: 0.85rem;
+  font-size: var(--body-size);
   color: #d1d5db;
   word-break: break-all;
   white-space: pre-wrap;
@@ -216,32 +217,32 @@ watch(
 }
 
 .org-caption {
-  color: #6b7280;
+  color: var(--muted-color);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .org-name-link {
-  color: #a5b4fc;
+  color: var(--link-color);
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--body-size);
 }
 
 .org-name-link:hover {
   text-decoration: underline;
-  color: #c7d2fe;
+  color: var(--link-hover);
 }
 
 .org-name {
-  color: #a5b4fc;
+  color: var(--link-color);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--body-size);
 }
 
 .org-description {
-  color: #6b7280;
+  color: var(--muted-color);
   font-size: 0.82rem;
   font-weight: 400;
 }

@@ -289,6 +289,7 @@ Analysis complete
          privacySummary,    // One sentence
          analysisError,     // Error message if analysis failed
          consentDetails,    // Consent dialog info
+         decodedCookies,    // Decoded cookie breakdowns
          cookies,           // Final cookie snapshot
          networkRequests,   // Network requests
          localStorage,      // localStorage items
@@ -338,6 +339,7 @@ summaryFindings      // Structured findings array
 privacyScore         // 0-100
 privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
+decodedCookies       // Decoded structured cookies (TC/AC strings, OneTrust, etc.)
 analysisError        // Error message if AI analysis failed
 debugLog             // Server debug log lines
 
@@ -384,6 +386,10 @@ eventSource.addEventListener('consentDetails', (e) => {
   // Store consent information
 })
 
+eventSource.addEventListener('decodedCookies', (e) => {
+  // Store decoded cookie breakdowns (TC/AC strings, OneTrust, etc.)
+})
+
 eventSource.addEventListener('complete', (e) => {
   // Store analysis results, show score dialog
 })
@@ -412,7 +418,7 @@ App.vue
 ├── ScreenshotGallery (thumbnail row + modal)
 ├── TrackerCategorySection (reusable tracker category block)
 └── Tab Content (v-if="isComplete")
-    ├── AnalysisTab (uses TrackerCategorySection ×5)
+    ├── SummaryTab (uses TrackerCategorySection ×5)
     ├── ConsentTab (visible when consent dialog detected)
     ├── CookiesTab
     ├── StorageTab
@@ -499,6 +505,10 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `cookie_lookup.py` | Cookie information lookup service — checks consent cookie database and tracking cookie patterns first, falls back to `CookieInfoAgent` LLM for unrecognised cookies. Main function: `get_cookie_info()` |
 | `storage_lookup.py` | Storage key information lookup service — checks tracking storage patterns first, falls back to `StorageInfoAgent` LLM for unrecognised keys. Main function: `get_storage_info()` |
 | `tcf_lookup.py` | TCF purpose matching service — maps consent purpose strings to the IAB TCF v2.2 taxonomy. Fuzzy-matches purposes, special purposes, features, and special features. Deterministic — no LLM calls. Main function: `lookup_purposes()` |
+| `tc_string.py` | TC String decoder — decodes IAB TCF v2 consent strings (Base64url → bitfield) to extract CMP metadata, purpose consents, vendor consents, and legitimate interest signals. Resolves vendor IDs to names via the GVL. Deterministic — no LLM calls |
+| `tc_validation.py` | TC String validation — cross-references decoded TC String data with observed tracking to produce validation findings (e.g. tracking without consent, undisclosed vendors). Deterministic — no LLM calls |
+| `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
+| `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
@@ -527,17 +537,19 @@ Domain packages orchestrate browser automation and data processing. They call ag
 |--------|--------|
 | `data/loader.py` | JSON data loader with caching (`functools.cache`) |
 | `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
-| `data/trackers/benign-scripts.json` | 51 patterns for safe libraries |
+| `data/trackers/benign-scripts.json` | 52 patterns for safe libraries |
 | `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
 | `data/trackers/tracking-storage.json` | Known tracking storage key definitions (185 keys) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
 | `data/trackers/tracker-domains.json` | Known tracker domain database (4,644 domains) from Privacy Badger |
-| `data/trackers/cname-domains.json` | CNAME cloaking tracker domains (122,014 domains) from Privacy Badger and AdGuard |
+| `data/trackers/cname-domains.json` | CNAME cloaking tracker domains (122,018 domains) from Privacy Badger and AdGuard |
 | `data/trackers/disconnect-services.json` | Disconnect Tracking Protection list (4,370 domains) |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
 | `data/consent/gdpr-reference.json` | GDPR lawful bases, principles, and ePrivacy cookie categories for LLM context |
 | `data/consent/tcf-purposes.json` | IAB TCF v2.2 purpose definitions and special features for LLM context |
 | `data/consent/consent-cookies.json` | Known consent-state cookie names (TCF and CMP) for LLM context |
 | `data/consent/consent-platforms.json` | 19 CMP profiles with DOM selectors, iframe patterns, cookie indicators, and button strategies |
+| `data/consent/gvl-vendors.json` | IAB Global Vendor List — 1,111 vendor ID→name mappings for TC String vendor resolution |
+| `data/consent/google-atp-providers.json` | Google Additional Consent providers — 598 provider ID→name mappings for AC String resolution |
 | `data/publishers/media-groups.json` | 16 UK media group profiles (vendors, ad tech partners, data practices) |
 
 **`utils/`** — Cross-cutting utilities
@@ -764,7 +776,8 @@ class ThirdPartyGroup(BaseModel):
 | `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (background refresh as ads/content load) |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
-| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final analysis results |
+| `decodedCookies` | Server → Client | `DecodedCookies` | Decoded structured cookies (OneTrust, Cookiebot, GA, Facebook, Google Ads, USP, GPC/DNT, GPP, TC/AC strings) |
+| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---
@@ -939,7 +952,7 @@ Ad-heavy pages can become temporarily unresponsive after a consent overlay is di
 - **Graceful fallback in consent capture** — `capture_consent_content()` catches screenshot exceptions and falls back to `b""`. Consent extraction can still proceed using extracted DOM text alone.
 - **Graceful fallback in SSE screenshot events** — `take_screenshot_event()` catches screenshot exceptions and falls back to `b""`. Post-click captures produce an empty image rather than crashing.
 - **Empty-bytes guard** — `optimize_screenshot_bytes()` returns an empty string for empty bytes input, preventing a downstream Pillow crash when any of the above fallbacks flow through the optimization pipeline.
-- **Background refresher** — The screenshot refresher in `stream.py` already catches all exceptions and skips the update (this was implemented before the above changes).
+- **Background refresher** — The screenshot refresher in `stream.py` catches all exceptions, logs the actual error, and bails out after 2 consecutive failures (`_MAX_CONSECUTIVE_SCREENSHOT_FAILURES`) to avoid burning 30+ seconds retrying a hung page. The pre-analysis screenshot also uses the reduced 5 000 ms timeout (`_REFRESH_SCREENSHOT_TIMEOUT_MS`) instead of the default 15 000 ms.
 
 ### Client Error Reporting
 
@@ -1135,7 +1148,7 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)
 - Network request tracking uses O(1) set/dict indexes for script dedup and response matching
 - Privacy score is calculated deterministically (no LLM variance) via 8 decomposed category scorers
-- Tracker classification patterns (493 tracking + 51 benign) are merged into combined alternation regexes for single-pass matching per URL/cookie
+- Tracker classification patterns (493 tracking + 52 benign) are merged into combined alternation regexes for single-pass matching per URL/cookie
 - Tracking arrays have limits (5000 requests, 1000 scripts) per session
 
 ### LLM Usage Tracking

@@ -378,7 +378,7 @@ function platformUrl(name: string): string {
   padding: 1.25rem 1.5rem;
   margin-bottom: 1rem;
   border-radius: 8px;
-  background: #2a2f45;
+  background: var(--surface-panel);
 }
 
 .score-heading {
@@ -389,7 +389,7 @@ function platformUrl(name: string): string {
 
 .score-summary {
   font-size: 1rem;
-  color: #c5ccdf;
+  color: var(--summary-color);
   margin: 0;
   line-height: 1.5;
 }
@@ -460,20 +460,21 @@ function platformUrl(name: string): string {
 .report-section {
   margin-bottom: 1rem;
   padding: 1.25rem;
-  background: #1e2235;
+  background: var(--surface-section);
   border-radius: 8px;
-  border: 1px solid #2d3350;
+  border: 1px solid var(--border-card);
 }
 
 .report-section h2 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.15rem;
-  color: #f0f4ff;
-  margin: 0 0 1rem 0;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #0C67AC;
+  border-bottom: 2px solid var(--border-accent);
 }
 
 .section-icon {
@@ -481,24 +482,24 @@ function platformUrl(name: string): string {
 }
 
 .report-section h3 {
-  font-size: 0.95rem;
-  color: #7CB8E4;
+  font-size: var(--subheading-size);
+  color: var(--subheading-color);
   margin: 1rem 0 0.5rem 0;
 }
 
 .section-summary {
-  color: #c5ccdf;
+  color: var(--summary-color);
   margin: 0.25rem 0 0.75rem 0;
-  font-size: 0.95rem;
+  font-size: var(--summary-size);
 }
 
 /* ── Badges ─────────────────────────────────────────── */
 
 .badge, .risk-badge {
   display: inline-block;
-  padding: 0.15rem 0.6rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -508,11 +509,11 @@ function platformUrl(name: string): string {
 .count-badge {
   display: inline-block;
   padding: 0.1rem 0.55rem;
-  border-radius: 12px;
+  border-radius: var(--badge-radius);
   font-size: 0.72rem;
   font-weight: 600;
   background: #2a3555;
-  color: #7CB8E4;
+  color: var(--link-color);
   margin-left: auto;
 }
 
@@ -559,7 +560,7 @@ function platformUrl(name: string): string {
   align-items: center;
   gap: 0.75rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #2d3350;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -596,8 +597,8 @@ function platformUrl(name: string): string {
 }
 
 :deep(.tracker-card) {
-  background: #252a40;
-  border: 1px solid #2d3350;
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -611,12 +612,12 @@ function platformUrl(name: string): string {
 }
 
 :deep(.tracker-header strong) {
-  color: #f0f4ff;
+  color: var(--section-title-color);
   font-size: 0.95rem;
 }
 
 :deep(.tracker-link) {
-  color: #7CB8E4;
+  color: var(--link-color);
   font-size: 0.95rem;
   font-weight: 600;
   text-decoration: none;
@@ -624,7 +625,7 @@ function platformUrl(name: string): string {
 
 :deep(.tracker-link:hover) {
   text-decoration: underline;
-  color: #a0d0ff;
+  color: var(--link-hover);
 }
 
 :deep(.tracker-domains) {
@@ -646,15 +647,15 @@ function platformUrl(name: string): string {
 }
 
 :deep(.detail-tag) {
-  font-size: 0.82rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
 }
 
 /* ── Data collection cards ──────────────────────────── */
 
 .data-card {
-  background: #252a40;
-  border: 1px solid #2d3350;
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -667,7 +668,7 @@ function platformUrl(name: string): string {
 }
 
 .data-card-header strong {
-  color: #f0f4ff;
+  color: var(--section-title-color);
   font-size: 0.95rem;
 }
 
@@ -702,7 +703,7 @@ function platformUrl(name: string): string {
   gap: 0.35rem;
   margin-top: 0.5rem;
   padding-top: 0.4rem;
-  border-top: 1px solid #2d3350;
+  border-top: 1px solid var(--border-card);
 }
 
 .shared-label {
@@ -763,8 +764,8 @@ function platformUrl(name: string): string {
 }
 
 .impact-text {
-  color: #9ca3af;
-  font-size: 0.88rem;
+  color: var(--body-color);
+  font-size: var(--body-size);
   margin: 0.3rem 0 0 0;
   font-style: italic;
 }
@@ -785,14 +786,14 @@ function platformUrl(name: string): string {
   font-size: 0.82rem;
   font-weight: 600;
   background: #1e3a5f;
-  color: #7CB8E4;
+  color: var(--link-color);
   border: 1px solid #2a4a6f;
   text-decoration: none;
 }
 
 .platform-tag:hover {
   background: #264a73;
-  color: #a0d0ff;
+  color: var(--link-hover);
   text-decoration: underline;
 }
 

@@ -297,7 +297,7 @@ function riskClass(level: string): string {
 <style scoped>
 .storage-item {
   padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -312,7 +312,7 @@ function riskClass(level: string): string {
 }
 
 .storage-header:hover .storage-key {
-  color: #7CB8E4;
+  color: var(--link-color);
 }
 
 .storage-key {
@@ -340,27 +340,27 @@ function riskClass(level: string): string {
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 50%;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   flex-shrink: 0;
 }
 
 .storage-header:hover .info-toggle {
-  color: #7CB8E4;
-  border-color: #7CB8E4;
+  color: var(--link-color);
+  border-color: var(--link-color);
 }
 
 .info-toggle.expanded {
-  background: #7CB8E4;
+  background: var(--link-color);
   color: #111827;
-  border-color: #7CB8E4;
+  border-color: var(--link-color);
 }
 
 .storage-value {
-  color: #9ca3af;
+  color: var(--muted-light);
   word-break: break-all;
   font-family: monospace;
   font-size: 0.9rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   padding: 0.25rem;
   border-radius: 4px;
   margin-top: 0.4rem;
@@ -370,10 +370,10 @@ function riskClass(level: string): string {
 .storage-info-panel {
   margin-top: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
-  border-left: 3px solid #3d4663;
-  font-size: 0.85rem;
+  border-left: 3px solid var(--border-separator);
+  font-size: var(--body-size);
 }
 
 .storage-info-loading {
@@ -387,8 +387,8 @@ function riskClass(level: string): string {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #3d4663;
-  border-top-color: #7CB8E4;
+  border: 2px solid var(--border-separator);
+  border-top-color: var(--link-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -411,7 +411,7 @@ function riskClass(level: string): string {
 }
 
 .info-label {
-  color: #6b7280;
+  color: var(--muted-color);
   min-width: 5.5rem;
   flex-shrink: 0;
   font-size: 0.8rem;
@@ -428,9 +428,9 @@ function riskClass(level: string): string {
 
 /* Risk badges */
 .risk-badge {
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -465,15 +465,15 @@ function riskClass(level: string): string {
 .storage-analysis-section {
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: #1e2235;
+  background: var(--surface-section);
   border-radius: 8px;
-  border: 1px solid #2d3350;
+  border: 1px solid var(--border-card);
 }
 
 .ai-section-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #e0e7ff;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
   margin: 0 0 0.25rem;
   display: flex;
   align-items: center;
@@ -481,24 +481,24 @@ function riskClass(level: string): string {
 }
 
 .ai-section-subtitle {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
   margin: 0 0 0.75rem;
   line-height: 1.4;
 }
 
 .ai-section-summary {
-  color: #c5ccdf;
+  color: var(--summary-color);
   margin: 0.25rem 0 0.75rem 0;
-  font-size: 0.95rem;
+  font-size: var(--summary-size);
 }
 
 .source-badge {
-  font-size: 0.6rem;
+  font-size: var(--source-badge-size);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.15rem 0.45rem;
+  padding: var(--source-badge-padding);
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -515,8 +515,8 @@ function riskClass(level: string): string {
 }
 
 .ai-stat-card {
-  background: #252a40;
-  border: 1px solid #2d3350;
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 0.75rem 1.25rem;
   text-align: center;
@@ -525,14 +525,14 @@ function riskClass(level: string): string {
 
 .ai-stat-value {
   display: block;
-  font-size: 1.5rem;
+  font-size: var(--stat-value-size);
   font-weight: 700;
-  color: #7CB8E4;
+  color: var(--stat-value-color);
 }
 
 .ai-stat-label {
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--stat-label-size);
+  color: var(--stat-label-color);
 }
 
 .storage-ai-concerns {
@@ -540,8 +540,8 @@ function riskClass(level: string): string {
 }
 
 .storage-ai-concerns h3 {
-  font-size: 0.95rem;
-  color: #7CB8E4;
+  font-size: var(--subheading-size);
+  color: var(--subheading-color);
   margin: 0.5rem 0 0.25rem;
 }
 

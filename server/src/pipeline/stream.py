@@ -79,6 +79,12 @@ _REFRESH_SCREENSHOT_TIMEOUT_MS = 5_000
 # responsive throughout the run.
 _MAX_SCREENSHOT_REFRESHES = 3
 
+# How many consecutive screenshot failures before the background
+# refresher gives up.  Each failure costs ~(interval + timeout)
+# seconds, so a low cap prevents the refresher from burning
+# 30+ seconds retrying a hung page.
+_MAX_CONSECUTIVE_SCREENSHOT_FAILURES = 2
+
 
 # ====================================================================
 # Shared context for the streaming pipeline
@@ -132,6 +138,7 @@ async def _screenshot_refresher(
     """
     current_hash = last_hash
     updates_sent = 0
+    consecutive_failures = 0
     while updates_sent < remaining:
         await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
         try:
@@ -139,6 +146,7 @@ async def _screenshot_refresher(
                 full_page=False,
                 timeout=_REFRESH_SCREENSHOT_TIMEOUT_MS,
             )
+            consecutive_failures = 0
             new_hash = hashlib.md5(screenshot).hexdigest()
             if new_hash != current_hash:
                 current_hash = new_hash
@@ -154,8 +162,18 @@ async def _screenshot_refresher(
                 )
         except asyncio.CancelledError:
             raise
-        except Exception:
-            log.debug("Screenshot refresh failed (page navigating, etc.) — skipping")
+        except Exception as exc:
+            consecutive_failures += 1
+            log.debug(
+                "Screenshot refresh failed — skipping",
+                {"error": str(exc), "consecutiveFailures": consecutive_failures},
+            )
+            if consecutive_failures >= _MAX_CONSECUTIVE_SCREENSHOT_FAILURES:
+                log.debug(
+                    "Screenshot refresher stopped (page unresponsive)",
+                    {"consecutiveFailures": consecutive_failures},
+                )
+                return
     log.debug(
         "Screenshot refresher stopped (limit reached)",
         {"updates": updates_sent},
@@ -724,14 +742,17 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
         current_hash = ""
 
         try:
-            screenshot = await session.take_screenshot(full_page=False)
+            screenshot = await session.take_screenshot(
+                full_page=False,
+                timeout=_REFRESH_SCREENSHOT_TIMEOUT_MS,
+            )
             current_hash = hashlib.md5(screenshot).hexdigest()
             optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
             yield sse_helpers.format_screenshot_update_event(optimized)
             remaining_refreshes -= 1
             log.info("Immediate pre-analysis screenshot refresh emitted")
-        except Exception:
-            log.debug("Pre-analysis screenshot refresh failed — skipping")
+        except Exception as exc:
+            log.debug("Pre-analysis screenshot refresh failed — skipping", {"error": str(exc)})
 
         if remaining_refreshes > 0:
             ctx.refresher_task = asyncio.create_task(
