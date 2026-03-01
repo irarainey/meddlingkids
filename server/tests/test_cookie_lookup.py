@@ -513,3 +513,52 @@ class TestCookieInfoAgentFallbackParsing:
         assert result is not None
         assert result.description == "Structured result"
         assert result.purpose == "session"
+
+
+# ── Vendor enrichment ───────────────────────────────────────────
+
+
+class TestVendorEnrichment:
+    """Tracking pattern results should be enriched with vendor
+    cross-reference metadata from the vendor index."""
+
+    @pytest.mark.asyncio
+    async def test_google_analytics_has_vendor_category(self) -> None:
+        agent = AsyncMock(spec=CookieInfoAgent)
+        result = await cookie_lookup.get_cookie_info(
+            "_ga",
+            ".example.com",
+            "GA1.2.12345.67890",
+            agent,
+        )
+        assert result.vendor_category == "Analytics"
+        assert result.vendor_url is not None
+        assert result.vendor_concerns is not None
+        agent.explain.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_criteo_has_gvl_ids(self) -> None:
+        agent = AsyncMock(spec=CookieInfoAgent)
+        result = await cookie_lookup.get_cookie_info(
+            "cto_bundle",
+            ".example.com",
+            "abc123",
+            agent,
+        )
+        assert result.vendor_category == "Ad Network"
+        assert result.vendor_gvl_ids is not None
+        assert 91 in result.vendor_gvl_ids
+        agent.explain.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_consent_cookie_has_no_vendor_metadata(self) -> None:
+        agent = AsyncMock(spec=CookieInfoAgent)
+        result = await cookie_lookup.get_cookie_info(
+            "OptanonConsent",
+            ".example.com",
+            "groups=C0001:1",
+            agent,
+        )
+        assert result.vendor_category is None
+        assert result.vendor_gvl_ids is None
+        agent.explain.assert_not_called()

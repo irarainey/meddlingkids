@@ -197,7 +197,10 @@
       "qualtrics xm",
       "qualtrics inc"
     ],
-    "url": "https://www.qualtrics.com"
+    "url": "https://www.qualtrics.com",
+    "atp_ids": [
+      2628
+    ]
   },
   "medallia": {
     "concerns": [
@@ -358,7 +361,10 @@
     "aliases": [
       "kameleoon sas"
     ],
-    "url": "https://www.kameleoon.com"
+    "url": "https://www.kameleoon.com",
+    "gvl_ids": [
+      820
+    ]
   },
   "convert": {
     "concerns": [
@@ -565,7 +571,10 @@
     "aliases": [
       "demand base"
     ],
-    "url": "https://www.demandbase.com"
+    "url": "https://www.demandbase.com",
+    "gvl_ids": [
+      397
+    ]
   },
   "6sense": {
     "concerns": [
@@ -588,7 +597,10 @@
     "aliases": [
       "terminus software"
     ],
-    "url": "https://terminus.com"
+    "url": "https://terminus.com",
+    "gvl_ids": [
+      940
+    ]
   },
   "rollworks": {
     "concerns": [

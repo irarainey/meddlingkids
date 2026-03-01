@@ -40,7 +40,10 @@
       "id5 ltd",
       "truedata"
     ],
-    "url": "https://id5.io"
+    "url": "https://id5.io",
+    "gvl_ids": [
+      131
+    ]
   },
   "liveramp ats": {
     "concerns": [
@@ -103,7 +106,10 @@
       "merkle inc",
       "merkury"
     ],
-    "url": "https://www.merkle.com"
+    "url": "https://www.merkle.com",
+    "atp_ids": [
+      320
+    ]
   },
   "infutor": {
     "concerns": [
@@ -183,7 +189,10 @@
     "aliases": [
       "zeotap gmbh"
     ],
-    "url": "https://zeotap.com"
+    "url": "https://zeotap.com",
+    "gvl_ids": [
+      1469
+    ]
   },
   "mparticle": {
     "concerns": [
@@ -334,7 +343,10 @@
       "appsflyer ltd",
       "onelink"
     ],
-    "url": "https://www.appsflyer.com"
+    "url": "https://www.appsflyer.com",
+    "atp_ids": [
+      2577
+    ]
   },
   "adjust": {
     "concerns": [
@@ -346,7 +358,10 @@
       "adjust gmbh",
       "adjust.io"
     ],
-    "url": "https://www.adjust.com"
+    "url": "https://www.adjust.com",
+    "atp_ids": [
+      2822
+    ]
   },
   "singular": {
     "concerns": [
@@ -359,7 +374,10 @@
       "apsalar",
       "singular labs"
     ],
-    "url": "https://www.singular.net"
+    "url": "https://www.singular.net",
+    "atp_ids": [
+      1046
+    ]
   },
   "kochava": {
     "concerns": [
@@ -381,7 +399,10 @@
     "aliases": [
       "throtle inc"
     ],
-    "url": "https://throtle.io"
+    "url": "https://throtle.io",
+    "atp_ids": [
+      2869
+    ]
   },
   "signal co": {
     "concerns": [
@@ -458,7 +479,10 @@
     "aliases": [
       "sirdata sas"
     ],
-    "url": "https://www.sirdata.com"
+    "url": "https://www.sirdata.com",
+    "gvl_ids": [
+      53
+    ]
   },
   "liveintent": {
     "concerns": [
@@ -477,7 +501,10 @@
       "zeta global liveintent",
       "powerinbox liveintent"
     ],
-    "url": "https://www.liveintent.com"
+    "url": "https://www.liveintent.com",
+    "gvl_ids": [
+      148
+    ]
   },
   "powerinbox": {
     "concerns": [
@@ -512,7 +539,10 @@
       "movableink",
       "mi-dco"
     ],
-    "url": "https://movableink.com"
+    "url": "https://movableink.com",
+    "atp_ids": [
+      2917
+    ]
   },
   "litmus": {
     "concerns": [
@@ -534,7 +564,10 @@
     "aliases": [
       "audigent llc"
     ],
-    "url": "https://audigent.com"
+    "url": "https://audigent.com",
+    "gvl_ids": [
+      561
+    ]
   },
   "publift": {
     "concerns": [
@@ -618,7 +651,10 @@
       "intentiq llc",
       "intent iq ltd"
     ],
-    "url": "https://www.intentiq.com"
+    "url": "https://www.intentiq.com",
+    "gvl_ids": [
+      1323
+    ]
   },
   "roqad": {
     "concerns": [
@@ -649,7 +685,10 @@
       "ncaudienceexchange.com",
       "ncae"
     ],
-    "url": ""
+    "url": "",
+    "gvl_ids": [
+      709
+    ]
   },
   "gbg group": {
     "concerns": [

@@ -3,7 +3,7 @@
     "concerns": [
       "UK consumer data broker providing marketing contact lists to publishers",
       "Sources personal data from telephone directories, electoral rolls, and public records",
-      "Provides lead generation lists \u2014 publisher receives your contact details with claimed consent",
+      "Provides lead generation lists — publisher receives your contact details with claimed consent",
       "Data supplied to publishers for direct marketing outreach without prior relationship"
     ],
     "aliases": [
@@ -32,7 +32,10 @@
       "liveramp uk limited",
       "liveramp group"
     ],
-    "url": "https://liveramp.com"
+    "url": "https://liveramp.com",
+    "gvl_ids": [
+      97
+    ]
   },
   "acxiom": {
     "concerns": [
@@ -46,7 +49,10 @@
       "acxiom corporation",
       "acxiom marketing"
     ],
-    "url": "https://www.acxiom.com"
+    "url": "https://www.acxiom.com",
+    "gvl_ids": [
+      830
+    ]
   },
   "oracle data cloud": {
     "concerns": [
@@ -64,7 +70,10 @@
       "oracle advertising",
       "grapeshot"
     ],
-    "url": "https://www.oracle.com/cx/advertising/"
+    "url": "https://www.oracle.com/cx/advertising/",
+    "gvl_ids": [
+      385
+    ]
   },
   "experian": {
     "concerns": [
@@ -97,7 +106,10 @@
       "conversant",
       "publicis epsilon"
     ],
-    "url": "https://www.epsilon.com"
+    "url": "https://www.epsilon.com",
+    "gvl_ids": [
+      24
+    ]
   },
   "transunion": {
     "concerns": [
@@ -112,7 +124,10 @@
       "signal digital",
       "neustar"
     ],
-    "url": "https://www.transunion.com"
+    "url": "https://www.transunion.com",
+    "gvl_ids": [
+      468
+    ]
   },
   "equifax": {
     "concerns": [
@@ -190,7 +205,10 @@
       "exelate",
       "nielsen dmp"
     ],
-    "url": "https://www.nielsen.com"
+    "url": "https://www.nielsen.com",
+    "gvl_ids": [
+      812
+    ]
   },
   "comscore": {
     "concerns": [
@@ -203,7 +221,10 @@
       "comscore inc",
       "comscore networks"
     ],
-    "url": "https://www.comscore.com"
+    "url": "https://www.comscore.com",
+    "gvl_ids": [
+      77
+    ]
   },
   "lexisnexis": {
     "concerns": [
@@ -325,7 +346,11 @@
       "placed",
       "attribution.report"
     ],
-    "url": "https://foursquare.com"
+    "url": "https://foursquare.com",
+    "atp_ids": [
+      1810,
+      3059
+    ]
   },
   "placer.ai": {
     "concerns": [
@@ -613,7 +638,10 @@
       "eyeota marketplace",
       "dun & bradstreet eyeota"
     ],
-    "url": "https://www.eyeota.com"
+    "url": "https://www.eyeota.com",
+    "gvl_ids": [
+      120
+    ]
   },
   "bombora": {
     "concerns": [
@@ -632,7 +660,10 @@
       "netfactor",
       "bombora data co-op"
     ],
-    "url": "https://bombora.com"
+    "url": "https://bombora.com",
+    "gvl_ids": [
+      163
+    ]
   },
   "peekyou": {
     "concerns": [
@@ -812,7 +843,10 @@
       "experian plc uk",
       "experian ltd"
     ],
-    "url": "https://www.experian.co.uk"
+    "url": "https://www.experian.co.uk",
+    "gvl_ids": [
+      877
+    ]
   },
   "equifax uk": {
     "concerns": [
@@ -1199,7 +1233,10 @@
       "navegg sa",
       "navdmp"
     ],
-    "url": "https://www.navegg.com"
+    "url": "https://www.navegg.com",
+    "atp_ids": [
+      1570
+    ]
   },
   "onaudience": {
     "concerns": [
@@ -1212,7 +1249,10 @@
       "on audience",
       "onaudience.com"
     ],
-    "url": "https://www.onaudience.com"
+    "url": "https://www.onaudience.com",
+    "gvl_ids": [
+      716
+    ]
   },
   "caci": {
     "concerns": [
@@ -1240,7 +1280,10 @@
     "aliases": [
       "mediarithmics sas"
     ],
-    "url": "https://www.mediarithmics.com"
+    "url": "https://www.mediarithmics.com",
+    "gvl_ids": [
+      184
+    ]
   },
   "nectar360": {
     "concerns": [
@@ -1357,6 +1400,9 @@
       "disqo inc",
       "activemetering"
     ],
-    "url": "https://www.disqo.com"
+    "url": "https://www.disqo.com",
+    "atp_ids": [
+      15731
+    ]
   }
 }

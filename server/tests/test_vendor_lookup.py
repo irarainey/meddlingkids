@@ -24,6 +24,12 @@ _FAKE_GVL: dict[str, str] = {
     "10": "Index Exchange",
 }
 
+_FAKE_GVL_DETAILS: dict[str, dict[str, object]] = {
+    "1": {"name": "Exponential Interactive"},
+    "2": {"name": "Captify Technologies"},
+    "10": {"name": "Index Exchange"},
+}
+
 _FAKE_ENRICHMENT: dict[str, VendorEnrichment] = {
     "captify technologies": VendorEnrichment(
         category="Ad Network",
@@ -57,11 +63,15 @@ class TestResolveGvlVendors:
         return_value=_FAKE_ENRICHMENT,
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_known_vendors_resolved(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([2, 1])
         assert result == VendorResolutionResult(
@@ -83,11 +93,15 @@ class TestResolveGvlVendors:
         return_value={},
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_unknown_vendor_excluded_and_counted(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([999])
         assert result["resolved"] == []
@@ -98,11 +112,15 @@ class TestResolveGvlVendors:
         return_value=_FAKE_ENRICHMENT,
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_mixed_known_and_unknown(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([10, 500, 1])
         assert len(result["resolved"]) == 2
@@ -114,11 +132,15 @@ class TestResolveGvlVendors:
         return_value={},
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_empty_list_returns_empty(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([])
         assert result["resolved"] == []
@@ -129,11 +151,15 @@ class TestResolveGvlVendors:
         return_value={},
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_results_sorted_by_id(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([10, 2, 1])
         ids = [v["id"] for v in result["resolved"]]
@@ -144,11 +170,15 @@ class TestResolveGvlVendors:
         return_value={},
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_duplicates_deduplicated(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         result = resolve_gvl_vendors([1, 1, 1, 2, 2, 10])
         assert len(result["resolved"]) == 3
@@ -159,11 +189,15 @@ class TestResolveGvlVendors:
         return_value=_FAKE_ENRICHMENT,
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_enrichment_attached_when_matched(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         """Vendors matching the enrichment index get category/concerns/url."""
         result = resolve_gvl_vendors([2])
@@ -179,11 +213,15 @@ class TestResolveGvlVendors:
         return_value=_FAKE_ENRICHMENT,
     )
     @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value=_FAKE_GVL_DETAILS,
+    )
+    @patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
     def test_no_enrichment_when_unmatched(
-        self, _gvl: object, _enr: object,
+        self, _gvl: object, _det: object, _enr: object,
     ) -> None:
         """Vendors not in the enrichment index omit extra keys."""
         result = resolve_gvl_vendors([1])
@@ -191,6 +229,35 @@ class TestResolveGvlVendors:
         assert "category" not in vendor
         assert "concerns" not in vendor
         assert "url" not in vendor
+
+    @patch(
+        "src.analysis.vendor_lookup._get_enrichment_index",
+        return_value={},
+    )
+    @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value={
+            "1": {
+                "name": "Exponential Interactive",
+                "category": "Ad Network",
+                "concerns": ["Retargeting"],
+                "url": "https://exponential.com",
+            },
+        },
+    )
+    @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendors",
+        return_value={"1": "Exponential Interactive"},
+    )
+    def test_inline_gvl_enrichment_used(
+        self, _gvl: object, _det: object, _enr: object,
+    ) -> None:
+        """Enrichment embedded in GVL data is used when available."""
+        result = resolve_gvl_vendors([1])
+        vendor = result["resolved"][0]
+        assert vendor["category"] == "Ad Network"
+        assert vendor["concerns"] == ["Retargeting"]
+        assert vendor["url"] == "https://exponential.com"
 
 
 # ── AC Provider Resolution ──────────────────────────────────────
@@ -370,6 +437,32 @@ class TestResolveAcProviders:
         provider = result["resolved"][0]
         assert provider["category"] == "Analytics"
         assert "concerns" not in provider
+
+    @patch(
+        "src.analysis.vendor_lookup._get_enrichment_index",
+        return_value={},
+    )
+    @patch(
+        "src.analysis.vendor_lookup.loader.get_google_atp_providers",
+        return_value={
+            "50": {
+                "name": "InlineVendor",
+                "policyUrl": "https://example.com/p",
+                "category": "Data Broker",
+                "concerns": ["Sells data"],
+                "url": "https://inlinevendor.com",
+            },
+        },
+    )
+    def test_inline_atp_enrichment_used(
+        self, _atp: object, _enr: object,
+    ) -> None:
+        """Enrichment embedded in ATP data is used when available."""
+        result = resolve_ac_providers([50])
+        provider = result["resolved"][0]
+        assert provider["category"] == "Data Broker"
+        assert provider["concerns"] == ["Sells data"]
+        assert provider["url"] == "https://inlinevendor.com"
 
 
 # ── Normalisation Tests ─────────────────────────────────────────

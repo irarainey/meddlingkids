@@ -466,3 +466,60 @@ class TestStorageInfoAgentFallbackParsing:
         assert result is not None
         assert result.description == "Structured result"
         assert result.purpose == "session"
+
+
+# ── Vendor enrichment ───────────────────────────────────────────
+
+
+class TestVendorEnrichment:
+    """Tracking storage results should be enriched with vendor
+    cross-reference metadata from the vendor index."""
+
+    @pytest.mark.asyncio
+    async def test_hotjar_has_vendor_category(self) -> None:
+        agent = AsyncMock(spec=StorageInfoAgent)
+        result = await storage_lookup.get_storage_info(
+            "_hjSessionUser_12345",
+            "localStorage",
+            "abc-123",
+            agent,
+        )
+        assert result.vendor_category == "Session Replay"
+        assert result.vendor_url is not None
+        assert result.vendor_concerns is not None
+        agent.explain.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_liveramp_has_gvl_ids(self) -> None:
+        agent = AsyncMock(spec=StorageInfoAgent)
+        result = await storage_lookup.get_storage_info(
+            "_lr_env",
+            "localStorage",
+            "value",
+            agent,
+        )
+        assert result.vendor_category == "Data Broker"
+        assert result.vendor_gvl_ids is not None
+        assert 97 in result.vendor_gvl_ids
+        agent.explain.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unknown_key_has_no_vendor_metadata(self) -> None:
+        """LLM-fallback results should not have vendor metadata."""
+        agent = AsyncMock(spec=StorageInfoAgent)
+        llm_result = StorageInfoResult(
+            description="Unknown key",
+            setBy="Unknown",
+            purpose="unknown",
+            riskLevel="low",
+            privacyNote="",
+        )
+        agent.explain = AsyncMock(return_value=llm_result)
+        result = await storage_lookup.get_storage_info(
+            "totally_custom_xyz_987",
+            "localStorage",
+            "val",
+            agent,
+        )
+        assert result.vendor_category is None
+        assert result.vendor_gvl_ids is None

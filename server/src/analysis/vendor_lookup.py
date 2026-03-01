@@ -17,7 +17,7 @@ databases and Disconnect tracking-protection list.
 from __future__ import annotations
 
 import re
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from src.data import loader
 
@@ -107,6 +107,8 @@ _ENRICHMENT_CATEGORY_MAP: dict[str, str] = {
 }
 
 _enrichment_index: dict[str, VendorEnrichment] | None = None
+_gvl_id_index: dict[int, VendorEnrichment] | None = None
+_atp_id_index: dict[int, VendorEnrichment] | None = None
 
 
 def _get_enrichment_index() -> dict[str, VendorEnrichment]:
@@ -114,12 +116,16 @@ def _get_enrichment_index() -> dict[str, VendorEnrichment]:
 
     Maps lowercased vendor name / alias → ``VendorEnrichment``.
     Sources: partner databases and Disconnect services.
+    Also populates ``_gvl_id_index`` and ``_atp_id_index``
+    for O(1) vendor-ID lookups.
     """
-    global _enrichment_index
+    global _enrichment_index, _gvl_id_index, _atp_id_index
     if _enrichment_index is not None:
         return _enrichment_index
 
     index: dict[str, VendorEnrichment] = {}
+    gvl_idx: dict[int, VendorEnrichment] = {}
+    atp_idx: dict[int, VendorEnrichment] = {}
 
     # Partner databases — provide category + concerns.
     for cfg in loader.PARTNER_CATEGORIES:
@@ -136,6 +142,12 @@ def _get_enrichment_index() -> dict[str, VendorEnrichment]:
             for alias in entry.aliases:
                 index[alias.lower()] = enrichment
 
+            # ID-based indexes from cross-reference fields.
+            for gvl_id in entry.gvl_ids:
+                gvl_idx[gvl_id] = enrichment
+            for atp_id in entry.atp_ids:
+                atp_idx[atp_id] = enrichment
+
     # Disconnect services — provide category only (by company).
     disc = loader.get_disconnect_services()
     for _domain, info in disc.items():
@@ -150,7 +162,23 @@ def _get_enrichment_index() -> dict[str, VendorEnrichment]:
         index[company] = VendorEnrichment(category=cat_label)
 
     _enrichment_index = index
+    _gvl_id_index = gvl_idx
+    _atp_id_index = atp_idx
     return _enrichment_index
+
+
+def _get_gvl_id_index() -> dict[int, VendorEnrichment]:
+    """Return the GVL-ID → enrichment index, building it if needed."""
+    if _gvl_id_index is None:
+        _get_enrichment_index()
+    return _gvl_id_index or {}
+
+
+def _get_atp_id_index() -> dict[int, VendorEnrichment]:
+    """Return the ATP-ID → enrichment index, building it if needed."""
+    if _atp_id_index is None:
+        _get_enrichment_index()
+    return _atp_id_index or {}
 
 
 def _enrich(name: str) -> VendorEnrichment | None:
@@ -162,6 +190,35 @@ def _enrich(name: str) -> VendorEnrichment | None:
     return None
 
 
+def _enrich_by_gvl_id(vid: int) -> VendorEnrichment | None:
+    """Look up enrichment metadata by GVL vendor ID."""
+    return _get_gvl_id_index().get(vid)
+
+
+def _enrich_by_atp_id(pid: int) -> VendorEnrichment | None:
+    """Look up enrichment metadata by ATP provider ID."""
+    return _get_atp_id_index().get(pid)
+
+
+def _enrichment_from_entry(entry: dict[str, Any]) -> VendorEnrichment | None:
+    """Extract inline enrichment from a GVL/ATP entry dict.
+
+    If the entry carries ``category`` (and optionally ``concerns``
+    and ``url``), build a ``VendorEnrichment`` from it directly.
+    """
+    cat = entry.get("category")
+    if not cat:
+        return None
+    enrichment = VendorEnrichment(category=cat)
+    concerns = entry.get("concerns")
+    if concerns:
+        enrichment["concerns"] = concerns
+    url = entry.get("url")
+    if url:
+        enrichment["url"] = url
+    return enrichment
+
+
 # ── Public API ──────────────────────────────────────────────────
 
 
@@ -171,8 +228,11 @@ def resolve_gvl_vendors(
     """Resolve IAB GVL vendor IDs to company names.
 
     Each resolved vendor is enriched with ``category`` and
-    ``concerns`` when the vendor name matches a known partner
-    or Disconnect entry.
+    ``concerns``.  Enrichment is resolved in priority order:
+
+    1. Inline metadata embedded in the GVL data file.
+    2. ID-based lookup from partner cross-reference IDs.
+    3. Fuzzy name matching against partner and Disconnect DBs.
 
     Args:
         vendor_ids: List of vendor IDs from the TC String
@@ -183,14 +243,22 @@ def resolve_gvl_vendors(
         resolved vendors (only those found in the GVL) and
         a count of unresolved IDs.
     """
-    gvl = loader.get_gvl_vendors()
+    gvl_names = loader.get_gvl_vendors()
+    gvl_details = loader.get_gvl_vendor_details()
     resolved: list[ResolvedVendor] = []
     unresolved = 0
     for vid in sorted(set(vendor_ids)):
-        name = gvl.get(str(vid))
+        name = gvl_names.get(str(vid))
         if name:
             vendor = ResolvedVendor(id=vid, name=name)
-            enrichment = _enrich(name)
+
+            # Try enrichment sources in priority order.
+            detail = gvl_details.get(str(vid), {})
+            enrichment = (
+                _enrichment_from_entry(detail)
+                or _enrich_by_gvl_id(vid)
+                or _enrich(name)
+            )
             if enrichment:
                 vendor["category"] = enrichment["category"]
                 if "concerns" in enrichment:
@@ -212,8 +280,11 @@ def resolve_ac_providers(
     """Resolve Google ATP provider IDs to company names.
 
     Each resolved provider is enriched with ``category`` and
-    ``concerns`` when the provider name matches a known partner
-    or Disconnect entry.
+    ``concerns``.  Enrichment is resolved in priority order:
+
+    1. Inline metadata embedded in the ATP data file.
+    2. ID-based lookup from partner cross-reference IDs.
+    3. Fuzzy name matching against partner and Disconnect DBs.
 
     Args:
         provider_ids: List of provider IDs from the AC String
@@ -235,7 +306,13 @@ def resolve_ac_providers(
                 name=entry["name"],
                 policy_url=entry.get("policyUrl", ""),
             )
-            enrichment = _enrich(entry["name"])
+
+            # Try enrichment sources in priority order.
+            enrichment = (
+                _enrichment_from_entry(entry)
+                or _enrich_by_atp_id(pid)
+                or _enrich(entry["name"])
+            )
             if enrichment:
                 provider["category"] = enrichment["category"]
                 if "concerns" in enrichment:

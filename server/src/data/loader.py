@@ -140,6 +140,17 @@ def get_tracking_cookie_privacy_map() -> dict[str, str]:
     return result
 
 
+def get_tracking_cookie_vendor_index() -> dict[str, dict[str, Any]]:
+    """Return setBy → vendor metadata from the tracking cookies data.
+
+    Each entry may contain ``category``, ``gvl_ids``, ``atp_ids``,
+    ``url``, and ``concerns``.
+    """
+    data = get_tracking_cookies()
+    result: dict[str, dict[str, Any]] = data.get("vendors", {})
+    return result
+
+
 def build_tracking_cookie_context() -> str:
     """Build an LLM-friendly reference section from the known tracking cookies database.
 
@@ -247,6 +258,17 @@ def get_tracking_storage_privacy_map() -> dict[str, str]:
     """Return purpose → privacy-note mapping from the tracking storage data."""
     data = get_tracking_storage_keys()
     result: dict[str, str] = data.get("privacy_notes", {})
+    return result
+
+
+def get_tracking_storage_vendor_index() -> dict[str, dict[str, Any]]:
+    """Return setBy → vendor metadata from the tracking storage data.
+
+    Each entry may contain ``category``, ``gvl_ids``, ``atp_ids``,
+    ``url``, and ``concerns``.
+    """
+    data = get_tracking_storage_keys()
+    result: dict[str, dict[str, Any]] = data.get("vendors", {})
     return result
 
 
@@ -537,6 +559,8 @@ def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
             aliases=val.get("aliases", []),
             url=val.get("url", ""),
             privacy_url=val.get("privacy_url", ""),
+            gvl_ids=val.get("gvl_ids", []),
+            atp_ids=val.get("atp_ids", []),
         )
         for key, val in raw.items()
     }
@@ -659,22 +683,52 @@ def get_gvl_vendors() -> dict[str, str]:
     """Get the IAB Global Vendor List name mapping (loaded once and cached).
 
     Returns a dict mapping vendor ID (string) to vendor name
-    for all vendors in the IAB GVL.
+    for all vendors in the IAB GVL.  Entries that carry
+    embedded enrichment data are normalised to plain name
+    strings for backward compatibility.
     """
-    data: dict[str, Any] = _load_json("consent/gvl-vendors.json")
-    result: dict[str, str] = data.get("vendors", {})
+    raw = _load_gvl_raw()
+    return {
+        vid: (entry["name"] if isinstance(entry, dict) else entry)
+        for vid, entry in raw.items()
+    }
+
+
+@functools.cache
+def get_gvl_vendor_details() -> dict[str, dict[str, Any]]:
+    """Get the enriched IAB GVL vendor details (loaded once and cached).
+
+    Returns a dict mapping vendor ID (string) to a dict with
+    at least a ``name`` key.  Enriched entries also carry
+    ``category``, ``concerns``, and ``url``.
+    """
+    raw = _load_gvl_raw()
+    result: dict[str, dict[str, Any]] = {}
+    for vid, entry in raw.items():
+        if isinstance(entry, dict):
+            result[vid] = entry
+        else:
+            result[vid] = {"name": entry}
     return result
 
 
 @functools.cache
-def get_google_atp_providers() -> dict[str, dict[str, str]]:
+def _load_gvl_raw() -> dict[str, Any]:
+    """Load the raw GVL vendors map (mixed str / dict entries)."""
+    data: dict[str, Any] = _load_json("consent/gvl-vendors.json")
+    return data.get("vendors", {})
+
+
+@functools.cache
+def get_google_atp_providers() -> dict[str, dict[str, Any]]:
     """Get the Google ATP provider list (loaded once and cached).
 
     Returns a dict mapping provider ID (string) to a dict
-    with ``name`` and ``policyUrl`` keys.
+    with ``name`` and ``policyUrl`` keys.  Enriched entries
+    may also carry ``category``, ``concerns``, and ``url``.
     """
     data: dict[str, Any] = _load_json("consent/google-atp-providers.json")
-    result: dict[str, dict[str, str]] = data.get("providers", {})
+    result: dict[str, dict[str, Any]] = data.get("providers", {})
     return result
 
 

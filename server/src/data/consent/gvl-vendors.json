@@ -6,32 +6,122 @@
   "_tcfPolicyVersion": 5,
   "vendors": {
     "1": "Exponential Interactive, Inc d/b/a VDX.tv",
-    "2": "Captify Technologies Limited",
+    "2": {
+      "name": "Captify Technologies Limited",
+      "category": "Ad Network",
+      "concerns": [
+        "Contextual and semantic advertising",
+        "Search intelligence",
+        "Independent data controller"
+      ],
+      "url": "https://www.captify.us"
+    },
     "4": "Roq.ad GmbH",
     "6": "AdSpirit GmbH",
     "8": "Emerse Sverige AB",
     "9": "AdMaxim Limited",
-    "10": "Index Exchange Inc. ",
+    "10": {
+      "name": "Index Exchange Inc. ",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad marketplace",
+        "Header bidding",
+        "Publisher exchange"
+      ],
+      "url": "https://www.indexexchange.com"
+    },
     "11": "Quantcast",
     "12": "BeeswaxIO Corporation",
-    "13": "Sovrn, Inc.",
+    "13": {
+      "name": "Sovrn, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Publisher monetization",
+        "Signal data",
+        "Commerce tracking"
+      ],
+      "url": "https://www.sovrn.com"
+    },
     "14": "Adkernel LLC",
     "15": "Adikteev",
-    "16": "RTB House S.A.",
+    "16": {
+      "name": "RTB House S.A.",
+      "category": "Ad Network",
+      "concerns": [
+        "Deep learning retargeting",
+        "Real-time bidding personalised ads",
+        "IAB TCF vendor 16"
+      ],
+      "url": "https://www.rtbhouse.com"
+    },
     "20": "N.Rich Technologies Inc.",
     "21": "The UK Trade Desk Ltd",
     "22": "admetrics GmbH",
-    "23": "Nexxen Inc.",
-    "24": "Epsilon",
+    "23": {
+      "name": "Nexxen Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "CTV and ACR data collection from Smart TVs",
+        "IAB TCF vendor 36 (SSP) and 23 (DSP)",
+        "Cross-device identity resolution"
+      ],
+      "url": "https://www.nexxen.com"
+    },
+    "24": {
+      "name": "Epsilon",
+      "category": "Data Broker",
+      "concerns": [
+        "Consumer database of 250M+ Americans",
+        "Email tracking",
+        "Direct marketing data"
+      ],
+      "url": "https://www.epsilon.com"
+    },
     "25": "Yahoo EMEA Limited",
     "26": "Venatus Media Limited",
     "27": "ADventori SAS",
-    "28": "Triple Lift, Inc.",
+    "28": {
+      "name": "Triple Lift, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "CTV",
+        "Programmatic"
+      ],
+      "url": "https://www.triplelift.com"
+    },
     "29": "ETARGET SE",
     "30": "BidTheatre AB",
-    "31": "Ogury Ltd",
-    "32": "Xandr, Inc.",
-    "33": "ShareThis, Inc",
+    "31": {
+      "name": "Ogury Ltd",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile advertising",
+        "Personified advertising",
+        "Survey data"
+      ],
+      "url": "https://www.ogury.com"
+    },
+    "32": {
+      "name": "Xandr, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+        "Windows telemetry and diagnostic data collection",
+        "Copilot AI prompt and conversation data processing"
+      ],
+      "url": "https://ads.microsoft.com"
+    },
+    "33": {
+      "name": "ShareThis, Inc",
+      "category": "Social Tracker",
+      "concerns": [
+        "Social sharing widgets",
+        "Cross-site tracking",
+        "Interest profiling"
+      ],
+      "url": "https://sharethis.com"
+    },
     "34": "NEORY GmbH",
     "36": "Nexxen Group LLC",
     "37": "NEURAL.ONE",
@@ -39,70 +129,322 @@
     "40": "Active Agent (Virtual Minds GmbH)",
     "42": "Taboola Europe Limited",
     "44": "Adex (Virtual Minds GmbH)",
-    "45": "Equativ",
-    "46": "Skimbit Ltd",
+    "45": {
+      "name": "Equativ",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad serving",
+        "European focus",
+        "Equativ owned"
+      ],
+      "url": "https://smartadserver.com"
+    },
+    "46": {
+      "name": "Skimbit Ltd",
+      "category": "Ad Network",
+      "concerns": [
+        "Commerce content",
+        "Link affiliation",
+        "Purchase tracking"
+      ],
+      "url": "https://skimlinks.com"
+    },
     "47": "ADMAN - Phaistos Networks, S.A.",
     "48": "NetSuccess, s.r.o.",
     "49": "Jellyfish France",
-    "50": "Adform A/S",
+    "50": {
+      "name": "Adform A/S",
+      "category": "Ad Network",
+      "concerns": [
+        "European DSP",
+        "Cross-device",
+        "Flow ID"
+      ],
+      "url": "https://www.adform.com"
+    },
     "52": "Magnite, Inc. ",
-    "53": "Sirdata",
+    "53": {
+      "name": "Sirdata",
+      "category": "Identity Tracker",
+      "concerns": [
+        "European identity",
+        "Consent-based targeting",
+        "Publisher data"
+      ],
+      "url": "https://www.sirdata.com"
+    },
     "55": "Madison Logic, Inc.",
     "56": "Confiant Inc.",
     "57": "RATEGAIN ADARA INC",
-    "58": "33Across",
+    "58": {
+      "name": "33Across",
+      "category": "Ad Network",
+      "concerns": [
+        "Header bidding",
+        "Publisher identity",
+        "Lexicon ID"
+      ],
+      "url": "https://www.33across.com"
+    },
     "59": "Sift Media, Inc",
-    "60": "Rakuten Marketing LLC",
-    "61": "GumGum, Inc.",
+    "60": {
+      "name": "Rakuten Marketing LLC",
+      "category": "Ad Network",
+      "concerns": [
+        "Affiliate network",
+        "Display ads",
+        "Cross-channel"
+      ],
+      "url": "https://rakutenadvertising.com"
+    },
+    "61": {
+      "name": "GumGum, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Contextual advertising",
+        "Image recognition",
+        "In-image ads"
+      ],
+      "url": "https://www.gumgum.com"
+    },
     "62": "Justpremium BV",
     "63": "Lumen Research Limited",
     "66": "adsquare GmbH",
     "67": "LifeStreet Corporation",
     "68": "Amazon Ad Server",
-    "69": "OpenX",
+    "69": {
+      "name": "OpenX",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad exchange",
+        "Header bidding",
+        "Apollo owned"
+      ],
+      "url": "https://www.openx.com"
+    },
     "70": "Yieldlab (Virtual Minds GmbH)",
     "71": "Roku Advertising Services",
     "72": "Nano Interactive Group Ltd.",
-    "73": "Simplifi Holdings LLC",
+    "73": {
+      "name": "Simplifi Holdings LLC",
+      "category": "Ad Network",
+      "concerns": [
+        "Programmatic DSP",
+        "Location targeting",
+        "CTV"
+      ],
+      "url": "https://simpli.fi"
+    },
     "75": "M32 Connect Inc",
-    "76": "PubMatic, Inc",
-    "77": "Comscore B.V.",
-    "78": "Flashtalking",
-    "80": "Sharethrough, Inc",
-    "81": "PulsePoint, Inc.",
-    "82": "Smaato, Inc.",
+    "76": {
+      "name": "PubMatic, Inc",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad exchange",
+        "Real-time bidding",
+        "Publisher data"
+      ],
+      "url": "https://pubmatic.com"
+    },
+    "77": {
+      "name": "Comscore B.V.",
+      "category": "Data Broker",
+      "concerns": [
+        "Web tracking panels",
+        "Audience measurement",
+        "Cross-platform tracking"
+      ],
+      "url": "https://www.comscore.com"
+    },
+    "78": {
+      "name": "Flashtalking",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad serving",
+        "DCO",
+        "Cross-device"
+      ],
+      "url": "https://www.flashtalking.com"
+    },
+    "80": {
+      "name": "Sharethrough, Inc",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "Header bidding",
+        "Equativ merged"
+      ],
+      "url": "https://www.sharethrough.com"
+    },
+    "81": {
+      "name": "PulsePoint, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Health-focused programmatic advertising",
+        "Real-time bidding exchange",
+        "Audience data activation"
+      ],
+      "url": "https://www.pulsepoint.com"
+    },
+    "82": {
+      "name": "Smaato, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile ad exchange",
+        "Real-time bidding",
+        "Verve owned"
+      ],
+      "url": "https://www.smaato.com"
+    },
     "83": "Visarity Technologies GmbH",
     "84": "Semasio GmbH",
     "85": "Crimtan Holdings Limited",
     "87": "Genius Sports UK Limited",
     "90": "Teroa S.A.",
-    "91": "Criteo SA",
-    "92": "1plusX AG",
+    "91": {
+      "name": "Criteo SA",
+      "category": "Ad Network",
+      "concerns": [
+        "Retargeting across millions of sites",
+        "Behavioral profiling",
+        "Email matching"
+      ],
+      "url": "https://www.criteo.com"
+    },
+    "92": {
+      "name": "1plusX AG",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "CTV",
+        "Programmatic"
+      ],
+      "url": "https://www.triplelift.com"
+    },
     "93": "Adloox SA",
     "94": "Blis Global Limited",
     "95": "Epsilon (Lotame)",
-    "97": "LiveRamp",
+    "97": {
+      "name": "LiveRamp",
+      "category": "Data Broker",
+      "concerns": [
+        "Cross-device identity resolution",
+        "Offline-to-online data matching",
+        "Data selling to 500+ partners"
+      ],
+      "url": "https://liveramp.com"
+    },
     "98": "WPP Media",
     "100": "Fifty Technology Limited",
     "101": "MiQ Digital Ltd",
     "102": "Magnite, Inc. (Outstream)",
-    "104": "Sonobi, Inc",
+    "104": {
+      "name": "Sonobi, Inc",
+      "category": "Ad Network",
+      "concerns": [
+        "Header bidding",
+        "Publisher monetization",
+        "JetStream"
+      ],
+      "url": "https://sonobi.com"
+    },
     "108": "Rich Audience Technologies SLU",
-    "109": "LoopMe Limited",
-    "110": "Dynata LLC",
-    "111": "Showheroes SE",
+    "109": {
+      "name": "LoopMe Limited",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile video ads",
+        "Attribution",
+        "AI optimization"
+      ],
+      "url": "https://loopme.com"
+    },
+    "110": {
+      "name": "Dynata LLC",
+      "category": "Analytics",
+      "concerns": [
+        "Research panel data collection",
+        "Survey-based profiling",
+        "First-party data marketplace"
+      ],
+      "url": "https://www.dynata.com"
+    },
+    "111": {
+      "name": "Showheroes SE",
+      "category": "Ad Network",
+      "concerns": [
+        "Video advertising platform",
+        "Contextual video targeting",
+        "European digital video"
+      ],
+      "url": "https://showheroes.com"
+    },
     "114": "Sublime",
     "115": "smartclip Europe GmbH",
     "119": "Ask Locala",
-    "120": "Eyeota Pte Ltd",
+    "120": {
+      "name": "Eyeota Pte Ltd",
+      "category": "Data Broker",
+      "concerns": [
+        "Audience data marketplace",
+        "Third-party data",
+        "Cross-border data"
+      ],
+      "url": "https://www.eyeota.com"
+    },
     "122": "Dentsu UK Limited",
     "124": "Azira",
-    "126": "DoubleVerify Inc.",
+    "126": {
+      "name": "DoubleVerify Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad verification",
+        "Brand safety",
+        "Attention metrics"
+      ],
+      "url": "https://www.doubleverify.com"
+    },
     "127": "PIXIMEDIA",
-    "128": "BIDSWITCH GmbH",
-    "129": "IPONWEB GmbH",
-    "130": "NextRoll, Inc.",
-    "131": "ID5 Technology SAS",
+    "128": {
+      "name": "BIDSWITCH GmbH",
+      "category": "Ad Network",
+      "concerns": [
+        "Exchange-to-exchange routing layer",
+        "Bid request forwarding across SSPs and DSPs",
+        "Owned by IPONWEB (now Magnite)"
+      ],
+      "url": "https://www.bidswitch.com"
+    },
+    "129": {
+      "name": "IPONWEB GmbH",
+      "category": "Ad Network",
+      "concerns": [
+        "Exchange-to-exchange routing layer",
+        "Bid request forwarding across SSPs and DSPs",
+        "Owned by IPONWEB (now Magnite)"
+      ],
+      "url": "https://www.bidswitch.com"
+    },
+    "130": {
+      "name": "NextRoll, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Retargeting",
+        "Cross-device",
+        "Nextroll owned"
+      ],
+      "url": "https://www.adroll.com"
+    },
+    "131": {
+      "name": "ID5 Technology SAS",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Universal ID",
+        "Cross-site identity",
+        "Cookie replacement"
+      ],
+      "url": "https://id5.io"
+    },
     "132": "Teads France SAS",
     "133": "digitalAudience B.V.",
     "134": "SMARTSTREAM.TV GmbH",
@@ -115,7 +457,15 @@
     "142": "Media.net Advertising FZ-LLC",
     "143": "Connatix Native Exchange Inc.",
     "147": "Adacado Technologies Inc. (DBA Adacado)",
-    "148": "LiveIntent Inc.",
+    "148": {
+      "name": "LiveIntent Inc.",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Email-based identity resolution",
+        "Cross-context behavioural advertising"
+      ],
+      "url": "https://www.liveintent.com"
+    },
     "149": "ADman Interactive SLU",
     "150": "Inskin Media LTD",
     "151": "LIFT DSP LIMITED",
@@ -127,28 +477,100 @@
     "159": "Underdog Media LLC ",
     "160": "Audience Solutions S.A.",
     "161": "SMADEX, S.L.U.",
-    "163": "Bombora Inc.",
+    "163": {
+      "name": "Bombora Inc.",
+      "category": "Data Broker",
+      "concerns": [
+        "B2B intent data",
+        "Company surge data",
+        "Content consumption tracking"
+      ],
+      "url": "https://bombora.com"
+    },
     "164": "Outbrain UK.",
-    "165": "SpotX, Inc",
+    "165": {
+      "name": "SpotX, Inc",
+      "category": "Ad Network",
+      "concerns": [
+        "Largest independent SSP",
+        "CTV tracking",
+        "Real-time bidding"
+      ],
+      "url": "https://www.magnite.com"
+    },
     "168": "EASYmedia GmbH",
-    "173": "Yieldmo, Inc.",
+    "173": {
+      "name": "Yieldmo, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile advertising",
+        "Attention analytics",
+        "Scroll depth"
+      ],
+      "url": "https://www.yieldmo.com"
+    },
     "174": "A Million Ads",
     "178": "Hybrid Theory Global Ltd",
-    "184": "MEDIARITHMICS SAS",
-    "185": "Bidtellect, Inc",
+    "184": {
+      "name": "MEDIARITHMICS SAS",
+      "category": "Data Broker",
+      "concerns": [
+        "Customer Data Platform",
+        "Audience segmentation",
+        "Data management platform"
+      ],
+      "url": "https://www.mediarithmics.com"
+    },
+    "185": {
+      "name": "Bidtellect, Inc",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising DSP",
+        "Context-driven targeting",
+        "Real-time bidding"
+      ],
+      "url": "https://www.bidtellect.com"
+    },
     "190": "video intelligence AG",
-    "192": "Remerge GmbH",
+    "192": {
+      "name": "Remerge GmbH",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile retargeting",
+        "DSP",
+        "App re-engagement"
+      ],
+      "url": "https://www.remerge.io"
+    },
     "193": "Affle Iberia SL",
     "194": "Rezonence Limited",
     "195": "advanced store GmbH",
     "196": "AdElement Media Solutions Pvt Ltd",
     "199": "ADUX",
     "202": "Magnite CTV, Inc.",
-    "203": "Revcontent, LLC",
+    "203": {
+      "name": "Revcontent, LLC",
+      "category": "Ad Network",
+      "concerns": [
+        "Content recommendation",
+        "Native ads",
+        "Behavioral tracking"
+      ],
+      "url": "https://www.revcontent.com"
+    },
     "205": "Adssets AB",
     "206": "Hybrid Adtech GmbH",
     "209": "Delta Projects AB",
-    "210": "Zemanta Inc.",
+    "210": {
+      "name": "Zemanta Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Content recommendation",
+        "Behavioral tracking",
+        "Interest profiling"
+      ],
+      "url": "https://www.outbrain.com"
+    },
     "211": "AdTheorent, Inc",
     "212": "usemax advertisement (Emego GmbH)",
     "213": "emetriq GmbH",
@@ -159,11 +581,29 @@
     "226": "Publicis Media GmbH",
     "227": "Opt Out Advertising B.V. ",
     "228": "M.D. Primis Technologies Ltd.",
-    "231": "AcuityAds Inc.",
+    "231": {
+      "name": "AcuityAds Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Programmatic advertising DSP",
+        "Cross-channel targeting",
+        "Illumin journey advertising platform"
+      ],
+      "url": "https://illumin.com"
+    },
     "232": "Rockerbox, Inc",
     "235": "Bucksense Inc",
     "237": "VGI CTV, Inc",
-    "238": "StackAdapt Inc.",
+    "238": {
+      "name": "StackAdapt Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising DSP",
+        "Programmatic",
+        "Multi-channel"
+      ],
+      "url": "https://www.stackadapt.com"
+    },
     "239": "Triton Digital Canada Inc.",
     "241": "OneTag Limited",
     "242": "twiago GmbH",
@@ -174,13 +614,40 @@
     "249": "Tri-table Sp. z o.o.",
     "251": "Yieldlove GmbH",
     "252": "Splicky GmbH",
-    "253": "Improve Digital",
+    "253": {
+      "name": "Improve Digital",
+      "category": "Ad Network",
+      "concerns": [
+        "European SSP",
+        "Owned by Magnite",
+        "Publisher monetisation platform"
+      ],
+      "url": "https://www.improvedigital.com"
+    },
     "254": "LiquidM Technology GmbH",
     "255": "Onnetwork Sp. z o.o.",
     "256": "Wunderkind Corporation",
-    "259": "ADYOULIKE SA",
+    "259": {
+      "name": "ADYOULIKE SA",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "Content to commerce",
+        "European"
+      ],
+      "url": "https://www.adyoulike.com"
+    },
     "262": "DT Exchange (Digital Turbine (IL) Ltd.)",
-    "263": "Nativo, Inc.",
+    "263": {
+      "name": "Nativo, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "Brand content",
+        "Behavioral data"
+      ],
+      "url": "https://www.nativo.com"
+    },
     "264": "Adobe Advertising Cloud",
     "270": "Marfeel Solutions, SL",
     "272": "A.Mob",
@@ -195,8 +662,26 @@
     "282": "Welect GmbH",
     "284": "Weborama",
     "285": "Comcast International France SAS/FreeWheel Media",
-    "290": "Readpeak Oy",
-    "293": "SpringServe, LLC",
+    "290": {
+      "name": "Readpeak Oy",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising platform",
+        "Content recommendation engine",
+        "European native ads"
+      ],
+      "url": "https://www.readpeak.com"
+    },
+    "293": {
+      "name": "SpringServe, LLC",
+      "category": "Ad Network",
+      "concerns": [
+        "Largest independent SSP",
+        "CTV tracking",
+        "Real-time bidding"
+      ],
+      "url": "https://www.magnite.com"
+    },
     "294": "Jivox Corporation",
     "295": "Sojern, Inc.",
     "297": "Polar Mobile Group Inc.",
@@ -221,7 +706,16 @@
     "328": "Gemius SA",
     "329": "Browsi",
     "331": "ad6media",
-    "333": "InMobi Pte Ltd",
+    "333": {
+      "name": "InMobi Pte Ltd",
+      "category": "Ad Network",
+      "concerns": [
+        "Indian ad network",
+        "Mobile advertising",
+        "Location data"
+      ],
+      "url": "https://www.inmobi.com"
+    },
     "336": "Telecoming S.A.",
     "337": "SheMedia, LLC",
     "343": "DIGITEKA Technologies",
@@ -230,8 +724,26 @@
     "350": "Samba TV, Inc.",
     "351": "Samba TV UK Limited",
     "354": "Apester Ltd",
-    "358": "MGID Inc.",
-    "361": "Permutive Limited",
+    "358": {
+      "name": "MGID Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Native advertising",
+        "Content recommendation",
+        "Global tracking"
+      ],
+      "url": "https://www.mgid.com"
+    },
+    "361": {
+      "name": "Permutive Limited",
+      "category": "Analytics",
+      "concerns": [
+        "First-party audience segmentation runs on-device",
+        "Cohort-based targeting without cross-site identity",
+        "Publisher data platform with edge computing"
+      ],
+      "url": "https://permutive.com"
+    },
     "368": "VECTAURY",
     "371": "Seeding Alliance GmbH",
     "373": "Nielsen Media Research Ltd.",
@@ -243,18 +755,54 @@
     "381": "Solocal SA",
     "382": "The Reach Group GmbH",
     "384": "Pixalate, Inc.",
-    "385": "Oracle Advertising",
+    "385": {
+      "name": "Oracle Advertising",
+      "category": "Data Broker",
+      "concerns": [
+        "Massive data aggregation",
+        "Cross-site tracking",
+        "Data marketplace"
+      ],
+      "url": "https://www.oracle.com/cx/advertising/"
+    },
     "387": "Triapodi Ltd. d/b/a Digital Turbine",
     "388": "Numberly",
     "394": "AudienceProject A/S",
-    "397": "Demandbase, Inc.",
+    "397": {
+      "name": "Demandbase, Inc.",
+      "category": "Session Replay",
+      "concerns": [
+        "B2B advertising",
+        "Account identification",
+        "Intent data"
+      ],
+      "url": "https://www.demandbase.com"
+    },
     "402": "Effiliation / Effinity",
     "409": "Arrivalist Co.",
     "410": "Adtelligent Inc.",
-    "412": "Piano Software Inc.",
+    "412": {
+      "name": "Piano Software Inc.",
+      "category": "Analytics",
+      "concerns": [
+        "Analytics",
+        "Paywall",
+        "Subscription tracking"
+      ],
+      "url": "https://piano.io"
+    },
     "413": "Eulerian Technologies",
     "415": "Seenthis AB",
-    "416": "Commanders Act",
+    "416": {
+      "name": "Commanders Act",
+      "category": "Analytics",
+      "concerns": [
+        "Tag management",
+        "European focus",
+        "Server-side tracking"
+      ],
+      "url": "https://www.commandersact.com"
+    },
     "418": "PROXISTORE",
     "422": "Brand Metrics Sweden AB",
     "423": "travel audience GmbH",
@@ -271,13 +819,31 @@
     "447": "Adludio Ltd.",
     "448": "Targetspot Belgium SPRL",
     "450": "Streamwise srl",
-    "452": "Innovid LLC",
+    "452": {
+      "name": "Innovid LLC",
+      "category": "Ad Network",
+      "concerns": [
+        "CTV advertising",
+        "Video tracking",
+        "Cross-platform"
+      ],
+      "url": "https://www.innovid.com"
+    },
     "454": "Rico Developments Ltd",
     "455": "GDMServices, Inc. d/b/a Bidmind",
     "459": "uppr GmbH",
     "461": "B2B Media Group GmbH",
     "466": "Papirfly AS",
-    "468": "Neustar, Inc., a TransUnion company",
+    "468": {
+      "name": "Neustar, Inc., a TransUnion company",
+      "category": "Data Broker",
+      "concerns": [
+        "Credit data for marketing",
+        "TruVision data",
+        "Identity resolution"
+      ],
+      "url": "https://www.transunion.com"
+    },
     "469": "Zeta Global Corp.",
     "471": "Flexoffers.com, LLC",
     "473": "Sub2 Technologies Ltd",
@@ -285,7 +851,16 @@
     "479": "INFINIA MOBILE S.L.",
     "486": "Madington",
     "488": "Opinary (Affinity Global GmbH)",
-    "490": "GumGum, Inc.",
+    "490": {
+      "name": "GumGum, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Contextual advertising",
+        "Image recognition",
+        "In-image ads"
+      ],
+      "url": "https://www.gumgum.com"
+    },
     "491": "SevenData S.p.a.",
     "493": "Magnite, Inc. (Carbon AI Limited)",
     "495": "Arcspire Limited",
@@ -304,8 +879,26 @@
     "517": "SunMedia ",
     "519": "Newsroom AI Ltd",
     "521": "netzeffekt GmbH",
-    "524": "The Ozone Project Limited",
-    "527": "Jampp LTD",
+    "524": {
+      "name": "The Ozone Project Limited",
+      "category": "Ad Network",
+      "concerns": [
+        "UK publisher advertising alliance",
+        "Founded by News UK, Guardian, Telegraph, and Reach",
+        "Collects browsing data across publisher network"
+      ],
+      "url": "https://www.ozoneproject.com"
+    },
+    "527": {
+      "name": "Jampp LTD",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile retargeting",
+        "Programmatic",
+        "Affle owned"
+      ],
+      "url": "https://www.jampp.com"
+    },
     "528": "Realtime Technologies GmbH",
     "530": "Azira LLC",
     "531": "Smartclip Hispania S.L.",
@@ -314,7 +907,16 @@
     "536": "GlobalWebIndex",
     "539": "AdDefend GmbH",
     "540": "Tunnl B.V.",
-    "541": "DeepIntent, Inc.",
+    "541": {
+      "name": "DeepIntent, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Healthcare advertising DSP",
+        "Health data targeting",
+        "Programmatic healthcare marketing"
+      ],
+      "url": "https://www.deepintent.com"
+    },
     "546": "Smart Traffik",
     "549": "Tonefuse LLC",
     "550": "Happydemics",
@@ -323,7 +925,16 @@
     "554": "Radio Marketing Service interactive GmbH",
     "556": "turkticaret.net Yazılım Hiz. San. Tic.A.Ş.",
     "559": "Otto GmbH & Co. KGaA",
-    "561": "AuDigent",
+    "561": {
+      "name": "AuDigent",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Publisher data monetization",
+        "Hadron ID",
+        "Identity resolution"
+      ],
+      "url": "https://audigent.com"
+    },
     "565": "Adobe Audience Manager, Adobe Experience Platform",
     "568": "Next Different SpA",
     "569": "Kairos Fire",
@@ -355,7 +966,16 @@
     "623": "Adprime Media LLC",
     "624": "Norstat AS",
     "625": "BILENDI SA",
-    "626": "Hivestack Inc.",
+    "626": {
+      "name": "Hivestack Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "DOOH SSP",
+        "Location tracking",
+        "Perion owned"
+      ],
+      "url": "https://www.hivestack.com"
+    },
     "628": ": Tappx",
     "630": "Contact Impact GmbH/Axel Springer Teaser Ad GmbH",
     "631": "Relay42 Netherlands B.V.",
@@ -397,16 +1017,42 @@
     "706": "VRTCAL Markets Inc",
     "707": "Dentsu Italia SpA",
     "708": "OneFootball GmbH",
-    "709": "NC Audience Exchange, LLC ",
+    "709": {
+      "name": "NC Audience Exchange, LLC ",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Cross-publisher identity tracking via NewsID cookie",
+        "Cookie syncing across News Corp properties globally",
+        "Browsing behaviour and content viewing data collection"
+      ]
+    },
     "712": "Synkd UK Ltd.",
     "713": "Dataseat Ltd",
     "714": "Upwave Inc.",
     "715": "BidBerry SRL",
-    "716": "OnAudience Ltd",
+    "716": {
+      "name": "OnAudience Ltd",
+      "category": "Data Broker",
+      "concerns": [
+        "Audience data marketplace",
+        "Cookie-based profiling",
+        "Interest and intent segments"
+      ],
+      "url": "https://www.onaudience.com"
+    },
     "717": "Audience Network",
     "718": "XChange by SFBX®",
     "719": "Online Advertising Network Sp. z o.o.",
-    "721": "impact.com",
+    "721": {
+      "name": "impact.com",
+      "category": "Ad Network",
+      "concerns": [
+        "Affiliate tracking",
+        "Partnership platform",
+        "Conversion tracking"
+      ],
+      "url": "https://impact.com"
+    },
     "723": "Adzymic Creavibes",
     "724": "Between Exchange",
     "725": "Pubfinity LLC",
@@ -461,9 +1107,27 @@
     "786": "TargetVideo GmbH",
     "787": "Hearts and Science München GmbH",
     "788": "Ad Alliance GmbH",
-    "790": "Samsung Ads",
+    "790": {
+      "name": "Samsung Ads",
+      "category": "Ad Network",
+      "concerns": [
+        "Smart TV data",
+        "ACR tracking",
+        "Cross-device"
+      ],
+      "url": "https://www.samsung.com/us/business/samsung-ads/"
+    },
     "791": "Media Square",
-    "793": "Amazon Ads",
+    "793": {
+      "name": "Amazon Ads",
+      "category": "Ad Network",
+      "concerns": [
+        "Cross-service data linking across retail, Alexa, Ring, Prime Video, Kindle, Fire devices, and Twitch",
+        "Purchase and browsing history used for interest-based ad targeting",
+        "Alexa voice recordings processed and retained for service improvement"
+      ],
+      "url": "https://advertising.amazon.com"
+    },
     "794": "Kubient Inc. ",
     "795": "Factor Eleven GmbH",
     "796": "EASY Marketing GmbH",
@@ -475,25 +1139,79 @@
     "803": "POWERENGINE PTE.LIMITED",
     "804": "LinkedIn Ireland Unlimited Company",
     "806": "Aarki, Inc.",
-    "807": "Moloco, Inc.",
+    "807": {
+      "name": "Moloco, Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "ML advertising",
+        "Mobile DSP",
+        "Programmatic"
+      ],
+      "url": "https://www.moloco.com"
+    },
     "808": "Pure Local Media GmbH",
     "810": "lead alliance GmbH",
     "811": "iPROM",
-    "812": "Nielsen International SA",
+    "812": {
+      "name": "Nielsen International SA",
+      "category": "Data Broker",
+      "concerns": [
+        "TV viewing data",
+        "Cross-platform measurement",
+        "Demographic profiling"
+      ],
+      "url": "https://www.nielsen.com"
+    },
     "814": "Eskimi",
-    "815": "Blockthrough, Inc.",
+    "815": {
+      "name": "Blockthrough, Inc.",
+      "category": "Consent Provider",
+      "concerns": [
+        "Adblock recovery",
+        "Acceptable ads",
+        "Consent"
+      ],
+      "url": "https://www.blockthrough.com"
+    },
     "816": "NoBid, Inc.",
     "819": "retailAds GmbH & Co. KG",
-    "820": "Kameleoon SAS",
+    "820": {
+      "name": "Kameleoon SAS",
+      "category": "Session Replay",
+      "concerns": [
+        "A/B testing",
+        "AI personalization",
+        "User tracking"
+      ],
+      "url": "https://www.kameleoon.com"
+    },
     "821": "vitrado GmbH",
     "822": "Adverty AB (publ)",
     "825": "EDGE NPD Sp. z o.o.",
     "827": "Adtriba GmbH",
     "828": "TX Group AG",
-    "830": "Acxiom",
+    "830": {
+      "name": "Acxiom",
+      "category": "Data Broker",
+      "concerns": [
+        "2.5 billion consumer profiles",
+        "Data selling",
+        "Detailed demographic profiles"
+      ],
+      "url": "https://www.acxiom.com"
+    },
     "831": "United Internet Media GmbH",
     "832": "Objective Partners BV",
-    "833": "Disqus",
+    "833": {
+      "name": "Disqus",
+      "category": "Social Tracker",
+      "concerns": [
+        "Comment system",
+        "User tracking",
+        "Advertising"
+      ],
+      "url": "https://disqus.com"
+    },
     "834": "ADRENALEAD",
     "835": "Quality Media Network GmbH",
     "836": "Bring! Labs AG",
@@ -503,12 +1221,30 @@
     "840": "Cazamba Serviços de Internet Ltda",
     "842": "PubWise, LLLP",
     "844": "SPICY MOBILE Karczewski Zawadzki Spółka Jawna",
-    "845": "GeoEdge",
+    "845": {
+      "name": "GeoEdge",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad verification and quality",
+        "Malvertising detection",
+        "Ad content scanning"
+      ],
+      "url": "https://www.geoedge.com"
+    },
     "848": "BSmartData GmbH",
     "849": "Epom",
     "850": "Publisher First, Inc.",
     "851": "Strossle International AB",
-    "853": "Ensighten",
+    "853": {
+      "name": "Ensighten",
+      "category": "Analytics",
+      "concerns": [
+        "Tag management",
+        "Privacy compliance",
+        "Data collection"
+      ],
+      "url": "https://www.ensighten.com"
+    },
     "854": "eMarketingSolutions, Online Marketing S.L.",
     "855": "Adnuntius AS",
     "856": "Petal Ads",
@@ -520,16 +1256,43 @@
     "864": "I.R.V. D.O.O.",
     "865": "HEIMSPIEL Medien GmbH & Co. KG",
     "866": "YieldLift LLC",
-    "867": "Mintegral International Limited",
+    "867": {
+      "name": "Mintegral International Limited",
+      "category": "Ad Network",
+      "concerns": [
+        "Chinese ad network",
+        "Mobile programmatic",
+        "Global reach"
+      ],
+      "url": "https://www.mintegral.com"
+    },
     "868": "Converto AG",
     "869": "Brave People Ltd.",
-    "870": "Webgains GmbH",
+    "870": {
+      "name": "Webgains GmbH",
+      "category": "Ad Network",
+      "concerns": [
+        "European affiliate marketing network",
+        "Cross-site conversion tracking and attribution",
+        "Performance-based advertising"
+      ],
+      "url": "https://www.webgains.com"
+    },
     "871": "Ingenious Technologies AG",
     "872": "IVO Media Ltd",
     "874": "PRECISO SRL",
     "875": "cynapsis interactive GmbH",
     "876": "3Q GmbH",
-    "877": "Experian LTD",
+    "877": {
+      "name": "Experian LTD",
+      "category": "Data Broker",
+      "concerns": [
+        "UK consumer data",
+        "Credit scoring",
+        "Marketing services"
+      ],
+      "url": "https://www.experian.co.uk"
+    },
     "878": "Natív Hirdetés Korlátolt Felelősségű Társaság",
     "879": "Appush Technologies",
     "880": "Quantyoo GmbH & Co. KG",
@@ -551,7 +1314,16 @@
     "901": "STUDIO GONG GmbH & Co. Studiobetriebs KG",
     "902": "adQuery",
     "903": "Placense Ltd",
-    "907": "AWIN AG",
+    "907": {
+      "name": "AWIN AG",
+      "category": "Ad Network",
+      "concerns": [
+        "Affiliate network",
+        "Performance marketing",
+        "Axel Springer owned"
+      ],
+      "url": "https://www.awin.com"
+    },
     "909": "MobileFuse LLC",
     "910": "Insticator, Inc.",
     "911": "Redbranch, Inc dba Fraudlogix",
@@ -572,7 +1344,16 @@
     "937": "SoD ScreenOnDemand GmbH",
     "938": "dataXtrade GmbH",
     "939": "Toluna Netherlands B.V. KvK",
-    "940": "Terminus Software Inc.",
+    "940": {
+      "name": "Terminus Software Inc.",
+      "category": "Session Replay",
+      "concerns": [
+        "ABM platform",
+        "B2B advertising",
+        "Account tracking"
+      ],
+      "url": "https://terminus.com"
+    },
     "941": "ADSOCY",
     "943": "Marfeel Solutions, SL (Compass)",
     "944": "AudienceRun corp",
@@ -597,7 +1378,16 @@
     "968": "WEMASS MEDIA AUDIENCE SAFE SOLUTIONS, S.L. ",
     "969": "SmartFrame Technologies Ltd",
     "970": "Frameplay Corporation",
-    "972": "Kargo Global Inc.",
+    "972": {
+      "name": "Kargo Global Inc.",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile ad formats",
+        "Premium inventory",
+        "Brand ads"
+      ],
+      "url": "https://www.kargo.com"
+    },
     "973": "Cluep Inc.",
     "975": "Glui Inc",
     "976": "Pelmorex Corp.",
@@ -624,7 +1414,16 @@
     "1009": "VLYBY Digital GmbH",
     "1013": "Velocity Made Good LLC",
     "1014": "Vyde Ltd.",
-    "1015": "Samsung Ads",
+    "1015": {
+      "name": "Samsung Ads",
+      "category": "Ad Network",
+      "concerns": [
+        "Smart TV data",
+        "ACR tracking",
+        "Cross-device"
+      ],
+      "url": "https://www.samsung.com/us/business/samsung-ads/"
+    },
     "1016": "FUNKE Digital GmbH",
     "1017": "giosg.com Oy",
     "1018": "MUSO TNT LIMITED",
@@ -687,14 +1486,32 @@
     "1087": "CASTOOLA D.O.O.",
     "1089": "Teavaro",
     "1090": "Score Media Group GmbH & Co. KG",
-    "1091": "Octave IP Limited",
+    "1091": {
+      "name": "Octave IP Limited",
+      "category": "Ad Network",
+      "concerns": [
+        "Programmatic digital audio advertising platform",
+        "News UK-operated advertising processor",
+        "Receives contact details and biographical data from publishers"
+      ],
+      "url": "https://www.octaveaudio.com"
+    },
     "1094": "ADMAX",
     "1097": "Annonsera SUNT AB",
     "1098": "ACTV8, Inc.",
     "1100": "Relevant Digital Oy",
     "1101": "PIA Advertising GmbH",
     "1103": "Schober Information Group Deutschland GmbH",
-    "1104": "Covatic Ltd",
+    "1104": {
+      "name": "Covatic Ltd",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile SDK embedded in publisher apps",
+        "Geolocation-based audience segmentation",
+        "Device identifier and IP address collection"
+      ],
+      "url": "https://www.covatic.com"
+    },
     "1105": "Blue Media Services LTDA",
     "1106": "Better Ads GmbH",
     "1107": "FRVR Limited",
@@ -709,7 +1526,16 @@
     "1121": "REMAILME",
     "1122": "Media-Micro-Census GmbH",
     "1124": "TF1 PUBLICITE",
-    "1126": "Microsoft Advertising",
+    "1126": {
+      "name": "Microsoft Advertising",
+      "category": "Ad Network",
+      "concerns": [
+        "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+        "Windows telemetry and diagnostic data collection",
+        "Copilot AI prompt and conversation data processing"
+      ],
+      "url": "https://ads.microsoft.com"
+    },
     "1127": "XAD spoteffects GmbH",
     "1129": "Brandhouse/Subsero A/S",
     "1130": "MobUpps International LTD",
@@ -720,7 +1546,16 @@
     "1135": "Opera Software Ireland Limited",
     "1136": "Infolinks Media, LLC",
     "1137": "Verasity Limited",
-    "1138": "Viafoura Inc.",
+    "1138": {
+      "name": "Viafoura Inc.",
+      "category": "Analytics",
+      "concerns": [
+        "Community engagement platform",
+        "Comment and interaction tracking",
+        "User identity and profiling"
+      ],
+      "url": "https://viafoura.com"
+    },
     "1139": "CleverPush GmbH",
     "1140": "Convo Ink",
     "1141": "Agate Systems Limited",
@@ -732,7 +1567,16 @@
     "1149": "AdInMo LTD",
     "1151": "Boldwin LTD",
     "1153": "Sonares GmbH",
-    "1154": "Alphonso Inc. ",
+    "1154": {
+      "name": "Alphonso Inc. ",
+      "category": "Ad Network",
+      "concerns": [
+        "ACR technology",
+        "TV ad measurement",
+        "Cross-device"
+      ],
+      "url": "https://www.alphonso.tv"
+    },
     "1155": "Bootleg Digital LTD",
     "1156": "ividence",
     "1157": "Refine Direct Srl",
@@ -791,7 +1635,16 @@
     "1213": "esome advertising technologies gmbh",
     "1214": "Kamino Retail",
     "1215": "DrivenIQ Corporation",
-    "1216": "Start.io Inc",
+    "1216": {
+      "name": "Start.io Inc",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile ad network",
+        "Interstitial ads",
+        "User data"
+      ],
+      "url": "https://www.start.io"
+    },
     "1217": "Channel99, Inc.",
     "1218": "AIDEM Technologies LTD",
     "1219": "Videobot Ltd",
@@ -858,7 +1711,16 @@
     "1281": "Admatic GMBH",
     "1282": "Sabio London Limited",
     "1283": "Appmonsta Ltd",
-    "1284": "DataDome SA",
+    "1284": {
+      "name": "DataDome SA",
+      "category": "Ad Network",
+      "concerns": [
+        "Bot detection and fraud prevention",
+        "Device fingerprinting for bot identification",
+        "Real-time request analysis"
+      ],
+      "url": "https://datadome.co"
+    },
     "1285": "Sarigato Sp. z o.o.",
     "1286": "NexInsight LLC",
     "1287": "Advertising.Tech FZ-LLC",
@@ -897,7 +1759,16 @@
     "1320": "Xapads Media Ltd",
     "1321": "Blue Dawn Marketing Consulting Group S.L.",
     "1322": "Adforce Digital Intelligence LTDA",
-    "1323": "Intent IQ LLC",
+    "1323": {
+      "name": "Intent IQ LLC",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Cross-device identity mapping",
+        "Probabilistic device graph",
+        "Registered Texas data broker"
+      ],
+      "url": "https://www.intentiq.com"
+    },
     "1325": "366 SAS",
     "1326": "Hurst Group Limited",
     "1327": "RAAS LAB Ltd",
@@ -1041,7 +1912,16 @@
     "1466": "Trendesk TV LLC dba BidFuse",
     "1467": "LoudEcho",
     "1468": "OnCore Digital Media",
-    "1469": "zeotap GmbH",
+    "1469": {
+      "name": "zeotap GmbH",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Identity resolution",
+        "Customer data platform",
+        "Cross-device matching"
+      ],
+      "url": "https://zeotap.com"
+    },
     "1470": "RM DIGITAL ADS LTDA",
     "1471": "Overwolf ltd.",
     "1472": "BE PIXEL NET LTDA",
@@ -1087,11 +1967,29 @@
     "1513": "Appcelerate ",
     "1514": "SparkV International Inc",
     "1515": "GALAXY X TECH LIMITED",
-    "1516": "Peer39",
+    "1516": {
+      "name": "Peer39",
+      "category": "Ad Network",
+      "concerns": [
+        "Contextual intelligence and brand safety classification",
+        "Page-level content scanning and categorization",
+        "Pre-bid contextual segments for ad targeting"
+      ],
+      "url": "https://www.peer39.com"
+    },
     "1517": "Afront LTD",
     "1518": "Media Lgns Loganglobal SLU",
     "1519": "Hoppr Ltd",
-    "1520": "Yahoo International Limited",
+    "1520": {
+      "name": "Yahoo International Limited",
+      "category": "Ad Network",
+      "concerns": [
+        "Yahoo tracking",
+        "AOL data",
+        "Cross-property profiling"
+      ],
+      "url": "https://www.yahoo.com"
+    },
     "1521": "Twenty Nine Enterprises, Inc. (Magellan AI)",
     "1522": "Cloud4Wi Inc",
     "1523": "PayPal Inc. ",
@@ -1108,7 +2006,16 @@
     "1534": "Three Spring Media LTD",
     "1535": "GetmediaMX LLC",
     "1536": "HighLoadIT OU d/b/a PPC.BUZZ",
-    "1537": " Branch Metrics, Inc.",
+    "1537": {
+      "name": " Branch Metrics, Inc.",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Deep linking",
+        "Attribution",
+        "Cross-platform identity"
+      ],
+      "url": "https://www.branch.io"
+    },
     "1538": "Coresibo LTD (DBA Tredio)",
     "1539": "Datonics LLC",
     "1540": "TTG International LLC",

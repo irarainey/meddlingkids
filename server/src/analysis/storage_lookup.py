@@ -14,6 +14,25 @@ from src.utils import logger
 log = logger.create_logger("StorageLookup")
 
 
+def _attach_vendor_metadata(result: storage_info_agent.StorageInfoResult) -> storage_info_agent.StorageInfoResult:
+    """Enrich a storage result with vendor cross-reference data.
+
+    Looks up the ``set_by`` value in the tracking-storage vendor
+    index and populates vendor metadata fields when a match is
+    found.
+    """
+    vendor_index = loader.get_tracking_storage_vendor_index()
+    vendor = vendor_index.get(result.set_by)
+    if not vendor:
+        return result
+    result.vendor_category = vendor.get("category")
+    result.vendor_url = vendor.get("url")
+    result.vendor_concerns = vendor.get("concerns")
+    result.vendor_gvl_ids = vendor.get("gvl_ids")
+    result.vendor_atp_ids = vendor.get("atp_ids")
+    return result
+
+
 def _check_tracking_storage_pattern(key: str) -> storage_info_agent.StorageInfoResult | None:
     """Check if a storage key matches known tracking storage patterns.
 
@@ -58,7 +77,7 @@ async def get_storage_info(
     result = _check_tracking_storage_pattern(key)
     if result:
         log.debug("Storage key matched tracking pattern", {"key": key})
-        return result
+        return _attach_vendor_metadata(result)
 
     # 2. Fall back to LLM
     log.info("Storage key not in databases, querying LLM", {"key": key, "type": storage_type})

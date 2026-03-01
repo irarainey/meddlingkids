@@ -50,7 +50,10 @@
       "liverail",
       "facebook audience network"
     ],
-    "url": "https://www.meta.com"
+    "url": "https://www.meta.com",
+    "atp_ids": [
+      89
+    ]
   },
   "amazon": {
     "concerns": [
@@ -71,7 +74,10 @@
       "amazon publisher services",
       "amazon marketing cloud"
     ],
-    "url": "https://advertising.amazon.com"
+    "url": "https://advertising.amazon.com",
+    "gvl_ids": [
+      793
+    ]
   },
   "microsoft": {
     "concerns": [
@@ -96,7 +102,11 @@
       "xandr inc",
       "microsoft copilot"
     ],
-    "url": "https://ads.microsoft.com"
+    "url": "https://ads.microsoft.com",
+    "gvl_ids": [
+      32,
+      1126
+    ]
   },
   "apple": {
     "concerns": [
@@ -128,7 +138,10 @@
       "criteo sa",
       "criteo inc"
     ],
-    "url": "https://www.criteo.com"
+    "url": "https://www.criteo.com",
+    "gvl_ids": [
+      91
+    ]
   },
   "magnite": {
     "concerns": [
@@ -146,7 +159,11 @@
       "springserve",
       "spot x"
     ],
-    "url": "https://www.magnite.com"
+    "url": "https://www.magnite.com",
+    "gvl_ids": [
+      165,
+      293
+    ]
   },
   "pubmatic": {
     "concerns": [
@@ -158,7 +175,10 @@
     "aliases": [
       "pubmatic inc"
     ],
-    "url": "https://pubmatic.com"
+    "url": "https://pubmatic.com",
+    "gvl_ids": [
+      76
+    ]
   },
   "openx": {
     "concerns": [
@@ -170,7 +190,10 @@
       "openx technologies",
       "openx software"
     ],
-    "url": "https://www.openx.com"
+    "url": "https://www.openx.com",
+    "gvl_ids": [
+      69
+    ]
   },
   "index exchange": {
     "concerns": [
@@ -183,7 +206,10 @@
       "casalemedia",
       "ix"
     ],
-    "url": "https://www.indexexchange.com"
+    "url": "https://www.indexexchange.com",
+    "gvl_ids": [
+      10
+    ]
   },
   "sovrn": {
     "concerns": [
@@ -195,14 +221,17 @@
       "sovrn holdings",
       "lijit"
     ],
-    "url": "https://www.sovrn.com"
+    "url": "https://www.sovrn.com",
+    "gvl_ids": [
+      13
+    ]
   },
   "triplelift": {
     "concerns": [
       "Native advertising",
       "CTV",
       "Programmatic",
-      "Acquired 1PlusX AG \u2014 first-party data management platform for predictive audience modelling",
+      "Acquired 1PlusX AG — first-party data management platform for predictive audience modelling",
       "1PlusX enables publishers to enrich and monetise first-party data via lookalike audiences"
     ],
     "aliases": [
@@ -212,7 +241,11 @@
       "1 plus x",
       "1plusxag"
     ],
-    "url": "https://www.triplelift.com"
+    "url": "https://www.triplelift.com",
+    "gvl_ids": [
+      28,
+      92
+    ]
   },
   "viant": {
     "concerns": [
@@ -229,7 +262,10 @@
       "adelphic llc",
       "viantsuite"
     ],
-    "url": "https://www.viantinc.com"
+    "url": "https://www.viantinc.com",
+    "atp_ids": [
+      2343
+    ]
   },
   "mediamath": {
     "concerns": [
@@ -303,7 +339,10 @@
       "outbrain direct",
       "zemanta"
     ],
-    "url": "https://www.outbrain.com"
+    "url": "https://www.outbrain.com",
+    "gvl_ids": [
+      210
+    ]
   },
   "ozone project": {
     "concerns": [
@@ -321,7 +360,10 @@
       "the ozone project",
       "ozoneproject.com"
     ],
-    "url": "https://www.ozoneproject.com"
+    "url": "https://www.ozoneproject.com",
+    "gvl_ids": [
+      524
+    ]
   },
   "revcontent": {
     "concerns": [
@@ -332,7 +374,10 @@
     "aliases": [
       "rev content"
     ],
-    "url": "https://www.revcontent.com"
+    "url": "https://www.revcontent.com",
+    "gvl_ids": [
+      203
+    ]
   },
   "mgid": {
     "concerns": [
@@ -343,7 +388,10 @@
     "aliases": [
       "mgid inc"
     ],
-    "url": "https://www.mgid.com"
+    "url": "https://www.mgid.com",
+    "gvl_ids": [
+      358
+    ]
   },
   "nativo": {
     "concerns": [
@@ -354,7 +402,10 @@
     "aliases": [
       "nativo inc"
     ],
-    "url": "https://www.nativo.com"
+    "url": "https://www.nativo.com",
+    "gvl_ids": [
+      263
+    ]
   },
   "tiktok": {
     "concerns": [
@@ -435,7 +486,10 @@
       "snap audience network",
       "snapads"
     ],
-    "url": "https://forbusiness.snapchat.com"
+    "url": "https://forbusiness.snapchat.com",
+    "atp_ids": [
+      2572
+    ]
   },
   "linkedin": {
     "concerns": [
@@ -497,7 +551,10 @@
     "aliases": [
       "adform a/s"
     ],
-    "url": "https://www.adform.com"
+    "url": "https://www.adform.com",
+    "gvl_ids": [
+      50
+    ]
   },
   "smartadserver": {
     "concerns": [
@@ -509,7 +566,10 @@
       "smart adserver",
       "equativ"
     ],
-    "url": "https://smartadserver.com"
+    "url": "https://smartadserver.com",
+    "gvl_ids": [
+      45
+    ]
   },
   "sizmek": {
     "concerns": [
@@ -534,7 +594,10 @@
     "aliases": [
       "flash talking"
     ],
-    "url": "https://www.flashtalking.com"
+    "url": "https://www.flashtalking.com",
+    "gvl_ids": [
+      78
+    ]
   },
   "innovid": {
     "concerns": [
@@ -545,7 +608,10 @@
     "aliases": [
       "innovid inc"
     ],
-    "url": "https://www.innovid.com"
+    "url": "https://www.innovid.com",
+    "gvl_ids": [
+      452
+    ]
   },
   "freewheel": {
     "concerns": [
@@ -626,7 +692,10 @@
       "double verify",
       "dv"
     ],
-    "url": "https://www.doubleverify.com"
+    "url": "https://www.doubleverify.com",
+    "gvl_ids": [
+      126
+    ]
   },
   "integral ad science": {
     "concerns": [
@@ -653,7 +722,10 @@
       "yahoo advertising",
       "yahoo dsp"
     ],
-    "url": "https://www.yahoo.com"
+    "url": "https://www.yahoo.com",
+    "gvl_ids": [
+      1520
+    ]
   },
   "sonobi": {
     "concerns": [
@@ -664,7 +736,10 @@
     "aliases": [
       "sonobi inc"
     ],
-    "url": "https://sonobi.com"
+    "url": "https://sonobi.com",
+    "gvl_ids": [
+      104
+    ]
   },
   "sharethrough": {
     "concerns": [
@@ -675,7 +750,10 @@
     "aliases": [
       "share through"
     ],
-    "url": "https://www.sharethrough.com"
+    "url": "https://www.sharethrough.com",
+    "gvl_ids": [
+      80
+    ]
   },
   "33across": {
     "concerns": [
@@ -686,7 +764,10 @@
     "aliases": [
       "33 across"
     ],
-    "url": "https://www.33across.com"
+    "url": "https://www.33across.com",
+    "gvl_ids": [
+      58
+    ]
   },
   "gumgum": {
     "concerns": [
@@ -697,7 +778,11 @@
     "aliases": [
       "gum gum"
     ],
-    "url": "https://www.gumgum.com"
+    "url": "https://www.gumgum.com",
+    "gvl_ids": [
+      61,
+      490
+    ]
   },
   "undertone": {
     "concerns": [
@@ -730,7 +815,10 @@
     "aliases": [
       "yield mo"
     ],
-    "url": "https://www.yieldmo.com"
+    "url": "https://www.yieldmo.com",
+    "gvl_ids": [
+      173
+    ]
   },
   "teads": {
     "concerns": [
@@ -784,7 +872,10 @@
       "unity3d",
       "iron source"
     ],
-    "url": "https://unity.com/products/unity-ads"
+    "url": "https://unity.com/products/unity-ads",
+    "atp_ids": [
+      3234
+    ]
   },
   "applovin": {
     "concerns": [
@@ -798,7 +889,10 @@
       "max",
       "applvn"
     ],
-    "url": "https://www.applovin.com"
+    "url": "https://www.applovin.com",
+    "atp_ids": [
+      1301
+    ]
   },
   "chartboost": {
     "concerns": [
@@ -809,7 +903,10 @@
     "aliases": [
       "chart boost"
     ],
-    "url": "https://www.chartboost.com"
+    "url": "https://www.chartboost.com",
+    "atp_ids": [
+      2898
+    ]
   },
   "vungle": {
     "concerns": [
@@ -843,7 +940,10 @@
     "aliases": [
       "mint egral"
     ],
-    "url": "https://www.mintegral.com"
+    "url": "https://www.mintegral.com",
+    "gvl_ids": [
+      867
+    ]
   },
   "inmobi": {
     "concerns": [
@@ -855,7 +955,10 @@
       "in mobi",
       "inmobi pte"
     ],
-    "url": "https://www.inmobi.com"
+    "url": "https://www.inmobi.com",
+    "gvl_ids": [
+      333
+    ]
   },
   "smaato": {
     "concerns": [
@@ -866,7 +969,10 @@
     "aliases": [
       "smaato inc"
     ],
-    "url": "https://www.smaato.com"
+    "url": "https://www.smaato.com",
+    "gvl_ids": [
+      82
+    ]
   },
   "verve": {
     "concerns": [
@@ -890,7 +996,10 @@
       "liftoff.io",
       "liftoff mobile"
     ],
-    "url": "https://liftoff.io"
+    "url": "https://liftoff.io",
+    "atp_ids": [
+      1423
+    ]
   },
   "moloco": {
     "concerns": [
@@ -901,7 +1010,10 @@
     "aliases": [
       "moloco inc"
     ],
-    "url": "https://www.moloco.com"
+    "url": "https://www.moloco.com",
+    "gvl_ids": [
+      807
+    ]
   },
   "digital turbine": {
     "concerns": [
@@ -934,7 +1046,10 @@
     "aliases": [
       "stack adapt"
     ],
-    "url": "https://www.stackadapt.com"
+    "url": "https://www.stackadapt.com",
+    "gvl_ids": [
+      238
+    ]
   },
   "adroll": {
     "concerns": [
@@ -946,7 +1061,10 @@
       "ad roll",
       "nextroll"
     ],
-    "url": "https://www.adroll.com"
+    "url": "https://www.adroll.com",
+    "gvl_ids": [
+      130
+    ]
   },
   "simplifi": {
     "concerns": [
@@ -958,7 +1076,10 @@
       "simpli.fi",
       "simplifi holdings"
     ],
-    "url": "https://simpli.fi"
+    "url": "https://simpli.fi",
+    "gvl_ids": [
+      73
+    ]
   },
   "jampp": {
     "concerns": [
@@ -969,7 +1090,10 @@
     "aliases": [
       "jampp inc"
     ],
-    "url": "https://www.jampp.com"
+    "url": "https://www.jampp.com",
+    "gvl_ids": [
+      527
+    ]
   },
   "remerge": {
     "concerns": [
@@ -980,7 +1104,10 @@
     "aliases": [
       "remerge gmbh"
     ],
-    "url": "https://www.remerge.io"
+    "url": "https://www.remerge.io",
+    "gvl_ids": [
+      192
+    ]
   },
   "yahoo ssp": {
     "concerns": [
@@ -1002,7 +1129,10 @@
     "aliases": [
       "kargo global"
     ],
-    "url": "https://www.kargo.com"
+    "url": "https://www.kargo.com",
+    "gvl_ids": [
+      972
+    ]
   },
   "adyoulike": {
     "concerns": [
@@ -1013,7 +1143,10 @@
     "aliases": [
       "ad you like"
     ],
-    "url": "https://www.adyoulike.com"
+    "url": "https://www.adyoulike.com",
+    "gvl_ids": [
+      259
+    ]
   },
   "unruly": {
     "concerns": [
@@ -1083,7 +1216,13 @@
       "impact.com",
       "impact radius"
     ],
-    "url": "https://impact.com"
+    "url": "https://impact.com",
+    "gvl_ids": [
+      721
+    ],
+    "atp_ids": [
+      49431
+    ]
   },
   "partnerize": {
     "concerns": [
@@ -1096,7 +1235,10 @@
       "performance horizon",
       "prf.hn"
     ],
-    "url": "https://partnerize.com"
+    "url": "https://partnerize.com",
+    "atp_ids": [
+      3008
+    ]
   },
   "awin": {
     "concerns": [
@@ -1109,7 +1251,10 @@
       "affiliate window",
       "zanox"
     ],
-    "url": "https://www.awin.com"
+    "url": "https://www.awin.com",
+    "gvl_ids": [
+      907
+    ]
   },
   "cj affiliate": {
     "concerns": [
@@ -1133,7 +1278,10 @@
       "rakuten marketing",
       "linkshare"
     ],
-    "url": "https://rakutenadvertising.com"
+    "url": "https://rakutenadvertising.com",
+    "gvl_ids": [
+      60
+    ]
   },
   "shareasale": {
     "concerns": [
@@ -1160,7 +1308,10 @@
       "skimbit ltd",
       "taboola owned"
     ],
-    "url": "https://skimlinks.com"
+    "url": "https://skimlinks.com",
+    "gvl_ids": [
+      46
+    ]
   },
   "sovrn commerce": {
     "concerns": [
@@ -1219,7 +1370,11 @@
     "aliases": [
       "samsung advertising"
     ],
-    "url": "https://www.samsung.com/us/business/samsung-ads/"
+    "url": "https://www.samsung.com/us/business/samsung-ads/",
+    "gvl_ids": [
+      790,
+      1015
+    ]
   },
   "vizio": {
     "concerns": [
@@ -1254,7 +1409,10 @@
     "aliases": [
       "alphonso inc"
     ],
-    "url": "https://www.alphonso.tv"
+    "url": "https://www.alphonso.tv",
+    "gvl_ids": [
+      1154
+    ]
   },
   "samba tv": {
     "concerns": [
@@ -1334,7 +1492,10 @@
     "aliases": [
       "hive stack"
     ],
-    "url": "https://www.hivestack.com"
+    "url": "https://www.hivestack.com",
+    "gvl_ids": [
+      626
+    ]
   },
   "place exchange": {
     "concerns": [
@@ -1382,7 +1543,10 @@
       "captify technologies",
       "captifytechnologies"
     ],
-    "url": "https://www.captify.us"
+    "url": "https://www.captify.us",
+    "gvl_ids": [
+      2
+    ]
   },
   "passendo": {
     "concerns": [
@@ -1422,7 +1586,10 @@
       "bizrate",
       "become"
     ],
-    "url": "https://connexity.com"
+    "url": "https://connexity.com",
+    "atp_ids": [
+      143
+    ]
   },
   "rtb house": {
     "concerns": [
@@ -1443,7 +1610,10 @@
       "adlook limited",
       "promotons"
     ],
-    "url": "https://www.rtbhouse.com"
+    "url": "https://www.rtbhouse.com",
+    "gvl_ids": [
+      16
+    ]
   },
   "nexxen": {
     "concerns": [
@@ -1463,7 +1633,10 @@
       "unruly group",
       "spearad"
     ],
-    "url": "https://www.nexxen.com"
+    "url": "https://www.nexxen.com",
+    "gvl_ids": [
+      23
+    ]
   },
   "bidtellect": {
     "concerns": [
@@ -1474,7 +1647,10 @@
     "aliases": [
       "bidtellect inc"
     ],
-    "url": "https://www.bidtellect.com"
+    "url": "https://www.bidtellect.com",
+    "gvl_ids": [
+      185
+    ]
   },
   "bidswitch": {
     "concerns": [
@@ -1486,7 +1662,11 @@
       "bidswitch gmbh",
       "iponweb"
     ],
-    "url": "https://www.bidswitch.com"
+    "url": "https://www.bidswitch.com",
+    "gvl_ids": [
+      128,
+      129
+    ]
   },
   "deepintent": {
     "concerns": [
@@ -1497,7 +1677,10 @@
     "aliases": [
       "deep intent"
     ],
-    "url": "https://www.deepintent.com"
+    "url": "https://www.deepintent.com",
+    "gvl_ids": [
+      541
+    ]
   },
   "media.net": {
     "concerns": [
@@ -1521,7 +1704,10 @@
       "pulsepoint inc",
       "contextweb"
     ],
-    "url": "https://www.pulsepoint.com"
+    "url": "https://www.pulsepoint.com",
+    "gvl_ids": [
+      81
+    ]
   },
   "showheroes": {
     "concerns": [
@@ -1533,7 +1719,10 @@
       "showheroes group",
       "showheroes se"
     ],
-    "url": "https://showheroes.com"
+    "url": "https://showheroes.com",
+    "gvl_ids": [
+      111
+    ]
   },
   "stroeer": {
     "concerns": [
@@ -1542,9 +1731,9 @@
       "Online video and display advertising"
     ],
     "aliases": [
-      "str\u00f6er",
+      "ströer",
       "stroeer se",
-      "str\u00f6er se & co kgaa"
+      "ströer se & co kgaa"
     ],
     "url": "https://www.stroeer.com"
   },
@@ -1558,7 +1747,10 @@
       "improvedigital",
       "improve digital bv"
     ],
-    "url": "https://www.improvedigital.com"
+    "url": "https://www.improvedigital.com",
+    "gvl_ids": [
+      253
+    ]
   },
   "cadent": {
     "concerns": [
@@ -1573,7 +1765,10 @@
       "emx digital",
       "emxdgt"
     ],
-    "url": "https://www.cadent.tv"
+    "url": "https://www.cadent.tv",
+    "atp_ids": [
+      1329
+    ]
   },
   "acuityads": {
     "concerns": [
@@ -1586,7 +1781,10 @@
       "illumin",
       "acuityads holdings"
     ],
-    "url": "https://illumin.com"
+    "url": "https://illumin.com",
+    "gvl_ids": [
+      231
+    ]
   },
   "readpeak": {
     "concerns": [
@@ -1597,7 +1795,10 @@
     "aliases": [
       "readpeak oy"
     ],
-    "url": "https://www.readpeak.com"
+    "url": "https://www.readpeak.com",
+    "gvl_ids": [
+      290
+    ]
   },
   "geoedge": {
     "concerns": [
@@ -1608,7 +1809,10 @@
     "aliases": [
       "geo edge"
     ],
-    "url": "https://www.geoedge.com"
+    "url": "https://www.geoedge.com",
+    "gvl_ids": [
+      845
+    ]
   },
   "datadome": {
     "concerns": [
@@ -1619,7 +1823,10 @@
     "aliases": [
       "datadome sas"
     ],
-    "url": "https://datadome.co"
+    "url": "https://datadome.co",
+    "gvl_ids": [
+      1284
+    ]
   },
   "octave audio": {
     "concerns": [
@@ -1637,7 +1844,10 @@
       "octaveaudio.com",
       "octaveip.com"
     ],
-    "url": "https://www.octaveaudio.com"
+    "url": "https://www.octaveaudio.com",
+    "gvl_ids": [
+      1091
+    ]
   },
   "youview": {
     "concerns": [
@@ -1661,7 +1871,10 @@
     "aliases": [
       "tradedoubler ab"
     ],
-    "url": "https://www.tradedoubler.com"
+    "url": "https://www.tradedoubler.com",
+    "atp_ids": [
+      486
+    ]
   },
   "peer39": {
     "concerns": [
@@ -1674,7 +1887,13 @@
       "peer 39",
       "peer39 inc"
     ],
-    "url": "https://www.peer39.com"
+    "url": "https://www.peer39.com",
+    "gvl_ids": [
+      1516
+    ],
+    "atp_ids": [
+      3281
+    ]
   },
   "kevel": {
     "concerns": [
@@ -1688,7 +1907,10 @@
       "kevel inc",
       "adzerk inc"
     ],
-    "url": "https://www.kevel.com"
+    "url": "https://www.kevel.com",
+    "atp_ids": [
+      938
+    ]
   },
   "vk ads": {
     "concerns": [
@@ -1705,7 +1927,10 @@
       "mycom",
       "mradx"
     ],
-    "url": "https://ads.vk.com"
+    "url": "https://ads.vk.com",
+    "atp_ids": [
+      1067
+    ]
   },
   "uber advertising": {
     "concerns": [
@@ -1720,7 +1945,10 @@
       "uber adsystem",
       "uber technologies"
     ],
-    "url": "https://www.uber.com/us/en/advertising/"
+    "url": "https://www.uber.com/us/en/advertising/",
+    "atp_ids": [
+      2887
+    ]
   },
   "temu": {
     "concerns": [
@@ -1750,7 +1978,10 @@
       "ameba",
       "adtdp"
     ],
-    "url": "https://www.cyberagent.co.jp"
+    "url": "https://www.cyberagent.co.jp",
+    "atp_ids": [
+      550
+    ]
   },
   "microad": {
     "concerns": [
@@ -1763,7 +1994,10 @@
       "microad inc",
       "microad.jp"
     ],
-    "url": "https://www.microad.co.jp"
+    "url": "https://www.microad.co.jp",
+    "atp_ids": [
+      576
+    ]
   },
   "ligatus": {
     "concerns": [
@@ -1777,7 +2011,10 @@
       "outbrain ligatus",
       "veeseo"
     ],
-    "url": "https://www.outbrain.com"
+    "url": "https://www.outbrain.com",
+    "atp_ids": [
+      1230
+    ]
   },
   "webgains": {
     "concerns": [
@@ -1789,7 +2026,13 @@
     "aliases": [
       "webgains ltd"
     ],
-    "url": "https://www.webgains.com"
+    "url": "https://www.webgains.com",
+    "gvl_ids": [
+      870
+    ],
+    "atp_ids": [
+      584
+    ]
   },
   "kelkoo": {
     "concerns": [
@@ -1801,7 +2044,10 @@
     "aliases": [
       "kelkoo group"
     ],
-    "url": "https://www.kelkoo.com"
+    "url": "https://www.kelkoo.com",
+    "atp_ids": [
+      2986
+    ]
   },
   "adcash": {
     "concerns": [
@@ -1815,7 +2061,10 @@
       "cdnativ",
       "discovernative"
     ],
-    "url": "https://adcash.com"
+    "url": "https://adcash.com",
+    "atp_ids": [
+      1268
+    ]
   },
   "dstillery": {
     "concerns": [
@@ -1829,6 +2078,9 @@
       "media6degrees",
       "m6d"
     ],
-    "url": "https://dstillery.com"
+    "url": "https://dstillery.com",
+    "atp_ids": [
+      311
+    ]
   }
 }

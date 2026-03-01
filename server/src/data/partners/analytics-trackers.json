@@ -140,7 +140,13 @@
       "xiti",
       "ati-host"
     ],
-    "url": "https://piano.io"
+    "url": "https://piano.io",
+    "gvl_ids": [
+      412
+    ],
+    "atp_ids": [
+      587
+    ]
   },
   "hubspot": {
     "concerns": [
@@ -316,7 +322,10 @@
     "aliases": [
       "ensighten inc"
     ],
-    "url": "https://www.ensighten.com"
+    "url": "https://www.ensighten.com",
+    "gvl_ids": [
+      853
+    ]
   },
   "commanders act": {
     "concerns": [
@@ -328,7 +337,10 @@
       "commandersact",
       "tagcommander"
     ],
-    "url": "https://www.commandersact.com"
+    "url": "https://www.commandersact.com",
+    "gvl_ids": [
+      416
+    ]
   },
   "signal": {
     "concerns": [
@@ -664,7 +676,10 @@
       "dy",
       "adserve.io"
     ],
-    "url": "https://www.dynamicyield.com"
+    "url": "https://www.dynamicyield.com",
+    "atp_ids": [
+      1712
+    ]
   },
   "monetate": {
     "concerns": [
@@ -832,7 +847,10 @@
     "aliases": [
       "viafoura inc"
     ],
-    "url": "https://viafoura.com"
+    "url": "https://viafoura.com",
+    "gvl_ids": [
+      1138
+    ]
   },
   "akamai mpulse": {
     "concerns": [
@@ -846,7 +864,10 @@
       "akamai technologies",
       "mpulse"
     ],
-    "url": "https://www.akamai.com/products/mpulse"
+    "url": "https://www.akamai.com/products/mpulse",
+    "atp_ids": [
+      70
+    ]
   },
   "kantar": {
     "concerns": [
@@ -924,7 +945,10 @@
       "survey sampling international",
       "ssi"
     ],
-    "url": "https://www.dynata.com"
+    "url": "https://www.dynata.com",
+    "gvl_ids": [
+      110
+    ]
   },
   "apptweak": {
     "concerns": [
@@ -977,7 +1001,10 @@
       "ctct",
       "endurance brands"
     ],
-    "url": "https://www.constantcontact.com"
+    "url": "https://www.constantcontact.com",
+    "atp_ids": [
+      144
+    ]
   },
   "econda": {
     "concerns": [
@@ -991,7 +1018,10 @@
       "econda analytics",
       "econda-monitor"
     ],
-    "url": "https://www.econda.com"
+    "url": "https://www.econda.com",
+    "atp_ids": [
+      820
+    ]
   },
   "miaozhen": {
     "concerns": [
@@ -1004,7 +1034,10 @@
       "miaozhen systems",
       "miaozhen technology"
     ],
-    "url": "https://www.miaozhen.com"
+    "url": "https://www.miaozhen.com",
+    "atp_ids": [
+      591
+    ]
   },
   "permutive": {
     "concerns": [
@@ -1018,7 +1051,10 @@
       "permutive inc",
       "permutive ltd"
     ],
-    "url": "https://permutive.com"
+    "url": "https://permutive.com",
+    "gvl_ids": [
+      361
+    ]
   },
   "optimizely": {
     "concerns": [

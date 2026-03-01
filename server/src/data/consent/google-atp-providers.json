@@ -21,7 +21,14 @@
     },
     "70": {
       "name": "Akamai",
-      "policyUrl": "http://www.akamai.com/compliance/privacy"
+      "policyUrl": "http://www.akamai.com/compliance/privacy",
+      "category": "Analytics",
+      "concerns": [
+        "Web performance monitoring",
+        "Real user measurement",
+        "Page load tracking"
+      ],
+      "url": "https://www.akamai.com/products/mpulse"
     },
     "83": {
       "name": "Arbigo Inc.",
@@ -29,7 +36,14 @@
     },
     "89": {
       "name": "Meta",
-      "policyUrl": "https://www.facebook.com/about/privacy/update"
+      "policyUrl": "https://www.facebook.com/about/privacy/update",
+      "category": "Ad Network",
+      "concerns": [
+        "Facebook pixel on millions of sites",
+        "Cross-company data sharing across Facebook, Instagram, WhatsApp, Messenger, and Meta Quest",
+        "Off-Facebook activity tracking via integrated partners"
+      ],
+      "url": "https://www.meta.com"
     },
     "93": {
       "name": "Aunica",
@@ -57,11 +71,25 @@
     },
     "143": {
       "name": "Connexity",
-      "policyUrl": "http://connexity.com/gb/privacy-policy/"
+      "policyUrl": "http://connexity.com/gb/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Commerce and shopping advertising",
+        "Product feed monetization",
+        "Purchase intent tracking"
+      ],
+      "url": "https://connexity.com"
     },
     "144": {
       "name": "Constant Contact",
-      "policyUrl": "https://www.constantcontact.com/legal/privacy-statement"
+      "policyUrl": "https://www.constantcontact.com/legal/privacy-statement",
+      "category": "Analytics",
+      "concerns": [
+        "Email marketing and campaign tracking",
+        "Email open and click tracking via pixel beacons",
+        "Subscriber behaviour profiling"
+      ],
+      "url": "https://www.constantcontact.com"
     },
     "147": {
       "name": "Conversive",
@@ -81,7 +109,14 @@
     },
     "196": {
       "name": "Evidon",
-      "policyUrl": "https://www.crownpeak.com/privacy"
+      "policyUrl": "https://www.crownpeak.com/privacy",
+      "category": "Consent Provider",
+      "concerns": [
+        "Consent management",
+        "DXP",
+        "Tag governance"
+      ],
+      "url": "https://www.crownpeak.com"
     },
     "211": {
       "name": "Forbes",
@@ -117,11 +152,25 @@
     },
     "311": {
       "name": "Dstillery",
-      "policyUrl": "https://dstillery.com/privacy-policy/"
+      "policyUrl": "https://dstillery.com/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "AI-powered audience data and custom targeting",
+        "Behavioural profiling from browsing data",
+        "Cookieless ID solutions for cross-site tracking"
+      ],
+      "url": "https://dstillery.com"
     },
     "320": {
       "name": "Merkury",
-      "policyUrl": "https://www.merkle.com/getting-know-your-privacy-rights/privacy-notice"
+      "policyUrl": "https://www.merkle.com/getting-know-your-privacy-rights/privacy-notice",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Merkury identity platform",
+        "Cross-device resolution",
+        "CRM onboarding"
+      ],
+      "url": "https://www.merkle.com"
     },
     "322": {
       "name": "Metalyzer",
@@ -173,7 +222,14 @@
     },
     "486": {
       "name": "Tradedoubler AB",
-      "policyUrl": "http://www.tradedoubler.com/en/privacy-policy/"
+      "policyUrl": "http://www.tradedoubler.com/en/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "European affiliate and performance marketing network",
+        "Cross-site conversion tracking and click attribution",
+        "Cookie-based tracking across publisher sites"
+      ],
+      "url": "https://www.tradedoubler.com"
     },
     "491": {
       "name": "TravelClick",
@@ -181,7 +237,14 @@
     },
     "494": {
       "name": "TrustArc",
-      "policyUrl": "https://www.trustarc.com/privacy-policy/"
+      "policyUrl": "https://www.trustarc.com/privacy-policy/",
+      "category": "Consent Provider",
+      "concerns": [
+        "Consent management",
+        "Privacy compliance",
+        "TrustE"
+      ],
+      "url": "https://trustarc.com"
     },
     "495": {
       "name": "TruEffect",
@@ -201,7 +264,14 @@
     },
     "550": {
       "name": "CyberAgent",
-      "policyUrl": "https://privacy-policy.cyberagent.ai/index-en.html"
+      "policyUrl": "https://privacy-policy.cyberagent.ai/index-en.html",
+      "category": "Ad Network",
+      "concerns": [
+        "Major Japanese ad-tech company with programmatic DSP",
+        "Dynalyst retargeting across Japanese market",
+        "Cross-app and cross-site behavioural targeting"
+      ],
+      "url": "https://www.cyberagent.co.jp"
     },
     "560": {
       "name": "顶新",
@@ -217,19 +287,47 @@
     },
     "576": {
       "name": "MicroAd",
-      "policyUrl": "https://www.microad.co.jp/privacy/"
+      "policyUrl": "https://www.microad.co.jp/privacy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Japanese programmatic advertising platform",
+        "SSP and DSP with extensive publisher network",
+        "Behavioural targeting across Japanese web"
+      ],
+      "url": "https://www.microad.co.jp"
     },
     "584": {
       "name": "Webgains",
-      "policyUrl": "https://www.webgains.com/public/en/privacy-2/"
+      "policyUrl": "https://www.webgains.com/public/en/privacy-2/",
+      "category": "Ad Network",
+      "concerns": [
+        "European affiliate marketing network",
+        "Cross-site conversion tracking and attribution",
+        "Performance-based advertising"
+      ],
+      "url": "https://www.webgains.com"
     },
     "587": {
       "name": "AT Internet",
-      "policyUrl": "https://www.atinternet.com/en/company/data-protection/"
+      "policyUrl": "https://www.atinternet.com/en/company/data-protection/",
+      "category": "Analytics",
+      "concerns": [
+        "Analytics",
+        "Paywall",
+        "Subscription tracking"
+      ],
+      "url": "https://piano.io"
     },
     "591": {
       "name": "Miaozhen Systems",
-      "policyUrl": "https://www.miaozhen.com/cn/privacy"
+      "policyUrl": "https://www.miaozhen.com/cn/privacy",
+      "category": "Analytics",
+      "concerns": [
+        "Major Chinese ad verification and digital analytics",
+        "Anti-fraud measurement and viewability tracking",
+        "Cross-site campaign tracking and attribution"
+      ],
+      "url": "https://www.miaozhen.com"
     },
     "737": {
       "name": "RevenueMantra",
@@ -245,7 +343,14 @@
     },
     "820": {
       "name": "econda GmbH",
-      "policyUrl": "https://www.econda.de/service/datenschutz/"
+      "policyUrl": "https://www.econda.de/service/datenschutz/",
+      "category": "Analytics",
+      "concerns": [
+        "German e-commerce analytics and personalization",
+        "Behavioural tracking and visitor profiling",
+        "A/B testing and conversion optimization"
+      ],
+      "url": "https://www.econda.com"
     },
     "839": {
       "name": "LivelyImpact",
@@ -273,7 +378,14 @@
     },
     "938": {
       "name": "Adzerk",
-      "policyUrl": "https://dev.adzerk.com/docs/privacy-policy-customers"
+      "policyUrl": "https://dev.adzerk.com/docs/privacy-policy-customers",
+      "category": "Ad Network",
+      "concerns": [
+        "Ad serving API infrastructure used by major platforms",
+        "Server-side ad decisioning and targeting",
+        "Custom ad delivery with first-party data"
+      ],
+      "url": "https://www.kevel.com"
     },
     "959": {
       "name": "Shanon, Inc.",
@@ -309,7 +421,14 @@
     },
     "1046": {
       "name": "Singular Labs Inc.",
-      "policyUrl": "https://www.singular.net/privacy-policy/"
+      "policyUrl": "https://www.singular.net/privacy-policy/",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Mobile attribution",
+        "Cross-platform measurement",
+        "Marketing analytics"
+      ],
+      "url": "https://www.singular.net"
     },
     "1051": {
       "name": "Netquest",
@@ -321,7 +440,14 @@
     },
     "1067": {
       "name": "Mail.ru",
-      "policyUrl": "https://help.mail.ru/mail-help/UA"
+      "policyUrl": "https://help.mail.ru/mail-help/UA",
+      "category": "Ad Network",
+      "concerns": [
+        "Major Russian advertising and social platform",
+        "Cross-site tracking via mail.ru and VK widgets",
+        "Audience profiling across VK ecosystem"
+      ],
+      "url": "https://ads.vk.com"
     },
     "1092": {
       "name": "Walmart",
@@ -397,7 +523,14 @@
     },
     "1230": {
       "name": "Ligatus",
-      "policyUrl": "https://www.ligatus.com/en/privacy-policy"
+      "policyUrl": "https://www.ligatus.com/en/privacy-policy",
+      "category": "Ad Network",
+      "concerns": [
+        "European native advertising network",
+        "Content recommendation and native ad tracking",
+        "Cross-site behavioural profiling"
+      ],
+      "url": "https://www.outbrain.com"
     },
     "1252": {
       "name": "CoAdvertise",
@@ -405,7 +538,14 @@
     },
     "1268": {
       "name": "Adcash",
-      "policyUrl": "https://adcash.com/legal/"
+      "policyUrl": "https://adcash.com/legal/",
+      "category": "Ad Network",
+      "concerns": [
+        "Global ad network with display, native, and push advertising",
+        "Pop-under and interstitial ad formats",
+        "Programmatic targeting across web and mobile"
+      ],
+      "url": "https://adcash.com"
     },
     "1270": {
       "name": "Stailamedia",
@@ -425,7 +565,14 @@
     },
     "1301": {
       "name": "AppLovin Corp.",
-      "policyUrl": "https://www.applovin.com/privacy"
+      "policyUrl": "https://www.applovin.com/privacy",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile ad network",
+        "App monetization",
+        "Cross-app tracking"
+      ],
+      "url": "https://www.applovin.com"
     },
     "1307": {
       "name": "SourceKnowledge",
@@ -437,7 +584,14 @@
     },
     "1329": {
       "name": "Cadent",
-      "policyUrl": "https://enginemediaexchange.com/terms-and-conditions/"
+      "policyUrl": "https://enginemediaexchange.com/terms-and-conditions/",
+      "category": "Ad Network",
+      "concerns": [
+        "Connected TV advertising",
+        "Programmatic TV buying",
+        "Cross-screen targeting"
+      ],
+      "url": "https://www.cadent.tv"
     },
     "1345": {
       "name": "CrossInstall, Inc",
@@ -469,7 +623,14 @@
     },
     "1423": {
       "name": "Liftoff",
-      "policyUrl": "https://liftoff.io/privacy-policy/"
+      "policyUrl": "https://liftoff.io/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Mobile marketing",
+        "ML optimization",
+        "Vungle owner"
+      ],
+      "url": "https://liftoff.io"
     },
     "1440": {
       "name": "YDigital Media",
@@ -517,7 +678,14 @@
     },
     "1570": {
       "name": "Navegg",
-      "policyUrl": "https://www.navegg.com/en/privacy-policy/"
+      "policyUrl": "https://www.navegg.com/en/privacy-policy/",
+      "category": "Data Broker",
+      "concerns": [
+        "Latin American audience data platform",
+        "Behavioural profiling from browsing",
+        "Third-party data segments"
+      ],
+      "url": "https://www.navegg.com"
     },
     "1577": {
       "name": "Admedo",
@@ -589,7 +757,14 @@
     },
     "1712": {
       "name": "Dynamic Yield",
-      "policyUrl": "https://www.dynamicyield.com/gdpr/"
+      "policyUrl": "https://www.dynamicyield.com/gdpr/",
+      "category": "Analytics",
+      "concerns": [
+        "Personalization",
+        "A/B testing",
+        "Behavioral data"
+      ],
+      "url": "https://www.dynamicyield.com"
     },
     "1716": {
       "name": "ADEX",
@@ -601,7 +776,14 @@
     },
     "1725": {
       "name": "Placed",
-      "policyUrl": "https://foursquare.com/legal/privacy"
+      "policyUrl": "https://foursquare.com/legal/privacy",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Location attribution",
+        "Foot traffic",
+        "Foursquare owned"
+      ],
+      "url": "https://www.foursquare.com"
     },
     "1732": {
       "name": "Answer Media",
@@ -633,7 +815,14 @@
     },
     "1810": {
       "name": "Foursquare",
-      "policyUrl": "https://foursquare.com/legal/privacy"
+      "policyUrl": "https://foursquare.com/legal/privacy",
+      "category": "Data Broker",
+      "concerns": [
+        "Location intelligence",
+        "Place data",
+        "Attribution"
+      ],
+      "url": "https://foursquare.com"
     },
     "1825": {
       "name": "Mozoo",
@@ -729,7 +918,14 @@
     },
     "1985": {
       "name": "Tapjoy",
-      "policyUrl": "https://www.tapjoy.com/legal/#privacy-policy"
+      "policyUrl": "https://www.tapjoy.com/legal/#privacy-policy",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Rewarded ads",
+        "Offerwall",
+        "User engagement"
+      ],
+      "url": "https://www.tapjoy.com"
     },
     "1987": {
       "name": "Bigabid",
@@ -905,7 +1101,14 @@
     },
     "2312": {
       "name": "StartApp",
-      "policyUrl": "https://www.startapp.com/policy/privacy-policy/"
+      "policyUrl": "https://www.startapp.com/policy/privacy-policy/",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile ad network",
+        "Interstitial ads",
+        "User data"
+      ],
+      "url": "https://www.start.io"
     },
     "2316": {
       "name": "Expedia, Inc.",
@@ -937,7 +1140,14 @@
     },
     "2343": {
       "name": "Viant",
-      "policyUrl": "https://viantinc.com/privacy-policy/"
+      "policyUrl": "https://viantinc.com/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Adelphic DSP",
+        "Household data",
+        "CTV"
+      ],
+      "url": "https://www.viantinc.com"
     },
     "2354": {
       "name": "Snitcher.com",
@@ -1113,7 +1323,14 @@
     },
     "2572": {
       "name": "Snap Inc.",
-      "policyUrl": "https://www.snap.com/en-US/privacy/privacy-policy/"
+      "policyUrl": "https://www.snap.com/en-US/privacy/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Precise GPS location tracking via Snap Map",
+        "Camera and AR data collection including TrueDepth on iOS",
+        "My AI conversation data used for personalisation and improvement"
+      ],
+      "url": "https://forbusiness.snapchat.com"
     },
     "2575": {
       "name": "Kobler",
@@ -1121,7 +1338,14 @@
     },
     "2577": {
       "name": "AppsFlyer",
-      "policyUrl": "https://www.appsflyer.com/privacy-policy/"
+      "policyUrl": "https://www.appsflyer.com/privacy-policy/",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Mobile attribution",
+        "Cross-device tracking",
+        "Install tracking"
+      ],
+      "url": "https://www.appsflyer.com"
     },
     "2583": {
       "name": "Nexus Soft",
@@ -1141,7 +1365,14 @@
     },
     "2605": {
       "name": "Branch",
-      "policyUrl": "https://branch.io/policies/"
+      "policyUrl": "https://branch.io/policies/",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Deep linking",
+        "Attribution",
+        "Cross-platform identity"
+      ],
+      "url": "https://www.branch.io"
     },
     "2608": {
       "name": "Bannerwise",
@@ -1173,7 +1404,14 @@
     },
     "2628": {
       "name": "Qualtrics",
-      "policyUrl": "https://www.qualtrics.com/uk/platform/gdpr/"
+      "policyUrl": "https://www.qualtrics.com/uk/platform/gdpr/",
+      "category": "Session Replay",
+      "concerns": [
+        "Survey data",
+        "Experience tracking",
+        "Website intercepts"
+      ],
+      "url": "https://www.qualtrics.com"
     },
     "2629": {
       "name": "Advertserve",
@@ -1245,7 +1483,14 @@
     },
     "2677": {
       "name": "Vimeo",
-      "policyUrl": "https://vimeo.com/cookie_policy"
+      "policyUrl": "https://vimeo.com/cookie_policy",
+      "category": "Social Tracker",
+      "concerns": [
+        "Video embed tracking",
+        "View analytics",
+        "Cross-site"
+      ],
+      "url": "https://vimeo.com"
     },
     "2681": {
       "name": "AdRetarget",
@@ -1353,7 +1598,14 @@
     },
     "2822": {
       "name": "Adjust GmbH",
-      "policyUrl": "https://www.adjust.com/terms/gdpr/"
+      "policyUrl": "https://www.adjust.com/terms/gdpr/",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Mobile attribution",
+        "App tracking",
+        "Cross-device"
+      ],
+      "url": "https://www.adjust.com"
     },
     "2827": {
       "name": "Journey by CAKE",
@@ -1429,7 +1681,14 @@
     },
     "2869": {
       "name": "Throtle",
-      "policyUrl": "https://throtle.io/privacy/"
+      "policyUrl": "https://throtle.io/privacy/",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Identity resolution",
+        "Household data",
+        "CRM onboarding"
+      ],
+      "url": "https://throtle.io"
     },
     "2874": {
       "name": "Tchibo GmbH",
@@ -1469,7 +1728,14 @@
     },
     "2887": {
       "name": "Uber Technologies Inc.",
-      "policyUrl": "https://privacy.uber.com/policy"
+      "policyUrl": "https://privacy.uber.com/policy",
+      "category": "Ad Network",
+      "concerns": [
+        "In-app advertising across Uber and Uber Eats",
+        "Rider and driver location data for ad targeting",
+        "Journey-based advertising during trips"
+      ],
+      "url": "https://www.uber.com/us/en/advertising/"
     },
     "2888": {
       "name": "modellbau universe GbR",
@@ -1501,7 +1767,14 @@
     },
     "2898": {
       "name": "Chartboost",
-      "policyUrl": "https://answers.chartboost.com/en-us/articles/200780269"
+      "policyUrl": "https://answers.chartboost.com/en-us/articles/200780269",
+      "category": "Ad Network",
+      "concerns": [
+        "Gaming ads",
+        "Cross-promotion",
+        "Player data"
+      ],
+      "url": "https://www.chartboost.com"
     },
     "2900": {
       "name": "Admost",
@@ -1525,7 +1798,14 @@
     },
     "2917": {
       "name": "Movable Ink",
-      "policyUrl": "https://movableink.com/legal/privacy"
+      "policyUrl": "https://movableink.com/legal/privacy",
+      "category": "Identity Tracker",
+      "concerns": [
+        "Email personalization",
+        "Real-time content",
+        "Open tracking"
+      ],
+      "url": "https://movableink.com"
     },
     "2918": {
       "name": "Flexitive",
@@ -1641,7 +1921,14 @@
     },
     "2986": {
       "name": "Kelkoo",
-      "policyUrl": "https://www.kelkoo.fr/info-societe/politique-confidentialite"
+      "policyUrl": "https://www.kelkoo.fr/info-societe/politique-confidentialite",
+      "category": "Ad Network",
+      "concerns": [
+        "European shopping comparison and commerce advertising",
+        "Product feed tracking and click attribution",
+        "Cross-site purchase intent profiling"
+      ],
+      "url": "https://www.kelkoo.com"
     },
     "2987": {
       "name": "Prodege, LLC.",
@@ -1681,7 +1968,14 @@
     },
     "3008": {
       "name": "Partnerize",
-      "policyUrl": "https://partnerize.com/en/privacy-policy"
+      "policyUrl": "https://partnerize.com/en/privacy-policy",
+      "category": "Ad Network",
+      "concerns": [
+        "Partner marketing",
+        "Affiliate tracking",
+        "Attribution"
+      ],
+      "url": "https://partnerize.com"
     },
     "3009": {
       "name": "Click2Buy",
@@ -1745,7 +2039,14 @@
     },
     "3059": {
       "name": "Factual Inc.",
-      "policyUrl": "https://www.factual.com/privacy"
+      "policyUrl": "https://www.factual.com/privacy",
+      "category": "Data Broker",
+      "concerns": [
+        "Location intelligence",
+        "Place data",
+        "Attribution"
+      ],
+      "url": "https://foursquare.com"
     },
     "3063": {
       "name": "Oktawave",
@@ -1993,7 +2294,14 @@
     },
     "3234": {
       "name": "Unity Ads",
-      "policyUrl": "https://unity.com/legal/privacy-policy"
+      "policyUrl": "https://unity.com/legal/privacy-policy",
+      "category": "Ad Network",
+      "concerns": [
+        "Gaming ad network",
+        "Player profiling",
+        "Cross-game tracking"
+      ],
+      "url": "https://unity.com/products/unity-ads"
     },
     "3235": {
       "name": "Loblaw Media",
@@ -2053,7 +2361,14 @@
     },
     "3281": {
       "name": "Peer39",
-      "policyUrl": "https://www.peer39.com/privacy-policy/"
+      "policyUrl": "https://www.peer39.com/privacy-policy/",
+      "category": "Ad Network",
+      "concerns": [
+        "Contextual intelligence and brand safety classification",
+        "Page-level content scanning and categorization",
+        "Pre-bid contextual segments for ad targeting"
+      ],
+      "url": "https://www.peer39.com"
     },
     "3288": {
       "name": "Nørgård Mikkelsen A/S",
@@ -2217,7 +2532,14 @@
     },
     "14034": {
       "name": "Tenjin",
-      "policyUrl": "https://tenjin.com/privacy/"
+      "policyUrl": "https://tenjin.com/privacy/",
+      "category": "Mobile SDK",
+      "concerns": [
+        "Mobile attribution",
+        "Ad monetization",
+        "Analytics"
+      ],
+      "url": "https://www.tenjin.com"
     },
     "14133": {
       "name": "D-EDGE",
@@ -2233,7 +2555,14 @@
     },
     "15731": {
       "name": "DISQO",
-      "policyUrl": "https://www.disqo.com/privacy-policy/"
+      "policyUrl": "https://www.disqo.com/privacy-policy/",
+      "category": "Data Broker",
+      "concerns": [
+        "Consumer insights and audience measurement platform",
+        "Panel-based cross-device behaviour tracking",
+        "Browsing and purchase data collection via opt-in panels"
+      ],
+      "url": "https://www.disqo.com"
     },
     "16831": {
       "name": "BIGOAds",
@@ -2381,7 +2710,14 @@
     },
     "49431": {
       "name": "Impact",
-      "policyUrl": "https://www.nau.ch/assets/documents/datenschutzrichtlinien.pdf"
+      "policyUrl": "https://www.nau.ch/assets/documents/datenschutzrichtlinien.pdf",
+      "category": "Ad Network",
+      "concerns": [
+        "Affiliate tracking",
+        "Partnership platform",
+        "Conversion tracking"
+      ],
+      "url": "https://impact.com"
     },
     "50831": {
       "name": "Digi4u",

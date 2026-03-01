@@ -9,7 +9,10 @@
       "share this",
       "sharethis inc"
     ],
-    "url": "https://sharethis.com"
+    "url": "https://sharethis.com",
+    "gvl_ids": [
+      33
+    ]
   },
   "addthis": {
     "concerns": [
@@ -243,7 +246,10 @@
       "vimeo",
       "livestream"
     ],
-    "url": "https://vimeo.com"
+    "url": "https://vimeo.com",
+    "atp_ids": [
+      2677
+    ]
   },
   "spotify embed": {
     "concerns": [
@@ -277,7 +283,10 @@
     "aliases": [
       "disqus inc"
     ],
-    "url": "https://disqus.com"
+    "url": "https://disqus.com",
+    "gvl_ids": [
+      833
+    ]
   },
   "facebook comments": {
     "concerns": [
