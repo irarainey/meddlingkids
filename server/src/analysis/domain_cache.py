@@ -67,6 +67,7 @@ class CachedVendor(pydantic.BaseModel):
 
     name: str
     role: str
+    category: str = ""
     last_seen_scan: int = 0
 
 
@@ -280,7 +281,8 @@ def build_context_hint(knowledge: DomainKnowledge) -> str:
     if knowledge.vendors:
         lines.append("### Known Vendors")
         for v in knowledge.vendors:
-            lines.append(f"- {v.name}: {v.role}")
+            cat = f" [{v.category}]" if v.category else ""
+            lines.append(f"- {v.name}{cat}: {v.role}")
         lines.append("")
 
     return "\n".join(lines)
@@ -515,7 +517,14 @@ def _extract_vendors(
         if key in seen:
             continue
         seen.add(key)
-        result.append(CachedVendor(name=v.name, role=v.role, last_seen_scan=scan_count))
+        result.append(
+            CachedVendor(
+                name=v.name,
+                role=v.role,
+                category=v.category,
+                last_seen_scan=scan_count,
+            )
+        )
     return result
 
 

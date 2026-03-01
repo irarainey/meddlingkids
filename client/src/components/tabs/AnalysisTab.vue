@@ -100,6 +100,25 @@ function findingLabel(type: SummaryFindingType): string {
   }
 }
 
+/** CSS class for vendor category badges. */
+function vendorCategoryClass(category: string): string {
+  const map: Record<string, string> = {
+    'Ad Network': 'vendor-cat-ad',
+    'Ad Technology': 'vendor-cat-ad',
+    'Analytics': 'vendor-cat-analytics',
+    'Data Broker': 'vendor-cat-broker',
+    'Identity Tracker': 'vendor-cat-identity',
+    'Session Replay': 'vendor-cat-replay',
+    'Social Tracker': 'vendor-cat-social',
+    'Mobile SDK': 'vendor-cat-mobile',
+    'Consent Provider': 'vendor-cat-consent',
+    'Content Delivery': 'vendor-cat-other',
+    'Essential Service': 'vendor-cat-other',
+    'Measurement': 'vendor-cat-analytics',
+  }
+  return map[category] ?? 'vendor-cat-other'
+}
+
 /** Well-known social media platform URLs. */
 const PLATFORM_URLS: Record<string, string> = {
   facebook: 'https://www.facebook.com',
@@ -439,9 +458,14 @@ function platformUrl(name: string): string {
                 {{ vendor.name }}
               </a>
               <strong v-else>{{ vendor.name }}</strong>
+              <a v-if="vendor.policyUrl" :href="vendor.policyUrl" target="_blank" rel="noopener noreferrer" class="vendor-policy-link" title="Privacy policy">🔒</a>
+              <span v-if="vendor.category" class="vendor-category-badge" :class="vendorCategoryClass(vendor.category)">{{ vendor.category }}</span>
               <span class="vendor-role">{{ vendor.role }}</span>
             </div>
             <p class="vendor-impact">{{ stripMarkdown(vendor.privacyImpact) }}</p>
+            <div v-if="vendor.concerns?.length" class="vendor-concerns">
+              <span v-for="(concern, i) in vendor.concerns" :key="i" class="concern-tag">⚠️ {{ concern }}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -1122,6 +1146,52 @@ function platformUrl(name: string): string {
   color: #b0bcd5;
   font-size: 0.88rem;
   margin: 0.35rem 0 0 0;
+}
+
+.vendor-policy-link {
+  font-size: 0.7rem;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.vendor-policy-link:hover {
+  opacity: 1;
+}
+
+.vendor-category-badge {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.vendor-cat-ad { background: #3d2020; color: #f08080; }
+.vendor-cat-analytics { background: #203040; color: #7ec8e3; }
+.vendor-cat-broker { background: #402020; color: #e07070; }
+.vendor-cat-identity { background: #352030; color: #d090d0; }
+.vendor-cat-replay { background: #353520; color: #c0c070; }
+.vendor-cat-social { background: #203020; color: #80c080; }
+.vendor-cat-mobile { background: #302838; color: #b0a0d0; }
+.vendor-cat-consent { background: #203530; color: #70c0a0; }
+.vendor-cat-other { background: #2a2d3a; color: #a0a8c0; }
+
+.vendor-concerns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.concern-tag {
+  font-size: 0.72rem;
+  color: #e0a050;
+  background: #302820;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
 }
 
 /* ── Social Media Implications ────────────────────────── */

@@ -217,10 +217,14 @@ export interface ResolvedVendor {
   name: string
   /** Company homepage URL from partner databases */
   url?: string
+  /** Privacy policy URL from the IAB GVL */
+  policy_url?: string
   /** Classification category (e.g. "Ad Network", "Data Broker") */
   category?: string
   /** Privacy concerns from partner databases */
   concerns?: string[]
+  /** IAB TCF purpose IDs declared by this vendor */
+  purposes?: number[]
 }
 
 /**
@@ -231,6 +235,8 @@ export interface ResolvedAcProvider {
   id: number
   name: string
   policy_url: string
+  /** Company homepage URL from partner databases */
+  url?: string
   /** Classification category (e.g. "Ad Network", "Analytics") */
   category?: string
   /** Privacy concerns from partner databases */
@@ -592,6 +598,12 @@ export interface VendorEntry {
   role: string
   privacyImpact: string
   url: string
+  /** Classification category (e.g. "Ad Network", "Analytics") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
+  /** Privacy policy URL from partner databases or GVL */
+  policyUrl?: string
 }
 
 /** Key vendors and their privacy implications. */

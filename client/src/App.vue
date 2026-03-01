@@ -291,9 +291,8 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <footer class="app-footer">
-      Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Version {{ appVersion }}
+      Results are AI-generated and may be incorrect. All information should be considered informational and verified independently. Licensed under <a href="https://github.com/irarainey/meddlingkids/blob/main/LICENSE" target="_blank" rel="noopener">AGPL v3+</a>. Version {{ appVersion }}
       <br>Scooby-Doo and related imagery are trademarks of and &copy; Warner Bros. Entertainment Inc. Not affiliated with or endorsed by Warner Bros.
-      <br>Licensed under <a href="https://github.com/irarainey/meddlingkids/blob/main/LICENSE" target="_blank" rel="noopener">AGPL v3+</a> · <a href="https://github.com/irarainey/meddlingkids" target="_blank" rel="noopener">Source on GitHub</a>
     </footer>
 
     <Transition name="fade">

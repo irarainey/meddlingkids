@@ -17,7 +17,7 @@ import pydantic
 
 from src.agents import base, gdpr_context
 from src.agents.prompts import structured_report
-from src.analysis import domain_cache
+from src.analysis import domain_cache, vendor_lookup as vlookup
 from src.data import loader
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
@@ -567,24 +567,94 @@ def _enrich_vendor_urls(
     vendor_section: report.VendorSection,
     url_lookup: dict[str, str],
 ) -> report.VendorSection:
-    """Populate vendor URLs from the shared lookup.
+    """Populate vendor URLs, categories, concerns, and
+    policy URLs from the partner databases and GVL data.
 
     Authoritative URLs from the partner database always take
     precedence over LLM-provided URLs (which may be
     hallucinated or use privacy-policy pages instead of base
-    URLs).
+    URLs).  Categories and concerns come from the partner
+    enrichment index; policy URLs from GVL vendor details.
 
     Args:
         vendor_section: Vendor section from LLM output.
         url_lookup: Pre-built name→URL mapping.
 
     Returns:
-        Updated vendor section with URLs populated where found.
+        Updated vendor section with metadata populated.
     """
+    # Build a name→meta index from GVL vendor details so we
+    # can attach category, concerns, and policy_url to report
+    # vendors by name.  Partner enrichment (via vendor_lookup)
+    # takes priority where available.
+
+    gvl_details = loader.get_gvl_vendor_details()
+    gvl_name_index: dict[str, dict] = {}
+    for detail in gvl_details.values():
+        if isinstance(detail, dict) and "name" in detail:
+            gvl_name_index[
+                detail["name"].lower().strip()
+            ] = detail
+
     for vendor in vendor_section.vendors:
-        authoritative_url = _find_url(vendor.name, url_lookup)
+        authoritative_url = _find_url(
+            vendor.name, url_lookup,
+        )
         if authoritative_url:
             vendor.url = authoritative_url
+
+        # Try partner enrichment first (curated data),
+        # then GVL details (automated enrichment).
+        if not vendor.category:
+            enrichment = vlookup._enrich(vendor.name)
+            if enrichment:
+                vendor.category = enrichment["category"]
+                if (
+                    "concerns" in enrichment
+                    and not vendor.concerns
+                ):
+                    vendor.concerns = enrichment[
+                        "concerns"
+                    ]
+                if (
+                    "url" in enrichment
+                    and not vendor.url
+                ):
+                    vendor.url = enrichment["url"]
+
+        # GVL name-based fallback for category and
+        # policy_url.
+        name_lower = vendor.name.lower().strip()
+        gvl_entry = gvl_name_index.get(name_lower)
+        if not gvl_entry:
+            # Try fuzzy: check if vendor name is
+            # a substring of a GVL name or vice versa.
+            for gvl_name, entry in gvl_name_index.items():
+                if (
+                    gvl_name in name_lower
+                    or name_lower in gvl_name
+                ):
+                    gvl_entry = entry
+                    break
+
+        if gvl_entry:
+            if not vendor.category:
+                cat = gvl_entry.get("category", "")
+                if cat:
+                    vendor.category = cat
+            if not vendor.concerns:
+                concerns = gvl_entry.get("concerns")
+                if concerns:
+                    vendor.concerns = concerns
+            if not vendor.policy_url:
+                policy = gvl_entry.get("policyUrl", "")
+                if policy:
+                    vendor.policy_url = policy
+            if not vendor.url:
+                url = gvl_entry.get("url", "")
+                if url:
+                    vendor.url = url
+
     return vendor_section
 
 
@@ -667,6 +737,45 @@ def _enrich_third_party_urls(
     return third_party_section
 
 
+def _format_context_partner(
+    p: consent.ConsentPartner,
+) -> str:
+    """Format a consent partner with full metadata for LLM context.
+
+    Mirrors the rich formatting used by the tracking analysis
+    agent so both agents receive consistent partner detail.
+
+    Args:
+        p: Consent partner with classification metadata.
+
+    Returns:
+        Formatted line with risk, category, concerns, and URL.
+    """
+    risk = (
+        f" [{p.risk_level.upper()} RISK]"
+        if p.risk_level
+        else ""
+    )
+    cat = (
+        f" ({p.risk_category})" if p.risk_category else ""
+    )
+    data = (
+        f" | Data: {', '.join(p.data_collected)}"
+        if p.data_collected
+        else ""
+    )
+    concerns = (
+        f" | Concerns: {', '.join(p.concerns)}"
+        if p.concerns
+        else ""
+    )
+    url = f" (URL: {p.url})" if p.url else ""
+    return (
+        f"- **{p.name}**{risk}{cat}:"
+        f" {p.purpose}{data}{concerns}{url}"
+    )
+
+
 def _build_data_context(
     tracking_summary: analysis.TrackingSummary,
     consent_details: consent.ConsentDetails | None = None,
@@ -744,7 +853,10 @@ def _build_data_context(
         )
 
         partners = (
-            "\n".join(f"- {p.name}: {p.purpose}" + (f" (URL: {p.url})" if p.url else "") for p in consent_details.partners[:50])
+            "\n".join(
+                _format_context_partner(p)
+                for p in consent_details.partners[:50]
+            )
             or "None listed"
         )
 

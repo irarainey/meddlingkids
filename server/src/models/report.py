@@ -316,12 +316,18 @@ class SocialMediaImplicationsSection(pydantic.BaseModel):
 class VendorEntry(pydantic.BaseModel):
     """A key vendor/partner with privacy implications."""
 
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
+    model_config = pydantic.ConfigDict(
+        alias_generator=serialization.snake_to_camel,
+        populate_by_name=True,
+    )
 
     name: str
     role: str
     privacy_impact: str
     url: str = ""
+    category: str = ""
+    concerns: list[str] = pydantic.Field(default_factory=list)
+    policy_url: str = ""
 
 
 class VendorSection(pydantic.BaseModel):

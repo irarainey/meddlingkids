@@ -158,6 +158,7 @@ const showAcProviders = ref(false)
 function vendorCategoryClass(category: string): string {
   const map: Record<string, string> = {
     'Ad Network': 'vendor-cat-ad',
+    'Ad Technology': 'vendor-cat-ad',
     'Analytics': 'vendor-cat-analytics',
     'Data Broker': 'vendor-cat-broker',
     'Identity Tracker': 'vendor-cat-identity',
@@ -165,6 +166,9 @@ function vendorCategoryClass(category: string): string {
     'Social Tracker': 'vendor-cat-social',
     'Mobile SDK': 'vendor-cat-mobile',
     'Consent Provider': 'vendor-cat-consent',
+    'Content Delivery': 'vendor-cat-other',
+    'Essential Service': 'vendor-cat-other',
+    'Measurement': 'vendor-cat-analytics',
   }
   return map[category] ?? 'vendor-cat-other'
 }
@@ -406,6 +410,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 <span class="vendor-id">#{{ v.id }}</span>
                 <a v-if="v.url" :href="v.url" target="_blank" rel="noopener" class="vendor-name vendor-name-link">{{ v.name }}</a>
                 <span v-else class="vendor-name">{{ v.name }}</span>
+                <a v-if="v.policy_url" :href="v.policy_url" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔒</a>
                 <span v-if="v.category" class="vendor-category-badge" :class="vendorCategoryClass(v.category)">{{ v.category }}</span>
                 <span v-if="v.concerns?.length" class="vendor-concern" :title="v.concerns.join('; ')">{{ v.concerns[0] }}</span>
               </div>
@@ -611,6 +616,8 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                   <div class="partner-name">
                     <a v-if="partner.url" :href="partner.url" target="_blank" rel="noopener">{{ partner.name }}</a>
                     <span v-else>{{ partner.name }}</span>
+                    <a v-if="partner.privacyUrl" :href="partner.privacyUrl" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔒</a>
+                    <span v-if="partner.riskCategory" class="vendor-category-badge" :class="vendorCategoryClass(partner.riskCategory)">{{ partner.riskCategory }}</span>
                   </div>
                   <div class="partner-purpose">{{ partner.purpose }}</div>
                   <div v-if="partner.concerns?.length" class="partner-concerns">
