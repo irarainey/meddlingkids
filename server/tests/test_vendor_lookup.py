@@ -259,8 +259,33 @@ class TestResolveGvlVendors:
         assert vendor["concerns"] == ["Retargeting"]
         assert vendor["url"] == "https://exponential.com"
 
-
-# ── AC Provider Resolution ──────────────────────────────────────
+    @patch(
+        "src.analysis.vendor_lookup._get_enrichment_index",
+        return_value={},
+    )
+    @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
+        return_value={
+            "1": {
+                "name": "Exponential Interactive",
+                "category": "Ad Network",
+                "policyUrl": "https://exponential.com/privacy",
+                "purposes": [1, 2, 3, 4],
+            },
+        },
+    )
+    @patch(
+        "src.analysis.vendor_lookup.loader.get_gvl_vendors",
+        return_value={"1": "Exponential Interactive"},
+    )
+    def test_policy_url_and_purposes_attached(
+        self, _gvl: object, _det: object, _enr: object,
+    ) -> None:
+        """GVL-sourced policyUrl and purposes are attached to resolved vendors."""
+        result = resolve_gvl_vendors([1])
+        vendor = result["resolved"][0]
+        assert vendor["policy_url"] == "https://exponential.com/privacy"
+        assert vendor["purposes"] == [1, 2, 3, 4]
 
 
 _FAKE_ATP: dict[str, dict[str, str]] = {

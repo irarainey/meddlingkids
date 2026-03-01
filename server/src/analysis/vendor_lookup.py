@@ -38,8 +38,10 @@ class ResolvedVendor(TypedDict, total=False):
     id: int
     name: str
     url: str
+    policy_url: str
     category: str
     concerns: list[str]
+    purposes: list[int]
 
 
 class ResolvedAcProvider(TypedDict, total=False):
@@ -265,6 +267,12 @@ def resolve_gvl_vendors(
                     vendor["concerns"] = enrichment["concerns"]
                 if "url" in enrichment:
                     vendor["url"] = enrichment["url"]
+
+            # Attach GVL-sourced metadata.
+            if "policyUrl" in detail:
+                vendor["policy_url"] = detail["policyUrl"]
+            if "purposes" in detail:
+                vendor["purposes"] = detail["purposes"]
             resolved.append(vendor)
         else:
             unresolved += 1
