@@ -256,11 +256,7 @@ def resolve_gvl_vendors(
 
             # Try enrichment sources in priority order.
             detail = gvl_details.get(str(vid), {})
-            enrichment = (
-                _enrichment_from_entry(detail)
-                or _enrich_by_gvl_id(vid)
-                or _enrich(name)
-            )
+            enrichment = _enrichment_from_entry(detail) or _enrich_by_gvl_id(vid) or _enrich(name)
             if enrichment:
                 vendor["category"] = enrichment["category"]
                 if "concerns" in enrichment:
@@ -316,11 +312,7 @@ def resolve_ac_providers(
             )
 
             # Try enrichment sources in priority order.
-            enrichment = (
-                _enrichment_from_entry(entry)
-                or _enrich_by_atp_id(pid)
-                or _enrich(entry["name"])
-            )
+            enrichment = _enrichment_from_entry(entry) or _enrich_by_atp_id(pid) or _enrich(entry["name"])
             if enrichment:
                 provider["category"] = enrichment["category"]
                 if "concerns" in enrichment:

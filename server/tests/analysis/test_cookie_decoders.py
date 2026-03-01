@@ -117,12 +117,12 @@ class TestDecodeGppString:
         assert result is not None
         assert result["sectionIds"] == [2, 6, 7]
         sections = result["sections"]
-        assert len(sections) == 3  # type: ignore[arg-type]
+        assert len(sections) == 3  # type: ignore[arg-type, attr-defined]
 
     def test_section_names(self) -> None:
         result = cookie_decoders.decode_gpp_string("X", "6,8")
         assert result is not None
-        names = [s["name"] for s in result["sections"]]  # type: ignore[union-attr]
+        names = [s["name"] for s in result["sections"]]  # type: ignore[union-attr, attr-defined]
         assert "USP v1 (CCPA)" in names
         assert "US California (CPRA)" in names
 
@@ -370,11 +370,7 @@ class TestDecodeOptanonConsent:
     """Tests for OneTrust OptanonConsent cookie."""
 
     def test_basic_optanon(self) -> None:
-        raw = (
-            "isGpcApplied=false&datestamp=Mon+Jan+01+2024"
-            "&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A1"
-            "&consentId=abc-123"
-        )
+        raw = "isGpcApplied=false&datestamp=Mon+Jan+01+2024&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A1&consentId=abc-123"
         result = cookie_decoders.decode_optanon_consent(raw)
         assert result is not None
         cats = result["categories"]
@@ -432,11 +428,7 @@ class TestDecodeCookiebotConsent:
     """Tests for Cookiebot CookieConsent cookie."""
 
     def test_json_format(self) -> None:
-        raw = (
-            '{"stamp":"abc","necessary":true,'
-            '"preferences":false,"statistics":false,'
-            '"marketing":true,"utc":"2024-01-01"}'
-        )
+        raw = '{"stamp":"abc","necessary":true,"preferences":false,"statistics":false,"marketing":true,"utc":"2024-01-01"}'
         result = cookie_decoders.decode_cookiebot_consent(raw)
         assert result is not None
         cats = result["categories"]
@@ -447,11 +439,7 @@ class TestDecodeCookiebotConsent:
         assert cats[3]["consented"] is True  # type: ignore[index]
 
     def test_stamp_format(self) -> None:
-        raw = (
-            "stamp:'hash123',necessary:true,"
-            "preferences:false,statistics:true,"
-            "marketing:false"
-        )
+        raw = "stamp:'hash123',necessary:true,preferences:false,statistics:true,marketing:false"
         result = cookie_decoders.decode_cookiebot_consent(raw)
         assert result is not None
         cats = result["categories"]
@@ -472,10 +460,7 @@ class TestFindCookiebotInCookies:
     """Tests for finding CookieConsent cookie."""
 
     def test_finds_cookiebot(self) -> None:
-        raw = (
-            '{"necessary":true,"preferences":false,'
-            '"statistics":false,"marketing":false}'
-        )
+        raw = '{"necessary":true,"preferences":false,"statistics":false,"marketing":false}'
         cookies = [{"name": "CookieConsent", "value": raw}]
         result = cookie_decoders.find_cookiebot_in_cookies(cookies)
         assert result is not None
@@ -502,7 +487,7 @@ class TestDecodeSocsCookie:
         result = cookie_decoders.decode_socs_cookie(raw)
         assert result is not None
         assert result["modeChar"] == "C"
-        assert "accepted" in result["consentMode"].lower()  # type: ignore[union-attr]
+        assert "accepted" in result["consentMode"].lower()  # type: ignore[attr-defined]
 
     def test_rejected_mode(self) -> None:
         import base64
@@ -511,7 +496,7 @@ class TestDecodeSocsCookie:
         result = cookie_decoders.decode_socs_cookie(raw)
         assert result is not None
         assert result["modeChar"] == "A"
-        assert "rejected" in result["consentMode"].lower()  # type: ignore[union-attr]
+        assert "rejected" in result["consentMode"].lower()  # type: ignore[attr-defined]
 
     def test_essential_mode(self) -> None:
         import base64
@@ -520,7 +505,7 @@ class TestDecodeSocsCookie:
         result = cookie_decoders.decode_socs_cookie(raw)
         assert result is not None
         assert result["modeChar"] == "E"
-        assert "essential" in result["consentMode"].lower()  # type: ignore[union-attr]
+        assert "essential" in result["consentMode"].lower()  # type: ignore[attr-defined]
 
     def test_empty_returns_none(self) -> None:
         assert cookie_decoders.decode_socs_cookie("") is None
@@ -625,8 +610,7 @@ class TestDecodeAllPrivacyCookies:
             {"name": "OptanonConsent", "value": "groups=C0001%3A1"},
             {
                 "name": "CookieConsent",
-                "value": '{"necessary":true,"preferences":false,'
-                '"statistics":false,"marketing":false}',
+                "value": '{"necessary":true,"preferences":false,"statistics":false,"marketing":false}',
             },
             {
                 "name": "SOCS",

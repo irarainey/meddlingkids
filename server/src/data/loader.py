@@ -688,10 +688,7 @@ def get_gvl_vendors() -> dict[str, str]:
     strings for backward compatibility.
     """
     raw = _load_gvl_raw()
-    return {
-        vid: (entry["name"] if isinstance(entry, dict) else entry)
-        for vid, entry in raw.items()
-    }
+    return {vid: (entry["name"] if isinstance(entry, dict) else entry) for vid, entry in raw.items()}
 
 
 @functools.cache
@@ -716,7 +713,8 @@ def get_gvl_vendor_details() -> dict[str, dict[str, Any]]:
 def _load_gvl_raw() -> dict[str, Any]:
     """Load the raw GVL vendors map (mixed str / dict entries)."""
     data: dict[str, Any] = _load_json("consent/gvl-vendors.json")
-    return data.get("vendors", {})
+    vendors: dict[str, Any] = data.get("vendors", {})
+    return vendors
 
 
 @functools.cache

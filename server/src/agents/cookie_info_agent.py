@@ -31,19 +31,29 @@ class CookieInfoResult(pydantic.BaseModel):
 
     # Optional vendor enrichment (populated from cross-reference data).
     vendor_category: str | None = pydantic.Field(
-        default=None, alias="vendorCategory", serialization_alias="vendorCategory",
+        default=None,
+        alias="vendorCategory",
+        serialization_alias="vendorCategory",
     )
     vendor_url: str | None = pydantic.Field(
-        default=None, alias="vendorUrl", serialization_alias="vendorUrl",
+        default=None,
+        alias="vendorUrl",
+        serialization_alias="vendorUrl",
     )
     vendor_concerns: list[str] | None = pydantic.Field(
-        default=None, alias="vendorConcerns", serialization_alias="vendorConcerns",
+        default=None,
+        alias="vendorConcerns",
+        serialization_alias="vendorConcerns",
     )
     vendor_gvl_ids: list[int] | None = pydantic.Field(
-        default=None, alias="vendorGvlIds", serialization_alias="vendorGvlIds",
+        default=None,
+        alias="vendorGvlIds",
+        serialization_alias="vendorGvlIds",
     )
     vendor_atp_ids: list[int] | None = pydantic.Field(
-        default=None, alias="vendorAtpIds", serialization_alias="vendorAtpIds",
+        default=None,
+        alias="vendorAtpIds",
+        serialization_alias="vendorAtpIds",
     )
 
     model_config = pydantic.ConfigDict(populate_by_name=True)

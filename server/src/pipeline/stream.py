@@ -627,10 +627,7 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                         )
 
             # Re-emit consent details with TC/AC data
-            if (
-                ctx.consent_details.tc_string_data
-                or ctx.consent_details.ac_string_data
-            ):
+            if ctx.consent_details.tc_string_data or ctx.consent_details.ac_string_data:
                 yield sse_helpers.format_sse_event(
                     "consentDetails",
                     sse_helpers.serialize_consent_details(
@@ -647,16 +644,16 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
     # consent dialog was found or overlays were dismissed.
     _tracked = session.get_tracked_cookies()
     if _tracked:
-        decoded = cookie_decoders.decode_all_privacy_cookies(_tracked)
-        if decoded:
-            ctx.decoded_cookies = decoded
+        decoded_cookies = cookie_decoders.decode_all_privacy_cookies(_tracked)
+        if decoded_cookies:
+            ctx.decoded_cookies = decoded_cookies
             log.info(
                 "Privacy cookies decoded",
-                {"decoders": list(decoded.keys())},
+                {"decoders": list(decoded_cookies.keys())},
             )
             yield sse_helpers.format_sse_event(
                 "decodedCookies",
-                decoded,
+                decoded_cookies,
             )
 
     if page and ctx.overlay_result.failed:

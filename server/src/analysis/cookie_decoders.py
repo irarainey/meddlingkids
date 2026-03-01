@@ -54,7 +54,7 @@ def _cookie_value(
             name = str(getattr(cookie, "name", ""))
             value = str(getattr(cookie, "value", ""))
         if name == target_name and value:
-            return value
+            return str(value)
     return None
 
 
@@ -197,9 +197,7 @@ def decode_gpp_string(
             first_byte = header_bytes[0]
             gpp_type = (first_byte >> 2) & 0x3F
             if gpp_type == 3 and len(header_bytes) >= 2:
-                version = ((first_byte & 0x03) << 4) | (
-                    (header_bytes[1] >> 4) & 0x0F
-                )
+                version = ((first_byte & 0x03) << 4) | ((header_bytes[1] >> 4) & 0x0F)
                 result["version"] = version
     except Exception:
         pass  # Header decode is best-effort.
@@ -289,7 +287,8 @@ def decode_fbp_cookie(raw: str) -> dict[str, object] | None:
     try:
         ts_ms = int(m.group(1))
         created = datetime.fromtimestamp(
-            ts_ms / 1000, tz=UTC,
+            ts_ms / 1000,
+            tz=UTC,
         ).isoformat()
     except (ValueError, OSError):
         ts_ms = 0
@@ -319,7 +318,8 @@ def decode_fbc_cookie(raw: str) -> dict[str, object] | None:
     try:
         ts_ms = int(m.group(1))
         clicked = datetime.fromtimestamp(
-            ts_ms / 1000, tz=UTC,
+            ts_ms / 1000,
+            tz=UTC,
         ).isoformat()
     except (ValueError, OSError):
         ts_ms = 0
@@ -470,14 +470,17 @@ def decode_optanon_consent(raw: str) -> dict[str, object] | None:
                 cat_id, status = group.split(":", 1)
                 cat_id = cat_id.strip()
                 label = _OPTANON_CATEGORY_NAMES.get(
-                    cat_id, cat_id,
+                    cat_id,
+                    cat_id,
                 )
                 consented = status.strip() == "1"
-                categories.append({
-                    "id": cat_id,
-                    "name": label,
-                    "consented": consented,
-                })
+                categories.append(
+                    {
+                        "id": cat_id,
+                        "name": label,
+                        "consented": consented,
+                    }
+                )
 
     return {
         "categories": categories,
@@ -521,13 +524,18 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
         if isinstance(data, dict):
             categories: list[dict[str, object]] = []
             for cat in (
-                "necessary", "preferences", "statistics", "marketing",
+                "necessary",
+                "preferences",
+                "statistics",
+                "marketing",
             ):
                 if cat in data:
-                    categories.append({
-                        "name": cat.title(),
-                        "consented": bool(data[cat]),
-                    })
+                    categories.append(
+                        {
+                            "name": cat.title(),
+                            "consented": bool(data[cat]),
+                        }
+                    )
             return {
                 "categories": categories,
                 "stamp": data.get("stamp"),
@@ -551,10 +559,12 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
     categories = []
     for cat in ("necessary", "preferences", "statistics", "marketing"):
         if cat in parts:
-            categories.append({
-                "name": cat.title(),
-                "consented": parts[cat].lower() == "true",
-            })
+            categories.append(
+                {
+                    "name": cat.title(),
+                    "consented": parts[cat].lower() == "true",
+                }
+            )
 
     if not categories:
         return None

@@ -683,7 +683,7 @@ def _render_ac_string_data(
     lines.append(f"  Version:            {ac.get('version', '?')}")
     lines.append(f"  Vendor count:       {ac.get('vendorCount', 0)}")
     unresolved = ac.get("unresolvedProviderCount", 0)
-    resolved = ac.get("resolvedProviders", [])
+    resolved = list(ac.get("resolvedProviders", []))  # type: ignore[call-overload]
     if resolved:
         lines.append(f"  Resolved providers: {len(resolved)}")
         for p in resolved[:20]:

@@ -17,7 +17,8 @@ import pydantic
 
 from src.agents import base, gdpr_context
 from src.agents.prompts import structured_report
-from src.analysis import domain_cache, vendor_lookup as vlookup
+from src.analysis import domain_cache
+from src.analysis import vendor_lookup as vlookup
 from src.data import loader
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
@@ -592,13 +593,12 @@ def _enrich_vendor_urls(
     gvl_name_index: dict[str, dict] = {}
     for detail in gvl_details.values():
         if isinstance(detail, dict) and "name" in detail:
-            gvl_name_index[
-                detail["name"].lower().strip()
-            ] = detail
+            gvl_name_index[detail["name"].lower().strip()] = detail
 
     for vendor in vendor_section.vendors:
         authoritative_url = _find_url(
-            vendor.name, url_lookup,
+            vendor.name,
+            url_lookup,
         )
         if authoritative_url:
             vendor.url = authoritative_url
@@ -609,17 +609,9 @@ def _enrich_vendor_urls(
             enrichment = vlookup._enrich(vendor.name)
             if enrichment:
                 vendor.category = enrichment["category"]
-                if (
-                    "concerns" in enrichment
-                    and not vendor.concerns
-                ):
-                    vendor.concerns = enrichment[
-                        "concerns"
-                    ]
-                if (
-                    "url" in enrichment
-                    and not vendor.url
-                ):
+                if "concerns" in enrichment and not vendor.concerns:
+                    vendor.concerns = enrichment["concerns"]
+                if "url" in enrichment and not vendor.url:
                     vendor.url = enrichment["url"]
 
         # GVL name-based fallback for category and
@@ -630,10 +622,7 @@ def _enrich_vendor_urls(
             # Try fuzzy: check if vendor name is
             # a substring of a GVL name or vice versa.
             for gvl_name, entry in gvl_name_index.items():
-                if (
-                    gvl_name in name_lower
-                    or name_lower in gvl_name
-                ):
+                if gvl_name in name_lower or name_lower in gvl_name:
                     gvl_entry = entry
                     break
 
@@ -751,29 +740,12 @@ def _format_context_partner(
     Returns:
         Formatted line with risk, category, concerns, and URL.
     """
-    risk = (
-        f" [{p.risk_level.upper()} RISK]"
-        if p.risk_level
-        else ""
-    )
-    cat = (
-        f" ({p.risk_category})" if p.risk_category else ""
-    )
-    data = (
-        f" | Data: {', '.join(p.data_collected)}"
-        if p.data_collected
-        else ""
-    )
-    concerns = (
-        f" | Concerns: {', '.join(p.concerns)}"
-        if p.concerns
-        else ""
-    )
+    risk = f" [{p.risk_level.upper()} RISK]" if p.risk_level else ""
+    cat = f" ({p.risk_category})" if p.risk_category else ""
+    data = f" | Data: {', '.join(p.data_collected)}" if p.data_collected else ""
+    concerns = f" | Concerns: {', '.join(p.concerns)}" if p.concerns else ""
     url = f" (URL: {p.url})" if p.url else ""
-    return (
-        f"- **{p.name}**{risk}{cat}:"
-        f" {p.purpose}{data}{concerns}{url}"
-    )
+    return f"- **{p.name}**{risk}{cat}: {p.purpose}{data}{concerns}{url}"
 
 
 def _build_data_context(
@@ -852,13 +824,7 @@ def _build_data_context(
             or "None disclosed"
         )
 
-        partners = (
-            "\n".join(
-                _format_context_partner(p)
-                for p in consent_details.partners[:50]
-            )
-            or "None listed"
-        )
+        partners = "\n".join(_format_context_partner(p) for p in consent_details.partners[:50]) or "None listed"
 
         claimed_count = consent_details.claimed_partner_count
         claimed_line = f"\n### Claimed Partner Count: {claimed_count}" if claimed_count else ""
