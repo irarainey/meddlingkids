@@ -108,6 +108,9 @@ class ConsentDetails(pydantic.BaseModel):
     raw_text: str
     claimed_partner_count: int | None = None
     consent_platform: str | None = None
+    tc_string_data: dict[str, object] | None = None
+    tc_validation: dict[str, object] | None = None
+    ac_string_data: dict[str, object] | None = None
 
     @classmethod
     def empty(

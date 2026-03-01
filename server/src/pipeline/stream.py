@@ -26,7 +26,7 @@ from typing import cast
 from urllib import parse
 
 from src.agents import config
-from src.analysis import tracking_summary
+from src.analysis import tc_string, tc_validation, tcf_lookup, tracking_summary, vendor_lookup
 from src.browser import device_configs
 from src.browser import session as browser_session
 from src.models import analysis, browser, consent, tracking_data
@@ -523,6 +523,116 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
         )
         await session.capture_current_cookies()
         ctx.storage = await session.capture_storage()
+
+        # ── TC String decoding ───────────────────────────
+        # After accepting consent the CMP sets the euconsent-v2
+        # cookie containing the TC String.  Decode it and attach
+        # the structured data to the consent details so the
+        # client has exact purpose/vendor consent signals.
+        if ctx.consent_details is not None:
+            tracked_cookies = session.get_tracked_cookies()
+
+            # ── AC String decoding ───────────────────────
+            # The addtl_consent cookie stores Google's
+            # Additional Consent Mode string — a list of
+            # non-IAB ad-tech providers that received consent
+            # through a Google-certified CMP.  Decode first so
+            # the vendor count is available for TC validation.
+            ac_vendor_count: int | None = None
+            ac_raw = tc_string.find_ac_string_in_cookies(
+                tracked_cookies,
+            )
+            if ac_raw:
+                ac_decoded = tc_string.decode_ac_string(ac_raw)
+                if ac_decoded:
+                    ac_data = ac_decoded.model_dump(by_alias=True)
+
+                    # Resolve ATP provider IDs to names
+                    ac_result = vendor_lookup.resolve_ac_providers(
+                        ac_decoded.vendor_ids,
+                    )
+                    ac_data["resolvedProviders"] = [dict(p) for p in ac_result["resolved"]]
+                    ac_data["unresolvedProviderCount"] = ac_result["unresolved_count"]
+
+                    ctx.consent_details.ac_string_data = ac_data
+                    ac_vendor_count = ac_decoded.vendor_count
+                    log.info(
+                        "AC String decoded from addtl_consent cookie",
+                        {
+                            "version": ac_decoded.version,
+                            "vendorCount": ac_decoded.vendor_count,
+                        },
+                    )
+
+            tc_raw = tc_string.find_tc_string_in_cookies(
+                tracked_cookies,
+            )
+            if tc_raw:
+                decoded = tc_string.decode_tc_string(tc_raw)
+                if decoded:
+                    tc_data = decoded.model_dump(
+                        by_alias=True,
+                    )
+
+                    # Resolve GVL vendor IDs to names
+                    consent_result = vendor_lookup.resolve_gvl_vendors(
+                        decoded.vendor_consents,
+                    )
+                    li_result = vendor_lookup.resolve_gvl_vendors(
+                        decoded.vendor_legitimate_interests,
+                    )
+                    tc_data["resolvedVendorConsents"] = [dict(v) for v in consent_result["resolved"]]
+                    tc_data["unresolvedVendorConsentCount"] = consent_result["unresolved_count"]
+                    tc_data["resolvedVendorLi"] = [dict(v) for v in li_result["resolved"]]
+                    tc_data["unresolvedVendorLiCount"] = li_result["unresolved_count"]
+
+                    ctx.consent_details.tc_string_data = tc_data
+                    log.info(
+                        "TC String decoded from euconsent-v2 cookie",
+                        {
+                            "version": decoded.version,
+                            "cmpId": decoded.cmp_id,
+                            "vendorListVersion": decoded.vendor_list_version,
+                            "purposeConsents": decoded.purpose_consents,
+                            "vendorConsentCount": decoded.vendor_consent_count,
+                            "vendorLiCount": decoded.vendor_li_count,
+                        },
+                    )
+
+                    # ── TC String validation ─────────────────
+                    # Cross-reference TC String signals against
+                    # the dialog-extracted purpose text to detect
+                    # discrepancies and privacy-relevant signals.
+                    dialog_purposes = ctx.consent_details.purposes
+                    lookup_result = tcf_lookup.lookup_purposes(dialog_purposes)
+                    matched_ids = {m.id for m in lookup_result.matched if m.category == "purpose"}
+                    validation = tc_validation.validate_tc_consent(
+                        tc_string_data=ctx.consent_details.tc_string_data,
+                        dialog_purposes=dialog_purposes,
+                        matched_purpose_ids=matched_ids,
+                        claimed_partner_count=ctx.consent_details.claimed_partner_count,
+                        ac_vendor_count=ac_vendor_count,
+                    )
+                    ctx.consent_details.tc_validation = validation.model_dump(
+                        by_alias=True,
+                    )
+                    if validation.findings:
+                        log.info(
+                            "TC validation findings",
+                            {
+                                "count": len(validation.findings),
+                                "severities": [f.severity for f in validation.findings],
+                            },
+                        )
+
+            # Re-emit consent details with TC/AC data attached
+            if ctx.consent_details.tc_string_data or ctx.consent_details.ac_string_data:
+                yield sse_helpers.format_sse_event(
+                    "consentDetails",
+                    sse_helpers.serialize_consent_details(
+                        ctx.consent_details,
+                    ),
+                )
     else:
         log.info("No overlays dismissed — page state unchanged, skipping re-capture")
 

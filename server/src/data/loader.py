@@ -654,6 +654,30 @@ def get_gdpr_reference() -> dict[str, Any]:
     return result
 
 
+@functools.cache
+def get_gvl_vendors() -> dict[str, str]:
+    """Get the IAB Global Vendor List name mapping (loaded once and cached).
+
+    Returns a dict mapping vendor ID (string) to vendor name
+    for all vendors in the IAB GVL.
+    """
+    data: dict[str, Any] = _load_json("consent/gvl-vendors.json")
+    result: dict[str, str] = data.get("vendors", {})
+    return result
+
+
+@functools.cache
+def get_google_atp_providers() -> dict[str, dict[str, str]]:
+    """Get the Google ATP provider list (loaded once and cached).
+
+    Returns a dict mapping provider ID (string) to a dict
+    with ``name`` and ``policyUrl`` keys.
+    """
+    data: dict[str, Any] = _load_json("consent/google-atp-providers.json")
+    result: dict[str, dict[str, str]] = data.get("providers", {})
+    return result
+
+
 # ============================================================================
 # Media Group Profile Loading
 # ============================================================================

@@ -169,6 +169,124 @@ export interface ConsentPartner {
 /**
  * Detailed information extracted from a cookie consent dialog.
  */
+/**
+ * Decoded IAB TCF v2 TC String data.
+ *
+ * Contains machine-readable consent signals extracted from
+ * the euconsent-v2 cookie set by TCF-compliant CMPs.
+ */
+export interface TcStringData {
+  version: number
+  created: string
+  lastUpdated: string
+  cmpId: number
+  cmpVersion: number
+  consentScreen: number
+  consentLanguage: string
+  vendorListVersion: number
+  tcfPolicyVersion: number
+  isServiceSpecific: boolean
+  useNonStandardStacks: boolean
+  publisherCountryCode: string
+  purposeConsents: number[]
+  purposeLegitimateInterests: number[]
+  specialFeatureOptIns: number[]
+  vendorConsents: number[]
+  vendorLegitimateInterests: number[]
+  vendorConsentCount: number
+  vendorLiCount: number
+  totalPurposesConsented: number
+  rawString: string
+  /** Resolved vendor names for consent IDs (from IAB GVL) */
+  resolvedVendorConsents?: ResolvedVendor[]
+  /** Number of consent vendor IDs not found in the IAB GVL */
+  unresolvedVendorConsentCount?: number
+  /** Resolved vendor names for legitimate interest IDs (from IAB GVL) */
+  resolvedVendorLi?: ResolvedVendor[]
+  /** Number of LI vendor IDs not found in the IAB GVL */
+  unresolvedVendorLiCount?: number
+}
+
+/**
+ * A vendor ID resolved to a company name via the IAB GVL
+ * or Google ATP provider list.
+ */
+export interface ResolvedVendor {
+  id: number
+  name: string
+}
+
+/**
+ * A Google ATP provider ID resolved to a name and policy URL.
+ */
+export interface ResolvedAcProvider {
+  id: number
+  name: string
+  policy_url: string
+}
+
+/**
+ * Decoded Google Additional Consent Mode (AC) String data.
+ *
+ * The AC String lists non-IAB ad-tech providers that received
+ * consent through a Google-certified CMP.  It supplements the
+ * TC String for vendors not in the IAB Global Vendor List.
+ */
+export interface AcStringData {
+  /** AC spec version (currently always 1) */
+  version: number
+  /** Google Ad Technology Provider IDs that received consent */
+  vendorIds: number[]
+  /** Number of consented ATP vendors */
+  vendorCount: number
+  /** Raw AC String for reference */
+  rawString: string
+  /** Resolved provider names and policy URLs (from Google ATP list) */
+  resolvedProviders?: ResolvedAcProvider[]
+  /** Number of provider IDs not found in the Google ATP list */
+  unresolvedProviderCount?: number
+}
+
+/**
+ * A purpose consent/LI signal decoded from the TC String,
+ * cross-referenced against the consent dialog text.
+ */
+export interface TcPurposeSignal {
+  id: number
+  name: string
+  description: string
+  riskLevel: string
+  consented: boolean
+  legitimateInterest: boolean
+  disclosedInDialog: boolean
+}
+
+/**
+ * A validation finding from TC String cross-referencing.
+ */
+export interface TcValidationFinding {
+  severity: 'critical' | 'high' | 'moderate' | 'info'
+  category: string
+  title: string
+  detail: string
+}
+
+/**
+ * TC String validation result — cross-references TC String
+ * consent signals against consent dialog content.
+ */
+export interface TcValidationResult {
+  purposeSignals: TcPurposeSignal[]
+  vendorConsentCount: number
+  vendorLiCount: number
+  claimedPartnerCount: number | null
+  vendorCountMismatch: boolean
+  /** Non-IAB vendor count from Google AC String (null if not present) */
+  acVendorCount: number | null
+  specialFeatures: string[]
+  findings: TcValidationFinding[]
+}
+
 export interface ConsentDetails {
   categories: ConsentCategory[]
   partners: ConsentPartner[]
@@ -178,6 +296,12 @@ export interface ConsentDetails {
   claimedPartnerCount?: number | null
   /** Detected consent management platform name (e.g. "Sourcepoint", "OneTrust") */
   consentPlatform?: string | null
+  /** Decoded TC String data from the euconsent-v2 cookie (populated after consent acceptance) */
+  tcStringData?: TcStringData | null
+  /** TC String validation results — cross-referenced against dialog purposes */
+  tcValidation?: TcValidationResult | null
+  /** Decoded AC String data from the addtl_consent cookie (Google Additional Consent Mode) */
+  acStringData?: AcStringData | null
 }
 
 // ============================================================================

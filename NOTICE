@@ -76,6 +76,37 @@ This data is part of an open industry standard designed for
 programmatic consumption by CMPs, publishers, and vendors.
 
 
+IAB Global Vendor List - Vendor Names (gvl-vendors.json)
+--------------------------------------------------------
+Copyright (C) IAB Europe
+License: Proprietary (publicly available standard)
+Source: https://vendor-list.consensu.org/v3/vendor-list.json
+Usage: Maps numeric vendor IDs from the IAB TC String to
+       human-readable company names for display in consent analysis.
+
+The gvl-vendors.json file contains a snapshot of vendor ID-to-name
+mappings from the IAB TCF Global Vendor List (GVL) v3 API. It does
+NOT include policy URLs, purpose declarations, or other vendor
+metadata. This data is part of an open industry standard designed
+for programmatic consumption.
+
+
+Google Additional Consent Mode Providers (google-atp-providers.json)
+--------------------------------------------------------------------
+Copyright (C) Google LLC
+License: Publicly available reference data
+Source: https://storage.googleapis.com/tcfac/additional-consent-providers.csv
+Reference: https://support.google.com/admanager/answer/9681920
+Usage: Maps numeric provider IDs from the Google AC String to
+       company names and privacy-policy URLs for display in consent
+       analysis.
+
+The google-atp-providers.json file contains a snapshot of Google's
+Ad Technology Provider list. It is compiled from the publicly
+available CSV distributed by Google for integration with the IAB
+TCF Additional Consent Mode specification.
+
+
 Project-Curated Data
 --------------------
 The following data files were authored for this project and do not

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ConsentDetails, TcfPurpose, TcfLookupResult } from '../../types'
+import type { ConsentDetails, TcfPurpose, TcfLookupResult, TcValidationResult, TcValidationFinding, AcStringData } from '../../types'
 
 /**
  * Tab panel displaying consent dialog details with IAB TCF purpose breakdown.
@@ -139,6 +139,58 @@ function toggleRiskGroup(level: string): void {
     expandedRiskGroups.value.add(level)
   }
 }
+
+/** Computed TC validation result. */
+function tcValidation(): TcValidationResult | null {
+  return props.consentDetails?.tcValidation ?? null
+}
+
+/** Computed AC String data (Google Additional Consent Mode). */
+function acStringData(): AcStringData | null {
+  return props.consentDetails?.acStringData ?? null
+}
+
+/** Track collapsed/expanded state for vendor lists. */
+const showTcVendors = ref(false)
+const showAcProviders = ref(false)
+
+/** Severity icon for TC validation findings. */
+function findingSeverityIcon(severity: TcValidationFinding['severity']): string {
+  const icons: Record<string, string> = {
+    'critical': '🔴',
+    'high': '🟠',
+    'moderate': '🟡',
+    'info': 'ℹ️',
+  }
+  return icons[severity] || '⚪'
+}
+
+/** CSS class for finding severity. */
+function findingSeverityClass(severity: TcValidationFinding['severity']): string {
+  const classes: Record<string, string> = {
+    'critical': 'finding-critical',
+    'high': 'finding-high',
+    'moderate': 'finding-moderate',
+    'info': 'finding-info',
+  }
+  return classes[severity] || 'finding-info'
+}
+
+/** Purpose status icon — shows consent/LI/none status. */
+function purposeStatusIcon(consented: boolean, li: boolean): string {
+  if (consented && li) return '✅⚖️'
+  if (consented) return '✅'
+  if (li) return '⚖️'
+  return '—'
+}
+
+/** Purpose status label for screen readers / tooltips. */
+function purposeStatusLabel(consented: boolean, li: boolean): string {
+  if (consented && li) return 'Consent + Legitimate Interest'
+  if (consented) return 'Consent'
+  if (li) return 'Legitimate Interest only'
+  return 'No consent'
+}
 </script>
 
 <template>
@@ -149,8 +201,13 @@ function toggleRiskGroup(level: string): void {
 
     <div v-else class="consent-layout">
 
-      <!-- ── Consent Metadata ────────────────────────── -->
+      <!-- ── Overview ────────────────────────────────── -->
       <section class="consent-meta">
+        <h2 class="section-title">📊 Overview <span class="source-badge source-ai">from dialog</span></h2>
+        <p class="section-subtitle">
+          Key metrics extracted from the consent dialog by AI analysis of the
+          dialog text. These values are approximate and may contain errors.
+        </p>
         <div class="meta-cards">
           <div v-if="consentDetails.consentPlatform" class="meta-card">
             <span class="meta-icon">🛡️</span>
@@ -182,10 +239,12 @@ function toggleRiskGroup(level: string): void {
 
       <!-- ── TCF Purpose Breakdown ──────────────────── -->
       <section v-if="consentDetails.purposes.length > 0" class="tcf-section">
-        <h2 class="section-title">🎯 TCF Purpose Breakdown</h2>
+        <h2 class="section-title">📋 Declared Purposes <span class="source-badge source-ai">from dialog</span></h2>
         <p class="section-subtitle">
-          IAB Transparency &amp; Consent Framework purposes this site claims.
-          Each purpose defines what your data can be used for.
+          Purposes extracted from the consent dialog text by AI analysis, then
+          mapped to the IAB Transparency &amp; Consent Framework (TCF) v2.2 taxonomy.
+          Each purpose defines a specific way your data can be used.
+          AI extraction may not capture all purposes or may misinterpret dialog wording.
         </p>
 
         <div v-if="tcfLoading" class="tcf-loading">
@@ -242,9 +301,241 @@ function toggleRiskGroup(level: string): void {
         </div>
       </section>
 
+      <!-- ── TC String Verification ─────────────────── -->
+      <section v-if="tcValidation() || acStringData()" class="tc-verification-section">
+        <h2 class="section-title">🔍 Consent Verification
+          <span v-if="tcValidation()" class="source-badge source-tc">TC String</span>
+          <span v-if="acStringData()" class="source-badge source-ac">AC String</span>
+        </h2>
+        <p class="section-subtitle">
+          After the consent dialog was accepted, the CMP wrote machine-readable
+          consent signals to browser cookies. The <em>TC String</em>
+          (<code>euconsent-v2</code>) encodes IAB-registered vendor consents;
+          <span v-if="acStringData()">the <em>AC String</em>
+          (<code>addtl_consent</code>) lists additional non-IAB ad-tech providers
+          that received consent via Google&rsquo;s Additional Consent Mode.
+          Both are</span>
+          <span v-else>this data is</span>
+          decoded below and cross-referenced against the dialog text shown to users.
+        </p>
+
+        <!-- Findings -->
+        <div v-if="tcValidation() && tcValidation()!.findings.length > 0" class="tc-findings">
+          <h3 class="tc-subsection-title">Findings</h3>
+          <div
+            v-for="(finding, idx) in tcValidation()!.findings"
+            :key="idx"
+            class="tc-finding"
+            :class="findingSeverityClass(finding.severity)"
+          >
+            <div class="tc-finding-header">
+              <span class="tc-finding-icon">{{ findingSeverityIcon(finding.severity) }}</span>
+              <span class="tc-finding-severity" :class="findingSeverityClass(finding.severity)">{{ finding.severity }}</span>
+              <span class="tc-finding-title">{{ finding.title }}</span>
+            </div>
+            <p class="tc-finding-detail">{{ finding.detail }}</p>
+          </div>
+        </div>
+
+        <!-- Vendor Comparison -->
+        <div v-if="tcValidation()" class="tc-subsection">
+          <h3 class="tc-subsection-title">Vendor Comparison</h3>
+          <p class="tc-subsection-desc">
+            The dialog&rsquo;s partner count and the TC String&rsquo;s vendor
+            consent count may differ for legitimate reasons: the dialog may
+            include non-TCF vendors, downstream data-sharing partners, or
+            vendors using Google&rsquo;s Additional Consent Mode, none of which
+            appear in the TC String. Equally, the TC String may reference
+            IAB-registered vendors not individually named in the dialog.
+          </p>
+          <div class="tc-vendor-row">
+            <div v-if="tcValidation()!.claimedPartnerCount" class="tc-stat-card" :class="{ 'tc-stat-mismatch': tcValidation()!.vendorCountMismatch }">
+              <span class="tc-stat-icon">💬</span>
+              <span class="tc-stat-label">Dialog Claims</span>
+              <span class="tc-stat-value">{{ tcValidation()!.claimedPartnerCount }}</span>
+              <span class="tc-stat-source">from dialog text</span>
+            </div>
+            <div class="tc-stat-card" :class="{ 'tc-stat-mismatch': tcValidation()!.vendorCountMismatch }">
+              <span class="tc-stat-icon">📜</span>
+              <span class="tc-stat-label">Vendor Consents</span>
+              <span class="tc-stat-value">{{ tcValidation()!.vendorConsentCount }}</span>
+              <span class="tc-stat-source">from TC String</span>
+            </div>
+            <div v-if="tcValidation()!.vendorLiCount > 0" class="tc-stat-card">
+              <span class="tc-stat-icon">⚖️</span>
+              <span class="tc-stat-label">Legitimate Interest</span>
+              <span class="tc-stat-value">{{ tcValidation()!.vendorLiCount }}</span>
+              <span class="tc-stat-source">from TC String</span>
+            </div>
+            <div v-if="acStringData()" class="tc-stat-card tc-stat-ac">
+              <span class="tc-stat-icon">🔗</span>
+              <span class="tc-stat-label">Non-IAB Vendors</span>
+              <span class="tc-stat-value">{{ acStringData()!.vendorCount }}</span>
+              <span class="tc-stat-source">from AC String</span>
+            </div>
+          </div>
+
+          <!-- Expandable IAB vendor list -->
+          <div v-if="consentDetails?.tcStringData?.resolvedVendorConsents?.length" class="vendor-list-toggle">
+            <button class="vendor-toggle-btn" @click="showTcVendors = !showTcVendors">
+              {{ showTcVendors ? '▾' : '▸' }}
+              {{ showTcVendors ? 'Hide' : 'Show' }} IAB vendor names
+              ({{ consentDetails.tcStringData.resolvedVendorConsents.length }} identified)
+            </button>
+            <div v-if="showTcVendors" class="vendor-name-list">
+              <div
+                v-for="(v, idx) in consentDetails.tcStringData.resolvedVendorConsents"
+                :key="idx"
+                class="vendor-name-item"
+              >
+                <span class="vendor-id">#{{ v.id }}</span>
+                <span class="vendor-name">{{ v.name }}</span>
+              </div>
+              <div v-if="consentDetails.tcStringData.unresolvedVendorConsentCount" class="vendor-unresolved-note">
+                + {{ consentDetails.tcStringData.unresolvedVendorConsentCount }} vendor ID{{ consentDetails.tcStringData.unresolvedVendorConsentCount === 1 ? '' : 's' }} not listed in the IAB Global Vendor List
+              </div>
+            </div>
+          </div>
+
+          <!-- Expandable AC provider list -->
+          <div v-if="acStringData()?.resolvedProviders?.length" class="vendor-list-toggle">
+            <button class="vendor-toggle-btn ac-toggle" @click="showAcProviders = !showAcProviders">
+              {{ showAcProviders ? '▾' : '▸' }}
+              {{ showAcProviders ? 'Hide' : 'Show' }} Google ATP provider names
+              ({{ acStringData()!.resolvedProviders!.length }} identified)
+            </button>
+            <div v-if="showAcProviders" class="vendor-name-list">
+              <div
+                v-for="(p, idx) in acStringData()!.resolvedProviders"
+                :key="idx"
+                class="vendor-name-item"
+              >
+                <span class="vendor-id">#{{ p.id }}</span>
+                <span class="vendor-name">{{ p.name }}</span>
+                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔗</a>
+              </div>
+              <div v-if="acStringData()!.unresolvedProviderCount" class="vendor-unresolved-note">
+                + {{ acStringData()!.unresolvedProviderCount }} provider ID{{ acStringData()!.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AC String Only (no TC String) -->
+        <div v-if="!tcValidation() && acStringData()" class="tc-subsection">
+          <h3 class="tc-subsection-title">Google Additional Consent Mode</h3>
+          <p class="tc-subsection-desc">
+            The <code>addtl_consent</code> cookie contains a Google AC String
+            listing non-IAB ad-tech providers that received consent. No IAB TC
+            String was found for this site.
+          </p>
+          <div class="tc-vendor-row">
+            <div class="tc-stat-card tc-stat-ac">
+              <span class="tc-stat-icon">🔗</span>
+              <span class="tc-stat-label">Non-IAB Vendors</span>
+              <span class="tc-stat-value">{{ acStringData()!.vendorCount }}</span>
+              <span class="tc-stat-source">from AC String</span>
+            </div>
+          </div>
+
+          <!-- Expandable AC provider list (AC-only section) -->
+          <div v-if="acStringData()?.resolvedProviders?.length" class="vendor-list-toggle">
+            <button class="vendor-toggle-btn ac-toggle" @click="showAcProviders = !showAcProviders">
+              {{ showAcProviders ? '▾' : '▸' }}
+              {{ showAcProviders ? 'Hide' : 'Show' }} Google ATP provider names
+              ({{ acStringData()!.resolvedProviders!.length }} identified)
+            </button>
+            <div v-if="showAcProviders" class="vendor-name-list">
+              <div
+                v-for="(p, idx) in acStringData()!.resolvedProviders"
+                :key="idx"
+                class="vendor-name-item"
+              >
+                <span class="vendor-id">#{{ p.id }}</span>
+                <span class="vendor-name">{{ p.name }}</span>
+                <a v-if="p.policy_url" :href="p.policy_url" target="_blank" rel="noopener" class="vendor-policy-link" title="Privacy policy">🔗</a>
+              </div>
+              <div v-if="acStringData()!.unresolvedProviderCount" class="vendor-unresolved-note">
+                + {{ acStringData()!.unresolvedProviderCount }} provider ID{{ acStringData()!.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="tcValidation() && tcValidation()!.specialFeatures.length > 0" class="tc-special-features">
+          <h3 class="tc-subsection-title">Special Feature Opt-ins</h3>
+          <p class="tc-subsection-desc">
+            Special features require explicit user consent under TCF. These are
+            opted in via the TC String.
+          </p>
+          <div
+            v-for="sf in tcValidation()!.specialFeatures"
+            :key="sf"
+            class="tc-special-feature-item"
+          >
+            ⚡ {{ sf }}
+          </div>
+        </div>
+
+        <!-- Purpose Consent Matrix -->
+        <div v-if="tcValidation()" class="tc-purpose-matrix">
+          <h3 class="tc-subsection-title">Purpose Consent Matrix</h3>
+          <p class="tc-subsection-desc">
+            All 11 IAB TCF purposes and their actual consent status as encoded
+            in the TC String. The &ldquo;In Dialog&rdquo; column shows whether
+            each purpose was matched to the dialog text by AI analysis &mdash;
+            a &ldquo;✗&rdquo; may indicate the purpose was not disclosed, or
+            that the AI did not recognise the dialog&rsquo;s wording for it.
+          </p>
+          <div class="tc-matrix-legend">
+            <span class="tc-legend-item">✅ Consent given</span>
+            <span class="tc-legend-item">⚖️ Legitimate Interest</span>
+            <span class="tc-legend-item"><span class="tc-disclosed">✓</span> Shown in dialog</span>
+            <span class="tc-legend-item"><span class="tc-undisclosed">✗</span> Not in dialog</span>
+            <span class="tc-legend-item"><span class="tc-legend-swatch"></span> Undisclosed consent</span>
+          </div>
+          <div class="tc-matrix-grid">
+            <div class="tc-matrix-header">
+              <span class="tc-matrix-col-id">ID</span>
+              <span class="tc-matrix-col-name">Purpose</span>
+              <span class="tc-matrix-col-status">Status</span>
+              <span class="tc-matrix-col-risk">Risk</span>
+              <span class="tc-matrix-col-dialog">In Dialog</span>
+            </div>
+            <div
+              v-for="ps in tcValidation()!.purposeSignals"
+              :key="ps.id"
+              class="tc-matrix-row"
+              :class="{
+                'tc-row-undisclosed': !ps.disclosedInDialog && (ps.consented || ps.legitimateInterest),
+                'tc-row-consented': ps.consented
+              }"
+            >
+              <span class="tc-matrix-col-id">{{ ps.id }}</span>
+              <span class="tc-matrix-col-name">{{ ps.name }}</span>
+              <span class="tc-matrix-col-status" :title="purposeStatusLabel(ps.consented, ps.legitimateInterest)">
+                {{ purposeStatusIcon(ps.consented, ps.legitimateInterest) }}
+              </span>
+              <span class="tc-matrix-col-risk">
+                <span class="tc-risk-dot" :class="riskClass(ps.riskLevel)"></span>
+                {{ ps.riskLevel }}
+              </span>
+              <span class="tc-matrix-col-dialog">
+                <span v-if="ps.disclosedInDialog" class="tc-disclosed">✓</span>
+                <span v-else-if="ps.consented || ps.legitimateInterest" class="tc-undisclosed">✗</span>
+                <span v-else class="tc-na">—</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ── Consent Categories ─────────────────────── -->
       <section v-if="consentDetails.categories.length > 0" class="categories-section">
-        <h2 class="section-title">📂 Consent Categories</h2>
+        <h2 class="section-title">📂 Consent Categories <span class="source-badge source-ai">from dialog</span></h2>
+        <p class="section-subtitle">
+          Cookie consent categories disclosed in the dialog, extracted by AI
+          analysis. Category names and descriptions may not be verbatim.
+        </p>
         <div class="category-list">
           <div
             v-for="cat in consentDetails.categories"
@@ -263,9 +554,11 @@ function toggleRiskGroup(level: string): void {
 
       <!-- ── Partners by Risk Level ─────────────────── -->
       <section v-if="consentDetails.partners.length > 0" class="partners-section">
-        <h2 class="section-title">👥 Consent Partners</h2>
+        <h2 class="section-title">👥 Declared Partners <span class="source-badge source-ai">from dialog</span></h2>
         <p class="section-subtitle">
-          Third-party vendors declared in the consent dialog, grouped by risk classification.
+          Third-party vendors declared in the consent dialog, extracted by AI
+          analysis and grouped by privacy risk classification. The AI may omit
+          partners or misread names from the dialog text.
         </p>
 
         <div class="partner-groups">
@@ -360,12 +653,55 @@ function toggleRiskGroup(level: string): void {
   font-weight: 700;
   color: #e0e7ff;
   margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .section-subtitle {
   font-size: 0.85rem;
   color: #6b7280;
   margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.section-subtitle code {
+  font-size: 0.78rem;
+  background: #2a2f45;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  color: #d1d5db;
+}
+
+.section-subtitle em {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ── Data Source Badges ──────────────────────── */
+.source-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.source-ai {
+  background: #1a2e3d;
+  color: #22d3ee;
+}
+
+.source-tc {
+  background: #1e1a3d;
+  color: #a78bfa;
+}
+
+.source-ac {
+  background: #1a3d27;
+  color: #4ade80;
 }
 
 /* ── TCF Purpose Cards ──────────────────────── */
@@ -696,4 +1032,389 @@ function toggleRiskGroup(level: string): void {
 .risk-badge.risk-high { background: #3d2020; color: #f87171; }
 .risk-badge.risk-critical { background: #4a1a2e; color: #f472b6; }
 .risk-badge.risk-unknown { background: #2a2f45; color: #6b7280; }
+
+/* ── TC String Verification ────────────────── */
+.tc-verification-section {
+  border-top: 1px solid #3d4663;
+  padding-top: 1rem;
+}
+
+/* ── TC Sub-sections ───────────────────────── */
+.tc-subsection {
+  margin-bottom: 0.75rem;
+}
+
+.tc-subsection-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e0e7ff;
+  margin: 0.75rem 0 0.2rem;
+}
+
+.tc-subsection-desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+
+.tc-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tc-finding {
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  border-left: 4px solid #3d4663;
+}
+
+.tc-finding.finding-critical {
+  background: #2d1520;
+  border-left-color: #f472b6;
+}
+
+.tc-finding.finding-high {
+  background: #2d1a15;
+  border-left-color: #f87171;
+}
+
+.tc-finding.finding-moderate {
+  background: #2d2815;
+  border-left-color: #fbbf24;
+}
+
+.tc-finding.finding-info {
+  background: #1a2030;
+  border-left-color: #60a5fa;
+}
+
+.tc-finding-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.tc-finding-icon {
+  font-size: 0.85rem;
+}
+
+.tc-finding-severity {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+.tc-finding-severity.finding-critical { background: #4a1a2e; color: #f472b6; }
+.tc-finding-severity.finding-high { background: #3d2020; color: #f87171; }
+.tc-finding-severity.finding-moderate { background: #3d3520; color: #fbbf24; }
+.tc-finding-severity.finding-info { background: #1a2e3d; color: #60a5fa; }
+
+.tc-finding-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e0e7ff;
+}
+
+.tc-finding-detail {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── TC Vendor / Stats Row ─────────────────── */
+.tc-vendor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tc-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: #1a1e30;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  min-width: 7rem;
+  flex: 1;
+}
+
+.tc-stat-card.tc-stat-mismatch {
+  border: 1px solid #f87171;
+  background: #1f1520;
+}
+
+.tc-stat-card.tc-stat-alert {
+  border: 1px solid #f59e0b;
+  background: #1f1a15;
+}
+
+.tc-stat-card.tc-stat-ac {
+  border: 1px solid #4ade80;
+  background: #0f1f15;
+}
+
+.tc-stat-icon {
+  font-size: 1.3rem;
+}
+
+.tc-stat-label {
+  font-size: 0.65rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.tc-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e0e7ff;
+}
+
+.tc-stat-source {
+  font-size: 0.6rem;
+  color: #4b5563;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Vendor Name Lists ─────────────────────── */
+.vendor-list-toggle {
+  margin-top: 0.5rem;
+}
+
+.vendor-toggle-btn {
+  background: transparent;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  color: #9ca3af;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.vendor-toggle-btn:hover {
+  background: #1f2937;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+.vendor-toggle-btn.ac-toggle:hover {
+  border-color: #6366f1;
+}
+
+.vendor-name-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #374151;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: #111827;
+}
+
+.vendor-name-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  color: #d1d5db;
+  border-bottom: 1px solid #1f2937;
+}
+
+.vendor-name-item:last-child {
+  border-bottom: none;
+}
+
+.vendor-id {
+  color: #6b7280;
+  font-family: monospace;
+  font-size: 0.7rem;
+  min-width: 3.5rem;
+}
+
+.vendor-name {
+  flex: 1;
+}
+
+.vendor-policy-link {
+  font-size: 0.7rem;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.vendor-policy-link:hover {
+  opacity: 1;
+}
+
+.vendor-unresolved-note {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-style: italic;
+  border-top: 1px solid #1f2937;
+}
+
+/* ── TC Special Features ───────────────────── */
+.tc-special-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.tc-special-feature-item {
+  background: #2d1a20;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  color: #fbbf24;
+  font-weight: 500;
+}
+
+/* ── TC Purpose Matrix ─────────────────────── */
+.tc-purpose-matrix {
+  margin-top: 0.5rem;
+}
+
+.tc-matrix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #1a1e30;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.tc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tc-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #1f1520;
+  border: 1px solid #3d2040;
+}
+
+.tc-matrix-grid {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #2a2f45;
+}
+
+.tc-matrix-header {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 4rem 5rem 5rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #1a1e30;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.tc-matrix-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 4rem 5rem 5rem;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid #1e2235;
+  font-size: 0.82rem;
+  color: #d1d5db;
+  align-items: center;
+}
+
+.tc-matrix-row:hover {
+  background: #1a1e30;
+}
+
+.tc-matrix-row.tc-row-undisclosed {
+  background: #1f1520;
+}
+
+.tc-matrix-row.tc-row-undisclosed:hover {
+  background: #251a28;
+}
+
+.tc-matrix-col-id {
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tc-matrix-col-name {
+  color: #e0e7ff;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-matrix-col-status {
+  text-align: center;
+}
+
+.tc-matrix-col-risk {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+
+.tc-risk-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #6b7280;
+}
+
+.tc-risk-dot.risk-low { background: #22d3ee; }
+.tc-risk-dot.risk-medium { background: #fbbf24; }
+.tc-risk-dot.risk-high { background: #f87171; }
+.tc-risk-dot.risk-critical { background: #f472b6; }
+
+.tc-matrix-col-dialog {
+  text-align: center;
+}
+
+.tc-disclosed {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.tc-undisclosed {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.tc-na {
+  color: #4b5563;
+}
 </style>

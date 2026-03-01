@@ -18,7 +18,7 @@ from fastapi.middleware import cors
 from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
-from src.analysis import cookie_lookup, storage_lookup, tcf_lookup
+from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
 from src.data import loader
 from src.pipeline import stream
 from src.utils import cache, logger
@@ -218,6 +218,30 @@ async def tcf_purposes_endpoint(
 
     result = tcf_lookup.lookup_purposes(purposes)
     return result.model_dump(by_alias=True)
+
+
+@app.post("/api/tc-string-decode")
+async def tc_string_decode_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Decode an IAB TCF v2 TC String.
+
+    Accepts a raw TC String (Base64url-encoded, as stored in
+    the ``euconsent-v2`` cookie) and returns decoded metadata,
+    purpose consents, vendor consents, and legitimate interest
+    signals.  Purely deterministic — no LLM calls.
+    """
+    body = await request.json()
+    raw: str = body.get("tcString", "")
+
+    if not raw:
+        return {"error": "No tcString provided"}
+
+    decoded = tc_string.decode_tc_string(raw)
+    if decoded is None:
+        return {"error": "Failed to decode TC string"}
+
+    return decoded.model_dump(by_alias=True)
 
 
 @app.get("/api/open-browser-stream")
