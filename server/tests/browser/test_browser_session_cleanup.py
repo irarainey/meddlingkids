@@ -103,6 +103,25 @@ class TestBrowserSessionClose:
         assert session._context is None
 
     @pytest.mark.asyncio()
+    async def test_close_suppresses_cancelled_error(
+        self,
+    ) -> None:
+        """CancelledError during context.close() must not propagate.
+
+        Starlette cancel-scopes send CancelledError (a BaseException)
+        when the SSE connection closes.  The session must still finish
+        cleanup without raising.
+        """
+        session = session_mod.BrowserSession()
+        ctx = mock.AsyncMock()
+        ctx.close.side_effect = asyncio.CancelledError()
+        session._context = ctx
+
+        await session.close()
+
+        assert session._context is None
+
+    @pytest.mark.asyncio()
     async def test_close_clears_tracking_data(self) -> None:
         """All tracking state must be cleared on close."""
         session = session_mod.BrowserSession()
