@@ -24,7 +24,7 @@ Meddling Kids is a full-stack application that analyzes website tracking behavio
 
 - **Client**: Vue 3 SPA that initiates analysis and displays results
 - **Server**: Python FastAPI application that orchestrates browser automation and AI analysis
-- **Playwright**: Browser automation (async Python API) for page loading and data capture
+- **Playwright**: Browser automation (async Python API) for page loading and data capture. A single Chrome instance is started at app startup via `PlaywrightManager` and shared across all requests; each request gets an isolated `BrowserContext` (~50 ms to create)
 - **Xvfb**: Virtual display that allows headed browser mode without a visible window
 - **Microsoft Agent Framework**: AI agent infrastructure with Azure OpenAI / OpenAI backends for consent detection, script analysis, and privacy analysis
 
@@ -71,10 +71,10 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │          ▼                         ▼                         ▼             │
 │  ┌────────────────────┐  ┌─────────────────────┐     ┌─────────────────┐   │
 │  │ browser/           │  │ consent/            │     │ analysis/       │   │
-│  │ - Playwright async │  │ - Detection (AI)    │     │ - Tracking      │   │
-│  │ - Navigation       │  │ - Extraction (AI)   │     │ - Risk analysis │   │
-│  │ - Capture          │  │ - Click strategies  │     │ - Privacy score │   │
-│  │ - Per-request      │  └─────────────────────┘     └─────────────────┘   │
+│  │ - PlaywrightManager│  │ - Detection (AI)    │     │ - Tracking      │   │
+│  │   (shared Chrome)  │  │ - Extraction (AI)   │     │ - Risk analysis │   │
+│  │ - BrowserSession   │  │ - Click strategies  │     │ - Privacy score │   │
+│  │   (per-request ctx)│  └─────────────────────┘     └─────────────────┘   │
 │  └────────────────────┘                                                    │
 └────────────────────────────────────────────────────────────────────────────┘
                                      │
@@ -106,13 +106,13 @@ analyzeUrl() in useTrackingAnalysis.ts
 analyze_url_stream() in pipeline/stream.py
    │
    ├── If clear_cache=True → cache_util.clear_all()
-   ├── validate_openai_config() → Check env vars
-   ├── BrowserSession() → Create isolated session
-   ├── session.clear_tracking_data() → Reset tracking arrays
-   ├── await launch_browser(session, device_type) → Start real Chrome (Chromium fallback)
-   │   ├── Anti-bot hardening: webdriver removal, plugins, WebGL, AudioContext, MediaDevices
-   │   ├── Playwright startup timeout (15s) prevents indefinite hangs
-   │   └── Retry: up to 2 attempts with cleanup between retries (see Browser Resilience)
+   ├── validate_llm_config() → Check env vars (cached after first call)
+   ├── PlaywrightManager.get_instance() → Get shared browser singleton
+   ├── manager.create_session(device_type) → Create isolated BrowserContext (~50 ms)
+   │   ├── _ensure_browser() → Restart Chrome if it has crashed
+   │   ├── new_context() → Fresh incognito window with device emulation
+   │   ├── Anti-bot init script injected: webdriver removal, plugins, WebGL, AudioContext, MediaDevices
+   │   └── Returns BrowserSession with active page
    └── await session.navigate_to(url) → Load target page
 ```
 
@@ -282,7 +282,7 @@ All data captured
 Analysis complete
    │
    └── send_event('complete', {
-         message,           // Completion message
+         message,           // "Investigation complete!"
          structuredReport,  // Per-section structured report
          summaryFindings,   // Structured findings array
          privacyScore,      // 0-100
@@ -299,9 +299,11 @@ Analysis complete
          debugLog           // Server debug log lines
        })
    │
-   └── await session.close() → Cleanup Playwright (in finally block)
-       ├── Per-step timeouts (5s each): context.close → browser.close → playwright.stop
-       ├── Force-kills browser process (SIGKILL) if graceful close fails
+   └── await session.close() → Close BrowserContext (in finally block)
+       ├── Remove page event listeners
+       ├── context.close() with 8s timeout — releases the per-request incognito window
+       ├── CancelledError and Exception are silently caught (best-effort cleanup)
+       ├── Shared Chrome browser remains running for future requests
        └── Outer 30s timeout in stream.py prevents indefinite cleanup hangs
 ```
 
@@ -375,7 +377,7 @@ eventSource.addEventListener('screenshot', (e) => {
 })
 
 eventSource.addEventListener('screenshotUpdate', (e) => {
-  // Replace most recent screenshot (background refresh)
+  // Replace most recent screenshot (targeted refresh at key pipeline points)
 })
 
 eventSource.addEventListener('pageError', (e) => {
@@ -459,7 +461,7 @@ Key framework types used:
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, and per-agent deployment override support via `config.get_agent_deployment()` |
-| `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`) |
+| `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` — environment variables are read once at startup |
 | `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
@@ -474,7 +476,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `session.py` | Playwright async browser session (per-request isolation, real Chrome with anti-bot hardening, per-step cleanup timeouts, OS-level force-kill fallback, async context manager). Captures `initiator_domain` from the requesting frame and `redirected_from_url` from redirect chains. `take_screenshot()` accepts a configurable `timeout` (default 15s) and `optimize_screenshot_bytes()` gracefully handles empty input |
+| `manager.py` | `PlaywrightManager` singleton — starts a single Playwright + Chrome instance at app startup (via FastAPI lifespan) and reuses it for all requests. `create_session()` creates an isolated `BrowserContext` per request (~50 ms). Auto-recovers when Chrome crashes (`_ensure_browser()` checks `browser.is_connected()` and restarts). Retries startup up to 2 times. Graceful shutdown with per-step timeouts (8 s each for browser close and Playwright stop) and `SIGKILL` fallback |
+| `session.py` | Per-request `BrowserSession` wrapping an isolated `BrowserContext`. Created by `PlaywrightManager.create_session()`. `close()` tears down only the context (8 s timeout) — the shared browser remains running. Captures `initiator_domain` from requesting frames and `redirected_from_url` from redirect chains. `take_screenshot()` accepts a configurable `timeout` (default 15 s) and `optimize_screenshot_bytes()` gracefully handles empty input |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -525,7 +528,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | Module | Responsibility |
 |--------|---------------|
 | `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
-| `browser_phases.py` | Phases 1-3: setup (with browser launch retry), navigate, initial capture |
+| `browser_phases.py` | Phases 1-3: navigate, page load, access check, initial data capture (browser session creation is handled by `PlaywrightManager` at a higher level) |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `detect_overlay()` speculatively crops the viewport screenshot to the consent dialog bounding box (via `get_consent_bounds.js`) before sending to the LLM, preventing content-filter rejections from background imagery. `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
@@ -773,7 +776,7 @@ class ThirdPartyGroup(BaseModel):
 |-------|-----------|---------|-------------|
 | `progress` | Server → Client | `{ step, message, progress }` | Loading progress updates |
 | `screenshot` | Server → Client | `{ screenshot, cookies, scripts, networkRequests, localStorage, sessionStorage }` | Page capture with all data |
-| `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (background refresh as ads/content load) |
+| `screenshotUpdate` | Server → Client | `{ screenshot }` | Replaces the most recent screenshot (targeted refresh at key pipeline points as ads/content load) |
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
 | `decodedCookies` | Server → Client | `DecodedCookies` | Decoded structured cookies (OneTrust, Cookiebot, GA, Facebook, Google Ads, USP, GPC/DNT, GPP, TC/AC strings) |
@@ -898,46 +901,50 @@ Every cache operation is logged:
 
 The browser lifecycle includes several safeguards to handle crashes, hangs, and resource leaks.
 
-### Browser Launch Retry
+### Browser Launch and Recovery
 
-`browser_phases.launch_browser()` retries browser startup on failure:
+The `PlaywrightManager` singleton manages the shared Chrome browser lifecycle:
 
-- **Max attempts:** 2
-- **Delay between retries:** 2 seconds
-- **Cleanup between attempts:** `session.close()` is called (with a 10-second timeout) to tear down any partially-initialized Playwright state before the next attempt
-- **Cleanup failures are non-fatal:** If cleanup between attempts fails, the retry still proceeds
-- **Final failure:** If all attempts fail, the last exception is raised to the caller
+- **Shared instance:** A single Chrome browser is started at app startup (via FastAPI `lifespan`). All requests share this instance.
+- **Auto-recovery:** Before creating each session, `_ensure_browser()` checks `browser.is_connected()` and restarts Chrome if it has crashed.
+- **Startup retry:** Browser startup retries up to 2 times with cleanup between attempts (`_stop_internal()` + 2 s delay).
+- **Startup timeout:** `async_playwright().start()` is wrapped in a 15-second timeout to prevent indefinite hangs when Playwright or Xvfb is unresponsive.
+- **Browser PID tracking:** The browser PID is captured after launch for `SIGKILL` fallback during shutdown.
 
 ```
-launch_browser()
+PlaywrightManager.start() — called once at app startup
    │
-   ├── Attempt 1: session.launch_browser(device_type)
+   ├── Attempt 1: _start_single_attempt()
+   │   ├── async_playwright().start() (15s timeout)
+   │   └── chromium.launch(channel="chrome") → Chromium fallback
    │   └── Success → return
    │
    ├── On failure:
    │   ├── Log warning
-   │   ├── session.close() (10s timeout, errors swallowed)
+   │   ├── _stop_internal() (cleanup partial state)
    │   └── Sleep 2s
    │
-   └── Attempt 2: session.launch_browser(device_type)
+   └── Attempt 2: _start_single_attempt()
        └── Success → return
-       └── Failure → raise
+       └── Failure → raise RuntimeError
 ```
-
-### Playwright Startup Timeout
-
-`session.launch_browser()` wraps the `async_playwright().start()` call in a 15-second timeout. This prevents indefinite hangs when Playwright or Xvfb is unresponsive. The browser PID is captured after launch for force-kill fallback.
 
 ### Session Cleanup
 
-`session.close()` performs a layered teardown with per-step timeouts:
+`session.close()` tears down only the per-request `BrowserContext` — the shared Chrome browser remains running:
 
 1. **Remove event listeners** — prevents callbacks from firing during teardown
-2. **Close browser context** — 5-second timeout
-3. **Close browser** — 5-second timeout
-4. **Stop Playwright** — 5-second timeout
+2. **Close browser context** — 8-second timeout (`_CLOSE_TIMEOUT_SECONDS`)
+3. **CancelledError / Exception** — silently caught (Starlette cancel-scopes can interrupt the close; non-fatal because the shared browser remains and the context will be garbage-collected)
+4. **Clear tracking data** — arrays are reset regardless of errors
 
-If any step times out, the remaining steps still execute. After all steps complete, `_force_kill_browser_process()` sends `SIGKILL` to the browser PID if it was captured during launch. Tracking data arrays are cleared at the end regardless of errors.
+### Shared Browser Shutdown
+
+`PlaywrightManager.stop()` is called once at application shutdown (via FastAPI `lifespan`):
+
+1. **Close browser** — 8-second timeout
+2. **Stop Playwright** — 8-second timeout
+3. **Force-kill** — If graceful close timed out, `SIGKILL` is sent to the browser process (or process group if it has its own)
 
 ### Stream-Level Timeout
 
@@ -952,7 +959,7 @@ Ad-heavy pages can become temporarily unresponsive after a consent overlay is di
 - **Graceful fallback in consent capture** — `capture_consent_content()` catches screenshot exceptions and falls back to `b""`. Consent extraction can still proceed using extracted DOM text alone.
 - **Graceful fallback in SSE screenshot events** — `take_screenshot_event()` catches screenshot exceptions and falls back to `b""`. Post-click captures produce an empty image rather than crashing.
 - **Empty-bytes guard** — `optimize_screenshot_bytes()` returns an empty string for empty bytes input, preventing a downstream Pillow crash when any of the above fallbacks flow through the optimization pipeline.
-- **Background refresher** — The screenshot refresher in `stream.py` catches all exceptions, logs the actual error, and bails out after 2 consecutive failures (`_MAX_CONSECUTIVE_SCREENSHOT_FAILURES`) to avoid burning 30+ seconds retrying a hung page. The pre-analysis screenshot also uses the reduced 5 000 ms timeout (`_REFRESH_SCREENSHOT_TIMEOUT_MS`) instead of the default 15 000 ms.
+- **Targeted screenshots** — At two key pipeline points (after no-dialog detection and after page settle before analysis), `_take_targeted_screenshot()` captures a fresh screenshot and sends it as a `screenshotUpdate` event. Failures return `None` and are silently skipped.
 
 ### Client Error Reporting
 
@@ -1119,14 +1126,15 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 
 ### Concurrency
 
-- Each request creates its own `BrowserSession` instance
+- A single Chrome browser is shared across all requests via the `PlaywrightManager` singleton (started at app startup)
+- Each request creates its own `BrowserSession` with an isolated `BrowserContext` (~50 ms, like a fresh incognito window)
 - Sessions are fully isolated — no shared state between requests
 - Logger state (timers, log buffer, file handle) uses `contextvars.ContextVar` for async-safe per-session isolation
 - Multiple users can analyze different URLs simultaneously
-- Browser cleanup happens in `finally` block to prevent leaks:
-  - Each cleanup step (`context.close`, `browser.close`, `playwright.stop`) has a 5-second timeout
-  - If the browser process does not exit gracefully, it is force-killed via `SIGKILL`
+- Per-request cleanup happens in `finally` block:
+  - `session.close()` tears down only the context (8 s timeout); the shared browser remains running
   - The outer `finally` block in `stream.py` wraps `session.close()` in a 30-second timeout
+- Shared browser shutdown (with `SIGKILL` fallback) happens only at application exit
 
 ### Performance
 

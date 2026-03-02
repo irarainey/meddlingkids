@@ -34,7 +34,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 ## How It Works
 
 1. **URL Submission** — User enters a URL and selects a device type to emulate
-2. **Browser Automation** — Playwright launches real Chrome (with Chromium fallback) in headed mode on a virtual display, with anti-bot hardening to avoid detection
+2. **Browser Automation** — A shared Playwright Chrome instance (started once at app startup) creates an isolated BrowserContext per request (~50 ms), with anti-bot hardening to avoid detection
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Overlay Detection** — AI analyzes the page for overlays (cookie consent, sign-in, newsletter, paywall, age verification)
@@ -93,7 +93,7 @@ And if you want an even deeper dive, we provide a detailed visualization and int
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite, D3.js |
 | Backend | Python, FastAPI, Microsoft Agent Framework |
-| Browser Automation | Playwright for Python with real Chrome (headed mode on Xvfb virtual display) |
+| Browser Automation | Playwright for Python with shared Chrome singleton (headed mode on Xvfb virtual display, per-request BrowserContext) |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture
@@ -112,7 +112,7 @@ meddlingkids/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       │   ├── prompts/       # System prompts (one module per agent)
-│       ├── browser/           # Browser automation (Playwright session, device configs)
+│       ├── browser/           # Browser automation (PlaywrightManager singleton, per-request BrowserSession, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache, CMP platform detection)
 │       ├── analysis/          # Tracking analysis, script ID, privacy scoring, TC/AC string decoding, cookie decoders, vendor enrichment, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)

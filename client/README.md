@@ -317,7 +317,7 @@ The environment is configured via:
 |-------|---------|---------|
 | `progress` | `{ step, message, progress }` | Update progress bar and status |
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
-| `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (background refresh) |
+| `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (targeted refresh at key pipeline points) |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `decodedCookies` | `DecodedCookies` | Store decoded structured cookie breakdowns |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
