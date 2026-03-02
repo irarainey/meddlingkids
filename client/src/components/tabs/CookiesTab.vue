@@ -220,7 +220,7 @@ function riskLabel(level: string): string {
 
 <template>
   <div class="tab-content">
-    <div v-if="cookieCount === 0 && !decodedCookies && !structuredReport" class="empty-state">No cookies detected</div>
+    <div v-if="cookieCount === 0 && !decodedCookies && (!structuredReport || structuredReport.cookieAnalysis.groups.length === 0)" class="empty-state">No cookies detected</div>
 
     <!-- ── Overview (AI Cookie Analysis) ──────────── -->
     <section v-if="structuredReport && structuredReport.cookieAnalysis.groups.length > 0" class="ai-cookie-analysis">
@@ -764,7 +764,7 @@ function riskLabel(level: string): string {
 .cookie-ai-group-header h3 {
   margin: 0;
   font-size: var(--subheading-size);
-  color: var(--subheading-color);
+  color: var(--section-title-color);
 }
 
 .lifespan-tag {
@@ -781,7 +781,7 @@ function riskLabel(level: string): string {
 
 .cookie-ai-names code {
   background: var(--surface-code);
-  color: var(--link-color);
+  color: var(--muted-light);
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   font-size: var(--body-size);
@@ -796,14 +796,15 @@ function riskLabel(level: string): string {
 
 .concerning-section h3 {
   font-size: var(--subheading-size);
-  color: var(--subheading-color);
+  color: var(--section-title-color);
   margin: 0 0 0.5rem;
 }
 
 .concerning-section ul {
-  margin: 0.25rem 0 0 1.25rem;
-  font-size: 0.95rem;
-  color: #fdba74;
+  margin: 0.25rem 0 0 0.75rem;
+  padding-left: 0.75rem;
+  font-size: var(--body-size);
+  color: var(--body-color);
 }
 
 .count-badge {

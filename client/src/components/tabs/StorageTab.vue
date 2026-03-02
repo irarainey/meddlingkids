@@ -461,7 +461,14 @@ function riskClass(level: string): string {
 }
 
 /* ── AI Storage Analysis ─────────────────────── */
-.ai-storage-analysis,
+.ai-storage-analysis {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
 .storage-analysis-section {
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -541,13 +548,14 @@ function riskClass(level: string): string {
 
 .storage-ai-concerns h3 {
   font-size: var(--subheading-size);
-  color: var(--subheading-color);
+  color: var(--section-title-color);
   margin: 0.5rem 0 0.25rem;
 }
 
 .storage-ai-concerns ul {
-  margin: 0.25rem 0 0 1.25rem;
-  font-size: 0.95rem;
-  color: #b0bcd5;
+  margin: 0.25rem 0 0 0.75rem;
+  padding-left: 0.75rem;
+  font-size: var(--body-size);
+  color: var(--body-color);
 }
 </style>

@@ -141,7 +141,7 @@ button:focus-visible {
 
 /* Container for grouped items (cookies, scripts, network by domain) */
 .domain-groups {
-  padding: 0.5rem;
+  padding: 0;
 }
 
 .domain-group {
