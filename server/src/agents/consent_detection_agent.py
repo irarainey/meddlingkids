@@ -47,7 +47,11 @@ class _VisionDetectionResponse(pydantic.BaseModel):
     ) = None
     buttonText: str | None = None
     certainty: int = 0  # 0-100
-    reason: str = ""
+    reason: str = pydantic.Field(
+        default="",
+        max_length=120,
+        description="Brief reason (max 15 words)",
+    )
 
 
 # -- Agent class -------------------------------------------------------
@@ -97,7 +101,9 @@ class ConsentDetectionAgent(base.BaseAgent):
                     " choose the ACCEPT ALL / ALLOW ALL"
                     " button. Never choose reject, decline,"
                     " or necessary-only options.\n\n"
-                    "Rate your certainty from 0 to 100."
+                    "Rate your certainty from 0 to 100.\n\n"
+                    "Keep the reason field very brief"
+                    " (max 15 words)."
                 ),
                 screenshot=screenshot,
             )

@@ -423,9 +423,15 @@ class OverlayPipeline:
     async def _run_vision_loop(self) -> AsyncGenerator[str]:
         """Run the vision-based overlay detection loop.
 
-        Always runs after the cached overlay strategy to catch
-        overlays that the cache didn't cover.  Yields SSE events
-        and updates ``self.result`` as side-state.
+        Always runs after the cached-overlay and CMP-specific
+        dismiss strategies.  When those strategies have already
+        dismissed the consent dialog, the LLM will correctly
+        report ``found=false`` — this is expected behaviour
+        and simply means there are no *additional* overlays to
+        handle.
+
+        Yields SSE events and updates ``self.result`` as
+        side-state.
         """
         result = self.result
         session = self._session

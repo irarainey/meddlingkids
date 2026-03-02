@@ -619,10 +619,13 @@ def _render_key_vendors(
         return []
     lines = [_SECTION_DIVIDER, "TOP VENDORS AND PARTNERS", _SECTION_DIVIDER]
     for v in report.key_vendors.vendors:
+        label = v.role
+        if v.category and v.category.lower() != v.role.lower():
+            label = f"{v.role} · {v.category}"
         if v.url:
-            lines.append(f"  • {v.name} ({v.role}) — {v.url}")
+            lines.append(f"  • {v.name} ({label}) — {v.url}")
         else:
-            lines.append(f"  • {v.name} ({v.role})")
+            lines.append(f"  • {v.name} ({label})")
         lines.append(f"    {v.privacy_impact}")
     lines.append("")
     return lines
