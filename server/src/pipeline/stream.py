@@ -28,7 +28,7 @@ from src.analysis import cookie_decoders, tc_string, tc_validation, tcf_lookup, 
 from src.browser import device_configs
 from src.browser import manager as browser_manager
 from src.browser import session as browser_session
-from src.consent import platform_detection
+from src.consent import overlay_cache, platform_detection
 from src.models import analysis, browser, consent, tracking_data
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache, errors, logger, usage_tracking
@@ -492,6 +492,22 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                 [c.model_dump() for c in tracked_cookies],
             )
             tc_sources = cmp_profile.tc_string_sources if cmp_profile else {}
+
+            # Back-fill consent_platform when not set during
+            # the overlay loop (CMP cookies may only appear
+            # after dismissing the consent dialog).
+            if cmp_profile and not ctx.consent_details.consent_platform:
+                ctx.consent_details.consent_platform = cmp_profile.name
+                log.info(
+                    "Late CMP detection — back-filling consent platform",
+                    {"platform": cmp_profile.name, "key": cmp_profile.key},
+                )
+                # Update the overlay cache so future runs
+                # have the correct platform key.
+                overlay_cache.backfill_consent_platform(
+                    ctx.domain,
+                    cmp_profile.key,
+                )
 
             # ── AC String decoding ───────────────────────
             # The addtl_consent cookie stores Google's

@@ -225,6 +225,13 @@ OverlayPipeline.run()
    │
    ├── overlay_cache.merge_and_save() → Persist cache for repeat visits
    │
+   ├── Late CMP detection & backfill:
+   │   ├── Detect CMP from cookies (may only appear after dismissal)
+   │   ├── If CMP found and consent_platform not already set:
+   │   │   └── Backfill consent_details.consent_platform
+   │   │   └── overlay_cache.backfill_consent_platform() → Update cached overlays
+   │   └── Extract TC/AC strings using CMP-specific cookie sources
+   │
    └── If overlays dismissed → wait for network idle (post-consent settle)
 ```
 
@@ -449,7 +456,7 @@ Key framework types used:
 
 | Agent | Module | Responsibility |
 |-------|--------|---------------|
-| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
+| `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
@@ -489,7 +496,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `extraction.py` | Consent detail extraction orchestration |
 | `click.py` | Click strategies for consent buttons (per-strategy deadline checking to prevent timeout cascades) |
 | `constants.py` | Shared consent-manager host keywords, exclusion lists, container selectors, reject-button regex, and `is_consent_frame()` utility |
-| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON) |
+| `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON). Includes `backfill_consent_platform()` for late CMP detection (when CMP cookies only appear after consent dismissal) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
 | `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
 | `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (15 patterns including special purposes and features), manage-options indicators, partner names, claimed partner counts, and consent platform (10 known CMPs) from DOM text without any LLM call |
@@ -508,7 +515,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `cookie_lookup.py` | Cookie information lookup service — checks consent cookie database and tracking cookie patterns first, falls back to `CookieInfoAgent` LLM for unrecognised cookies. Main function: `get_cookie_info()` |
 | `storage_lookup.py` | Storage key information lookup service — checks tracking storage patterns first, falls back to `StorageInfoAgent` LLM for unrecognised keys. Main function: `get_storage_info()` |
 | `tcf_lookup.py` | TCF purpose matching service — maps consent purpose strings to the IAB TCF v2.2 taxonomy. Fuzzy-matches purposes, special purposes, features, and special features. Deterministic — no LLM calls. Main function: `lookup_purposes()` |
-| `tc_string.py` | TC String decoder — decodes IAB TCF v2 consent strings (Base64url → bitfield) to extract CMP metadata, purpose consents, vendor consents, and legitimate interest signals. Resolves vendor IDs to names via the GVL. Deterministic — no LLM calls |
+| `tc_string.py` | TC String decoder — decodes IAB TCF v2 consent strings (Base64url → bitfield) to extract CMP metadata, purpose consents, vendor consents, and legitimate interest signals. Resolves vendor IDs to names via the GVL. Timestamp validation uses a dynamic window (`current_year + 35`) to tolerate known CMP bugs (e.g. decisecond vs millisecond confusion). Deterministic — no LLM calls |
 | `tc_validation.py` | TC String validation — cross-references decoded TC String data with observed tracking to produce validation findings (e.g. tracking without consent, undisclosed vendors). Deterministic — no LLM calls |
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
@@ -527,9 +534,9 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass |
+| `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass. Phase 4 includes late CMP detection via cookies (after consent dismissal) with `consent_platform` backfill into both `consent_details` and the overlay cache |
 | `browser_phases.py` | Phases 1-3: navigate, page load, access check, initial data capture (browser session creation is handled by `PlaywrightManager` at a higher level) |
-| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture) |
+| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture). When prior strategies have already dismissed the consent dialog, the vision loop correctly reports `found=false` (expected — no additional overlays remain) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `detect_overlay()` speculatively crops the viewport screenshot to the consent dialog bounding box (via `get_consent_bounds.js`) before sending to the LLM, preventing content-filter rejections from background imagery. `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
@@ -862,6 +869,10 @@ repeat visits skip the LLM vision detection step.
   `_failed_cache_types` and dropped on merge.
 - **Reject → Accept override:** Cached reject-style entries are
   replaced when an accept alternative is found.
+- **Late CMP backfill:** When CMP cookies are only detected after
+  the consent dialog has been dismissed, `backfill_consent_platform()`
+  updates cached cookie-consent overlays that have no `consent_platform`
+  set.
 
 ### Cache Management
 

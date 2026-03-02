@@ -94,8 +94,12 @@ button — look for this in the HTML
 there is a partner list somewhere
 - Partner lists may be in tables, lists, or accordion sections
 - Include EVERY partner name you can find
-- If no partners are listed or visible, return an empty array \
-— do NOT invent partner names
+- If no partners are listed or visible, return an empty \
+partners array — do NOT invent partner names.  Many sites \
+(including major broadcasters and publishers) intentionally \
+do not display a partner list in the consent dialog.  This \
+is a valid and common setup — simply return an empty array \
+and still extract the claimedPartnerCount if mentioned
 
 IMPORTANT: If the consent dialog text mentions a specific \
 number of partners (e.g. "We and our 1467 partners", \

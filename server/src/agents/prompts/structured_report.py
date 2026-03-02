@@ -131,8 +131,8 @@ first-party infrastructure in a separate group, but do NOT \
 include them in total_domains.
 
 Provide:
-- total_domains: Total number of genuinely third-party domains \
-(excluding any first-party subdomains)
+- total_domains: The EXACT number from the "Third-Party Domains" \
+count in the data summary. Do NOT recalculate — use the number given
 - groups: Categorised groups, each with:
   - category: Group label (e.g. "Ad Exchanges / SSPs", "Identity & Data Brokers", "Measurement")
   - services: List of company or service names in this group

@@ -1,8 +1,8 @@
 name: Build and Publish Docker Image
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -42,3 +42,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+      - name: Delete old untagged versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: meddlingkids
+          package-type: container
+          min-versions-to-keep: 1
+          delete-only-untagged-versions: true

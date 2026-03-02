@@ -474,13 +474,19 @@ def _is_plausible_tc_decode(decoded: TcStringData) -> bool:
     if decoded.tcf_policy_version < 1 or decoded.tcf_policy_version > 10:
         return False
 
-    # Timestamps should be after 2018-01-01 and before 2100-01-01
+    # Timestamps should be after 2018-01-01 and within a
+    # generous window of the current year.  Some CMPs set
+    # timestamps incorrectly (e.g. decisecond vs millisecond
+    # confusion) producing dates decades in the future.
+    # A 35-year window catches truly bogus values while
+    # tolerating known CMP bugs.
+    max_year = datetime.now(tz=UTC).year + 35
     for ts in (decoded.created, decoded.last_updated):
         if not ts:
             return False
         try:
             dt = datetime.fromisoformat(ts)
-            if dt.year < 2018 or dt.year > 2100:
+            if dt.year < 2018 or dt.year > max_year:
                 return False
         except (ValueError, TypeError):
             return False

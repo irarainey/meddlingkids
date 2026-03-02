@@ -256,7 +256,7 @@ function riskLabel(level: string): string {
         <h3>⚠️ Concerning Cookies</h3>
         <ul>
           <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
-            <strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}
+            {{ stripMarkdown(concern) }}
           </li>
         </ul>
       </div>

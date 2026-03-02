@@ -224,6 +224,36 @@ def _remove(path: pathlib.Path) -> None:
             )
 
 
+def backfill_consent_platform(
+    domain: str,
+    platform_key: str,
+) -> None:
+    """Update cached overlays that have no consent_platform.
+
+    Called when a CMP is detected *after* the overlay cache
+    was saved (e.g. CMP cookies only appear once the consent
+    dialog has been dismissed).
+
+    Args:
+        domain: The domain whose cache to update.
+        platform_key: The CMP profile key to set.
+    """
+    entry = load(domain)
+    if entry is None:
+        return
+    updated = False
+    for overlay in entry.overlays:
+        if overlay.overlay_type == "cookie-consent" and not overlay.consent_platform:
+            overlay.consent_platform = platform_key
+            updated = True
+    if updated:
+        save(entry)
+        log.info(
+            "Overlay cache consent_platform back-filled",
+            {"domain": domain, "platform": platform_key},
+        )
+
+
 def merge_and_save(
     domain: str,
     previous_entry: OverlayCacheEntry | None,
