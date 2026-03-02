@@ -185,9 +185,8 @@ def _build_consent_facts(
     """Build deterministic consent facts for the summary prompt.
 
     Provides the LLM with ground-truth numbers extracted from
-    the consent dialog and encoded consent signals so it
-    doesn't rely on (possibly wrong) counts from the streaming
-    analysis text.
+    the consent dialog so it doesn't rely on (possibly wrong)
+    counts from the streaming analysis text.
 
     Args:
         cd: Consent details captured from the dialog.
@@ -206,28 +205,6 @@ def _build_consent_facts(
         lines.append(f"- Individually listed partners extracted: {len(cd.partners)}")
     elif cd.claimed_partner_count:
         lines.append("- Individually listed partners extracted: 0 (dialog states a count but does not list them individually)")
-
-    tc = cd.tc_string_data
-    if tc:
-        lines.append(f"- TC String vendor consents: {tc.get('vendorConsentCount', 0)}")
-        lines.append(f"- TC String vendor LI: {tc.get('vendorLiCount', 0)}")
-        purposes = tc.get("purposeConsents", [])
-        if purposes:
-            lines.append(f"- TC String purpose consents: {purposes}")
-
-    ac = cd.ac_string_data
-    if ac:
-        lines.append(f"- AC String vendor count: {ac.get('vendorCount', 0)}")
-
-    val = cd.tc_validation
-    if val:
-        mismatch = val.get("vendorCountMismatch", False)
-        if mismatch:
-            lines.append("- WARNING: TC String vendor count mismatches dialog partner count")
-        findings: list[dict[str, object]] = val.get("findings", [])  # type: ignore[assignment]
-        if findings:
-            lines.append(f"- TC Validation findings: {len(findings)} discrepancies detected")
-
     return "\n".join(lines)
 
 

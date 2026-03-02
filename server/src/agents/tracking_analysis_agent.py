@@ -60,8 +60,6 @@ class TrackingAnalysisAgent(base.BaseAgent):
         pre_consent_stats: analysis.PreConsentStats | None = None,
         score_breakdown: analysis.ScoreBreakdown | None = None,
         domain_knowledge: domain_cache.DomainKnowledge | None = None,
-        *,
-        decoded_cookies: dict[str, object] | None = None,
     ) -> analysis.TrackingAnalysisResult:
         """Run the tracking analysis and return structured output.
 
@@ -87,7 +85,6 @@ class TrackingAnalysisAgent(base.BaseAgent):
             pre_consent_stats,
             score_breakdown,
             domain_knowledge,
-            decoded_cookies=decoded_cookies,
         )
         log.info(
             "Starting tracking analysis",
@@ -179,8 +176,6 @@ def _build_user_prompt(
     pre_consent_stats: analysis.PreConsentStats | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
-    *,
-    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Build the user prompt from tracking data.
 
@@ -197,9 +192,6 @@ def _build_user_prompt(
     consent_section = ""
     if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count):
         consent_section = _build_consent_section(consent_details)
-
-    tc_ac_section = _build_tc_ac_section(consent_details)
-    decoded_section = _build_decoded_cookies_section(decoded_cookies)
 
     breakdown = json.dumps(
         [d.model_dump() for d in tracking_summary.domain_breakdown],
@@ -237,9 +229,7 @@ def _build_user_prompt(
         f"## LocalStorage Data\n{local_json}\n\n"
         f"## SessionStorage Data\n{session_json}"
         f"{pre_consent_section}"
-        f"{consent_section}"
-        f"{tc_ac_section}"
-        f"{decoded_section}\n\n"
+        f"{consent_section}\n\n"
         f"{score_section}"
         f"{knowledge_section}"
         f"{_build_gdpr_reference()}\n\n"
@@ -405,185 +395,3 @@ def _build_knowledge_section(
         return ""
 
     return domain_cache.build_context_hint(domain_knowledge) + "\n\n"
-
-
-def _build_tc_ac_section(
-    consent_details: consent.ConsentDetails | None,
-) -> str:
-    """Build TC String, AC String, and TC Validation context.
-
-    Provides the LLM with the actual encoded consent signals
-    so it can compare what was disclosed in the dialog with
-    what was actually recorded in the consent strings.
-
-    Args:
-        consent_details: Consent details (may contain tc_string_data,
-            ac_string_data, and tc_validation).
-
-    Returns:
-        Formatted section string (empty when no consent signal
-        data is available).
-    """
-    if not consent_details:
-        return ""
-
-    parts: list[str] = []
-
-    tc = consent_details.tc_string_data
-    if tc:
-        purposes = tc.get("purposeConsents", [])
-        li_purposes = tc.get("purposeLegitimateInterests", [])
-        special = tc.get("specialFeatureOptIns", [])
-        lines = [
-            "\n\n## TC String (euconsent-v2) — Actual Consent Signals",
-            f"- CMP ID: {tc.get('cmpId', '?')}",
-            f"- CMP version: {tc.get('cmpVersion', '?')}",
-            f"- Consent language: {tc.get('consentLanguage', '?')}",
-            f"- Vendor list version: {tc.get('vendorListVersion', '?')}",
-            f"- Publisher country: {tc.get('publisherCountryCode', '?')}",
-            f"- Service-specific: {tc.get('isServiceSpecific', '?')}",
-            f"- Created: {tc.get('created', '?')}",
-            f"- Last updated: {tc.get('lastUpdated', '?')}",
-        ]
-        if purposes:
-            lines.append(f"- Purpose consents: {purposes}")
-        if li_purposes:
-            lines.append(f"- Purpose legitimate interests: {li_purposes}")
-        if special:
-            lines.append(f"- Special feature opt-ins: {special}")
-        lines.append(f"- Vendor consents: {tc.get('vendorConsentCount', 0)}")
-        lines.append(f"- Vendor legitimate interests: {tc.get('vendorLiCount', 0)}")
-        parts.append("\n".join(lines))
-
-    ac = consent_details.ac_string_data
-    if ac:
-        resolved = list(ac.get("resolvedProviders", []))  # type: ignore[call-overload]
-        lines = [
-            "\n\n## AC String (addtl_consent) — Google Additional Consent",
-            f"- Version: {ac.get('version', '?')}",
-            f"- Vendor count: {ac.get('vendorCount', 0)}",
-        ]
-        if resolved:
-            names = [p.get("name", str(p.get("id", "?"))) for p in resolved[:30]]  # type: ignore[union-attr]
-            lines.append(f"- Resolved providers ({len(resolved)}): {', '.join(names)}")
-            if len(resolved) > 30:
-                lines.append(f"  ... and {len(resolved) - 30} more")
-        unresolved = ac.get("unresolvedProviderCount", 0)
-        if unresolved:
-            lines.append(f"- Unresolved provider IDs: {unresolved}")
-        parts.append("\n".join(lines))
-
-    val = consent_details.tc_validation
-    if val:
-        findings: list[dict[str, object]] = val.get("findings", [])  # type: ignore[assignment]
-        mismatch = val.get("vendorCountMismatch", False)
-        if findings or mismatch:
-            lines = [
-                "\n\n## TC Validation — Consent Signal Discrepancies",
-                f"- Vendor consents in TC String: {val.get('vendorConsentCount', 0)}",
-                f"- Vendor LI in TC String: {val.get('vendorLiCount', 0)}",
-            ]
-            claimed = val.get("claimedPartnerCount")
-            if claimed is not None:
-                lines.append(f"- Claimed partner count (from dialog): {claimed}")
-            if mismatch:
-                lines.append("- WARNING: Vendor count mismatch between dialog and TC String")
-            if findings:
-                lines.append("- Findings:")
-                for f in findings:
-                    sev = str(f.get("severity", "?")).upper()
-                    title = f.get("title", "")
-                    detail = f.get("detail", "")
-                    lines.append(f"  [{sev}] {title}")
-                    if detail:
-                        lines.append(f"    {detail}")
-            parts.append("\n".join(lines))
-
-    return "".join(parts)
-
-
-def _build_decoded_cookies_section(
-    decoded_cookies: dict[str, object] | None,
-) -> str:
-    """Build decoded privacy cookies context for the LLM prompt.
-
-    Provides ground-truth consent state from decoded cookie
-    values (OneTrust categories, USP string, GPP string,
-    Google Analytics client ID, Facebook pixel data, etc.).
-
-    Args:
-        decoded_cookies: Decoded cookie data, or ``None``.
-
-    Returns:
-        Formatted section string (empty when no decoded
-        cookies are available).
-    """
-    if not decoded_cookies:
-        return ""
-
-    lines = ["\n\n## Decoded Privacy Cookies — Ground-Truth Consent State"]
-
-    usp = decoded_cookies.get("uspString")
-    if isinstance(usp, dict):
-        lines.append(f"- USP String: {usp.get('rawString', '?')}")
-        lines.append(f"  Notice: {usp.get('noticeLabel', '?')}, Opt-out: {usp.get('optOutLabel', '?')}, LSPA: {usp.get('lspaLabel', '?')}")
-
-    gpp = decoded_cookies.get("gppString")
-    if isinstance(gpp, dict):
-        sections = gpp.get("sections", [])
-        section_names = [s.get("name", str(s.get("id"))) for s in sections] if isinstance(sections, list) else []  # type: ignore[union-attr]
-        lines.append(f"- GPP String: segments={gpp.get('segmentCount', '?')}")
-        if section_names:
-            lines.append(f"  Sections: {', '.join(section_names)}")
-
-    ga = decoded_cookies.get("googleAnalytics")
-    if isinstance(ga, dict):
-        lines.append(f"- Google Analytics (_ga): clientId={ga.get('clientId', '?')}, firstVisit={ga.get('firstVisit', '?')}")
-
-    fb = decoded_cookies.get("facebookPixel")
-    if isinstance(fb, dict):
-        fbp = fb.get("fbp")
-        fbc = fb.get("fbc")
-        if isinstance(fbp, dict):
-            lines.append(f"- Facebook _fbp: browserId={fbp.get('browserId', '?')}, created={fbp.get('created', '?')}")
-        if isinstance(fbc, dict):
-            lines.append(f"- Facebook _fbc: click tracking active, clicked={fbc.get('clicked', '?')}")
-
-    gads = decoded_cookies.get("googleAds")
-    if isinstance(gads, dict):
-        gau = gads.get("gclAu")
-        gaw = gads.get("gclAw")
-        if isinstance(gau, dict):
-            lines.append(f"- Google Ads _gcl_au: v{gau.get('version', '?')}, created={gau.get('created', '?')}")
-        if isinstance(gaw, dict):
-            lines.append(f"- Google Ads _gcl_aw: click tracking active, clicked={gaw.get('clicked', '?')}")
-
-    ot = decoded_cookies.get("oneTrust")
-    if isinstance(ot, dict):
-        cats = ot.get("categories", [])
-        if isinstance(cats, list):
-            consented = [c.get("name", c.get("id", "?")) for c in cats if isinstance(c, dict) and c.get("consented")]
-            declined = [c.get("name", c.get("id", "?")) for c in cats if isinstance(c, dict) and not c.get("consented")]
-            lines.append(
-                f"- OneTrust consent state: consented=[{', '.join(str(x) for x in consented)}], declined=[{', '.join(str(x) for x in declined)}]"
-            )
-        if ot.get("isGpcApplied"):
-            lines.append("  GPC signal applied")
-
-    cb = decoded_cookies.get("cookiebot")
-    if isinstance(cb, dict):
-        cats = cb.get("categories", [])
-        if isinstance(cats, list):
-            cb_consented = [str(c.get("name", "?")) for c in cats if isinstance(c, dict) and c.get("consented")]
-            cb_declined = [str(c.get("name", "?")) for c in cats if isinstance(c, dict) and not c.get("consented")]
-            lines.append(f"- Cookiebot consent state: consented=[{', '.join(cb_consented)}], declined=[{', '.join(cb_declined)}]")
-
-    socs = decoded_cookies.get("googleSocs")
-    if isinstance(socs, dict):
-        lines.append(f"- Google SOCS: consentMode={socs.get('consentMode', '?')}")
-
-    # Only return the section if we actually decoded something.
-    if len(lines) <= 1:
-        return ""
-
-    return "\n".join(lines)

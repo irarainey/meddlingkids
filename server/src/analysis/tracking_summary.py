@@ -7,7 +7,6 @@ and prepares data for LLM analysis.
 from __future__ import annotations
 
 import collections
-import time
 
 from src.analysis import tracker_patterns
 from src.data import loader
@@ -48,38 +47,6 @@ def _get_third_party_domains(domain_data: dict[str, analysis.DomainData], analyz
     return results
 
 
-def _format_cookie_lifespan(expires: float) -> str:
-    """Convert a cookie ``expires`` epoch to a human-readable lifespan.
-
-    Returns ``"session"`` for session cookies (expires <= 0),
-    or a compact duration string like ``"365d"``, ``"30d"``,
-    ``"2h"``, ``"5m"`` relative to now.
-
-    Args:
-        expires: Cookie expiry as a Unix epoch timestamp.
-
-    Returns:
-        Human-readable lifespan string.
-    """
-    if expires <= 0:
-        return "session"
-    remaining = expires - time.time()
-    if remaining <= 0:
-        return "expired"
-    days = remaining / 86400
-    if days >= 1:
-        return f"{int(days)}d"
-    hours = remaining / 3600
-    if hours >= 1:
-        return f"{int(hours)}h"
-    minutes = remaining / 60
-    return f"{int(minutes)}m"
-
-
-# Cap per-domain request URLs to avoid prompt explosion.
-_MAX_REQUEST_URLS_PER_DOMAIN = 20
-
-
 def _build_domain_breakdown(
     domain_data: dict[str, analysis.DomainData],
 ) -> list[analysis.DomainBreakdown]:
@@ -89,21 +56,9 @@ def _build_domain_breakdown(
             domain=domain,
             cookie_count=len(data.cookies),
             cookie_names=[c.name for c in data.cookies],
-            cookie_details=[
-                analysis.CookieDetail(
-                    name=c.name,
-                    lifespan=_format_cookie_lifespan(c.expires),
-                    same_site=c.same_site,
-                    secure=c.secure,
-                    http_only=c.http_only,
-                )
-                for c in data.cookies
-            ],
             script_count=len(data.scripts),
-            script_urls=[s.url for s in data.scripts],
             request_count=len(data.network_requests),
             request_types=list({r.resource_type for r in data.network_requests}),
-            request_urls=list({r.url for r in data.network_requests})[:_MAX_REQUEST_URLS_PER_DOMAIN],
         )
         for domain, data in domain_data.items()
     ]

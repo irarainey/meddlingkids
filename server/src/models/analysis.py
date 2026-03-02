@@ -18,28 +18,15 @@ class DomainData(pydantic.BaseModel):
     network_requests: list[tracking_data.NetworkRequest] = pydantic.Field(default_factory=list)
 
 
-class CookieDetail(pydantic.BaseModel):
-    """Compact cookie metadata for LLM context."""
-
-    name: str
-    lifespan: str
-    same_site: str
-    secure: bool
-    http_only: bool
-
-
 class DomainBreakdown(pydantic.BaseModel):
     """Summary statistics for a single domain's tracking activity."""
 
     domain: str
     cookie_count: int
     cookie_names: list[str]
-    cookie_details: list[CookieDetail] = pydantic.Field(default_factory=list)
     script_count: int
-    script_urls: list[str] = pydantic.Field(default_factory=list)
     request_count: int
     request_types: list[str]
-    request_urls: list[str] = pydantic.Field(default_factory=list)
 
 
 class TrackingSummary(pydantic.BaseModel):
