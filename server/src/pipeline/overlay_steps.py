@@ -76,10 +76,13 @@ async def detect_overlay(
 
     # Use a viewport-only screenshot for faster detection.
     # Overlays always cover the viewport, so full-page is unnecessary.
+    # Timeout is 15s — shorter than the default 30s because this
+    # is only a verification step; if the renderer is struggling
+    # we want to fail fast rather than stall the pipeline.
     try:
         viewport_screenshot = await session.take_screenshot(
             full_page=False,
-            timeout=30_000,
+            timeout=15_000,
         )
     except Exception as exc:
         log.warn(
@@ -103,8 +106,11 @@ async def detect_overlay(
     page = session.get_page()
     if page is not None:
         try:
-            raw = await page.evaluate(
-                consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
+            raw = await asyncio.wait_for(
+                page.evaluate(
+                    consent_extraction_agent._GET_CONSENT_BOUNDS_JS,
+                ),
+                timeout=10,
             )
             if raw and isinstance(raw, dict):
                 crop_box: tuple[int, int, int, int] = (
@@ -297,7 +303,10 @@ async def capture_consent_content(
     # Locate the consent dialog bounding box for screenshot cropping.
     consent_bounds: ConsentBounds = None
     try:
-        raw = await page.evaluate(consent_extraction_agent._GET_CONSENT_BOUNDS_JS)
+        raw = await asyncio.wait_for(
+            page.evaluate(consent_extraction_agent._GET_CONSENT_BOUNDS_JS),
+            timeout=10,
+        )
         if raw and isinstance(raw, dict):
             consent_bounds = (
                 int(raw["left"]),

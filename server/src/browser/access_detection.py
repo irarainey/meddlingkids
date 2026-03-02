@@ -5,6 +5,8 @@ Checks page content for patterns that indicate bot blocking or access denial.
 
 from __future__ import annotations
 
+import asyncio
+
 from playwright import async_api
 
 from src.models import browser
@@ -57,12 +59,23 @@ BLOCKED_BODY_PATTERNS = [
 ]
 
 
+# Timeout (seconds) for individual CDP calls during access checks.
+_ACCESS_CHECK_TIMEOUT_SECONDS: int = 10
+
+
 async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialResult:
     """
     Check if the current page content indicates access denial or bot blocking.
+
+    Each CDP call is individually bounded by a timeout so that an
+    unresponsive browser (common on ad-heavy sites) cannot hang this
+    check indefinitely.
     """
     try:
-        title = await page.title()
+        title: str = await asyncio.wait_for(
+            page.title(),
+            timeout=_ACCESS_CHECK_TIMEOUT_SECONDS,
+        )
         title_lower = title.lower()
 
         for pattern in BLOCKED_TITLE_PATTERNS:
@@ -73,11 +86,14 @@ async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialR
                     reason=f'Page title indicates blocking: "{title}"',
                 )
 
-        body_text = await page.evaluate(
-            """() => {
-                const body = document.body;
-                return body ? body.innerText.substring(0, 2000).toLowerCase() : '';
-            }"""
+        body_text: str = await asyncio.wait_for(
+            page.evaluate(
+                """() => {
+                    const body = document.body;
+                    return body ? body.innerText.substring(0, 2000).toLowerCase() : '';
+                }"""
+            ),
+            timeout=_ACCESS_CHECK_TIMEOUT_SECONDS,
         )
 
         for pattern in BLOCKED_BODY_PATTERNS:
@@ -89,6 +105,9 @@ async def check_for_access_denied(page: async_api.Page) -> browser.AccessDenialR
                 )
 
         log.debug("No access denial detected")
+        return browser.AccessDenialResult(denied=False, reason=None)
+    except TimeoutError:
+        log.warn("Access check timed out — browser may be unresponsive (assuming no denial)")
         return browser.AccessDenialResult(denied=False, reason=None)
     except Exception as exc:
         log.debug("Access check error (assuming no denial)", {"error": str(exc)})

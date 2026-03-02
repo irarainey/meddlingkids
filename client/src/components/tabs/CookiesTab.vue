@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import type { TrackedCookie, CookieInfo } from '../../types'
-import { formatExpiry, truncateValue } from '../../utils'
+import type { TrackedCookie, CookieInfo, DecodedCookies, StructuredReport } from '../../types'
+import { formatExpiry, truncateValue, stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying cookies grouped by domain.
@@ -14,6 +14,10 @@ const props = defineProps<{
   cookieCount: number
   /** The URL being analyzed (used to identify first-party domains) */
   analyzedUrl?: string
+  /** Decoded privacy cookies (USP, GPP, GA, Facebook, Google Ads, CMP, etc.) */
+  decodedCookies?: DecodedCookies | null
+  /** Structured report for the AI cookie analysis section */
+  structuredReport?: StructuredReport | null
 }>()
 
 /** Extract the registrable base domain from a hostname (e.g. "www.bbc.co.uk" → "bbc.co.uk"). */
@@ -173,12 +177,320 @@ function riskClass(level: string): string {
   }
   return classes[level] || 'risk-low'
 }
+
+/** Colour-coded severity/risk badge class for AI analysis. */
+function severityClass(level: string): string {
+  switch (level) {
+    case 'critical':
+    case 'very-high':
+      return 'badge-critical'
+    case 'high':
+      return 'badge-high'
+    case 'medium':
+      return 'badge-medium'
+    case 'low':
+      return 'badge-low'
+    case 'none':
+      return 'badge-none'
+    default:
+      return 'badge-medium'
+  }
+}
+
+/** Human-readable label for risk levels. */
+function riskLabel(level: string): string {
+  switch (level) {
+    case 'very-high':
+      return 'Very High'
+    case 'critical':
+      return 'Critical'
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+    case 'none':
+      return 'None'
+    default:
+      return level
+  }
+}
 </script>
 
 <template>
   <div class="tab-content">
-    <div v-if="cookieCount === 0" class="empty-state">No cookies detected</div>
-    <div v-else class="domain-groups">
+    <div v-if="cookieCount === 0 && !decodedCookies && (!structuredReport || structuredReport.cookieAnalysis.groups.length === 0)" class="empty-state">No cookies detected</div>
+
+    <!-- ── Overview (AI Cookie Analysis) ──────────── -->
+    <section v-if="structuredReport && structuredReport.cookieAnalysis.groups.length > 0" class="ai-cookie-analysis">
+      <h2 class="section-title">🍪 Overview
+        <span class="count-badge">{{ structuredReport.cookieAnalysis.total }} cookies</span>
+      </h2>
+      <p class="section-subtitle">
+        Cookie categories and risk levels determined by AI analysis of cookie
+        names, domains, and values.
+      </p>
+      <p class="ai-section-summary">
+        Cookies are small text files that websites store in your browser. They are sent
+        back to the server with every request, allowing sites to remember your preferences,
+        keep you logged in, and track your activity. While some cookies are essential for
+        a site to function, others are used by advertisers and analytics companies to build
+        profiles of your browsing behaviour across multiple websites.
+      </p>
+      <div
+        v-for="(group, i) in structuredReport.cookieAnalysis.groups"
+        :key="i"
+        class="cookie-ai-group"
+      >
+        <div class="cookie-ai-group-header">
+          <h3>{{ group.category }}</h3>
+          <span class="badge" :class="severityClass(group.concernLevel)">{{ riskLabel(group.concernLevel) }}</span>
+          <span v-if="group.lifespan" class="lifespan-tag">⏱ {{ group.lifespan }}</span>
+        </div>
+        <div class="cookie-ai-names">
+          <code v-for="cookie in group.cookies" :key="cookie">{{ cookie }}</code>
+        </div>
+      </div>
+      <div v-if="structuredReport.cookieAnalysis.concerningCookies.length" class="concerning-section">
+        <h3>⚠️ Concerning Cookies</h3>
+        <ul>
+          <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
+            <strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── Decoded Privacy Cookies ───────────────── -->
+    <section v-if="decodedCookies && Object.keys(decodedCookies).length > 0" class="decoded-cookies-section">
+      <h2 class="section-title">🔍 Decoded Privacy Cookies</h2>
+      <p class="section-subtitle">
+        Privacy-relevant cookies found on this site, decoded from
+        their raw values into human-readable data. These cookies are set by
+        ad-tech platforms, analytics providers, and consent management tools.
+      </p>
+
+      <!-- USP String (CCPA) -->
+      <div v-if="decodedCookies.uspString" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🇺🇸 USP String <span class="decoded-cookie-name">usprivacy</span>
+        </h3>
+        <p class="decoded-card-desc">IAB US Privacy String — CCPA opt-out signal</p>
+        <div class="decoded-fields">
+          <div class="decoded-field">
+            <span class="decoded-field-label">Version</span>
+            <span class="decoded-field-value">{{ decodedCookies.uspString.version }}</span>
+          </div>
+          <div class="decoded-field">
+            <span class="decoded-field-label">Notice Given</span>
+            <span class="decoded-field-value" :class="decodedCookies.uspString.noticeGiven ? 'val-yes' : 'val-no'">
+              {{ decodedCookies.uspString.noticeLabel }}
+            </span>
+          </div>
+          <div class="decoded-field">
+            <span class="decoded-field-label">Opted Out of Sale</span>
+            <span class="decoded-field-value" :class="decodedCookies.uspString.optedOut ? 'val-warn' : 'val-ok'">
+              {{ decodedCookies.uspString.optOutLabel }}
+            </span>
+          </div>
+          <div class="decoded-field">
+            <span class="decoded-field-label">LSPA Covered</span>
+            <span class="decoded-field-value">{{ decodedCookies.uspString.lspaLabel }}</span>
+          </div>
+        </div>
+        <div class="decoded-raw">{{ decodedCookies.uspString.rawString }}</div>
+      </div>
+
+      <!-- GPP String -->
+      <div v-if="decodedCookies.gppString" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🌐 GPP String <span class="decoded-cookie-name">__gpp</span>
+        </h3>
+        <p class="decoded-card-desc">IAB Global Privacy Platform — multi-jurisdiction consent signal</p>
+        <div class="decoded-fields">
+          <div v-if="decodedCookies.gppString.version" class="decoded-field">
+            <span class="decoded-field-label">Version</span>
+            <span class="decoded-field-value">{{ decodedCookies.gppString.version }}</span>
+          </div>
+          <div class="decoded-field">
+            <span class="decoded-field-label">Segments</span>
+            <span class="decoded-field-value">{{ decodedCookies.gppString.segmentCount }}</span>
+          </div>
+          <div v-if="decodedCookies.gppString.sections.length > 0" class="decoded-field decoded-field-wide">
+            <span class="decoded-field-label">Applicable Sections</span>
+            <div class="decoded-section-list">
+              <span
+                v-for="sec in decodedCookies.gppString.sections"
+                :key="sec.id"
+                class="decoded-section-tag"
+              >
+                {{ sec.name }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Analytics -->
+      <div v-if="decodedCookies.googleAnalytics" class="decoded-card">
+        <h3 class="decoded-card-title">
+          📊 Google Analytics <span class="decoded-cookie-name">_ga</span>
+        </h3>
+        <p class="decoded-card-desc">Cross-session user tracking identifier</p>
+        <div class="decoded-fields">
+          <div class="decoded-field">
+            <span class="decoded-field-label">Client ID</span>
+            <span class="decoded-field-value decoded-mono">{{ decodedCookies.googleAnalytics.clientId }}</span>
+          </div>
+          <div v-if="decodedCookies.googleAnalytics.firstVisit" class="decoded-field">
+            <span class="decoded-field-label">First Visit</span>
+            <span class="decoded-field-value">{{ decodedCookies.googleAnalytics.firstVisit }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Facebook Pixel -->
+      <div v-if="decodedCookies.facebookPixel" class="decoded-card">
+        <h3 class="decoded-card-title">
+          📘 Facebook Pixel <span class="decoded-cookie-name">_fbp / _fbc</span>
+        </h3>
+        <p class="decoded-card-desc">Meta/Facebook cross-site tracking and ad attribution</p>
+        <div class="decoded-fields">
+          <template v-if="decodedCookies.facebookPixel.fbp">
+            <div class="decoded-field">
+              <span class="decoded-field-label">Browser ID</span>
+              <span class="decoded-field-value decoded-mono">{{ decodedCookies.facebookPixel.fbp.browserId }}</span>
+            </div>
+            <div v-if="decodedCookies.facebookPixel.fbp.created" class="decoded-field">
+              <span class="decoded-field-label">Created</span>
+              <span class="decoded-field-value">{{ decodedCookies.facebookPixel.fbp.created }}</span>
+            </div>
+          </template>
+          <template v-if="decodedCookies.facebookPixel.fbc">
+            <div class="decoded-field">
+              <span class="decoded-field-label">Click ID (fbclid)</span>
+              <span class="decoded-field-value decoded-mono">{{ decodedCookies.facebookPixel.fbc.fbclid }}</span>
+            </div>
+            <div v-if="decodedCookies.facebookPixel.fbc.clicked" class="decoded-field">
+              <span class="decoded-field-label">Clicked</span>
+              <span class="decoded-field-value">{{ decodedCookies.facebookPixel.fbc.clicked }}</span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Google Ads -->
+      <div v-if="decodedCookies.googleAds" class="decoded-card">
+        <h3 class="decoded-card-title">
+          📢 Google Ads <span class="decoded-cookie-name">_gcl_au / _gcl_aw</span>
+        </h3>
+        <p class="decoded-card-desc">Google Ads conversion tracking and click attribution</p>
+        <div class="decoded-fields">
+          <template v-if="decodedCookies.googleAds.gclAu">
+            <div class="decoded-field">
+              <span class="decoded-field-label">Conversion Linker</span>
+              <span class="decoded-field-value">v{{ decodedCookies.googleAds.gclAu.version }}</span>
+            </div>
+            <div v-if="decodedCookies.googleAds.gclAu.created" class="decoded-field">
+              <span class="decoded-field-label">Created</span>
+              <span class="decoded-field-value">{{ decodedCookies.googleAds.gclAu.created }}</span>
+            </div>
+          </template>
+          <template v-if="decodedCookies.googleAds.gclAw">
+            <div class="decoded-field">
+              <span class="decoded-field-label">Click ID (gclid)</span>
+              <span class="decoded-field-value decoded-mono">{{ decodedCookies.googleAds.gclAw.gclid }}</span>
+            </div>
+            <div v-if="decodedCookies.googleAds.gclAw.clicked" class="decoded-field">
+              <span class="decoded-field-label">Clicked</span>
+              <span class="decoded-field-value">{{ decodedCookies.googleAds.gclAw.clicked }}</span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- OneTrust -->
+      <div v-if="decodedCookies.oneTrust" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🛡️ OneTrust <span class="decoded-cookie-name">OptanonConsent</span>
+        </h3>
+        <p class="decoded-card-desc">OneTrust CMP category-level consent status</p>
+        <div class="decoded-fields">
+          <div v-for="cat in decodedCookies.oneTrust.categories" :key="cat.id" class="decoded-field">
+            <span class="decoded-field-label">{{ cat.name }}</span>
+            <span class="decoded-field-value" :class="cat.consented ? 'val-yes' : 'val-no'">
+              {{ cat.consented ? '✅ Consented' : '❌ Rejected' }}
+            </span>
+          </div>
+          <div v-if="decodedCookies.oneTrust.isGpcApplied" class="decoded-field">
+            <span class="decoded-field-label">GPC Applied</span>
+            <span class="decoded-field-value val-yes">Yes</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cookiebot -->
+      <div v-if="decodedCookies.cookiebot" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🤖 Cookiebot <span class="decoded-cookie-name">CookieConsent</span>
+        </h3>
+        <p class="decoded-card-desc">Cookiebot CMP category-level consent status</p>
+        <div class="decoded-fields">
+          <div v-for="(cat, idx) in decodedCookies.cookiebot.categories" :key="idx" class="decoded-field">
+            <span class="decoded-field-label">{{ cat.name }}</span>
+            <span class="decoded-field-value" :class="cat.consented ? 'val-yes' : 'val-no'">
+              {{ cat.consented ? '✅ Consented' : '❌ Rejected' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google SOCS -->
+      <div v-if="decodedCookies.googleSocs" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🔵 Google Consent <span class="decoded-cookie-name">SOCS</span>
+        </h3>
+        <p class="decoded-card-desc">Google services consent mode signal</p>
+        <div class="decoded-fields">
+          <div class="decoded-field">
+            <span class="decoded-field-label">Consent Mode</span>
+            <span class="decoded-field-value">{{ decodedCookies.googleSocs.consentMode }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPC / DNT -->
+      <div v-if="decodedCookies.gpcDnt" class="decoded-card">
+        <h3 class="decoded-card-title">
+          🛑 Privacy Signals <span class="decoded-cookie-name">GPC / DNT</span>
+        </h3>
+        <p class="decoded-card-desc">Browser-level privacy preference signals</p>
+        <div class="decoded-fields">
+          <div class="decoded-field">
+            <span class="decoded-field-label">Global Privacy Control</span>
+            <span class="decoded-field-value" :class="decodedCookies.gpcDnt.gpcEnabled ? 'val-yes' : 'val-no'">
+              {{ decodedCookies.gpcDnt.gpcEnabled ? '✅ Enabled' : '❌ Not detected' }}
+            </span>
+          </div>
+          <div class="decoded-field">
+            <span class="decoded-field-label">Do Not Track</span>
+            <span class="decoded-field-value" :class="decodedCookies.gpcDnt.dntEnabled ? 'val-yes' : 'val-no'">
+              {{ decodedCookies.gpcDnt.dntEnabled ? '✅ Enabled' : '❌ Not detected' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Analysis (cookie listing by domain) ───── -->
+    <section v-if="cookieCount > 0" class="cookie-analysis-section">
+      <h2 class="section-title">🔎 Analysis</h2>
+      <p class="section-subtitle">
+        All cookies set on this site, grouped by domain.
+        Click a cookie to look up its purpose and risk level.
+      </p>
+      <div class="domain-groups">
       <div v-for="(domainCookies, domain) in cookiesByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
           {{ domain }} ({{ domainCookies.length }})
@@ -245,13 +557,14 @@ function riskClass(level: string): string {
         </div>
       </div>
     </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .cookie-item {
-  padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  padding: 0.7rem 0.5rem;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -266,7 +579,7 @@ function riskClass(level: string): string {
 }
 
 .cookie-header:hover .cookie-name {
-  color: #7CB8E4;
+  color: var(--link-color);
 }
 
 .cookie-name {
@@ -276,6 +589,10 @@ function riskClass(level: string): string {
   align-items: center;
   gap: 0.4rem;
   transition: color 0.15s;
+}
+
+.cookie-details {
+  margin-top: 0.15rem;
 }
 
 .info-toggle {
@@ -288,34 +605,34 @@ function riskClass(level: string): string {
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 50%;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   flex-shrink: 0;
 }
 
 .cookie-header:hover .info-toggle {
-  color: #7CB8E4;
-  border-color: #7CB8E4;
+  color: var(--link-color);
+  border-color: var(--link-color);
 }
 
 .info-toggle.expanded {
-  background: #7CB8E4;
+  background: var(--link-color);
   color: #111827;
-  border-color: #7CB8E4;
+  border-color: var(--link-color);
 }
 
 .cookie-value {
-  color: #9ca3af;
+  color: var(--muted-light);
   word-break: break-all;
   font-family: monospace;
   font-size: 0.9rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   padding: 0.25rem;
   border-radius: 4px;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .cookie-meta {
-  margin-top: 0.35rem;
+  margin-top: 0.45rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -331,10 +648,10 @@ function riskClass(level: string): string {
 .cookie-info-panel {
   margin-top: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
-  border-left: 3px solid #3d4663;
-  font-size: 0.85rem;
+  border-left: 3px solid var(--border-separator);
+  font-size: var(--body-size);
 }
 
 .cookie-info-loading {
@@ -348,8 +665,8 @@ function riskClass(level: string): string {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #3d4663;
-  border-top-color: #7CB8E4;
+  border: 2px solid var(--border-separator);
+  border-top-color: var(--link-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -372,7 +689,7 @@ function riskClass(level: string): string {
 }
 
 .info-label {
-  color: #6b7280;
+  color: var(--muted-color);
   min-width: 5.5rem;
   flex-shrink: 0;
   font-size: 0.8rem;
@@ -389,9 +706,9 @@ function riskClass(level: string): string {
 
 /* Risk badges */
 .risk-badge {
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -419,5 +736,297 @@ function riskClass(level: string): string {
 .risk-critical {
   background: #4a1a2e;
   color: #f472b6;
+}
+
+/* ── Decoded Privacy Cookies ─────────────────── */
+.decoded-cookies-section {
+  margin-bottom: 0.75rem;
+}
+
+/* ── Cookie Analysis (domain listing) ────────── */
+.cookie-analysis-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+/* ── AI Cookie Analysis ──────────────────────── */
+.ai-cookie-analysis {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.cookie-ai-group {
+  margin-bottom: 0.75rem;
+}
+
+.cookie-ai-group:first-of-type {
+  border-top: 1px solid var(--border-card);
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+}
+
+.cookie-ai-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cookie-ai-group-header h3 {
+  margin: 0;
+  font-size: var(--subheading-size);
+  color: var(--section-title-color);
+}
+
+.lifespan-tag {
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+.cookie-ai-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.cookie-ai-names code {
+  background: var(--surface-code);
+  color: var(--muted-light);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: var(--body-size);
+  font-family: monospace;
+}
+
+.concerning-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-card);
+}
+
+.concerning-section h3 {
+  font-size: var(--subheading-size);
+  color: var(--section-title-color);
+  margin: 0 0 0.5rem;
+}
+
+.concerning-section ul {
+  margin: 0.25rem 0 0 0.75rem;
+  padding-left: 0.75rem;
+  font-size: var(--summary-size);
+  color: var(--body-color);
+  line-height: 1.7;
+}
+
+.concerning-section li strong {
+  color: #f1f5f9;
+}
+
+.count-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--badge-radius);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #2a3555;
+  color: var(--link-color);
+  margin-left: auto;
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-critical {
+  background: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.badge-high {
+  background: #431407;
+  color: #fdba74;
+  border: 1px solid #f97316;
+}
+
+.badge-medium {
+  background: #422006;
+  color: #fde047;
+  border: 1px solid #eab308;
+}
+
+.badge-low {
+  background: #052e16;
+  color: #86efac;
+  border: 1px solid #22c55e;
+}
+
+.badge-none {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #475569;
+}
+
+.section-title {
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-subtitle {
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
+}
+
+.decoded-card {
+  background: var(--surface-card);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border-card);
+}
+
+.decoded-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e0e7ff;
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.decoded-cookie-name {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+  background: var(--surface-code);
+  color: var(--muted-light);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+.decoded-card-desc {
+  font-size: var(--body-size);
+  color: var(--muted-color);
+  margin: 0 0 0.75rem;
+}
+
+.decoded-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.decoded-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 8rem;
+}
+
+.decoded-field-wide {
+  flex-basis: 100%;
+}
+
+.decoded-field-label {
+  font-size: var(--stat-label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-color);
+}
+
+.decoded-field-value {
+  font-size: 0.9rem;
+  color: #d1d5db;
+  font-weight: 600;
+}
+
+.decoded-field-value.decoded-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.decoded-field-value.val-yes {
+  color: #4ade80;
+}
+
+.decoded-field-value.val-no {
+  color: #f87171;
+}
+
+.decoded-field-value.val-warn {
+  color: #fbbf24;
+}
+
+.decoded-field-value.val-ok {
+  color: #4ade80;
+}
+
+.decoded-raw {
+  margin-top: 0.5rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+  color: #4b5563;
+  word-break: break-all;
+  background: #12152080;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+}
+
+.decoded-section-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.decoded-section-tag {
+  font-size: 0.75rem;
+  background: var(--surface-code);
+  color: #a5b4fc;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #3b4566;
+}
+
+.source-badge {
+  font-size: var(--source-badge-size);
+  padding: var(--source-badge-padding);
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.source-cookie {
+  background: #854d0e;
+  color: #fef3c7;
 }
 </style>

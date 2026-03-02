@@ -140,6 +140,17 @@ def get_tracking_cookie_privacy_map() -> dict[str, str]:
     return result
 
 
+def get_tracking_cookie_vendor_index() -> dict[str, dict[str, Any]]:
+    """Return setBy → vendor metadata from the tracking cookies data.
+
+    Each entry may contain ``category``, ``gvl_ids``, ``atp_ids``,
+    ``url``, and ``concerns``.
+    """
+    data = get_tracking_cookies()
+    result: dict[str, dict[str, Any]] = data.get("vendors", {})
+    return result
+
+
 def build_tracking_cookie_context() -> str:
     """Build an LLM-friendly reference section from the known tracking cookies database.
 
@@ -247,6 +258,17 @@ def get_tracking_storage_privacy_map() -> dict[str, str]:
     """Return purpose → privacy-note mapping from the tracking storage data."""
     data = get_tracking_storage_keys()
     result: dict[str, str] = data.get("privacy_notes", {})
+    return result
+
+
+def get_tracking_storage_vendor_index() -> dict[str, dict[str, Any]]:
+    """Return setBy → vendor metadata from the tracking storage data.
+
+    Each entry may contain ``category``, ``gvl_ids``, ``atp_ids``,
+    ``url``, and ``concerns``.
+    """
+    data = get_tracking_storage_keys()
+    result: dict[str, dict[str, Any]] = data.get("vendors", {})
     return result
 
 
@@ -465,7 +487,8 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
 
     Checks Disconnect services (category + company), the partner
     databases, and the tracker-domains list.  Returns a dict with
-    ``company`` and ``description`` keys (either may be ``None``).
+    ``company``, ``description``, and ``url`` keys (any may be
+    ``None``).
     """
     from src.utils import url as url_mod
 
@@ -490,7 +513,9 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
             labels = [_humanise_disconnect_category(c) for c in cats]
         cat_label = ", ".join(dict.fromkeys(labels))  # deduplicate, preserve order
         description = f"{cat_label} service" + (f" by {company}" if company else "")
-        return {"company": company, "description": description}
+        # Construct a URL from the domain for Disconnect entries.
+        url = f"https://{domain}"
+        return {"company": company, "description": description, "url": url}
 
     # 2. Partner databases — have company name + category.
     for config in PARTNER_CATEGORIES:
@@ -500,13 +525,14 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
             if entry_domain and (entry_domain == domain or entry_domain == url_mod.get_base_domain(domain)):
                 cat_label = config.category.replace("-", " ").title()
                 description = f"{cat_label} service"
-                return {"company": name.title(), "description": description}
+                url = entry.url or f"https://{domain}"
+                return {"company": name.title(), "description": description, "url": url}
 
     # 3. Tracker-domains — minimal info (block/cookieblock).
     if is_known_tracker_domain(domain):
-        return {"company": None, "description": "Known tracking domain"}
+        return {"company": None, "description": "Known tracking domain", "url": None}
 
-    return {"company": None, "description": None}
+    return {"company": None, "description": None, "url": None}
 
 
 def get_storage_key_hint(key: str) -> dict[str, str | None]:
@@ -537,6 +563,8 @@ def _load_partner_database(filename: str) -> dict[str, partners.PartnerEntry]:
             aliases=val.get("aliases", []),
             url=val.get("url", ""),
             privacy_url=val.get("privacy_url", ""),
+            gvl_ids=val.get("gvl_ids", []),
+            atp_ids=val.get("atp_ids", []),
         )
         for key, val in raw.items()
     }
@@ -651,6 +679,58 @@ def get_gdpr_reference() -> dict[str, Any]:
     categories, and TCF overview.
     """
     result: dict[str, Any] = _load_json("consent/gdpr-reference.json")
+    return result
+
+
+@functools.cache
+def get_gvl_vendors() -> dict[str, str]:
+    """Get the IAB Global Vendor List name mapping (loaded once and cached).
+
+    Returns a dict mapping vendor ID (string) to vendor name
+    for all vendors in the IAB GVL.  Entries that carry
+    embedded enrichment data are normalised to plain name
+    strings for backward compatibility.
+    """
+    raw = _load_gvl_raw()
+    return {vid: (entry["name"] if isinstance(entry, dict) else entry) for vid, entry in raw.items()}
+
+
+@functools.cache
+def get_gvl_vendor_details() -> dict[str, dict[str, Any]]:
+    """Get the enriched IAB GVL vendor details (loaded once and cached).
+
+    Returns a dict mapping vendor ID (string) to a dict with
+    at least a ``name`` key.  Enriched entries also carry
+    ``category``, ``concerns``, and ``url``.
+    """
+    raw = _load_gvl_raw()
+    result: dict[str, dict[str, Any]] = {}
+    for vid, entry in raw.items():
+        if isinstance(entry, dict):
+            result[vid] = entry
+        else:
+            result[vid] = {"name": entry}
+    return result
+
+
+@functools.cache
+def _load_gvl_raw() -> dict[str, Any]:
+    """Load the raw GVL vendors map (mixed str / dict entries)."""
+    data: dict[str, Any] = _load_json("consent/gvl-vendors.json")
+    vendors: dict[str, Any] = data.get("vendors", {})
+    return vendors
+
+
+@functools.cache
+def get_google_atp_providers() -> dict[str, dict[str, Any]]:
+    """Get the Google ATP provider list (loaded once and cached).
+
+    Returns a dict mapping provider ID (string) to a dict
+    with ``name`` and ``policyUrl`` keys.  Enriched entries
+    may also carry ``category``, ``concerns``, and ``url``.
+    """
+    data: dict[str, Any] = _load_json("consent/google-atp-providers.json")
+    result: dict[str, dict[str, Any]] = data.get("providers", {})
     return result
 
 

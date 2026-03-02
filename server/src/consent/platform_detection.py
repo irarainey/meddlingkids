@@ -33,6 +33,7 @@ class ConsentPlatformProfile:
 
     __slots__ = (
         "accept_button_patterns",
+        "cmp_id",
         "container_selectors",
         "cookie_indicators",
         "description",
@@ -44,6 +45,7 @@ class ConsentPlatformProfile:
         "notes",
         "privacy_url",
         "reject_button_patterns",
+        "tc_string_sources",
         "tcf_registered",
         "vendor",
     )
@@ -54,6 +56,7 @@ class ConsentPlatformProfile:
         self.vendor: str = data.get("vendor", "")
         self.privacy_url: str = data.get("privacy_url", "")
         self.tcf_registered: bool = data.get("tcf_registered", False)
+        self.cmp_id: int | None = data.get("cmp_id")
         self.description: str = data.get("description", "")
         self.iframe_patterns: list[str] = data.get("iframe_patterns", [])
         self.container_selectors: list[str] = data.get("container_selectors", [])
@@ -62,6 +65,7 @@ class ConsentPlatformProfile:
         self.accept_button_patterns: list[str] = data.get("accept_button_patterns", [])
         self.reject_button_patterns: list[str] = data.get("reject_button_patterns", [])
         self.manage_button_patterns: list[str] = data.get("manage_button_patterns", [])
+        self.tc_string_sources: dict[str, list[str]] = data.get("tc_string_sources", {})
         self.notes: str = data.get("notes", "")
 
 

@@ -969,13 +969,13 @@ const selectedResourceBreakdown = computed(() => {
 /* Explanation */
 .graph-explanation {
   position: relative;
-  background: #2a2f45;
-  border: 1px solid #3d4663;
-  border-left: 3px solid #6366f1;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-separator);
+  border-left: 3px solid var(--border-accent);
   border-radius: 6px;
   padding: 0.6rem 2rem 0.6rem 0.75rem;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
   line-height: 1.5;
 }
 
@@ -1029,10 +1029,10 @@ const selectedResourceBreakdown = computed(() => {
 .mode-btn {
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   border-radius: 4px;
-  background: #1e2235;
-  color: #9ca3af;
+  background: var(--surface-section);
+  color: var(--muted-light);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -1071,9 +1071,9 @@ const selectedResourceBreakdown = computed(() => {
 
 .fullscreen-btn {
   margin-left: auto;
-  background: #2a2f45;
-  border: 1px solid #3d4663;
-  color: #9ca3af;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-separator);
+  color: var(--muted-light);
   font-size: 1.1rem;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
@@ -1127,7 +1127,7 @@ const selectedResourceBreakdown = computed(() => {
 /* Graph area */
 .graph-wrapper {
   position: relative;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   border-radius: 6px;
   background: #151825;
   overflow: hidden;
@@ -1144,17 +1144,17 @@ const selectedResourceBreakdown = computed(() => {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: #2a2f45;
-  border: 1px solid #3d4663;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  font-size: 0.85rem;
+  font-size: var(--body-size);
   pointer-events: none;
   z-index: 10;
-  color: #e0e7ff;
+  color: var(--section-title-color);
 }
 
 .tooltip-cat {
@@ -1164,8 +1164,8 @@ const selectedResourceBreakdown = computed(() => {
 
 /* Detail panel */
 .detail-panel {
-  background: #2a2f45;
-  border: 1px solid #3d4663;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.75rem 1rem;
 }
@@ -1209,16 +1209,17 @@ const selectedResourceBreakdown = computed(() => {
   gap: 0.75rem;
   align-items: center;
   margin-top: 0.4rem;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--muted-light);
 }
 
 .third-party-badge {
   background: #ef4444;
   color: white;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
+  font-weight: 600;
 }
 
 .detail-connections {
@@ -1238,8 +1239,8 @@ const selectedResourceBreakdown = computed(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0;
-  border-bottom: 1px solid #3d4663;
-  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border-separator);
+  font-size: var(--body-size);
 }
 
 .conn-item:last-child {
@@ -1266,12 +1267,12 @@ const selectedResourceBreakdown = computed(() => {
 }
 
 .pre-consent-badge {
-  font-size: 0.7rem;
+  font-size: var(--badge-size);
   font-weight: 600;
   background: #7c2d12;
   color: #fed7aa;
   padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
@@ -1296,8 +1297,8 @@ const selectedResourceBreakdown = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  background: #1e2235;
-  border: 1px solid #3d4663;
+  background: var(--surface-section);
+  border: 1px solid var(--border-separator);
   border-radius: 4px;
   padding: 0.2rem 0.5rem;
   font-size: 0.8rem;
@@ -1322,7 +1323,7 @@ const selectedResourceBreakdown = computed(() => {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   border-radius: 4px;
   cursor: crosshair;
   z-index: 5;
@@ -1336,7 +1337,7 @@ const selectedResourceBreakdown = computed(() => {
 
 .graph-hint {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-color);
   text-align: center;
   margin: 0;
 }

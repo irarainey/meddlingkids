@@ -15,9 +15,7 @@ Thin orchestrator that delegates each phase to a focused module:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import dataclasses
-import hashlib
 import os
 import pathlib
 import tomllib
@@ -26,9 +24,11 @@ from typing import cast
 from urllib import parse
 
 from src.agents import config
-from src.analysis import tracking_summary
+from src.analysis import cookie_decoders, tc_string, tc_validation, tcf_lookup, tracking_summary, vendor_lookup
 from src.browser import device_configs
+from src.browser import manager as browser_manager
 from src.browser import session as browser_session
+from src.consent import platform_detection
 from src.models import analysis, browser, consent, tracking_data
 from src.pipeline import analysis_pipeline, browser_phases, overlay_pipeline, sse_helpers
 from src.utils import cache, errors, logger, usage_tracking
@@ -61,24 +61,6 @@ STREAM_TIMEOUT_SECONDS = 600  # 10 minutes
 _MAX_CONCURRENT_SESSIONS = int(os.environ.get("MAX_CONCURRENT_SESSIONS", "3"))
 _session_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_SESSIONS)
 
-# How often (seconds) the background refresher checks for
-# visual changes on the page.  Keeping this short enough
-# to catch ads loading but long enough to avoid excessive
-# screenshot overhead.
-_REFRESH_INTERVAL_SECONDS = 3.0
-
-# Timeout (ms) for screenshots taken by the background
-# refresher.  Lower than the default 15 000 ms so that
-# heavy ad-stack pages (e.g. Bristol Post with ~2 300
-# requests) don't block the refresher for the full
-# Playwright timeout on every attempt.
-_REFRESH_SCREENSHOT_TIMEOUT_MS = 5_000
-
-# Maximum screenshot updates per stage.  Each pipeline stage
-# (page load, analysis) gets its own fresh cap so the UI stays
-# responsive throughout the run.
-_MAX_SCREENSHOT_REFRESHES = 3
-
 
 # ====================================================================
 # Shared context for the streaming pipeline
@@ -94,82 +76,38 @@ class _StreamContext:
     hostname: str
     domain: str
     device_type: browser.DeviceType
-    refresher_task: asyncio.Task[None] | None = None
-    refresh_queue: asyncio.Queue[str] = dataclasses.field(default_factory=asyncio.Queue)
     storage: tracking_data.CapturedStorage = dataclasses.field(default_factory=tracking_data.CapturedStorage)
     screenshot: bytes = b""
     pre_consent_stats: analysis.PreConsentStats | None = None
     consent_details: consent.ConsentDetails | None = None
     overlay_count: int = 0
     overlay_result: overlay_pipeline.OverlayHandlingResult | None = None
+    decoded_cookies: dict[str, object] | None = None
     aborted: bool = False
 
 
-async def _screenshot_refresher(
+async def _take_targeted_screenshot(
     session: browser_session.BrowserSession,
-    queue: asyncio.Queue[str],
-    last_hash: str,
-    remaining: int = _MAX_SCREENSHOT_REFRESHES,
-) -> None:
-    """Periodically re-screenshot the page and queue update events.
+    label: str,
+) -> str | None:
+    """Take a single screenshot and return a ``screenshotUpdate`` SSE event.
 
-    Runs as a background task.  Every ``_REFRESH_INTERVAL_SECONDS``
-    it takes a new screenshot, hashes it, and — if the page has
-    visually changed — pushes a lightweight ``screenshotUpdate``
-    SSE event into *queue* so the main generator can yield it.
-
-    The task stops automatically after *remaining* updates have
-    been emitted, or when cancelled by the caller.
-
-    Args:
-        session: Active browser session.
-        queue: Asyncio queue for outbound SSE event strings.
-        last_hash: MD5 hex digest of the most recent screenshot
-            bytes so we can skip identical frames.
-        remaining: Maximum number of screenshot updates to emit
-            before the task exits on its own.
+    Returns ``None`` if the screenshot fails (e.g. the page is
+    unresponsive).  This is a lightweight helper for the two
+    targeted refresh points: after no-dialog detection and after
+    the page settle process before analysis.
     """
-    current_hash = last_hash
-    updates_sent = 0
-    while updates_sent < remaining:
-        await asyncio.sleep(_REFRESH_INTERVAL_SECONDS)
-        try:
-            screenshot = await session.take_screenshot(
-                full_page=False,
-                timeout=_REFRESH_SCREENSHOT_TIMEOUT_MS,
-            )
-            new_hash = hashlib.md5(screenshot).hexdigest()
-            if new_hash != current_hash:
-                current_hash = new_hash
-                optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
-                event = sse_helpers.format_screenshot_update_event(
-                    optimized,
-                )
-                await queue.put(event)
-                updates_sent += 1
-                log.debug(
-                    "Screenshot refreshed (page changed)",
-                    {"update": updates_sent, "limit": remaining},
-                )
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            log.debug("Screenshot refresh failed (page navigating, etc.) — skipping")
-    log.debug(
-        "Screenshot refresher stopped (limit reached)",
-        {"updates": updates_sent},
-    )
-
-
-def _drain_queue(queue: asyncio.Queue[str]) -> list[str]:
-    """Drain all currently-queued events without blocking."""
-    events: list[str] = []
-    while not queue.empty():
-        try:
-            events.append(queue.get_nowait())
-        except asyncio.QueueEmpty:
-            break
-    return events
+    try:
+        raw = await session.take_screenshot(full_page=False)
+        optimized = browser_session.BrowserSession.optimize_screenshot_bytes(raw)
+        log.debug("Targeted screenshot refresh", {"point": label})
+        return sse_helpers.format_screenshot_update_event(optimized)
+    except Exception as exc:
+        log.debug(
+            "Targeted screenshot failed — skipping",
+            {"point": label, "error": str(exc)},
+        )
+        return None
 
 
 async def analyze_url_stream(
@@ -237,25 +175,57 @@ async def analyze_url_stream(
             yield event
 
 
+# ====================================================================
+# Session cleanup
+# ====================================================================
+
+
+async def _cleanup_session(
+    ctx: _StreamContext,
+    session: browser_session.BrowserSession,
+) -> None:
+    """Release all resources for a single analysis run.
+
+    Called at the end of ``_run_analysis`` (in the ``finally``
+    block).  Closes the ``BrowserContext`` (fast ~50 ms) and
+    logs completion.  Catches all exceptions internally —
+    callers never see errors.
+    """
+    log.debug("Cleaning up browser resources...")
+
+    # Close the context with a hard timeout so a hung
+    # renderer cannot block the server indefinitely.
+    # BrowserSession.close() has its own per-step timeouts;
+    # this outer guard covers the aggregate case.
+    try:
+        await asyncio.wait_for(session.close(), timeout=30)
+    except TimeoutError:
+        log.error(
+            "Browser cleanup timed out after 30s — resources may have leaked",
+        )
+    except Exception as err:
+        log.warn(
+            "Error during browser cleanup",
+            {"error": errors.get_error_message(err)},
+        )
+    log.debug("Browser cleanup complete")
+
+
+# ====================================================================
+# Core analysis generator
+# ====================================================================
+
+
 async def _run_analysis(
     url: str,
     device_type: browser.DeviceType,
     clear_cache: bool,
 ) -> AsyncGenerator[str]:
     """Core analysis loop — runs inside the concurrency semaphore."""
-    session = browser_session.BrowserSession()
     domain = url_mod.extract_domain(url)
     hostname = parse.urlparse(url).hostname or url
     logger.clear_log_buffer()
     logger.start_log_file(domain)
-
-    ctx = _StreamContext(
-        session=session,
-        url=url,
-        hostname=hostname,
-        domain=domain,
-        device_type=device_type,
-    )
 
     usage_tracking.reset()
     log.section(f"Analyzing: {url}")
@@ -265,6 +235,22 @@ async def _run_analysis(
     if clear_cache:
         log.success("All caches cleared by user request")
         yield sse_helpers.format_progress_event("cache-cleared", "Caches cleared!", 2)
+
+    # Create a session from the shared browser (fast: ~50 ms).
+    # The PlaywrightManager reuses the Chrome instance started
+    # at app startup and creates an isolated BrowserContext.
+    yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
+    manager = browser_manager.PlaywrightManager.get_instance()
+    session = await manager.create_session(device_type)
+    session.set_current_page_url(url)
+
+    ctx = _StreamContext(
+        session=session,
+        url=url,
+        hostname=hostname,
+        domain=domain,
+        device_type=device_type,
+    )
 
     log.start_timer("total-analysis")
     analysis_start = asyncio.get_event_loop().time()
@@ -315,30 +301,21 @@ async def _run_analysis(
             {"error": errors.get_safe_client_message(error)},
         )
     finally:
-        usage_tracking.log_summary()
-        if ctx.refresher_task and not ctx.refresher_task.done():
-            ctx.refresher_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await ctx.refresher_task
-        log.debug("Cleaning up browser resources...")
-
-        # Close the browser with a hard timeout so a hung
-        # Chrome process cannot block the server indefinitely.
-        # BrowserSession.close() has its own per-step timeouts,
-        # but this outer guard covers the aggregate case.
+        # Perform cleanup eagerly so all log messages appear
+        # *before* the generator returns — preventing the
+        # event-loop from interleaving a new request's logs
+        # with the old run's cleanup messages.
+        #
+        # CancelledError is a BaseException in Python 3.9+
+        # and is NOT caught by 'except Exception'.  Wrap
+        # the entire block so that end_log_file() always runs.
         try:
-            await asyncio.wait_for(session.close(), timeout=30)
-        except TimeoutError:
-            log.error(
-                "Browser cleanup timed out after 30s — resources may have leaked",
-            )
-        except Exception as err:
-            log.warn(
-                "Error during browser cleanup",
-                {"error": errors.get_error_message(err)},
-            )
-        log.debug("Browser cleanup complete")
-        logger.end_log_file()
+            usage_tracking.log_summary()
+            await _cleanup_session(ctx, session)
+        except BaseException as exc:
+            log.warn("Cleanup interrupted", {"error": str(exc)})
+        finally:
+            logger.end_log_file()
 
 
 # ====================================================================
@@ -347,7 +324,11 @@ async def _run_analysis(
 
 
 async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
-    """Phases 1–3: browser setup, navigation, page load, data capture.
+    """Phases 1–3: navigation, page load, data capture.
+
+    The browser session is already created (shared Chrome, isolated
+    context) by ``_run_analysis``.  This function navigates to the
+    target URL and captures the initial page state.
 
     Sets ``ctx.aborted`` if navigation fails or access is denied.
     Populates ``ctx.storage``, ``ctx.screenshot``, and
@@ -355,15 +336,9 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
     """
     session = ctx.session
 
-    # ── Phase 1: Browser Setup & Navigation ─────────────
+    # ── Phase 1: Navigation ─────────────────────────────
     log.subsection("Phase 1: Browser Setup")
-    log.info("Initializing browser", {"url": ctx.url, "device": ctx.device_type})
-    yield sse_helpers.format_progress_event("init", "Warming up the browser...", 5)
-
-    browser_phases.prepare_session(session, ctx.url)
-
-    yield sse_helpers.format_progress_event("browser", "Launching browser...", 8)
-    await browser_phases.launch_browser(session, ctx.device_type)
+    log.info("Navigating to page", {"url": ctx.url, "device": ctx.device_type})
 
     yield sse_helpers.format_progress_event("navigate", f"Loading {ctx.hostname}...", 12)
     nav_result = await browser_phases.navigate(session, ctx.url)
@@ -374,20 +349,6 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
         ctx.aborted = True
         return
 
-    # Start Stage 1 screenshot refresher — captures
-    # visual changes while the page loads.
-    ctx.refresh_queue = asyncio.Queue()
-    try:
-        initial_screenshot = await session.take_screenshot(full_page=False)
-        last_screenshot_hash = hashlib.md5(initial_screenshot).hexdigest()
-    except Exception:
-        log.debug("Initial screenshot for hash failed — starting refresher with empty hash")
-        last_screenshot_hash = ""
-    ctx.refresher_task = asyncio.create_task(
-        _screenshot_refresher(session, ctx.refresh_queue, last_screenshot_hash),
-    )
-    log.debug("Stage 1 screenshot refresher started")
-
     # ── Phase 2: Page Load & Access Check ───────────────
     log.subsection("Phase 2: Page Load & Access Check")
 
@@ -397,14 +358,9 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
     yield sse_helpers.format_progress_event("wait-content", "Waiting for page content to render...", 25)
     await browser_phases.wait_for_content_render(session)
 
-    for refresh_event in _drain_queue(ctx.refresh_queue):
-        yield refresh_event
-
     access_events, denied = await browser_phases.check_access(session, nav_result)
     for event in access_events:
         yield event
-    for refresh_event in _drain_queue(ctx.refresh_queue):
-        yield refresh_event
     if denied:
         ctx.aborted = True
         return
@@ -425,16 +381,6 @@ async def _run_phases_1_to_3(ctx: _StreamContext) -> AsyncGenerator[str]:
     browser_phases.log_capture_stats(session, ctx.storage)
 
     yield sse_helpers.format_progress_event("overlay-detect", "Detecting page overlays...", 42)
-
-    # Cancel Stage 1 refresher — the initial capture
-    # provides the authoritative page state from here.
-    if ctx.refresher_task and not ctx.refresher_task.done():
-        ctx.refresher_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await ctx.refresher_task
-    for refresh_event in _drain_queue(ctx.refresh_queue):
-        yield refresh_event
-    log.debug("Stage 1 screenshot refresher ended")
 
     # Snapshot page-load data before any overlay is dismissed.
     ctx.pre_consent_stats = tracking_summary.build_pre_consent_stats(
@@ -523,8 +469,207 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
         )
         await session.capture_current_cookies()
         ctx.storage = await session.capture_storage()
+
+        # ── TC String decoding ───────────────────────────
+        # After accepting consent the CMP sets the euconsent-v2
+        # cookie containing the TC String.  Decode it and attach
+        # the structured data to the consent details so the
+        # client has exact purpose/vendor consent signals.
+        #
+        # Discovery uses a 3-tier cascade:
+        #   1. Named lookups — standard cookie/storage names
+        #      (euconsent-v2, addtl_consent, etc.)
+        #   2. CMP-aware lookups — keys from the detected CMP
+        #      profile in consent-platforms.json
+        #   3. Heuristic scan — brute-force decode of every
+        #      cookie/storage value to catch unknown names
+        if ctx.consent_details is not None:
+            tracked_cookies = session.get_tracked_cookies()
+            local_storage = ctx.storage.local_storage if ctx.storage else []
+
+            # Resolve CMP profile for tier-2 lookups
+            cmp_profile = platform_detection.detect_platform_from_cookies(
+                [c.model_dump() for c in tracked_cookies],
+            )
+            tc_sources = cmp_profile.tc_string_sources if cmp_profile else {}
+
+            # ── AC String decoding ───────────────────────
+            # The addtl_consent cookie stores Google's
+            # Additional Consent Mode string — a list of
+            # non-IAB ad-tech providers that received consent
+            # through a Google-certified CMP.  Decode first so
+            # the vendor count is available for TC validation.
+            ac_vendor_count: int | None = None
+            ac_result_pair: tuple[str, str] | None = None
+
+            # Tier 1 — named lookups
+            ac_raw = tc_string.find_ac_string_in_cookies(tracked_cookies)
+            if ac_raw:
+                ac_result_pair = ("addtl_consent cookie", ac_raw)
+            if not ac_result_pair:
+                ac_storage = tc_string.find_ac_string_in_storage(local_storage)
+                if ac_storage:
+                    ac_result_pair = (f"localStorage[{ac_storage[0]}]", ac_storage[1])
+
+            # Tier 2 — CMP-aware lookups
+            if not ac_result_pair and tc_sources:
+                ac_result_pair = tc_string.find_ac_string_by_profile(
+                    tracked_cookies,
+                    local_storage,
+                    tc_sources,
+                )
+
+            # Tier 3 — heuristic scan
+            if not ac_result_pair:
+                ac_result_pair = tc_string.scan_for_ac_string(
+                    tracked_cookies,
+                    local_storage,
+                )
+
+            if ac_result_pair:
+                ac_source, ac_raw_value = ac_result_pair
+                ac_decoded = tc_string.decode_ac_string(ac_raw_value)
+                if ac_decoded:
+                    ac_data = ac_decoded.model_dump(by_alias=True)
+
+                    # Resolve ATP provider IDs to names
+                    ac_result = vendor_lookup.resolve_ac_providers(
+                        ac_decoded.vendor_ids,
+                    )
+                    ac_data["resolvedProviders"] = [dict(p) for p in ac_result["resolved"]]
+                    ac_data["unresolvedProviderCount"] = ac_result["unresolved_count"]
+
+                    ctx.consent_details.ac_string_data = ac_data
+                    ac_vendor_count = ac_decoded.vendor_count
+                    log.info(
+                        f"AC String decoded from {ac_source}",
+                        {
+                            "version": ac_decoded.version,
+                            "vendorCount": ac_decoded.vendor_count,
+                        },
+                    )
+
+            # ── TC String decoding ───────────────────────
+            tc_result_pair: tuple[str, str] | None = None
+
+            # Tier 1 — named lookups
+            tc_raw = tc_string.find_tc_string_in_cookies(tracked_cookies)
+            if tc_raw:
+                tc_result_pair = ("euconsent-v2 cookie", tc_raw)
+            if not tc_result_pair:
+                tc_storage = tc_string.find_tc_string_in_storage(local_storage)
+                if tc_storage:
+                    tc_result_pair = (f"localStorage[{tc_storage[0]}]", tc_storage[1])
+
+            # Tier 2 — CMP-aware lookups
+            if not tc_result_pair and tc_sources:
+                tc_result_pair = tc_string.find_tc_string_by_profile(
+                    tracked_cookies,
+                    local_storage,
+                    tc_sources,
+                )
+
+            # Tier 3 — heuristic scan
+            if not tc_result_pair:
+                tc_result_pair = tc_string.scan_for_tc_string(
+                    tracked_cookies,
+                    local_storage,
+                )
+            if tc_result_pair:
+                tc_source, tc_raw = tc_result_pair
+                decoded = tc_string.decode_tc_string(tc_raw)
+                if decoded:
+                    tc_data = decoded.model_dump(
+                        by_alias=True,
+                    )
+
+                    # Resolve GVL vendor IDs to names
+                    consent_result = vendor_lookup.resolve_gvl_vendors(
+                        decoded.vendor_consents,
+                    )
+                    li_result = vendor_lookup.resolve_gvl_vendors(
+                        decoded.vendor_legitimate_interests,
+                    )
+                    tc_data["resolvedVendorConsents"] = [dict(v) for v in consent_result["resolved"]]
+                    tc_data["unresolvedVendorConsentCount"] = consent_result["unresolved_count"]
+                    tc_data["resolvedVendorLi"] = [dict(v) for v in li_result["resolved"]]
+                    tc_data["unresolvedVendorLiCount"] = li_result["unresolved_count"]
+
+                    ctx.consent_details.tc_string_data = tc_data
+                    log.info(
+                        f"TC String decoded from {tc_source}",
+                        {
+                            "version": decoded.version,
+                            "cmpId": decoded.cmp_id,
+                            "vendorListVersion": decoded.vendor_list_version,
+                            "purposeConsents": decoded.purpose_consents,
+                            "vendorConsentCount": decoded.vendor_consent_count,
+                            "vendorLiCount": decoded.vendor_li_count,
+                        },
+                    )
+
+                    # ── TC String validation ─────────────────
+                    # Cross-reference TC String signals against
+                    # the dialog-extracted purpose text to detect
+                    # discrepancies and privacy-relevant signals.
+                    dialog_purposes = ctx.consent_details.purposes
+                    lookup_result = tcf_lookup.lookup_purposes(dialog_purposes)
+                    matched_ids = {m.id for m in lookup_result.matched if m.category == "purpose"}
+                    validation = tc_validation.validate_tc_consent(
+                        tc_string_data=ctx.consent_details.tc_string_data,
+                        dialog_purposes=dialog_purposes,
+                        matched_purpose_ids=matched_ids,
+                        claimed_partner_count=ctx.consent_details.claimed_partner_count,
+                        ac_vendor_count=ac_vendor_count,
+                        detected_cmp_id=cmp_profile.cmp_id if cmp_profile else None,
+                    )
+                    ctx.consent_details.tc_validation = validation.model_dump(
+                        by_alias=True,
+                    )
+                    if validation.findings:
+                        log.info(
+                            "TC validation findings",
+                            {
+                                "count": len(validation.findings),
+                                "severities": [f.severity for f in validation.findings],
+                            },
+                        )
+
+            # Re-emit consent details with TC/AC data
+            if ctx.consent_details.tc_string_data or ctx.consent_details.ac_string_data:
+                yield sse_helpers.format_sse_event(
+                    "consentDetails",
+                    sse_helpers.serialize_consent_details(
+                        ctx.consent_details,
+                    ),
+                )
+
     else:
         log.info("No overlays dismissed — page state unchanged, skipping re-capture")
+        # Targeted screenshot refresh — ads and deferred
+        # content should have loaded by now.
+        refresh_event = await _take_targeted_screenshot(session, "no-dialog")
+        if refresh_event:
+            yield refresh_event
+
+    # ── Privacy cookie decoding ──────────────────────────
+    # Scan all captured cookies for privacy-relevant signals
+    # (USP, GPP, GA, Facebook, Google Ads, OneTrust, Cookiebot,
+    # Google SOCS, etc.).  This runs regardless of whether a
+    # consent dialog was found or overlays were dismissed.
+    _tracked = session.get_tracked_cookies()
+    if _tracked:
+        decoded_cookies = cookie_decoders.decode_all_privacy_cookies(_tracked)
+        if decoded_cookies:
+            ctx.decoded_cookies = decoded_cookies
+            log.info(
+                "Privacy cookies decoded",
+                {"decoders": list(decoded_cookies.keys())},
+            )
+            yield sse_helpers.format_sse_event(
+                "decodedCookies",
+                decoded_cookies,
+            )
 
     if page and ctx.overlay_result.failed:
         if ctx.consent_details:
@@ -571,56 +716,22 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
             f"Post-overlay settle ({'idle' if settled else 'timeout'})",
         )
 
+    # Targeted screenshot refresh — ads and deferred content
+    # should have loaded by now.
+    refresh_event = await _take_targeted_screenshot(session, "pre-analysis")
+    if refresh_event:
+        yield refresh_event
+
+    yield sse_helpers.format_progress_event(
+        "pre-analysis",
+        "Preparing analysis...",
+        74,
+    )
+
 
 async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
-    """Phase 5: Stage 2 screenshot refresher + AI analysis.
-
-    Starts a fresh screenshot refresher, runs the analysis
-    pipeline, and drains any remaining refresh events.
-    """
+    """Phase 5: AI analysis."""
     session = ctx.session
-
-    # ── Stage 2 screenshot refresher ────────────────
-    # Only start a post-overlay screenshot refresher when overlays
-    # were actually dismissed — the page may still be settling as
-    # deferred scripts/ads load.  When no overlay was found the
-    # page visual is unchanged; skipping avoids an unnecessary
-    # screenshot capture, optimise-and-send cycle, and background task.
-    refresh_queue: asyncio.Queue[str] = asyncio.Queue()
-    ctx.refresh_queue = refresh_queue
-
-    if ctx.overlay_count > 0:
-        remaining_refreshes = _MAX_SCREENSHOT_REFRESHES
-        current_hash = ""
-
-        try:
-            screenshot = await session.take_screenshot(full_page=False)
-            current_hash = hashlib.md5(screenshot).hexdigest()
-            optimized = browser_session.BrowserSession.optimize_screenshot_bytes(screenshot)
-            yield sse_helpers.format_screenshot_update_event(optimized)
-            remaining_refreshes -= 1
-            log.info("Immediate pre-analysis screenshot refresh emitted")
-        except Exception:
-            log.debug("Pre-analysis screenshot refresh failed — skipping")
-
-        if remaining_refreshes > 0:
-            ctx.refresher_task = asyncio.create_task(
-                _screenshot_refresher(
-                    session,
-                    refresh_queue,
-                    current_hash,
-                    remaining=remaining_refreshes,
-                ),
-            )
-            log.debug(
-                "Stage 2 screenshot refresher started",
-                {"remaining": remaining_refreshes},
-            )
-        else:
-            ctx.refresher_task = None
-    else:
-        ctx.refresher_task = None
-        log.debug("Stage 2 screenshot refresher skipped (no overlays dismissed)")
 
     # ── AI Analysis ────────────────────────────────────
     log.subsection("Phase 5: AI Analysis")
@@ -630,20 +741,10 @@ async def _run_phase_5_analysis(ctx: _StreamContext) -> AsyncGenerator[str]:
         ctx.storage,
         ctx.url,
         ctx.consent_details,
-        ctx.overlay_count,
         ctx.pre_consent_stats,
+        decoded_cookies=ctx.decoded_cookies,
     ):
         yield event
-        for refresh_event in _drain_queue(refresh_queue):
-            yield refresh_event
-
-    # Stop the refresher now that analysis is done.
-    if ctx.refresher_task and not ctx.refresher_task.done():
-        ctx.refresher_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await ctx.refresher_task
-    for refresh_event in _drain_queue(refresh_queue):
-        yield refresh_event
 
 
 def _emit_nav_failure(

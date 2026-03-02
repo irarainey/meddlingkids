@@ -30,6 +30,7 @@ applyTo: "**/*.py"
 - Ensure lines do not exceed 79 characters.
 - Place function and class docstrings immediately after the `def` or `class` keyword.
 - Use blank lines to separate functions, classes, and code blocks where appropriate.
+- After making changes always run `poe format` and `poe lint` to ensure code quality and consistency, and fix any issues that arise.
 
 ## Edge Cases and Testing
 

@@ -30,10 +30,30 @@ defineProps<{
 <template>
   <div class="tab-content">
     <div v-if="scriptCount === 0" class="empty-state">No scripts detected</div>
-    <div v-else class="domain-groups">
+    <div v-else>
+      <section class="scripts-overview-section">
+        <h2 class="section-title">📜 Overview
+          <span class="count-badge">{{ scriptCount }} scripts</span>
+        </h2>
+        <p class="section-subtitle">
+          JavaScript files loaded during the page scan.
+        </p>
+        <p class="ai-section-summary">
+          Every website relies on JavaScript to add interactivity, but many of the scripts
+          loaded come from third parties — advertising networks, analytics providers, and
+          data brokers. These scripts run with full access to the page and can read cookies,
+          monitor your clicks, record form inputs, and send data to remote servers. Reviewing
+          what scripts are loaded helps reveal who has a presence on the site and what they
+          may be doing behind the scenes.
+        </p>
+      </section>
+
       <!-- Script Groups (application chunks, vendor bundles, etc.) -->
-      <div v-if="scriptGroups && scriptGroups.length > 0" class="grouped-scripts-section">
-        <h3 class="section-header">Grouped Scripts</h3>
+      <section v-if="scriptGroups && scriptGroups.length > 0" class="scripts-analysis-section">
+        <h2 class="section-title">📦 Grouped Scripts</h2>
+        <p class="section-subtitle">
+          Similar scripts bundled together, such as application chunks and vendor libraries.
+        </p>
         <div v-for="group in scriptGroups" :key="group.id" class="script-group">
           <div class="group-header">
             <span class="group-name">{{ group.name }}</span>
@@ -50,42 +70,83 @@ defineProps<{
             </ul>
           </details>
         </div>
-      </div>
+      </section>
 
       <!-- Individual Scripts by Domain -->
-      <h3 v-if="scriptGroups && scriptGroups.length > 0" class="section-header">Individual Scripts</h3>
-      <div v-for="(domainScripts, domain) in scriptsByDomain" :key="domain" class="domain-group">
-        <!-- Only show non-grouped scripts -->
-        <template v-if="domainScripts.some(s => !s.isGrouped)">
-          <h3 class="domain-header">{{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})</h3>
-          <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
-            <div class="script-main">
-              <a :href="script.url" target="_blank" class="script-url" :title="script.url">{{ baseUrl(script.url) }}</a>
-              <span v-if="script.description" class="script-description">{{ script.description }}</span>
+      <section class="scripts-analysis-section">
+        <h2 class="section-title">🔎 Analysis</h2>
+        <p class="section-subtitle">
+          All individual scripts grouped by domain. Click on any URL to view it in a new tab.
+        </p>
+        <div class="domain-groups">
+        <div v-for="(domainScripts, domain) in scriptsByDomain" :key="domain" class="domain-group">
+          <template v-if="domainScripts.some(s => !s.isGrouped)">
+            <h3 class="domain-header">{{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})</h3>
+            <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
+              <div class="script-main">
+                <a :href="script.url" target="_blank" class="script-url" :title="script.url">{{ baseUrl(script.url) }}</a>
+                <span v-if="script.description" class="script-description">{{ script.description }}</span>
+              </div>
             </div>
-          </div>
-        </template>
-      </div>
+          </template>
+        </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.section-header {
-  color: #f0f0f0;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #4a5568;
+.section-title {
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.grouped-scripts-section {
-  margin-bottom: 1.5rem;
+.section-subtitle {
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
+}
+
+.count-badge {
+  font-size: var(--badge-size);
+  font-weight: 600;
+  background: var(--surface-code);
+  color: var(--muted-light);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--badge-radius);
+}
+
+.scripts-overview-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.scripts-analysis-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
 }
 
 .script-group {
-  background: #2a3142;
+  background: var(--surface-panel);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -104,7 +165,7 @@ defineProps<{
 }
 
 .group-count {
-  color: #9ca3af;
+  color: var(--muted-light);
   font-size: 0.9rem;
   background: #374151;
   padding: 0.125rem 0.5rem;
@@ -112,8 +173,8 @@ defineProps<{
 }
 
 .group-description {
-  color: #9ca3af;
-  font-size: 0.95rem;
+  color: var(--body-color);
+  font-size: var(--body-size);
   margin-bottom: 0.25rem;
 }
 
@@ -128,7 +189,7 @@ defineProps<{
 }
 
 .group-examples summary {
-  color: #60a5fa;
+  color: var(--link-color);
   cursor: pointer;
 }
 
@@ -143,7 +204,7 @@ defineProps<{
 }
 
 .example-url a {
-  color: #9ca3af;
+  color: var(--muted-light);
   text-decoration: none;
   word-break: break-all;
 }
@@ -154,7 +215,7 @@ defineProps<{
 
 .script-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -169,7 +230,7 @@ defineProps<{
 }
 
 .script-url {
-  color: #60a5fa;
+  color: var(--link-color);
   word-break: break-all;
   text-decoration: none;
 }
@@ -179,7 +240,7 @@ defineProps<{
 }
 
 .script-description {
-  color: #9ca3af;
+  color: var(--body-color);
   font-size: 0.9rem;
   font-style: italic;
 }

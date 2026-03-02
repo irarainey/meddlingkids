@@ -29,10 +29,10 @@ src/
 │   ├── ProgressBanner.vue       # Loading progress indicator
 │   ├── ScoreDialog.vue          # Privacy score results dialog
 │   ├── ScreenshotGallery.vue    # Screenshot thumbnails + modal
-│   ├── TrackerCategorySection.vue # Reusable tracker category block (used ×5 in AnalysisTab)
+│   ├── TrackerCategorySection.vue # Reusable tracker category block (used ×5 in SummaryTab)
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
-│       ├── AnalysisTab.vue      # AI analysis results
+│       ├── SummaryTab.vue       # AI analysis results with structured report and findings
 │       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown
 │       ├── CookiesTab.vue       # Cookies by domain
 │       ├── DebugLogTab.vue      # Server debug log (debug mode only)
@@ -106,7 +106,7 @@ Each tab is a self-contained component with its own template and scoped styles:
 
 | Component | Purpose |
 |-----------|---------|
-| `AnalysisTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
+| `SummaryTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
 | `ConsentTab` | Consent dialog details with IAB TCF v2.2 purpose breakdown, consent categories, and partners grouped by risk level |
 | `CookiesTab` | Cookies grouped by domain with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
 | `DebugLogTab` | Server debug log output (visible in debug mode only) |
@@ -147,6 +147,7 @@ const {
   privacySummary,       // One-sentence summary
   showScoreDialog,      // Score dialog visibility
   consentDetails,       // Extracted consent info
+  decodedCookies,       // Decoded structured cookies (TC/AC strings, OneTrust, etc.)
   pageError,            // Page error info (access denied, etc.)
   showPageErrorDialog,  // Page error dialog visibility
   errorDialog,          // Generic error dialog info { title, message }
@@ -162,6 +163,7 @@ const {
   cookiesByDomain,      // Cookies grouped by domain
   filteredNetworkRequests, // Network requests (filtered)
   networkByDomain,      // Network requests grouped by domain
+  graphConnectionCount, // Number of connections in the tracker graph
 
   // Methods
   analyzeUrl,           // Start analysis
@@ -190,6 +192,14 @@ Located in `types/tracking.ts`:
 | `NetworkRequest` | HTTP request with domain, type, third-party flag, initiator domain, and redirect source |
 | `ConsentCategory` | Cookie category from consent dialog |
 | `ConsentPartner` | Third-party vendor from consent dialog (with risk classification and URL) |
+| `TcStringData` | Decoded IAB TCF v2 consent string (CMP metadata, purpose/vendor consents, LI signals) |
+| `AcStringData` | Decoded Google Additional Consent string (version, provider IDs, resolved names) |
+| `ResolvedVendor` | Vendor ID resolved to name from IAB GVL |
+| `ResolvedAcProvider` | Provider ID resolved to name from Google ATP list |
+| `TcPurposeSignal` | Individual TCF purpose consent/LI signal with purpose name and granted status |
+| `TcValidationFinding` | TC String validation finding (severity level and description) |
+| `TcValidationResult` | Collection of TC String validation findings |
+| `DecodedCookies` | All decoded structured cookies (USP, GPP, GA, FB, Google Ads, OneTrust, Cookiebot, SOCS, GPC/DNT) |
 | `ConsentDetails` | Full consent dialog information |
 | `SummaryFindingType` | Finding severity: critical, high, moderate, info, positive |
 | `SummaryFinding` | Structured finding with type and text |
@@ -251,8 +261,8 @@ Located in `utils/formatters.ts`:
 
 | Tab | Content |
 |-----|---------|
-| **Analysis** | Structured privacy report with summary findings and AI analysis |
-| **Consent** | TCF purpose breakdown with risk levels, consent categories, and partners grouped by risk classification (visible when consent dialog detected) |
+| **Summary** | Structured privacy report with summary findings and AI analysis |
+| **Consent** | TCF purpose breakdown with risk levels, TC String/AC String decoding, decoded cookie breakdowns, consent categories, and partners grouped by risk classification (visible when consent dialog detected) |
 | **Cookies** | All cookies grouped by domain — click any cookie for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Storage** | localStorage and sessionStorage items — click any key for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Network** | HTTP requests with third-party filter |
@@ -286,6 +296,7 @@ eventSource.addEventListener('screenshot', (event) => { /* Add screenshot + data
 eventSource.addEventListener('screenshotUpdate', (event) => { /* Replace latest screenshot */ })
 eventSource.addEventListener('pageError', (event) => { /* Show page error dialog */ })
 eventSource.addEventListener('consentDetails', (event) => { /* Store consent info */ })
+eventSource.addEventListener('decodedCookies', (event) => { /* Store decoded cookie breakdowns */ })
 eventSource.addEventListener('complete', (event) => { /* Finalize results */ })
 eventSource.addEventListener('error', (event) => { /* Handle errors */ })
 ```
@@ -306,10 +317,11 @@ The environment is configured via:
 |-------|---------|---------|
 | `progress` | `{ step, message, progress }` | Update progress bar and status |
 | `screenshot` | `{ screenshot, cookies, scripts, ... }` | Add screenshot, update tracking data |
-| `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (background refresh) |
+| `screenshotUpdate` | `{ screenshot }` | Replace most recent screenshot (targeted refresh at key pipeline points) |
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
+| `decodedCookies` | `DecodedCookies` | Store decoded structured cookie breakdowns |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `complete` | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
+| `complete` | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development
@@ -361,7 +373,20 @@ npm run preview
 
 ### Global Styles (`style.css`)
 
-Contains base styles and shared CSS classes used across multiple components:
+Contains design tokens (CSS custom properties on `:root`) and shared CSS classes used across multiple components. All tab components reference these tokens for consistent typography, colours, and spacing.
+
+#### Design Tokens
+
+| Token Group | Examples | Purpose |
+|-------------|----------|--------|
+| Typography | `--section-title-size`, `--body-size`, `--summary-size` | Consistent font sizing across all tabs |
+| Colours | `--section-title-color`, `--body-color`, `--link-color`, `--muted-color` | Unified colour palette |
+| Surfaces | `--surface-section`, `--surface-card`, `--surface-card-inner`, `--surface-panel` | Nested background layers |
+| Borders | `--border-card`, `--border-separator`, `--border-accent` | Consistent border styling |
+| Badges | `--badge-radius`, `--badge-padding`, `--badge-size` | Uniform badge appearance |
+| Stats | `--stat-value-size`, `--stat-label-size` | Dashboard-style stat blocks |
+
+#### Shared Classes
 
 | Class | Purpose |
 |-------|---------|

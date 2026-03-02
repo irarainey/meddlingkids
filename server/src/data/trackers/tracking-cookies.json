@@ -6,9 +6,7 @@
     "Cookiepedia (https://cookiepedia.co.uk)"
   ],
   "cookies": {
-
     "_comment_google_analytics": "--- Google Analytics ---",
-
     "_ga": {
       "pattern": "^_ga$",
       "description": "Google Analytics client ID — tracks unique visitors across sessions.",
@@ -45,9 +43,7 @@
       "setBy": "Google Ads",
       "purpose": "advertising"
     },
-
     "_comment_google_ads": "--- Google Ads / DoubleClick ---",
-
     "_gcl": {
       "pattern": "^_gcl",
       "description": "Google Ads conversion linker — connects ad clicks to website actions.",
@@ -144,9 +140,7 @@
       "setBy": "Google",
       "purpose": "advertising"
     },
-
     "_comment_facebook": "--- Facebook / Meta ---",
-
     "_fbp": {
       "pattern": "^_fbp$",
       "description": "Facebook Pixel browser ID — tracks visits for ad targeting across the web.",
@@ -177,9 +171,7 @@
       "setBy": "Facebook (Meta)",
       "purpose": "advertising"
     },
-
     "_comment_microsoft": "--- Microsoft / Bing ---",
-
     "_uet": {
       "pattern": "^_uet",
       "description": "Microsoft Bing UET tag — tracks conversions from Bing Ads.",
@@ -234,9 +226,7 @@
       "setBy": "Microsoft Clarity",
       "purpose": "fingerprinting"
     },
-
     "_comment_hotjar": "--- Hotjar ---",
-
     "_hjid": {
       "pattern": "^_hjid$",
       "description": "Hotjar user ID — identifies returning visitors for session replay and heatmaps.",
@@ -279,9 +269,7 @@
       "setBy": "Hotjar",
       "purpose": "fingerprinting"
     },
-
     "_comment_twitter": "--- X (Twitter) ---",
-
     "personalization_id": {
       "pattern": "^personalization_id$",
       "description": "Twitter/X personalisation cookie — enables targeted ads based on browsing activity.",
@@ -312,9 +300,7 @@
       "setBy": "X (Twitter)",
       "purpose": "advertising"
     },
-
     "_comment_linkedin": "--- LinkedIn ---",
-
     "lidc": {
       "pattern": "^lidc$",
       "description": "LinkedIn data centre routing cookie — also used for analytics.",
@@ -357,9 +343,7 @@
       "setBy": "LinkedIn",
       "purpose": "advertising"
     },
-
     "_comment_adobe": "--- Adobe ---",
-
     "s_vi": {
       "pattern": "^s_vi$",
       "description": "Adobe Analytics unique visitor ID — identifies unique visitors across sessions.",
@@ -414,9 +398,7 @@
       "setBy": "Adobe Audience Manager",
       "purpose": "advertising"
     },
-
     "_comment_tiktok": "--- TikTok ---",
-
     "_ttp": {
       "pattern": "^_ttp$",
       "description": "TikTok tracking pixel — identifies visitors for ad attribution and conversion measurement.",
@@ -441,9 +423,7 @@
       "setBy": "TikTok",
       "purpose": "advertising"
     },
-
     "_comment_hubspot": "--- HubSpot ---",
-
     "__hstc": {
       "pattern": "^__hstc$",
       "description": "HubSpot main tracking cookie — tracks visitors across sessions with a unique ID and session timestamps.",
@@ -468,9 +448,7 @@
       "setBy": "HubSpot",
       "purpose": "analytics"
     },
-
     "_comment_pinterest": "--- Pinterest ---",
-
     "_pin_unauth": {
       "pattern": "^_pin_unauth$",
       "description": "Pinterest ad tracking — registers unauthenticated visitors for ad retargeting and remarketing.",
@@ -483,9 +461,7 @@
       "setBy": "Pinterest",
       "purpose": "social-media"
     },
-
     "_comment_criteo": "--- Criteo ---",
-
     "cto_bundle": {
       "pattern": "^cto_bundle$",
       "description": "Criteo retargeting bundle — stores browsing and product data for personalised ad retargeting.",
@@ -504,9 +480,7 @@
       "setBy": "Criteo",
       "purpose": "advertising"
     },
-
     "_comment_matomo": "--- Matomo / Piwik ---",
-
     "_pk_id": {
       "pattern": "^_pk_id",
       "description": "Matomo visitor ID — stores a unique visitor identifier for web analytics across sessions.",
@@ -525,9 +499,7 @@
       "setBy": "Matomo (Piwik)",
       "purpose": "analytics"
     },
-
     "_comment_youtube": "--- YouTube ---",
-
     "VISITOR_INFO1_LIVE": {
       "pattern": "^VISITOR_INFO1_LIVE$",
       "description": "YouTube visitor cookie — estimates user bandwidth and tracks video interactions for marketing.",
@@ -546,18 +518,14 @@
       "setBy": "Google (YouTube)",
       "purpose": "advertising"
     },
-
     "_comment_reddit": "--- Reddit ---",
-
     "_rdt_uuid": {
       "pattern": "^_rdt_uuid$",
       "description": "Reddit conversion tracking — identifies visitors for ad remarketing and conversion measurement.",
       "setBy": "Reddit",
       "purpose": "advertising"
     },
-
     "_comment_snapchat": "--- Snapchat ---",
-
     "_scid": {
       "pattern": "^_scid$",
       "description": "Snapchat Pixel cookie ID — tracks visitors across sites for ad attribution and conversion measurement.",
@@ -570,9 +538,7 @@
       "setBy": "Snapchat",
       "purpose": "advertising"
     },
-
     "_comment_taboola": "--- Taboola ---",
-
     "t_gid": {
       "pattern": "^t_gid$",
       "description": "Taboola global visitor ID — assigns a unique ID for content recommendation tracking and ad targeting.",
@@ -585,27 +551,21 @@
       "setBy": "Taboola",
       "purpose": "advertising"
     },
-
     "_comment_outbrain": "--- Outbrain ---",
-
     "obuid": {
       "pattern": "^obuid$",
       "description": "Outbrain user ID — holds an anonymous user identifier for tracking clicks on content recommendations.",
       "setBy": "Outbrain",
       "purpose": "advertising"
     },
-
     "_comment_amplitude": "--- Amplitude ---",
-
     "AMP_": {
       "pattern": "^AMP_",
       "description": "Amplitude analytics ID — registers statistical data on user behaviour for product analytics.",
       "setBy": "Amplitude",
       "purpose": "analytics"
     },
-
     "_comment_segment": "--- Segment ---",
-
     "ajs_anonymous_id": {
       "pattern": "^ajs_anonymous_id$",
       "description": "Segment anonymous visitor ID — assigns a UUID to unauthenticated visitors for analytics across tools.",
@@ -618,9 +578,7 @@
       "setBy": "Segment (Twilio)",
       "purpose": "analytics"
     },
-
     "_comment_adform": "--- Adform ---",
-
     "uid": {
       "pattern": "^uid$",
       "description": "Adform unique user ID — contains a unique identifier to track users for ad retargeting.",
@@ -633,18 +591,14 @@
       "setBy": "Adform",
       "purpose": "advertising"
     },
-
     "_comment_quantcast": "--- Quantcast ---",
-
     "cref": {
       "pattern": "^cref$",
       "description": "Quantcast content reference — contains data on user navigation for ad optimisation and statistics.",
       "setBy": "Quantcast",
       "purpose": "advertising"
     },
-
     "_comment_rubicon_magnite": "--- Magnite (Rubicon Project) ---",
-
     "khaos": {
       "pattern": "^khaos$",
       "description": "Magnite (Rubicon Project) campaign tracking — tracks advertising campaigns and collects anonymised user statistics.",
@@ -657,9 +611,7 @@
       "setBy": "Magnite (Rubicon Project)",
       "purpose": "advertising"
     },
-
     "_comment_pubmatic": "--- PubMatic ---",
-
     "KRTBCOOKIE_": {
       "pattern": "^KRTBCOOKIE_",
       "description": "PubMatic user ID sync — registers an identifier for real-time ad bidding across exchanges.",
@@ -672,9 +624,7 @@
       "setBy": "PubMatic",
       "purpose": "advertising"
     },
-
     "_comment_crazy_egg": "--- Crazy Egg ---",
-
     "_ceir": {
       "pattern": "^_ceir$",
       "description": "Crazy Egg returning visitor check — tracks whether a visitor has visited the site before.",
@@ -687,9 +637,7 @@
       "setBy": "Crazy Egg",
       "purpose": "fingerprinting"
     },
-
     "_comment_content_square": "--- ContentSquare ---",
-
     "_cs_id": {
       "pattern": "^_cs_id$",
       "description": "ContentSquare user ID — contains user ID, creation timestamp, and visit count for analytics.",
@@ -702,36 +650,28 @@
       "setBy": "ContentSquare",
       "purpose": "fingerprinting"
     },
-
     "_comment_yahoo": "--- Yahoo ---",
-
     "A3": {
       "pattern": "^A3$",
       "description": "Yahoo advertising targeting cookie — collects data for ad retargeting and personalisation.",
       "setBy": "Yahoo",
       "purpose": "advertising"
     },
-
     "_comment_active_campaign": "--- Active Campaign ---",
-
     "prism_": {
       "pattern": "^prism_",
       "description": "ActiveCampaign site tracking — tracks visitor behaviour for marketing automation and email targeting.",
       "setBy": "ActiveCampaign",
       "purpose": "advertising"
     },
-
     "_comment_klaviyo": "--- Klaviyo ---",
-
     "__kla_id": {
       "pattern": "^__kla_id$",
       "description": "Klaviyo visitor ID — tracks site visitors and can hold personally identifiable information once identified.",
       "setBy": "Klaviyo",
       "purpose": "advertising"
     },
-
     "_comment_salesforce": "--- Salesforce ---",
-
     "_mkto_trk": {
       "pattern": "^_mkto_trk$",
       "description": "Marketo (Salesforce) tracking cookie — tracks visitor behaviour for lead scoring and marketing automation.",
@@ -750,5 +690,354 @@
     "advertising": "Enables cross-site tracking and ad targeting based on your browsing history.",
     "fingerprinting": "Records detailed interaction data including mouse movements, clicks, and scrolling.",
     "social-media": "Allows social platforms to track your activity on third-party sites."
+  },
+  "vendors": {
+    "Adform": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        50
+      ],
+      "url": "https://www.adform.com",
+      "concerns": [
+        "European DSP",
+        "Cross-device",
+        "Flow ID"
+      ]
+    },
+    "Adobe Analytics": {
+      "category": "Analytics",
+      "url": "https://business.adobe.com/products/analytics/adobe-analytics.html",
+      "concerns": [
+        "Enterprise analytics",
+        "User tracking",
+        "Detailed behavioral data"
+      ]
+    },
+    "Adobe Audience Manager": {
+      "category": "Data Broker",
+      "url": "https://business.adobe.com/products/audience-manager/adobe-audience-manager.html",
+      "concerns": [
+        "DMP with extensive tracking",
+        "Cross-device graphs",
+        "Data co-ops"
+      ]
+    },
+    "Adobe Experience Cloud": {
+      "category": "Analytics",
+      "url": "https://business.adobe.com/products/analytics/adobe-analytics.html",
+      "concerns": [
+        "Enterprise analytics",
+        "User tracking",
+        "Detailed behavioral data"
+      ]
+    },
+    "Amplitude": {
+      "category": "Session Replay",
+      "url": "https://amplitude.com",
+      "concerns": [
+        "Product analytics",
+        "Session replay",
+        "User behavior"
+      ]
+    },
+    "ContentSquare": {
+      "category": "Session Replay",
+      "url": "https://contentsquare.com",
+      "concerns": [
+        "Digital experience analytics",
+        "Session replay",
+        "Heatmaps"
+      ]
+    },
+    "Criteo": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        91
+      ],
+      "url": "https://www.criteo.com",
+      "concerns": [
+        "Retargeting across millions of sites",
+        "Behavioral profiling",
+        "Email matching"
+      ]
+    },
+    "Facebook (Meta)": {
+      "category": "Ad Network",
+      "atp_ids": [
+        89
+      ],
+      "url": "https://www.meta.com",
+      "concerns": [
+        "Facebook pixel on millions of sites",
+        "Cross-company data sharing across Facebook, Instagram, WhatsApp, Messenger, and Meta Quest",
+        "Off-Facebook activity tracking via integrated partners"
+      ]
+    },
+    "Google": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google (DoubleClick)": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google (YouTube)": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google Ads": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google Analytics": {
+      "category": "Analytics",
+      "url": "https://analytics.google.com",
+      "concerns": [
+        "Page views, user journeys, and session recording",
+        "Demographics, interests, and behavioural profiling",
+        "Cross-site tracking with Google Signals linking activity to Google accounts"
+      ]
+    },
+    "Google Analytics (GA4)": {
+      "category": "Analytics",
+      "url": "https://analytics.google.com",
+      "concerns": [
+        "Page views, user journeys, and session recording",
+        "Demographics, interests, and behavioural profiling",
+        "Cross-site tracking with Google Signals linking activity to Google accounts"
+      ]
+    },
+    "Google Analytics (Legacy)": {
+      "category": "Analytics",
+      "url": "https://analytics.google.com",
+      "concerns": [
+        "Page views, user journeys, and session recording",
+        "Demographics, interests, and behavioural profiling",
+        "Cross-site tracking with Google Signals linking activity to Google accounts"
+      ]
+    },
+    "Hotjar": {
+      "category": "Session Replay",
+      "url": "https://www.hotjar.com",
+      "concerns": [
+        "Session recording",
+        "Mouse tracking",
+        "Form field capture"
+      ]
+    },
+    "HubSpot": {
+      "category": "Analytics",
+      "url": "https://www.hubspot.com",
+      "concerns": [
+        "Marketing automation",
+        "Lead tracking",
+        "Email tracking"
+      ]
+    },
+    "Klaviyo": {
+      "category": "Analytics",
+      "url": "https://www.klaviyo.com",
+      "concerns": [
+        "Email marketing",
+        "Customer profiles",
+        "Behavioral tracking"
+      ]
+    },
+    "LinkedIn": {
+      "category": "Ad Network",
+      "url": "https://business.linkedin.com/marketing-solutions",
+      "concerns": [
+        "Professional profile and employment data",
+        "Job interest and career activity tracking",
+        "B2B behavioural targeting via Insight Tag"
+      ]
+    },
+    "Magnite (Rubicon Project)": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        165,
+        293
+      ],
+      "url": "https://www.magnite.com",
+      "concerns": [
+        "Largest independent SSP",
+        "CTV tracking",
+        "Real-time bidding"
+      ]
+    },
+    "Marketo (Salesforce)": {
+      "category": "Analytics",
+      "url": "https://www.marketo.com",
+      "concerns": [
+        "Marketing automation",
+        "Lead scoring",
+        "Behavioral tracking"
+      ]
+    },
+    "Matomo (Piwik)": {
+      "category": "Analytics",
+      "url": "https://matomo.org",
+      "concerns": [
+        "Analytics platform",
+        "Can be privacy-respecting if self-hosted"
+      ]
+    },
+    "Microsoft": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        32,
+        1126
+      ],
+      "url": "https://ads.microsoft.com",
+      "concerns": [
+        "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+        "Windows telemetry and diagnostic data collection",
+        "Copilot AI prompt and conversation data processing"
+      ]
+    },
+    "Microsoft Advertising": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        32,
+        1126
+      ],
+      "url": "https://ads.microsoft.com",
+      "concerns": [
+        "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+        "Windows telemetry and diagnostic data collection",
+        "Copilot AI prompt and conversation data processing"
+      ]
+    },
+    "Microsoft Clarity": {
+      "category": "Session Replay",
+      "url": "https://clarity.microsoft.com",
+      "concerns": [
+        "Microsoft session replay capturing user interactions in detail",
+        "Free service where Microsoft collects and processes user behaviour data",
+        "Heatmaps and click tracking feeding into Microsoft analytics"
+      ]
+    },
+    "Outbrain": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        210
+      ],
+      "url": "https://www.outbrain.com",
+      "concerns": [
+        "Content recommendation",
+        "Behavioral tracking",
+        "Interest profiling"
+      ]
+    },
+    "Pinterest": {
+      "category": "Ad Network",
+      "url": "https://ads.pinterest.com",
+      "concerns": [
+        "Visual interest tracking",
+        "Shopping behavior",
+        "Pin engagement"
+      ]
+    },
+    "PubMatic": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        76
+      ],
+      "url": "https://pubmatic.com",
+      "concerns": [
+        "Ad exchange",
+        "Real-time bidding",
+        "Publisher data"
+      ]
+    },
+    "Reddit": {
+      "category": "Ad Network",
+      "url": "https://ads.reddit.com",
+      "concerns": [
+        "Interest community data",
+        "Engagement tracking",
+        "Conversation API"
+      ]
+    },
+    "Segment (Twilio)": {
+      "category": "Identity Tracker",
+      "url": "https://segment.com",
+      "concerns": [
+        "Customer data platform",
+        "Event tracking",
+        "Identity stitching"
+      ]
+    },
+    "Snapchat": {
+      "category": "Ad Network",
+      "atp_ids": [
+        2572
+      ],
+      "url": "https://forbusiness.snapchat.com",
+      "concerns": [
+        "Precise GPS location tracking via Snap Map",
+        "Camera and AR data collection including TrueDepth on iOS",
+        "My AI conversation data used for personalisation and improvement"
+      ]
+    },
+    "Taboola": {
+      "category": "Ad Network",
+      "url": "https://www.taboola.com",
+      "concerns": [
+        "Content recommendation on 9000+ sites",
+        "Behavioral profiling",
+        "Click tracking"
+      ]
+    },
+    "TikTok": {
+      "category": "Ad Network",
+      "url": "https://ads.tiktok.com",
+      "concerns": [
+        "Content pre-loading at creation time before user saves or uploads",
+        "Keystroke patterns and rhythms collection",
+        "Facial and body detection in user content for effects and moderation"
+      ]
+    },
+    "X (Twitter)": {
+      "category": "Social Tracker",
+      "url": "https://developer.x.com",
+      "concerns": [
+        "Share button loads X tracking scripts on page load",
+        "Social graph mapping via cross-site cookie tracking",
+        "Data shared with X Corp affiliates including xAI/Grok"
+      ]
+    },
+    "Yahoo": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        1520
+      ],
+      "url": "https://www.yahoo.com",
+      "concerns": [
+        "Yahoo tracking",
+        "AOL data",
+        "Cross-property profiling"
+      ]
+    }
   }
 }

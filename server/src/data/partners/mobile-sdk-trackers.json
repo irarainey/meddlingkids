@@ -146,7 +146,10 @@
       "tap joy",
       "tapjoy inc"
     ],
-    "url": "https://www.tapjoy.com"
+    "url": "https://www.tapjoy.com",
+    "atp_ids": [
+      1985
+    ]
   },
   "pangle": {
     "concerns": [
@@ -173,7 +176,13 @@
       "start app",
       "start.io"
     ],
-    "url": "https://www.start.io"
+    "url": "https://www.start.io",
+    "gvl_ids": [
+      1216
+    ],
+    "atp_ids": [
+      2312
+    ]
   },
   "loopme": {
     "concerns": [
@@ -184,7 +193,10 @@
     "aliases": [
       "loop me"
     ],
-    "url": "https://loopme.com"
+    "url": "https://loopme.com",
+    "gvl_ids": [
+      109
+    ]
   },
   "ogury": {
     "concerns": [
@@ -195,7 +207,10 @@
     "aliases": [
       "ogury ltd"
     ],
-    "url": "https://www.ogury.com"
+    "url": "https://www.ogury.com",
+    "gvl_ids": [
+      31
+    ]
   },
   "crashlytics": {
     "concerns": [
@@ -268,7 +283,13 @@
       "app.link",
       "bnc.lt"
     ],
-    "url": "https://www.branch.io"
+    "url": "https://www.branch.io",
+    "gvl_ids": [
+      1537
+    ],
+    "atp_ids": [
+      2605
+    ]
   },
   "appsflyer sdk": {
     "concerns": [
@@ -304,7 +325,10 @@
       "tenjin inc",
       "tenjin.io"
     ],
-    "url": "https://www.tenjin.com"
+    "url": "https://www.tenjin.com",
+    "atp_ids": [
+      14034
+    ]
   },
   "apsalar": {
     "concerns": [
@@ -508,7 +532,10 @@
       "placed sdk",
       "foursquare attribution"
     ],
-    "url": "https://www.foursquare.com"
+    "url": "https://www.foursquare.com",
+    "atp_ids": [
+      1725
+    ]
   },
   "gameanalytics": {
     "concerns": [
@@ -598,6 +625,9 @@
       "covatic limited",
       "covatic.com"
     ],
-    "url": "https://www.covatic.com"
+    "url": "https://www.covatic.com",
+    "gvl_ids": [
+      1104
+    ]
   }
 }

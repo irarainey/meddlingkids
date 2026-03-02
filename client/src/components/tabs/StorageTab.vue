@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import type { StorageItem, StorageInfo } from '../../types'
-import { truncateValue } from '../../utils'
+import type { StorageItem, StorageInfo, StructuredReport } from '../../types'
+import { truncateValue, stripMarkdown } from '../../utils'
 
 /**
  * Tab panel displaying localStorage and sessionStorage items.
@@ -12,6 +12,8 @@ const props = defineProps<{
   localStorage: StorageItem[]
   /** sessionStorage items */
   sessionStorage: StorageItem[]
+  /** Structured report for the AI storage analysis section */
+  structuredReport?: StructuredReport | null
 }>()
 
 /** Cache of storage info results, keyed by "storageType|key". */
@@ -134,10 +136,68 @@ function riskClass(level: string): string {
 
 <template>
   <div class="tab-content">
-    <div v-if="localStorage.length === 0 && sessionStorage.length === 0" class="empty-state">
+    <div v-if="localStorage.length === 0 && sessionStorage.length === 0 && !(structuredReport && (structuredReport.storageAnalysis.localStorageCount > 0 || structuredReport.storageAnalysis.sessionStorageCount > 0))" class="empty-state">
       No storage data detected
     </div>
-    <div v-else class="domain-groups">
+
+    <!-- ── Overview ──────────────────────────────── -->
+    <section
+      v-if="structuredReport && (structuredReport.storageAnalysis.localStorageCount > 0
+        || structuredReport.storageAnalysis.sessionStorageCount > 0)"
+      class="ai-storage-analysis"
+    >
+      <h2 class="ai-section-title">💾 Overview</h2>
+      <p class="ai-section-subtitle">
+        Analysis of localStorage and sessionStorage usage patterns determined
+        by AI examination of key names and values.
+      </p>
+      <p class="ai-section-summary">
+        Websites can store data directly in your browser using two mechanisms:
+        localStorage persists indefinitely (even after closing the browser),
+        while sessionStorage is cleared when the tab is closed.
+        Unlike cookies, storage data is never sent to servers automatically — but scripts
+        on the page can read it freely. Some companies prefer storage over cookies because
+        it has no size limits, is harder for users to discover or clear, and is not affected
+        by cookie-blocking browser settings or consent tools.
+      </p>
+      <p v-if="structuredReport.storageAnalysis.summary" class="ai-section-summary">
+        {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
+      </p>
+      <div class="storage-ai-stats">
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.localStorageCount }}</span>
+          <span class="storage-type-badge local">localStorage</span>
+        </div>
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.sessionStorageCount }}</span>
+          <span class="storage-type-badge session">sessionStorage</span>
+        </div>
+      </div>
+      <hr v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0 || structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="section-divider">
+      <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0 || structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-ai-concerns">
+        <h3>⚠️ Concerning Storage</h3>
+        <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="concern-group">
+          <span class="storage-type-badge local">localStorage</span>
+          <ul>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+          </ul>
+        </div>
+        <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="concern-group">
+          <span class="storage-type-badge session">sessionStorage</span>
+          <ul>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Analysis ──────────────────────────────── -->
+    <section v-if="localStorage.length > 0 || sessionStorage.length > 0" class="storage-analysis-section">
+      <h2 class="ai-section-title">🔍 Analysis</h2>
+      <p class="ai-section-subtitle">
+        All storage keys set by the page. Click on any item to see more details.
+      </p>
+      <div class="domain-groups">
       <div v-if="localStorage.length > 0" class="domain-group">
         <h3 class="domain-header">📦 Local Storage ({{ localStorage.length }})</h3>
         <div v-for="item in localStorage" :key="item.key" class="storage-item">
@@ -243,13 +303,14 @@ function riskClass(level: string): string {
         </div>
       </div>
     </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .storage-item {
   padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -264,7 +325,7 @@ function riskClass(level: string): string {
 }
 
 .storage-header:hover .storage-key {
-  color: #7CB8E4;
+  color: var(--link-color);
 }
 
 .storage-key {
@@ -292,27 +353,27 @@ function riskClass(level: string): string {
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 50%;
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   flex-shrink: 0;
 }
 
 .storage-header:hover .info-toggle {
-  color: #7CB8E4;
-  border-color: #7CB8E4;
+  color: var(--link-color);
+  border-color: var(--link-color);
 }
 
 .info-toggle.expanded {
-  background: #7CB8E4;
+  background: var(--link-color);
   color: #111827;
-  border-color: #7CB8E4;
+  border-color: var(--link-color);
 }
 
 .storage-value {
-  color: #9ca3af;
+  color: var(--muted-light);
   word-break: break-all;
   font-family: monospace;
   font-size: 0.9rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   padding: 0.25rem;
   border-radius: 4px;
   margin-top: 0.4rem;
@@ -322,10 +383,10 @@ function riskClass(level: string): string {
 .storage-info-panel {
   margin-top: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #1a1e30;
+  background: var(--surface-card);
   border-radius: 6px;
-  border-left: 3px solid #3d4663;
-  font-size: 0.85rem;
+  border-left: 3px solid var(--border-separator);
+  font-size: var(--body-size);
 }
 
 .storage-info-loading {
@@ -339,8 +400,8 @@ function riskClass(level: string): string {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #3d4663;
-  border-top-color: #7CB8E4;
+  border: 2px solid var(--border-separator);
+  border-top-color: var(--link-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -363,7 +424,7 @@ function riskClass(level: string): string {
 }
 
 .info-label {
-  color: #6b7280;
+  color: var(--muted-color);
   min-width: 5.5rem;
   flex-shrink: 0;
   font-size: 0.8rem;
@@ -380,9 +441,9 @@ function riskClass(level: string): string {
 
 /* Risk badges */
 .risk-badge {
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -410,5 +471,143 @@ function riskClass(level: string): string {
 .risk-critical {
   background: #4a1a2e;
   color: #f472b6;
+}
+
+/* ── AI Storage Analysis ─────────────────────── */
+.ai-storage-analysis {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.storage-analysis-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.ai-section-title {
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-section-subtitle {
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border-card);
+  margin: 0.75rem 0;
+}
+
+.source-badge {
+  font-size: var(--source-badge-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--source-badge-padding);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.source-ai {
+  background: #1a2e3d;
+  color: #22d3ee;
+}
+
+.storage-ai-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-stat-card {
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  flex: 1;
+}
+
+.ai-stat-value {
+  display: block;
+  font-size: var(--stat-value-size);
+  font-weight: 700;
+  color: var(--stat-value-color);
+}
+
+.ai-stat-label {
+  font-size: var(--stat-label-size);
+  color: var(--stat-label-color);
+}
+
+.storage-ai-concerns {
+  margin-top: 0.5rem;
+}
+
+.storage-ai-concerns h3 {
+  font-size: var(--subheading-size);
+  color: var(--section-title-color);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.concern-group {
+  margin-top: 0.5rem;
+}
+
+.concern-group + .concern-group {
+  margin-top: 0.75rem;
+}
+
+.storage-type-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--badge-radius);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.storage-type-badge.local {
+  background: #1a2e3d;
+  color: #22d3ee;
+}
+
+.storage-type-badge.session {
+  background: #2a2040;
+  color: #a78bfa;
+}
+
+.storage-ai-concerns ul {
+  margin: 0.25rem 0 0 0.75rem;
+  padding-left: 0.75rem;
+  font-size: var(--summary-size);
+  color: var(--body-color);
+  line-height: 1.7;
+}
+
+.storage-ai-concerns li strong {
+  color: #f1f5f9;
 }
 </style>

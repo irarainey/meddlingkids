@@ -31,6 +31,8 @@ class PartnerEntry(pydantic.BaseModel):
     aliases: list[str]
     url: str = ""
     privacy_url: str = ""
+    gvl_ids: list[int] = pydantic.Field(default_factory=list)
+    atp_ids: list[int] = pydantic.Field(default_factory=list)
 
 
 class ScriptPattern(pydantic.BaseModel):

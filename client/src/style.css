@@ -11,15 +11,65 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* ── Design Tokens ──────────────────────────── */
+
+  /* Typography — headings */
+  --section-title-size: 1.1rem;
+  --section-title-weight: 700;
+  --section-title-color: #e0e7ff;
+  --section-subtitle-size: 0.85rem;
+  --section-subtitle-color: #6b7280;
+  --subheading-size: 0.95rem;
+  --subheading-color: #7CB8E4;
+
+  /* Typography — body & descriptions */
+  --body-size: 0.85rem;
+  --body-color: #9ca3af;
+  --summary-size: 0.95rem;
+  --summary-color: #c5ccdf;
+
+  /* Typography — stat cards */
+  --stat-value-size: 1.4rem;
+  --stat-value-color: #e0e7ff;
+  --stat-label-size: 0.7rem;
+  --stat-label-color: #6b7280;
+
+  /* Link colours */
+  --link-color: #7CB8E4;
+  --link-hover: #a0d0ff;
+
+  /* Surfaces */
+  --surface-section: #1e2235;
+  --surface-card: #1a1e30;
+  --surface-card-inner: #252a40;
+  --surface-panel: #2a2f45;
+  --surface-code: #2a2f45;
+
+  /* Borders */
+  --border-card: #2d3350;
+  --border-separator: #3d4663;
+  --border-accent: #0C67AC;
+
+  /* Badges */
+  --badge-radius: 12px;
+  --badge-padding: 0.15rem 0.6rem;
+  --badge-size: 0.75rem;
+  --source-badge-size: 0.6rem;
+  --source-badge-padding: 0.15rem 0.45rem;
+
+  /* Muted text */
+  --muted-color: #6b7280;
+  --muted-light: #9ca3af;
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--link-color);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--link-hover);
 }
 
 body {
@@ -33,18 +83,19 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #f9f9f9;
+  background-color: #1f2937;
+  color: #e5e7eb;
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--border-separator);
 }
 button:focus,
 button:focus-visible {
@@ -67,10 +118,10 @@ button:focus-visible {
 
 /* Tab content container - used by all tab panels */
 .tab-content {
-  border: 1px solid #3d4663;
+  border: 1px solid var(--border-separator);
   border-radius: 0 0 8px 8px;
   margin-top: -1px;
-  background: #1e2235;
+  background: var(--surface-section);
   padding: 1rem;
 }
 
@@ -78,19 +129,19 @@ button:focus-visible {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #9ca3af;
+  color: var(--muted-light);
 }
 
 /* Hint text below empty state */
 .hint {
   font-weight: normal;
-  color: #9ca3af;
-  font-size: 0.85rem;
+  color: var(--muted-light);
+  font-size: var(--body-size);
 }
 
 /* Container for grouped items (cookies, scripts, network by domain) */
 .domain-groups {
-  padding: 0.5rem;
+  padding: 0;
 }
 
 .domain-group {
@@ -100,13 +151,13 @@ button:focus-visible {
 /* Sticky header for each domain group */
 .domain-header {
   font-size: 0.9rem;
-  background: #2a2f45;
+  background: var(--surface-panel);
   padding: 0.5rem;
   margin: 0;
   border-radius: 4px;
   position: sticky;
   top: 0;
-  color: #e0e7ff;
+  color: var(--section-title-color);
 }
 
 /* Subtle description line inside domain header banners */
@@ -123,10 +174,13 @@ button:focus-visible {
 
 /* Small badge labels */
 .badge {
-  background: #3d4663;
-  color: #7CB8E4;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  background: var(--border-separator);
+  color: var(--link-color);
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 

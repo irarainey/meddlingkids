@@ -1,16 +1,51 @@
 <script setup lang="ts">
+import { reactive, watch } from 'vue'
 import type { NetworkRequest } from '../../types'
 import { getResourceTypeIcon, truncateValue } from '../../utils'
 
 /**
  * Tab panel displaying network requests grouped by domain.
  */
-defineProps<{
+const props = defineProps<{
   /** Network requests grouped by domain */
   networkByDomain: Record<string, NetworkRequest[]>
   /** Filtered network requests */
   filteredNetworkRequests: NetworkRequest[]
 }>()
+
+/** Cached domain info keyed by domain. */
+const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null }>>({})
+
+/** Fetch company/description info for all visible domains. */
+async function fetchDomainInfo(domains: string[]): Promise<void> {
+  const unknown = domains.filter((d) => !(d in domainInfo))
+  if (unknown.length === 0) return
+
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/domain-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [domain, info] of Object.entries(data)) {
+        domainInfo[domain] = info as { company: string | null; description: string | null; url: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — enrichment is non-critical
+  }
+}
+
+watch(
+  () => Object.keys(props.networkByDomain),
+  (domains) => {
+    if (domains.length > 0) fetchDomainInfo(domains)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -18,15 +53,50 @@ defineProps<{
     <div v-if="filteredNetworkRequests.length === 0" class="empty-state">
       No network requests detected
     </div>
-    <div v-else class="domain-groups">
-      <p class="filter-note">
-        Showing {{ filteredNetworkRequests.length }} data requests (XHR, fetch, and POST only).
-        Script, stylesheet, image, font, and document loads are excluded.
-      </p>
-      <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
+    <div v-else>
+      <section class="network-overview-section">
+        <h2 class="section-title">🌐 Overview</h2>
+        <p class="section-subtitle">
+          Network data transfers detected during the page scan.
+        </p>
+        <p class="ai-section-summary">
+          When you visit a website, your browser makes network requests to load content
+          and send data to remote servers. These requests reveal what is being shared,
+          with whom, and whether it happens before or after consent. Scripts often silently
+          transmit personal data — such as device fingerprints, browsing history, or unique
+          identifiers — to third-party trackers without any visible indication on the page.
+          This view focuses on data-transfer requests (XHR, fetch, and POST) as these are
+          most likely to carry personal data. Script, stylesheet, image, font, and document
+          loads are filtered out as they are the building blocks of the page and rarely
+          pose a direct privacy concern.
+        </p>
+      </section>
+      <section class="network-analysis-section">
+        <h2 class="section-title">🔎 Analysis
+          <span class="count-badge">{{ filteredNetworkRequests.length }} requests</span>
+        </h2>
+        <p class="section-subtitle">
+          All data requests grouped by domain. Click on any URL to view it in a new tab.
+        </p>
+        <div class="domain-groups">
+        <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
-          <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
-          {{ domain }} ({{ domainRequests.length }})
+          <div class="domain-header-line">
+            <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
+            {{ domain }} ({{ domainRequests.length }})
+          </div>
+          <div v-if="domainInfo[String(domain)]?.company || domainInfo[String(domain)]?.description" class="domain-org-info">
+            <span class="org-caption">Vendor:</span>
+            <a
+              v-if="domainInfo[String(domain)]?.company && domainInfo[String(domain)]?.url"
+              :href="domainInfo[String(domain)]!.url!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="org-name-link"
+            >{{ domainInfo[String(domain)]!.company }}</a>
+            <span v-else-if="domainInfo[String(domain)]?.company" class="org-name">{{ domainInfo[String(domain)]!.company }}</span>
+            <span v-if="domainInfo[String(domain)]?.description" class="org-description">{{ domainInfo[String(domain)]!.description }}</span>
+          </div>
         </h3>
         <div v-for="request in domainRequests" :key="`${request.method}-${request.url}`" class="network-item">
           <div class="network-item-header">
@@ -46,33 +116,74 @@ defineProps<{
           </div>
         </div>
       </div>
+      </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.filter-note {
-  font-size: 0.85rem;
-  color: #9ca3af;
+.section-title {
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.network-overview-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.network-analysis-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.section-subtitle {
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
   margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: #2a2f45;
-  border-radius: 6px;
-  border-left: 3px solid #6366f1;
+  line-height: 1.4;
+}
+
+.count-badge {
+  font-size: var(--badge-size);
+  font-weight: 600;
+  background: var(--surface-code);
+  color: var(--muted-light);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--badge-radius);
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
 }
 
 .third-party-badge {
   background: #ef4444;
   color: white;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
+  font-weight: 600;
   margin-right: 0.5rem;
 }
 
 .network-item {
   padding: 0.5rem;
-  border-bottom: 1px solid #3d4663;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -88,41 +199,41 @@ defineProps<{
 }
 
 .resource-type {
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--muted-light);
   min-width: 80px;
 }
 
 .request-method {
   font-size: 0.8rem;
   font-weight: 600;
-  background: #3d4663;
+  background: var(--border-separator);
   color: #c7d2fe;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
 
 .pre-consent-badge {
-  font-size: 0.75rem;
+  font-size: var(--badge-size);
   font-weight: 600;
   background: #7c2d12;
   color: #fed7aa;
   padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: help;
 }
 
 .duplicate-badge {
-  font-size: 0.8rem;
+  font-size: var(--badge-size);
   font-weight: 600;
   background: #854d0e;
   color: #fef08a;
   padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .request-url {
-  color: #60a5fa;
+  color: var(--link-color);
   word-break: break-all;
   text-decoration: none;
   font-size: 0.9rem;
@@ -135,7 +246,7 @@ defineProps<{
 .post-data {
   margin-top: 0.35rem;
   padding: 0.35rem 0.5rem;
-  background: #2a2f45;
+  background: var(--surface-code);
   border-radius: 4px;
   border-left: 3px solid #f59e0b;
 }
@@ -148,9 +259,59 @@ defineProps<{
 }
 
 .post-data-value {
-  font-size: 0.85rem;
+  font-size: var(--body-size);
   color: #d1d5db;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+/* ── Domain Organisation Info ────────────────── */
+.domain-org-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.org-caption {
+  color: var(--muted-color);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.org-name-link {
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: var(--body-size);
+}
+
+.org-name-link:hover {
+  text-decoration: underline;
+  color: var(--link-hover);
+}
+
+.org-name {
+  color: var(--link-color);
+  font-weight: 600;
+  font-size: var(--body-size);
+}
+
+.org-description {
+  color: var(--muted-color);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.org-name-link + .org-description::before,
+.org-name + .org-description::before {
+  content: '·';
+  margin-right: 0.35rem;
+  color: #4b5563;
 }
 </style>

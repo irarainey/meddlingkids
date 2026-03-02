@@ -15,6 +15,25 @@ from src.utils import logger
 log = logger.create_logger("CookieLookup")
 
 
+def _attach_vendor_metadata(result: cookie_info_agent.CookieInfoResult) -> cookie_info_agent.CookieInfoResult:
+    """Enrich a cookie result with vendor cross-reference data.
+
+    Looks up the ``set_by`` value in the tracking-cookie vendor
+    index and populates vendor metadata fields when a match is
+    found.
+    """
+    vendor_index = loader.get_tracking_cookie_vendor_index()
+    vendor = vendor_index.get(result.set_by)
+    if not vendor:
+        return result
+    result.vendor_category = vendor.get("category")
+    result.vendor_url = vendor.get("url")
+    result.vendor_concerns = vendor.get("concerns")
+    result.vendor_gvl_ids = vendor.get("gvl_ids")
+    result.vendor_atp_ids = vendor.get("atp_ids")
+    return result
+
+
 def _check_known_consent_cookie(name: str) -> cookie_info_agent.CookieInfoResult | None:
     """Check if a cookie matches the consent-cookies database.
 
@@ -135,7 +154,7 @@ async def get_cookie_info(
     result = _check_tracking_pattern(name)
     if result:
         log.debug("Cookie matched tracking pattern", {"name": name})
-        return result
+        return _attach_vendor_metadata(result)
 
     # 4. Fall back to LLM
     log.info("Cookie not in databases, querying LLM", {"name": name, "domain": domain})

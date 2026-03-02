@@ -1,9 +1,7 @@
 {
   "_description": "Known tracking storage key definitions with descriptions, set-by information, purpose categories, risk levels, and privacy notes. Used by the storage information lookup service to identify well-known localStorage and sessionStorage keys without requiring an LLM call. Sources include vendor documentation and reverse-engineering of common analytics/advertising SDKs.",
   "keys": {
-
     "_comment_google_analytics": "--- Google Analytics ---",
-
     "_ga": {
       "pattern": "^_ga$",
       "description": "Google Analytics client ID stored in localStorage — mirrors the _ga cookie for cross-storage tracking.",
@@ -28,9 +26,7 @@
       "setBy": "Google Ads",
       "purpose": "advertising"
     },
-
     "_comment_amplitude": "--- Amplitude ---",
-
     "amplitude_id": {
       "pattern": "amplitude_id",
       "description": "Amplitude analytics device identifier — persists a unique device ID for behavioural analytics.",
@@ -55,9 +51,7 @@
       "setBy": "Google AMP",
       "purpose": "advertising"
     },
-
     "_comment_segment": "--- Segment ---",
-
     "ajs_anonymous_id": {
       "pattern": "ajs_anonymous_id",
       "description": "Segment anonymous visitor ID — assigns a unique identifier before login.",
@@ -82,9 +76,7 @@
       "setBy": "Segment",
       "purpose": "analytics"
     },
-
     "_comment_mixpanel": "--- Mixpanel ---",
-
     "mp_": {
       "pattern": "^mp_",
       "description": "Mixpanel analytics storage — stores distinct ID, device ID, and super properties.",
@@ -97,9 +89,7 @@
       "setBy": "Mixpanel",
       "purpose": "analytics"
     },
-
     "_comment_facebook": "--- Facebook / Meta ---",
-
     "_fbp": {
       "pattern": "^_fbp$",
       "description": "Facebook Pixel browser ID stored in localStorage — identifies the browser for ad targeting.",
@@ -118,9 +108,7 @@
       "setBy": "Meta (Facebook)",
       "purpose": "social-media"
     },
-
     "_comment_hotjar": "--- Hotjar ---",
-
     "_hjSessionUser_": {
       "pattern": "_hjSessionUser_",
       "description": "Hotjar session user identifier — links recordings and heatmaps to a returning visitor.",
@@ -145,9 +133,7 @@
       "setBy": "Hotjar",
       "purpose": "functional"
     },
-
     "_comment_hubspot": "--- HubSpot ---",
-
     "__hs": {
       "pattern": "^__hs",
       "description": "HubSpot tracking storage — visitor identity, session, or form data.",
@@ -166,9 +152,7 @@
       "setBy": "HubSpot",
       "purpose": "functional"
     },
-
     "_comment_intercom": "--- Intercom ---",
-
     "intercom-": {
       "pattern": "intercom-",
       "description": "Intercom messenger state — stores session data, user identity, or widget configuration.",
@@ -181,9 +165,7 @@
       "setBy": "Intercom",
       "purpose": "analytics"
     },
-
     "_comment_tiktok": "--- TikTok ---",
-
     "_ttp": {
       "pattern": "^_ttp$",
       "description": "TikTok Pixel tracking parameter stored in localStorage.",
@@ -196,9 +178,7 @@
       "setBy": "TikTok",
       "purpose": "advertising"
     },
-
     "_comment_linkedin": "--- LinkedIn ---",
-
     "li_": {
       "pattern": "^li_",
       "description": "LinkedIn Insight Tag storage — campaign attribution or visitor identity data.",
@@ -211,9 +191,7 @@
       "setBy": "LinkedIn",
       "purpose": "advertising"
     },
-
     "_comment_twitter": "--- Twitter / X ---",
-
     "twid": {
       "pattern": "^twid$",
       "description": "Twitter/X identity token stored in localStorage.",
@@ -226,9 +204,7 @@
       "setBy": "Twitter (X)",
       "purpose": "advertising"
     },
-
     "_comment_pinterest": "--- Pinterest ---",
-
     "_pin_": {
       "pattern": "^_pin_",
       "description": "Pinterest Tag storage — conversion tracking and audience building data.",
@@ -241,9 +217,7 @@
       "setBy": "Pinterest",
       "purpose": "social-media"
     },
-
     "_comment_snapchat": "--- Snapchat ---",
-
     "_scid": {
       "pattern": "^_scid$",
       "description": "Snapchat Pixel client ID — identifies the browser for Snap ad attribution.",
@@ -256,18 +230,14 @@
       "setBy": "Snapchat",
       "purpose": "advertising"
     },
-
     "_comment_criteo": "--- Criteo ---",
-
     "cto_": {
       "pattern": "^cto_",
       "description": "Criteo retargeting storage — product feeds, visitor segments, or bid data.",
       "setBy": "Criteo",
       "purpose": "advertising"
     },
-
     "_comment_adobe": "--- Adobe ---",
-
     "s_cc": {
       "pattern": "^s_cc$",
       "description": "Adobe Analytics cookie check flag mirrored to localStorage.",
@@ -298,9 +268,7 @@
       "setBy": "Adobe Analytics",
       "purpose": "analytics"
     },
-
     "_comment_optimizely": "--- Optimizely ---",
-
     "optimizelyEndUserId": {
       "pattern": "optimizelyEndUserId",
       "description": "Optimizely experiment visitor ID — identifies the user for A/B test bucketing.",
@@ -313,9 +281,7 @@
       "setBy": "Optimizely",
       "purpose": "analytics"
     },
-
     "_comment_fullstory": "--- FullStory ---",
-
     "fs_uid": {
       "pattern": "fs_uid",
       "description": "FullStory session recording user ID — links session replays to a user identity.",
@@ -328,9 +294,7 @@
       "setBy": "FullStory",
       "purpose": "analytics"
     },
-
     "_comment_heap": "--- Heap ---",
-
     "_hp2_id": {
       "pattern": "_hp2_id",
       "description": "Heap Analytics user identity — stores a persistent visitor ID.",
@@ -349,9 +313,7 @@
       "setBy": "Heap Analytics",
       "purpose": "analytics"
     },
-
     "_comment_matomo": "--- Matomo (Piwik) ---",
-
     "_pk_id": {
       "pattern": "^_pk_id",
       "description": "Matomo (Piwik) visitor ID stored in localStorage — identifies returning visitors.",
@@ -364,9 +326,7 @@
       "setBy": "Matomo",
       "purpose": "analytics"
     },
-
     "_comment_quantcast": "--- Quantcast ---",
-
     "__qca": {
       "pattern": "^__qca$",
       "description": "Quantcast audience measurement ID stored in localStorage.",
@@ -379,9 +339,7 @@
       "setBy": "Quantcast",
       "purpose": "analytics"
     },
-
     "_comment_consent": "--- Consent Management ---",
-
     "CookieConsent": {
       "pattern": "^CookieConsent$",
       "description": "Cookiebot consent state — stores the visitor's cookie consent preferences.",
@@ -424,9 +382,7 @@
       "setBy": "OneTrust",
       "purpose": "consent"
     },
-
     "_comment_fingerprinting": "--- Fingerprinting / Device ID ---",
-
     "fingerprint": {
       "pattern": "fingerprint",
       "description": "Browser fingerprint hash — a unique identifier derived from device and browser characteristics.",
@@ -463,9 +419,7 @@
       "setBy": "Unknown",
       "purpose": "analytics"
     },
-
     "_comment_misc": "--- Miscellaneous ---",
-
     "drift": {
       "pattern": "^drift",
       "description": "Drift live chat widget state — stores conversation data, visitor identity, or widget preferences.",
@@ -550,9 +504,7 @@
       "setBy": "Prebid.js",
       "purpose": "advertising"
     },
-
     "_comment_google_tag_manager": "--- Google Tag Manager ---",
-
     "_gtm": {
       "pattern": "^_gtm",
       "description": "Google Tag Manager container state or data-layer snapshot stored in localStorage.",
@@ -571,9 +523,7 @@
       "setBy": "Google Tag Manager",
       "purpose": "analytics"
     },
-
     "_comment_google_publisher": "--- Google Publisher Tags / Ad Manager ---",
-
     "googletag": {
       "pattern": "googletag",
       "description": "Google Publisher Tags (GPT) — ad slot configuration, targeting parameters, or ad refresh state.",
@@ -586,9 +536,7 @@
       "setBy": "Google Ad Manager",
       "purpose": "advertising"
     },
-
     "_comment_didomi": "--- Didomi (Consent) ---",
-
     "didomi_token": {
       "pattern": "didomi",
       "description": "Didomi consent management — stores user consent choices and vendor permissions.",
@@ -601,9 +549,7 @@
       "setBy": "IAB TCF CMP",
       "purpose": "consent"
     },
-
     "_comment_sourcepoint": "--- Sourcepoint (Consent) ---",
-
     "sp_": {
       "pattern": "^sp_",
       "description": "Sourcepoint consent management — user privacy preferences and consent state.",
@@ -622,9 +568,7 @@
       "setBy": "Sourcepoint",
       "purpose": "consent"
     },
-
     "_comment_liveramp": "--- LiveRamp ---",
-
     "_lr_": {
       "pattern": "^_lr_",
       "description": "LiveRamp identity resolution — authenticated traffic solution (ATS) envelope or identity token.",
@@ -637,18 +581,14 @@
       "setBy": "LiveRamp",
       "purpose": "identity-resolution"
     },
-
     "_comment_id5": "--- ID5 ---",
-
     "id5": {
       "pattern": "id5",
       "description": "ID5 universal ID — probabilistic or deterministic identity for programmatic advertising.",
       "setBy": "ID5",
       "purpose": "identity-resolution"
     },
-
     "_comment_trade_desk": "--- The Trade Desk ---",
-
     "_ttd_": {
       "pattern": "^_ttd_",
       "description": "The Trade Desk unified ID — cross-site identity token for programmatic ad buying.",
@@ -661,9 +601,7 @@
       "setBy": "The Trade Desk",
       "purpose": "identity-resolution"
     },
-
     "_comment_magnite": "--- Magnite / Rubicon ---",
-
     "rpb": {
       "pattern": "^rpb",
       "description": "Magnite (Rubicon Project) ad exchange — bid data or auction state.",
@@ -676,54 +614,42 @@
       "setBy": "Magnite",
       "purpose": "advertising"
     },
-
     "_comment_index_exchange": "--- Index Exchange ---",
-
     "ixid": {
       "pattern": "ix[_-]?id|IndexExchange",
       "description": "Index Exchange — identity envelope or bid cache for header bidding.",
       "setBy": "Index Exchange",
       "purpose": "advertising"
     },
-
     "_comment_moat": "--- Moat (Oracle) ---",
-
     "moat": {
       "pattern": "moat",
       "description": "Moat ad verification — viewability measurement and anti-fraud signals.",
       "setBy": "Moat (Oracle)",
       "purpose": "analytics"
     },
-
     "_comment_comscore": "--- comScore ---",
-
     "_comscore": {
       "pattern": "_comscore|scorecardresearch",
       "description": "comScore / Scorecard Research — audience measurement and cross-site analytics.",
       "setBy": "comScore",
       "purpose": "analytics"
     },
-
     "_comment_ias": "--- Integral Ad Science ---",
-
     "__ias_": {
       "pattern": "__ias",
       "description": "Integral Ad Science — ad fraud detection, viewability, and brand safety signals.",
       "setBy": "IAS",
       "purpose": "analytics"
     },
-
     "_comment_bluekai": "--- Oracle / BlueKai ---",
-
     "bkdc": {
       "pattern": "bkdc|bluekai",
       "description": "Oracle BlueKai — user profile segments and data management platform state.",
       "setBy": "Oracle (BlueKai)",
       "purpose": "advertising"
     },
-
     "_comment_piano": "--- Piano / AT Internet ---",
-
     "piano": {
       "pattern": "piano|^_pcid|^atid",
       "description": "Piano analytics — user engagement tracking, paywall state, or AT Internet visitor ID.",
@@ -736,18 +662,14 @@
       "setBy": "Piano",
       "purpose": "analytics"
     },
-
     "_comment_teads": "--- Teads ---",
-
     "teads": {
       "pattern": "teads",
       "description": "Teads video advertising — ad impression data, viewability signals, or creative state.",
       "setBy": "Teads",
       "purpose": "advertising"
     },
-
     "_comment_amazon": "--- Amazon Ads ---",
-
     "_amzn": {
       "pattern": "^_?amzn",
       "description": "Amazon advertising — visitor identity, shopping interests, or ad attribution data.",
@@ -760,9 +682,7 @@
       "setBy": "Amazon Ads",
       "purpose": "advertising"
     },
-
     "_comment_consent_generic": "--- Generic Consent Patterns ---",
-
     "__tcfapi": {
       "pattern": "__tcfapi|tcData",
       "description": "IAB Transparency and Consent Framework — cached consent API responses.",
@@ -775,9 +695,7 @@
       "setBy": "Website",
       "purpose": "consent"
     },
-
     "_comment_generic_tracking": "--- Generic Tracking Patterns ---",
-
     "tracking_id": {
       "pattern": "tracking.?id",
       "description": "Tracking identifier — used to correlate user activity across page views.",
@@ -802,9 +720,7 @@
       "setBy": "Website",
       "purpose": "analytics"
     },
-
     "_comment_sharethis": "--- ShareThis / AddThis ---",
-
     "sharethis": {
       "pattern": "sharethis|__st_",
       "description": "ShareThis social sharing widget — tracks share clicks and user engagement.",
@@ -817,126 +733,98 @@
       "setBy": "AddThis (Oracle)",
       "purpose": "social-media"
     },
-
     "_comment_smart_adserver": "--- Smart AdServer (Equativ) ---",
-
     "smart_": {
       "pattern": "^smart_|^sas_",
       "description": "Smart AdServer (Equativ) — ad targeting, bidding cache, or campaign state.",
       "setBy": "Equativ (Smart)",
       "purpose": "advertising"
     },
-
     "_comment_xandr": "--- Xandr (Microsoft) ---",
-
     "xandr": {
       "pattern": "xandr|appnexus|apn_",
       "description": "Xandr (Microsoft Advertising) — programmatic bidding data or user segments.",
       "setBy": "Xandr (Microsoft)",
       "purpose": "advertising"
     },
-
     "_comment_salesforce": "--- Salesforce ---",
-
     "sfdc": {
       "pattern": "sfdc|__sf_|pardot",
       "description": "Salesforce marketing or Pardot — lead tracking, web activity, or form data.",
       "setBy": "Salesforce",
       "purpose": "analytics"
     },
-
     "_comment_new_relic": "--- New Relic ---",
-
     "NRBA": {
       "pattern": "^NR[A-Z]|newrelic",
       "description": "New Relic browser agent — real-user monitoring (RUM) session and performance data.",
       "setBy": "New Relic",
       "purpose": "analytics"
     },
-
     "_comment_datadog": "--- Datadog ---",
-
     "dd_": {
       "pattern": "^dd_|^_dd_",
       "description": "Datadog RUM — real-user monitoring session data, performance metrics, or error tracking.",
       "setBy": "Datadog",
       "purpose": "analytics"
     },
-
     "_comment_mouseflow": "--- Mouseflow ---",
-
     "mf_": {
       "pattern": "^mf_|mouseflow",
       "description": "Mouseflow session replay — records mouse movements, clicks, scrolls, and form interactions.",
       "setBy": "Mouseflow",
       "purpose": "analytics"
     },
-
     "_comment_clarity": "--- Microsoft Clarity ---",
-
     "_clsk": {
       "pattern": "^_cl|^CLID",
       "description": "Microsoft Clarity — session replay and heatmap analytics, tracks clicks and scroll depth.",
       "setBy": "Microsoft Clarity",
       "purpose": "analytics"
     },
-
     "_comment_lucky_orange": "--- Lucky Orange ---",
-
     "lo_": {
       "pattern": "^lo_|lucky.?orange",
       "description": "Lucky Orange session replay — records user sessions for UX analysis.",
       "setBy": "Lucky Orange",
       "purpose": "analytics"
     },
-
     "_comment_sentry": "--- Sentry ---",
-
     "sentry": {
       "pattern": "sentry",
       "description": "Sentry error monitoring — tracks uncaught exceptions and performance spans.",
       "setBy": "Sentry",
       "purpose": "functional"
     },
-
     "_comment_cookieyes": "--- CookieYes ---",
-
     "cookieyes": {
       "pattern": "cookieyes|cky-consent",
       "description": "CookieYes consent management — stores cookie consent preferences.",
       "setBy": "CookieYes",
       "purpose": "consent"
     },
-
     "_comment_onetrust_bangroupstate": "--- OneTrust (additional) ---",
-
     "OTBannerGroupState": {
       "pattern": "OTBanner|OTGPCRecord|OT_",
       "description": "OneTrust consent management — banner display state, consent group preferences, or GPC signal.",
       "setBy": "OneTrust",
       "purpose": "consent"
     },
-
     "_comment_usercentrics": "--- Usercentrics ---",
-
     "usercentrics": {
       "pattern": "usercentrics|^uc_",
       "description": "Usercentrics consent management — user consent choices and service permissions.",
       "setBy": "Usercentrics",
       "purpose": "consent"
     },
-
     "_comment_iubenda": "--- iubenda ---",
-
     "iubenda": {
       "pattern": "iubenda|_iub_cs",
       "description": "iubenda consent management — cookie consent solution preferences and policy acceptance.",
       "setBy": "iubenda",
       "purpose": "consent"
     },
-
     "_comment_consentmanager": "--- consentmanager ---",
-
     "cmpEvent": {
       "pattern": "^cmp|consentmanager",
       "description": "Consent management platform event state — consent dialog interactions and choices.",
@@ -963,5 +851,608 @@
     "session": "Tracks your current browsing session — typically short-lived and low risk.",
     "consent": "Stores your privacy preferences — not used for tracking.",
     "functional": "Stores UI preferences or feature state — not used for tracking."
+  },
+  "vendors": {
+    "AddThis (Oracle)": {
+      "category": "Social Tracker",
+      "url": "https://www.addthis.com",
+      "concerns": [
+        "Social sharing",
+        "Oracle owned",
+        "Cross-site tracking"
+      ]
+    },
+    "Adobe Analytics": {
+      "category": "Analytics",
+      "url": "https://business.adobe.com/products/analytics/adobe-analytics.html",
+      "concerns": [
+        "Enterprise analytics",
+        "User tracking",
+        "Detailed behavioral data"
+      ]
+    },
+    "Adobe Experience Cloud": {
+      "category": "Analytics",
+      "url": "https://business.adobe.com/products/analytics/adobe-analytics.html",
+      "concerns": [
+        "Enterprise analytics",
+        "User tracking",
+        "Detailed behavioral data"
+      ]
+    },
+    "Amazon Ads": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        793
+      ],
+      "url": "https://advertising.amazon.com",
+      "concerns": [
+        "Cross-service data linking across retail, Alexa, Ring, Prime Video, Kindle, Fire devices, and Twitch",
+        "Purchase and browsing history used for interest-based ad targeting",
+        "Alexa voice recordings processed and retained for service improvement"
+      ]
+    },
+    "Amplitude": {
+      "category": "Session Replay",
+      "url": "https://amplitude.com",
+      "concerns": [
+        "Product analytics",
+        "Session replay",
+        "User behavior"
+      ]
+    },
+    "Chartbeat": {
+      "category": "Analytics",
+      "url": "https://chartbeat.com",
+      "concerns": [
+        "Real-time analytics",
+        "Attention tracking",
+        "Scroll depth"
+      ]
+    },
+    "Cookiebot": {
+      "category": "Consent Provider",
+      "url": "https://www.cookiebot.com",
+      "concerns": [
+        "Consent management",
+        "Cookie scanning",
+        "Consent data sharing"
+      ]
+    },
+    "Crisp": {
+      "category": "Session Replay",
+      "url": "https://crisp.chat",
+      "concerns": [
+        "Chat platform",
+        "Visitor tracking",
+        "Co-browsing"
+      ]
+    },
+    "Criteo": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        91
+      ],
+      "url": "https://www.criteo.com",
+      "concerns": [
+        "Retargeting across millions of sites",
+        "Behavioral profiling",
+        "Email matching"
+      ]
+    },
+    "Datadog": {
+      "category": "Session Replay",
+      "url": "https://www.datadoghq.com",
+      "concerns": [
+        "Real user monitoring",
+        "Session tracking",
+        "User journeys"
+      ]
+    },
+    "Didomi": {
+      "category": "Consent Provider",
+      "url": "https://www.didomi.io",
+      "concerns": [
+        "Consent management",
+        "Preference center",
+        "European focus"
+      ]
+    },
+    "Drift": {
+      "category": "Analytics",
+      "url": "https://www.drift.com",
+      "concerns": [
+        "Conversational marketing",
+        "User tracking",
+        "Lead identification"
+      ]
+    },
+    "Equativ (Smart)": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        45
+      ],
+      "url": "https://smartadserver.com",
+      "concerns": [
+        "Ad serving",
+        "European focus",
+        "Equativ owned"
+      ]
+    },
+    "FingerprintJS": {
+      "category": "Identity Tracker",
+      "url": "https://fingerprint.com",
+      "concerns": [
+        "Browser fingerprinting",
+        "Device identification",
+        "Fraud detection with tracking"
+      ]
+    },
+    "FullStory": {
+      "category": "Session Replay",
+      "url": "https://www.fullstory.com",
+      "concerns": [
+        "Full session replay",
+        "All clicks/inputs recorded",
+        "Rage click detection"
+      ]
+    },
+    "Google Ad Manager": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google Ads": {
+      "category": "Ad Network",
+      "url": "https://ads.google.com",
+      "concerns": [
+        "Tracks across 80%+ of websites via ads and analytics",
+        "Cross-service data linking across Search, YouTube, Gmail, Maps, Chrome, and Android",
+        "Location tracking via GPS, WiFi, cell towers, Bluetooth, and IP address"
+      ]
+    },
+    "Google Analytics": {
+      "category": "Analytics",
+      "url": "https://analytics.google.com",
+      "concerns": [
+        "Page views, user journeys, and session recording",
+        "Demographics, interests, and behavioural profiling",
+        "Cross-site tracking with Google Signals linking activity to Google accounts"
+      ]
+    },
+    "Google Analytics (GA4)": {
+      "category": "Analytics",
+      "url": "https://analytics.google.com",
+      "concerns": [
+        "Page views, user journeys, and session recording",
+        "Demographics, interests, and behavioural profiling",
+        "Cross-site tracking with Google Signals linking activity to Google accounts"
+      ]
+    },
+    "Google Tag Manager": {
+      "category": "Analytics",
+      "url": "https://tagmanager.google.com",
+      "concerns": [
+        "Tag container enabling injection of any third-party tracking scripts",
+        "Server-side tagging can obscure data collection from users",
+        "Event tracking and custom variable collection"
+      ]
+    },
+    "Heap Analytics": {
+      "category": "Session Replay",
+      "url": "https://heap.io",
+      "concerns": [
+        "Auto-capture ALL interactions",
+        "Retroactive analytics",
+        "Session replay"
+      ]
+    },
+    "Hotjar": {
+      "category": "Session Replay",
+      "url": "https://www.hotjar.com",
+      "concerns": [
+        "Session recording",
+        "Mouse tracking",
+        "Form field capture"
+      ]
+    },
+    "HubSpot": {
+      "category": "Analytics",
+      "url": "https://www.hubspot.com",
+      "concerns": [
+        "Marketing automation",
+        "Lead tracking",
+        "Email tracking"
+      ]
+    },
+    "IAS": {
+      "category": "Ad Network",
+      "url": "https://integralads.com",
+      "concerns": [
+        "Ad verification",
+        "Brand safety",
+        "Context tracking"
+      ]
+    },
+    "ID5": {
+      "category": "Identity Tracker",
+      "gvl_ids": [
+        131
+      ],
+      "url": "https://id5.io",
+      "concerns": [
+        "Universal ID",
+        "Cross-site identity",
+        "Cookie replacement"
+      ]
+    },
+    "Index Exchange": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        10
+      ],
+      "url": "https://www.indexexchange.com",
+      "concerns": [
+        "Ad marketplace",
+        "Header bidding",
+        "Publisher exchange"
+      ]
+    },
+    "Intercom": {
+      "category": "Analytics",
+      "url": "https://www.intercom.com",
+      "concerns": [
+        "Customer messaging",
+        "User tracking",
+        "Behavior triggers"
+      ]
+    },
+    "LinkedIn": {
+      "category": "Ad Network",
+      "url": "https://business.linkedin.com/marketing-solutions",
+      "concerns": [
+        "Professional profile and employment data",
+        "Job interest and career activity tracking",
+        "B2B behavioural targeting via Insight Tag"
+      ]
+    },
+    "LiveRamp": {
+      "category": "Data Broker",
+      "gvl_ids": [
+        97
+      ],
+      "url": "https://liveramp.com",
+      "concerns": [
+        "Cross-device identity resolution",
+        "Offline-to-online data matching",
+        "Data selling to 500+ partners"
+      ]
+    },
+    "Lotame": {
+      "category": "Data Broker",
+      "url": "https://www.lotame.com",
+      "concerns": [
+        "Data management platform",
+        "Audience segmentation",
+        "Data selling"
+      ]
+    },
+    "Lucky Orange": {
+      "category": "Session Replay",
+      "url": "https://www.luckyorange.com",
+      "concerns": [
+        "Session recordings",
+        "Dynamic heatmaps",
+        "Form analytics"
+      ]
+    },
+    "Magnite": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        165,
+        293
+      ],
+      "url": "https://www.magnite.com",
+      "concerns": [
+        "Largest independent SSP",
+        "CTV tracking",
+        "Real-time bidding"
+      ]
+    },
+    "Matomo": {
+      "category": "Analytics",
+      "url": "https://matomo.org",
+      "concerns": [
+        "Analytics platform",
+        "Can be privacy-respecting if self-hosted"
+      ]
+    },
+    "Meta (Facebook)": {
+      "category": "Ad Network",
+      "atp_ids": [
+        89
+      ],
+      "url": "https://www.meta.com",
+      "concerns": [
+        "Facebook pixel on millions of sites",
+        "Cross-company data sharing across Facebook, Instagram, WhatsApp, Messenger, and Meta Quest",
+        "Off-Facebook activity tracking via integrated partners"
+      ]
+    },
+    "Microsoft Clarity": {
+      "category": "Session Replay",
+      "url": "https://clarity.microsoft.com",
+      "concerns": [
+        "Microsoft session replay capturing user interactions in detail",
+        "Free service where Microsoft collects and processes user behaviour data",
+        "Heatmaps and click tracking feeding into Microsoft analytics"
+      ]
+    },
+    "Mixpanel": {
+      "category": "Session Replay",
+      "url": "https://mixpanel.com",
+      "concerns": [
+        "Event tracking",
+        "User analytics",
+        "Session replay add-on"
+      ]
+    },
+    "Moat (Oracle)": {
+      "category": "Ad Network",
+      "url": "https://moat.com",
+      "concerns": [
+        "Ad verification with tracking",
+        "Viewability",
+        "Oracle owned"
+      ]
+    },
+    "Mouseflow": {
+      "category": "Session Replay",
+      "url": "https://mouseflow.com",
+      "concerns": [
+        "Mouse tracking",
+        "Session recording",
+        "Form analytics"
+      ]
+    },
+    "New Relic": {
+      "category": "Session Replay",
+      "url": "https://newrelic.com",
+      "concerns": [
+        "APM with user tracking",
+        "Browser monitoring",
+        "Session traces"
+      ]
+    },
+    "OneTrust": {
+      "category": "Consent Provider",
+      "url": "https://www.onetrust.com",
+      "concerns": [
+        "Consent management",
+        "Shares consent data with partners",
+        "Cookie scanning"
+      ]
+    },
+    "Optimizely": {
+      "category": "Analytics",
+      "url": "https://www.optimizely.com",
+      "concerns": [
+        "A/B testing and experimentation platform",
+        "User bucketing and variation assignment",
+        "Conversion tracking for experiments"
+      ]
+    },
+    "Oracle (BlueKai)": {
+      "category": "Data Broker",
+      "gvl_ids": [
+        385
+      ],
+      "url": "https://www.oracle.com/cx/advertising/",
+      "concerns": [
+        "Massive data aggregation",
+        "Cross-site tracking",
+        "Data marketplace"
+      ]
+    },
+    "Outbrain": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        210
+      ],
+      "url": "https://www.outbrain.com",
+      "concerns": [
+        "Content recommendation",
+        "Behavioral tracking",
+        "Interest profiling"
+      ]
+    },
+    "Parse.ly": {
+      "category": "Analytics",
+      "url": "https://www.parse.ly",
+      "concerns": [
+        "Content analytics",
+        "Audience tracking",
+        "Automattic owned"
+      ]
+    },
+    "Permutive": {
+      "category": "Analytics",
+      "gvl_ids": [
+        361
+      ],
+      "url": "https://permutive.com",
+      "concerns": [
+        "First-party audience segmentation runs on-device",
+        "Cohort-based targeting without cross-site identity",
+        "Publisher data platform with edge computing"
+      ]
+    },
+    "Piano": {
+      "category": "Analytics",
+      "gvl_ids": [
+        412
+      ],
+      "atp_ids": [
+        587
+      ],
+      "url": "https://piano.io",
+      "concerns": [
+        "Analytics",
+        "Paywall",
+        "Subscription tracking"
+      ]
+    },
+    "Pinterest": {
+      "category": "Ad Network",
+      "url": "https://ads.pinterest.com",
+      "concerns": [
+        "Visual interest tracking",
+        "Shopping behavior",
+        "Pin engagement"
+      ]
+    },
+    "Segment": {
+      "category": "Identity Tracker",
+      "url": "https://segment.com",
+      "concerns": [
+        "Customer data platform",
+        "Event tracking",
+        "Identity stitching"
+      ]
+    },
+    "Sentry": {
+      "category": "Session Replay",
+      "url": "https://sentry.io",
+      "concerns": [
+        "Error tracking",
+        "Session replay",
+        "Breadcrumbs of user actions"
+      ]
+    },
+    "ShareThis": {
+      "category": "Social Tracker",
+      "gvl_ids": [
+        33
+      ],
+      "url": "https://sharethis.com",
+      "concerns": [
+        "Social sharing widgets",
+        "Cross-site tracking",
+        "Interest profiling"
+      ]
+    },
+    "Snapchat": {
+      "category": "Ad Network",
+      "atp_ids": [
+        2572
+      ],
+      "url": "https://forbusiness.snapchat.com",
+      "concerns": [
+        "Precise GPS location tracking via Snap Map",
+        "Camera and AR data collection including TrueDepth on iOS",
+        "My AI conversation data used for personalisation and improvement"
+      ]
+    },
+    "Sourcepoint": {
+      "category": "Consent Provider",
+      "url": "https://www.sourcepoint.com",
+      "concerns": [
+        "Consent management",
+        "Adblock detection",
+        "Messaging"
+      ]
+    },
+    "Taboola": {
+      "category": "Ad Network",
+      "url": "https://www.taboola.com",
+      "concerns": [
+        "Content recommendation on 9000+ sites",
+        "Behavioral profiling",
+        "Click tracking"
+      ]
+    },
+    "Teads": {
+      "category": "Ad Network",
+      "url": "https://www.teads.com",
+      "concerns": [
+        "Outstream video",
+        "Native video",
+        "Attention metrics"
+      ]
+    },
+    "The Trade Desk": {
+      "category": "Identity Tracker",
+      "url": "https://www.thetradedesk.com",
+      "concerns": [
+        "Unified ID 2.0 creator",
+        "EUID for European identity resolution",
+        "Cross-site tracking via hashed email"
+      ]
+    },
+    "TikTok": {
+      "category": "Ad Network",
+      "url": "https://ads.tiktok.com",
+      "concerns": [
+        "Content pre-loading at creation time before user saves or uploads",
+        "Keystroke patterns and rhythms collection",
+        "Facial and body detection in user content for effects and moderation"
+      ]
+    },
+    "Twitter (X)": {
+      "category": "Ad Network",
+      "url": "https://ads.x.com",
+      "concerns": [
+        "Direct Message content collection and metadata",
+        "Biometric data collection with user consent",
+        "Third-party data sharing for AI model training including generative AI"
+      ]
+    },
+    "Usercentrics": {
+      "category": "Consent Provider",
+      "url": "https://usercentrics.com",
+      "concerns": [
+        "Consent management",
+        "German focused",
+        "CMP"
+      ]
+    },
+    "Xandr (Microsoft)": {
+      "category": "Ad Network",
+      "gvl_ids": [
+        32,
+        1126
+      ],
+      "url": "https://ads.microsoft.com",
+      "concerns": [
+        "Cross-product data combination across Windows, Office, Edge, Bing, Xbox, LinkedIn, and Outlook",
+        "Windows telemetry and diagnostic data collection",
+        "Copilot AI prompt and conversation data processing"
+      ]
+    },
+    "comScore": {
+      "category": "Data Broker",
+      "gvl_ids": [
+        77
+      ],
+      "url": "https://www.comscore.com",
+      "concerns": [
+        "Web tracking panels",
+        "Audience measurement",
+        "Cross-platform tracking"
+      ]
+    },
+    "iubenda": {
+      "category": "Consent Provider",
+      "url": "https://www.iubenda.com",
+      "concerns": [
+        "Consent management",
+        "Policy generation",
+        "Cookie solution"
+      ]
+    }
   }
 }

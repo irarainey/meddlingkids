@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest import mock
 
+import pytest
+
 from src.agents.config import (
     AGENT_CONSENT_DETECTION,
     AGENT_CONSENT_EXTRACTION,
@@ -71,6 +73,11 @@ class TestOpenAIConfig:
 
 
 class TestValidateLlmConfig:
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self) -> None:
+        """Clear the lru_cache between tests so env changes take effect."""
+        validate_llm_config.cache_clear()
+
     def test_returns_error_when_nothing_set(self) -> None:
         with mock.patch.dict("os.environ", {}, clear=True):
             result = validate_llm_config()

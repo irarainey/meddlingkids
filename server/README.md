@@ -1,6 +1,6 @@
 # Meddling Kids - Server
 
-Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. Uses Playwright (async API) for browser automation with headed mode on a virtual display (Xvfb) to avoid bot detection. Real Chrome is preferred over bundled Chromium for genuine TLS fingerprints that bypass CDN-level bot detectors. AI agents are built on the **Microsoft Agent Framework** (`agent-framework-core` package).
+Python FastAPI backend that orchestrates browser automation and AI-powered tracking analysis. A single Chrome instance is started at app startup via `PlaywrightManager` and shared across all requests; each request gets an isolated `BrowserContext` (~50 ms to create). Uses Playwright (async API) in headed mode on a virtual display (Xvfb) to avoid bot detection. Real Chrome is preferred over bundled Chromium for genuine TLS fingerprints that bypass CDN-level bot detectors. AI agents are built on the **Microsoft Agent Framework** (`agent-framework-core` package).
 
 ## Requirements
 
@@ -56,10 +56,10 @@ uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 
 ```
 src/
-├── main.py                          # FastAPI app entry point (CORS, cache-control middleware, API routes)
+├── main.py                          # FastAPI app entry point (lifespan: starts/stops PlaywrightManager, CORS, cache-control middleware, API routes)
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
-│   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides
+│   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides and cached validation
 │   ├── llm_client.py                # Chat client factory (supports per-agent deployment overrides)
 │   ├── middleware.py                # Timing & retry middleware
 │   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall)
@@ -86,7 +86,8 @@ src/
 │       ├── extract_iframe_text.js   # Extract text from consent iframes
 │       └── get_consent_bounds.js    # Locate consent dialog bounding box for screenshot cropping
 ├── browser/                         # Browser automation
-│   ├── session.py                   # Playwright async browser session (cleanup timeouts, force-kill, context manager, screenshot timeout config, initiator domain & redirect chain capture)
+│   ├── manager.py                   # PlaywrightManager singleton — shared Chrome lifecycle (start once, create isolated BrowserContext per request, auto-recovery on crash)
+│   ├── session.py                   # Per-request BrowserSession wrapping an isolated BrowserContext (context-only cleanup, screenshot timeout config, initiator domain & redirect chain capture)
 │   ├── access_detection.py          # Bot blocking / CAPTCHA detection
 │   └── device_configs.py            # Device emulation profiles
 ├── consent/                         # Consent handling
@@ -111,6 +112,10 @@ src/
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   ├── tcf_lookup.py                # TCF purpose matching (purpose strings → IAB TCF v2.2 taxonomy)
+│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL)
+│   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
+│   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
+│   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
@@ -123,7 +128,7 @@ src/
 │       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
 │   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators)
-│   ├── browser_phases.py            # Phases 1-3: setup (with browser launch retry), navigate, initial capture
+│   ├── browser_phases.py            # Phases 1-3: navigate, page load, access check, initial data capture
 │   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture()
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline (screenshot error recovery)
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
@@ -141,17 +146,19 @@ src/
 │   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
 │   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
 │   │   ├── gdpr-reference.json      # GDPR lawful bases, principles, and ePrivacy cookie categories
-│   │   └── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
+│   │   ├── tcf-purposes.json        # IAB TCF v2.2 purpose definitions and special features
+│   │   ├── gvl-vendors.json         # IAB Global Vendor List — 1,111 vendor ID→name mappings
+│   │   └── google-atp-providers.json # Google Additional Consent providers — 598 provider ID→name mappings
 │   ├── partners/                    # Partner risk databases (8 JSON files, 574 entries)
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Tracking pattern databases (7 JSON files)
 │       ├── tracking-scripts.json    # 493 regex patterns for known trackers
-│       ├── benign-scripts.json      # 51 patterns for safe libraries
+│       ├── benign-scripts.json      # 52 patterns for safe libraries
 │       ├── tracking-cookies.json    # Known tracking cookie definitions (137 cookies)
 │       ├── tracking-storage.json    # Known storage key definitions (185 keys)
 │       ├── tracker-domains.json     # Known tracker domain database (4,644 domains)
-│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,014 domains)
+│       ├── cname-domains.json       # CNAME cloaking tracker domains (122,018 domains)
 │       └── disconnect-services.json # Disconnect Tracking Protection list (4,370 domains)
 └── utils/                           # Cross-cutting utilities
     ├── cache.py                     # Cross-cache management (clear_all) and atomic file writes (atomic_write_text)
@@ -169,7 +176,6 @@ src/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/version` | Returns server version |
 | GET | `/api/open-browser-stream` | SSE endpoint for real-time URL analysis (params: `url`, `device`, `clear-cache`) |
 | POST | `/api/clear-cache` | Clears all analysis caches (scripts, domain, overlay) |
 | POST | `/api/cookie-info` | Looks up cookie information (database-first, LLM fallback) |
@@ -177,6 +183,7 @@ src/
 | POST | `/api/storage-key-info` | Looks up storage key information (alias) |
 | POST | `/api/domain-info` | Looks up domain information |
 | POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
+| POST | `/api/tc-string-decode` | Decodes an IAB TCF v2 TC String (deterministic, no LLM) |
 | GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting
@@ -226,7 +233,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | Module | Purpose |
 |--------|---------|
 | `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, and configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware` |
-| `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) with per-agent deployment overrides (`get_agent_deployment()`) |
+| `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) with per-agent deployment overrides (`get_agent_deployment()`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` |
 | `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` (supports `deployment_override` for per-agent model selection) |
 | `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 10 in-flight LLM calls) |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |

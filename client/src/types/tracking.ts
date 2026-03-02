@@ -169,6 +169,142 @@ export interface ConsentPartner {
 /**
  * Detailed information extracted from a cookie consent dialog.
  */
+/**
+ * Decoded IAB TCF v2 TC String data.
+ *
+ * Contains machine-readable consent signals extracted from
+ * the euconsent-v2 cookie set by TCF-compliant CMPs.
+ */
+export interface TcStringData {
+  version: number
+  created: string
+  lastUpdated: string
+  cmpId: number
+  cmpVersion: number
+  consentScreen: number
+  consentLanguage: string
+  vendorListVersion: number
+  tcfPolicyVersion: number
+  isServiceSpecific: boolean
+  useNonStandardStacks: boolean
+  publisherCountryCode: string
+  purposeConsents: number[]
+  purposeLegitimateInterests: number[]
+  specialFeatureOptIns: number[]
+  vendorConsents: number[]
+  vendorLegitimateInterests: number[]
+  vendorConsentCount: number
+  vendorLiCount: number
+  totalPurposesConsented: number
+  rawString: string
+  /** Resolved vendor names for consent IDs (from IAB GVL) */
+  resolvedVendorConsents?: ResolvedVendor[]
+  /** Number of consent vendor IDs not found in the IAB GVL */
+  unresolvedVendorConsentCount?: number
+  /** Resolved vendor names for legitimate interest IDs (from IAB GVL) */
+  resolvedVendorLi?: ResolvedVendor[]
+  /** Number of LI vendor IDs not found in the IAB GVL */
+  unresolvedVendorLiCount?: number
+}
+
+/**
+ * A vendor ID resolved to a company name via the IAB GVL
+ * or Google ATP provider list, optionally enriched with
+ * classification metadata from the partner databases.
+ */
+export interface ResolvedVendor {
+  id: number
+  name: string
+  /** Company homepage URL from partner databases */
+  url?: string
+  /** Privacy policy URL from the IAB GVL */
+  policy_url?: string
+  /** Classification category (e.g. "Ad Network", "Data Broker") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
+  /** IAB TCF purpose IDs declared by this vendor */
+  purposes?: number[]
+}
+
+/**
+ * A Google ATP provider ID resolved to a name and policy URL,
+ * optionally enriched with classification metadata.
+ */
+export interface ResolvedAcProvider {
+  id: number
+  name: string
+  policy_url: string
+  /** Company homepage URL from partner databases */
+  url?: string
+  /** Classification category (e.g. "Ad Network", "Analytics") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
+}
+
+/**
+ * Decoded Google Additional Consent Mode (AC) String data.
+ *
+ * The AC String lists non-IAB ad-tech providers that received
+ * consent through a Google-certified CMP.  It supplements the
+ * TC String for vendors not in the IAB Global Vendor List.
+ */
+export interface AcStringData {
+  /** AC spec version (currently always 1) */
+  version: number
+  /** Google Ad Technology Provider IDs that received consent */
+  vendorIds: number[]
+  /** Number of consented ATP vendors */
+  vendorCount: number
+  /** Raw AC String for reference */
+  rawString: string
+  /** Resolved provider names and policy URLs (from Google ATP list) */
+  resolvedProviders?: ResolvedAcProvider[]
+  /** Number of provider IDs not found in the Google ATP list */
+  unresolvedProviderCount?: number
+}
+
+/**
+ * A purpose consent/LI signal decoded from the TC String,
+ * cross-referenced against the consent dialog text.
+ */
+export interface TcPurposeSignal {
+  id: number
+  name: string
+  description: string
+  riskLevel: string
+  consented: boolean
+  legitimateInterest: boolean
+  disclosedInDialog: boolean
+}
+
+/**
+ * A validation finding from TC String cross-referencing.
+ */
+export interface TcValidationFinding {
+  severity: 'critical' | 'high' | 'moderate' | 'info'
+  category: string
+  title: string
+  detail: string
+}
+
+/**
+ * TC String validation result — cross-references TC String
+ * consent signals against consent dialog content.
+ */
+export interface TcValidationResult {
+  purposeSignals: TcPurposeSignal[]
+  vendorConsentCount: number
+  vendorLiCount: number
+  claimedPartnerCount: number | null
+  vendorCountMismatch: boolean
+  /** Non-IAB vendor count from Google AC String (null if not present) */
+  acVendorCount: number | null
+  specialFeatures: string[]
+  findings: TcValidationFinding[]
+}
+
 export interface ConsentDetails {
   categories: ConsentCategory[]
   partners: ConsentPartner[]
@@ -178,6 +314,151 @@ export interface ConsentDetails {
   claimedPartnerCount?: number | null
   /** Detected consent management platform name (e.g. "Sourcepoint", "OneTrust") */
   consentPlatform?: string | null
+  /** Decoded TC String data from the euconsent-v2 cookie (populated after consent acceptance) */
+  tcStringData?: TcStringData | null
+  /** TC String validation results — cross-referenced against dialog purposes */
+  tcValidation?: TcValidationResult | null
+  /** Decoded AC String data from the addtl_consent cookie (Google Additional Consent Mode) */
+  acStringData?: AcStringData | null
+}
+
+// ============================================================================
+// Decoded Privacy Cookie Types
+// ============================================================================
+
+/** USP String (CCPA) decoded from the usprivacy cookie */
+export interface UspStringData {
+  version: number
+  noticeGiven: boolean
+  optedOut: boolean
+  lspaCovered: boolean
+  noticeLabel: string
+  optOutLabel: string
+  lspaLabel: string
+  rawString: string
+}
+
+/** GPP section info */
+export interface GppSection {
+  id: number
+  name: string
+}
+
+/** GPP String (Global Privacy Platform) decoded from __gpp / __gpp_sid */
+export interface GppStringData {
+  version?: number
+  segmentCount: number
+  sectionIds: number[]
+  sections: GppSection[]
+  rawString: string
+}
+
+/** Google Analytics _ga cookie decoded data */
+export interface GoogleAnalyticsData {
+  clientId: string
+  firstVisitTimestamp: number | null
+  firstVisit: string | null
+  rawValue: string
+}
+
+/** Facebook _fbp browser ID decoded data */
+export interface FbpData {
+  browserId: string
+  createdTimestamp: number
+  created: string | null
+  rawValue: string
+}
+
+/** Facebook _fbc click ID decoded data */
+export interface FbcData {
+  fbclid: string
+  clickTimestamp: number
+  clicked: string | null
+  rawValue: string
+}
+
+/** Facebook pixel cookies combined */
+export interface FacebookPixelData {
+  fbp?: FbpData | null
+  fbc?: FbcData | null
+}
+
+/** Google Ads _gcl_au conversion linker */
+export interface GclAuData {
+  version: string
+  createdTimestamp: number
+  created: string | null
+  rawValue: string
+}
+
+/** Google Ads _gcl_aw click cookie */
+export interface GclAwData {
+  gclid: string
+  clickTimestamp: number
+  clicked: string | null
+  rawValue: string
+}
+
+/** Google Ads cookies combined */
+export interface GoogleAdsData {
+  gclAu?: GclAuData | null
+  gclAw?: GclAwData | null
+}
+
+/** OneTrust consent category */
+export interface OneTrustCategory {
+  id: string
+  name: string
+  consented: boolean
+}
+
+/** OneTrust OptanonConsent decoded data */
+export interface OneTrustData {
+  categories: OneTrustCategory[]
+  datestamp: string | null
+  isGpcApplied: boolean
+  consentId: string | null
+  rawValue: string
+}
+
+/** Cookiebot consent category */
+export interface CookiebotCategory {
+  name: string
+  consented: boolean
+}
+
+/** Cookiebot CookieConsent decoded data */
+export interface CookiebotData {
+  categories: CookiebotCategory[]
+  stamp: string | null
+  utc: string | null
+  rawValue: string
+}
+
+/** Google SOCS consent cookie decoded data */
+export interface GoogleSocsData {
+  consentMode: string
+  modeChar: string
+  rawValue: string
+}
+
+/** GPC / DNT detection result */
+export interface GpcDntData {
+  gpcEnabled: boolean
+  dntEnabled: boolean
+}
+
+/** Container for all decoded privacy cookies */
+export interface DecodedCookies {
+  uspString?: UspStringData | null
+  gppString?: GppStringData | null
+  googleAnalytics?: GoogleAnalyticsData | null
+  facebookPixel?: FacebookPixelData | null
+  googleAds?: GoogleAdsData | null
+  oneTrust?: OneTrustData | null
+  cookiebot?: CookiebotData | null
+  googleSocs?: GoogleSocsData | null
+  gpcDnt?: GpcDntData | null
 }
 
 // ============================================================================
@@ -317,6 +598,12 @@ export interface VendorEntry {
   role: string
   privacyImpact: string
   url: string
+  /** Classification category (e.g. "Ad Network", "Analytics") */
+  category?: string
+  /** Privacy concerns from partner databases */
+  concerns?: string[]
+  /** Privacy policy URL from partner databases or GVL */
+  policyUrl?: string
 }
 
 /** Key vendors and their privacy implications. */
@@ -396,4 +683,4 @@ export interface ErrorDialogState {
 /**
  * Tab identifiers for the main content area.
  */
-export type TabId = 'cookies' | 'storage' | 'network' | 'tracker-graph' | 'scripts' | 'analysis' | 'consent' | 'debug-log'
+export type TabId = 'cookies' | 'storage' | 'network' | 'tracker-graph' | 'scripts' | 'summary' | 'consent' | 'debug-log'

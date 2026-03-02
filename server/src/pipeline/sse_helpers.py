@@ -111,9 +111,9 @@ def format_screenshot_update_event(
 
     This lightweight event carries only the image data and
     tells the client to *replace* the most recent screenshot
-    rather than appending a new one.  Used by the background
-    screenshot refresher to keep the gallery up-to-date as
-    ads and deferred content load in.
+    rather than appending a new one.  Used by targeted
+    screenshot refreshes at key pipeline points to keep the
+    gallery up-to-date as ads and deferred content load in.
     """
     return format_sse_event(
         "screenshotUpdate",

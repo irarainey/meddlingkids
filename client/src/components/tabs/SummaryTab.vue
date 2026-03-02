@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import type { StructuredReport, TrackerEntry, SummaryFinding, SummaryFindingType } from '../../types'
+import type { StructuredReport, SummaryFinding, SummaryFindingType } from '../../types'
 import { getExclamation, getRiskLevel, getScoreClass, stripMarkdown } from '../../utils'
-import TrackerCategorySection from '../TrackerCategorySection.vue'
 
 /**
- * Tab panel displaying structured privacy analysis report.
+ * Tab panel displaying a high-level privacy summary.
  *
- * Includes a summary section with privacy score and key findings
- * at the top, followed by deterministic sections rendered from
- * typed data rather than free-form markdown.
+ * Includes the privacy score, key findings, risk assessment,
+ * social media implications, tracking technologies, data
+ * collection, third-party services, and recommendations.
+ *
+ * Cookie analysis, storage analysis, consent analysis, and
+ * vendor details are displayed in their respective dedicated tabs.
  */
 defineProps<{
   /** Whether analysis is currently in progress */
@@ -62,18 +64,6 @@ function riskLabel(level: string): string {
     default:
       return level
   }
-}
-
-/** Flat list of all trackers across all categories. */
-function allTrackers(report: StructuredReport): TrackerEntry[] {
-  const t = report.trackingTechnologies
-  return [
-    ...t.analytics,
-    ...t.advertising,
-    ...t.identityResolution,
-    ...t.socialMedia,
-    ...t.other,
-  ]
 }
 
 /** Map summary finding type to badge class. */
@@ -157,7 +147,7 @@ function platformUrl(name: string): string {
       <section v-if="summaryFindings.length > 0" class="report-section">
         <h2>
           <span class="section-icon">🛡️</span>
-          Summary
+          Overview
         </h2>
         <ul class="factor-list">
           <li
@@ -234,21 +224,6 @@ function platformUrl(name: string): string {
         </ul>
       </section>
 
-      <!-- ── Section 3: Tracking Technologies ───────────────── -->
-      <section v-if="allTrackers(structuredReport).length > 0" class="report-section">
-        <h2>
-          <span class="section-icon">📡</span>
-          Tracking Technologies
-          <span class="count-badge">{{ allTrackers(structuredReport).length }} detected</span>
-        </h2>
-
-        <TrackerCategorySection title="📊 Analytics & Measurement" :trackers="structuredReport.trackingTechnologies.analytics" />
-        <TrackerCategorySection title="📢 Advertising Networks" :trackers="structuredReport.trackingTechnologies.advertising" />
-        <TrackerCategorySection title="🔗 Identity Resolution" :trackers="structuredReport.trackingTechnologies.identityResolution" />
-        <TrackerCategorySection title="💬 Social Media" :trackers="structuredReport.trackingTechnologies.socialMedia" />
-        <TrackerCategorySection title="🔧 Other Technologies" :trackers="structuredReport.trackingTechnologies.other" />
-      </section>
-
       <!-- ── Section 4: Data Collection ──────────────────────── -->
       <section v-if="structuredReport.dataCollection.items.length > 0" class="report-section">
         <h2>
@@ -305,148 +280,7 @@ function platformUrl(name: string): string {
         </div>
       </section>
 
-      <!-- ── Section 6: Cookie Analysis ──────────────────────── -->
-      <section v-if="structuredReport.cookieAnalysis.groups.length > 0" class="report-section">
-        <h2>
-          <span class="section-icon">🍪</span>
-          Cookie Analysis
-          <span class="count-badge">{{ structuredReport.cookieAnalysis.total }} cookies</span>
-        </h2>
-        <div
-          v-for="(group, i) in structuredReport.cookieAnalysis.groups"
-          :key="i"
-          class="cookie-group"
-        >
-          <div class="cookie-group-header">
-            <h3>{{ group.category }}</h3>
-            <span class="badge" :class="severityClass(group.concernLevel)">{{ riskLabel(group.concernLevel) }}</span>
-            <span v-if="group.lifespan" class="lifespan-tag">⏱ {{ group.lifespan }}</span>
-          </div>
-          <div class="cookie-names">
-            <code v-for="cookie in group.cookies" :key="cookie">{{ cookie }}</code>
-          </div>
-        </div>
-        <div v-if="structuredReport.cookieAnalysis.concerningCookies.length" class="concerning-section">
-          <h3>⚠️ Concerning Cookies</h3>
-          <ul>
-            <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
-              {{ stripMarkdown(concern) }}
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ── Section 7: Storage Analysis ─────────────────────── -->
-      <section
-        v-if="structuredReport.storageAnalysis.localStorageCount > 0
-          || structuredReport.storageAnalysis.sessionStorageCount > 0"
-        class="report-section"
-      >
-        <h2>
-          <span class="section-icon">💾</span>
-          Storage Analysis
-        </h2>
-        <div class="storage-stats">
-          <div class="stat-card">
-            <span class="stat-value">{{ structuredReport.storageAnalysis.localStorageCount }}</span>
-            <span class="stat-label">localStorage items</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value">{{ structuredReport.storageAnalysis.sessionStorageCount }}</span>
-            <span class="stat-label">sessionStorage items</span>
-          </div>
-        </div>
-        <p v-if="structuredReport.storageAnalysis.summary" class="section-summary">
-          {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
-        </p>
-        <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="storage-concerns">
-          <h3>localStorage Concerns</h3>
-          <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
-          </ul>
-        </div>
-        <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-concerns">
-          <h3>sessionStorage Concerns</h3>
-          <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ── Section 8: Consent Analysis ─────────────────────── -->
-      <section v-if="structuredReport.consentAnalysis.hasConsentDialog" class="report-section">
-        <h2>
-          <span class="section-icon">🎯</span>
-          Consent Dialog Analysis
-        </h2>
-        <div class="consent-stats">
-          <div class="stat-card">
-            <span class="stat-value">{{ structuredReport.consentAnalysis.partnersDisclosed }}</span>
-            <span class="stat-label">Partners Disclosed</span>
-          </div>
-        </div>
-        <p v-if="structuredReport.consentAnalysis.consentPlatform" class="consent-platform-note">
-          Consent is managed by
-          <a
-            v-if="structuredReport.consentAnalysis.consentPlatformUrl"
-            :href="structuredReport.consentAnalysis.consentPlatformUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="consent-platform-link"
-          >{{ structuredReport.consentAnalysis.consentPlatform }}</a>
-          <template v-else>{{ structuredReport.consentAnalysis.consentPlatform }}</template>.
-        </p>
-        <p v-if="structuredReport.consentAnalysis.summary" class="section-summary">
-          {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
-        </p>
-        <div v-if="structuredReport.consentAnalysis.discrepancies.length" class="discrepancies">
-          <h3>⚠️ Discrepancies Found</h3>
-          <div
-            v-for="(d, i) in structuredReport.consentAnalysis.discrepancies"
-            :key="i"
-            class="discrepancy-card"
-          >
-            <span class="badge" :class="severityClass(d.severity)">{{ riskLabel(d.severity) }}</span>
-            <div class="discrepancy-detail">
-              <div class="discrepancy-row">
-                <span class="discrepancy-label">Claimed:</span>
-                <span>{{ stripMarkdown(d.claimed) }}</span>
-              </div>
-              <div class="discrepancy-row">
-                <span class="discrepancy-label">Actual:</span>
-                <span>{{ stripMarkdown(d.actual) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Section 9: Top Vendors ──────────────────────────── -->
-      <section v-if="structuredReport.keyVendors.vendors.length > 0" class="report-section">
-        <h2>
-          <span class="section-icon">🏢</span>
-          Top Vendors and Partners
-          <span class="count-badge">{{ structuredReport.keyVendors.vendors.length }}</span>
-        </h2>
-        <div class="vendor-grid">
-          <div
-            v-for="vendor in structuredReport.keyVendors.vendors"
-            :key="vendor.name"
-            class="vendor-card"
-          >
-            <div class="vendor-header">
-              <a v-if="vendor.url" :href="vendor.url" target="_blank" rel="noopener noreferrer" class="vendor-link">
-                {{ vendor.name }}
-              </a>
-              <strong v-else>{{ vendor.name }}</strong>
-              <span class="vendor-role">{{ vendor.role }}</span>
-            </div>
-            <p class="vendor-impact">{{ stripMarkdown(vendor.privacyImpact) }}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Section 10: Recommendations ──────────────────────── -->
+      <!-- ── Section 6: Recommendations ──────────────────────── -->
       <section v-if="structuredReport.recommendations.groups.length > 0" class="report-section recommendations-section">
         <h2>
           <span class="section-icon">✅</span>
@@ -544,7 +378,7 @@ function platformUrl(name: string): string {
   padding: 1.25rem 1.5rem;
   margin-bottom: 1rem;
   border-radius: 8px;
-  background: #2a2f45;
+  background: var(--surface-panel);
 }
 
 .score-heading {
@@ -555,7 +389,7 @@ function platformUrl(name: string): string {
 
 .score-summary {
   font-size: 1rem;
-  color: #c5ccdf;
+  color: var(--summary-color);
   margin: 0;
   line-height: 1.5;
 }
@@ -626,20 +460,21 @@ function platformUrl(name: string): string {
 .report-section {
   margin-bottom: 1rem;
   padding: 1.25rem;
-  background: #1e2235;
+  background: var(--surface-section);
   border-radius: 8px;
-  border: 1px solid #2d3350;
+  border: 1px solid var(--border-card);
 }
 
 .report-section h2 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.15rem;
-  color: #f0f4ff;
-  margin: 0 0 1rem 0;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #0C67AC;
+  border-bottom: 2px solid var(--border-accent);
 }
 
 .section-icon {
@@ -647,24 +482,24 @@ function platformUrl(name: string): string {
 }
 
 .report-section h3 {
-  font-size: 0.95rem;
-  color: #7CB8E4;
+  font-size: var(--subheading-size);
+  color: var(--subheading-color);
   margin: 1rem 0 0.5rem 0;
 }
 
 .section-summary {
-  color: #c5ccdf;
+  color: var(--summary-color);
   margin: 0.25rem 0 0.75rem 0;
-  font-size: 0.95rem;
+  font-size: var(--summary-size);
 }
 
 /* ── Badges ─────────────────────────────────────────── */
 
 .badge, .risk-badge {
   display: inline-block;
-  padding: 0.15rem 0.6rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  padding: var(--badge-padding);
+  border-radius: var(--badge-radius);
+  font-size: var(--badge-size);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -674,11 +509,11 @@ function platformUrl(name: string): string {
 .count-badge {
   display: inline-block;
   padding: 0.1rem 0.55rem;
-  border-radius: 12px;
+  border-radius: var(--badge-radius);
   font-size: 0.72rem;
   font-weight: 600;
   background: #2a3555;
-  color: #7CB8E4;
+  color: var(--link-color);
   margin-left: auto;
 }
 
@@ -725,7 +560,7 @@ function platformUrl(name: string): string {
   align-items: center;
   gap: 0.75rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #2d3350;
+  border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
 
@@ -762,8 +597,8 @@ function platformUrl(name: string): string {
 }
 
 :deep(.tracker-card) {
-  background: #252a40;
-  border: 1px solid #2d3350;
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -777,12 +612,12 @@ function platformUrl(name: string): string {
 }
 
 :deep(.tracker-header strong) {
-  color: #f0f4ff;
+  color: var(--section-title-color);
   font-size: 0.95rem;
 }
 
 :deep(.tracker-link) {
-  color: #7CB8E4;
+  color: var(--link-color);
   font-size: 0.95rem;
   font-weight: 600;
   text-decoration: none;
@@ -790,7 +625,7 @@ function platformUrl(name: string): string {
 
 :deep(.tracker-link:hover) {
   text-decoration: underline;
-  color: #a0d0ff;
+  color: var(--link-hover);
 }
 
 :deep(.tracker-domains) {
@@ -812,15 +647,15 @@ function platformUrl(name: string): string {
 }
 
 :deep(.detail-tag) {
-  font-size: 0.82rem;
-  color: #9ca3af;
+  font-size: var(--body-size);
+  color: var(--body-color);
 }
 
 /* ── Data collection cards ──────────────────────────── */
 
 .data-card {
-  background: #252a40;
-  border: 1px solid #2d3350;
+  background: var(--surface-card-inner);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
@@ -833,7 +668,7 @@ function platformUrl(name: string): string {
 }
 
 .data-card-header strong {
-  color: #f0f4ff;
+  color: var(--section-title-color);
   font-size: 0.95rem;
 }
 
@@ -868,7 +703,7 @@ function platformUrl(name: string): string {
   gap: 0.35rem;
   margin-top: 0.5rem;
   padding-top: 0.4rem;
-  border-top: 1px solid #2d3350;
+  border-top: 1px solid var(--border-card);
 }
 
 .shared-label {
@@ -929,199 +764,10 @@ function platformUrl(name: string): string {
 }
 
 .impact-text {
-  color: #9ca3af;
-  font-size: 0.88rem;
+  color: var(--body-color);
+  font-size: var(--body-size);
   margin: 0.3rem 0 0 0;
   font-style: italic;
-}
-
-/* ── Cookie groups ───────────────────────────────────── */
-
-.cookie-group {
-  margin-bottom: 0.75rem;
-}
-
-.cookie-group-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.cookie-group-header h3 {
-  margin: 0;
-}
-
-.lifespan-tag {
-  font-size: 0.82rem;
-  color: #9ca3af;
-}
-
-.cookie-names {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
-}
-
-.cookie-names code {
-  background: #2a2f45;
-  color: #7CB8E4;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  font-size: 0.85rem;
-  font-family: monospace;
-}
-
-.concerning-section {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #2d3350;
-}
-
-.concerning-section ul {
-  margin: 0.25rem 0 0 1.25rem;
-  font-size: 0.95rem;
-  color: #fdba74;
-}
-
-/* ── Storage stats ───────────────────────────────────── */
-
-.storage-stats, .consent-stats {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.stat-card {
-  background: #252a40;
-  border: 1px solid #2d3350;
-  border-radius: 6px;
-  padding: 0.75rem 1.25rem;
-  text-align: center;
-  flex: 1;
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #7CB8E4;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #9ca3af;
-}
-
-.storage-concerns {
-  margin-top: 0.5rem;
-}
-
-.storage-concerns ul {
-  margin: 0.25rem 0 0 1.25rem;
-  font-size: 0.95rem;
-  color: #b0bcd5;
-}
-
-/* ── Consent discrepancies ───────────────────────────── */
-
-.consent-platform-note {
-  font-size: 0.9rem;
-  color: #9ca3af;
-  margin-bottom: 0.5rem;
-}
-
-.consent-platform-link {
-  color: #60a5fa;
-  text-decoration: none;
-}
-
-.consent-platform-link:hover {
-  text-decoration: underline;
-}
-
-.discrepancies {
-  margin-top: 0.75rem;
-}
-
-.discrepancy-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  background: #252a40;
-  border: 1px solid #2d3350;
-  border-radius: 6px;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.discrepancy-detail {
-  flex: 1;
-}
-
-.discrepancy-row {
-  font-size: 0.95rem;
-  margin: 0.15rem 0;
-}
-
-.discrepancy-label {
-  font-weight: 600;
-  color: #7c8ab8;
-  margin-right: 0.35rem;
-}
-
-/* ── Vendor grid ─────────────────────────────────────── */
-
-.vendor-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 0.5rem;
-}
-
-.vendor-card {
-  background: #252a40;
-  border: 1px solid #2d3350;
-  border-radius: 6px;
-  padding: 0.75rem;
-}
-
-.vendor-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.vendor-header strong {
-  color: #f0f4ff;
-  font-size: 0.95rem;
-}
-
-.vendor-link {
-  color: #7CB8E4;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.vendor-link:hover {
-  text-decoration: underline;
-  color: #a0d0ff;
-}
-
-.vendor-role {
-  font-size: 0.82rem;
-  color: #7CB8E4;
-  background: #2a3555;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-}
-
-.vendor-impact {
-  color: #b0bcd5;
-  font-size: 0.88rem;
-  margin: 0.35rem 0 0 0;
 }
 
 /* ── Social Media Implications ────────────────────────── */
@@ -1140,14 +786,14 @@ function platformUrl(name: string): string {
   font-size: 0.82rem;
   font-weight: 600;
   background: #1e3a5f;
-  color: #7CB8E4;
+  color: var(--link-color);
   border: 1px solid #2a4a6f;
   text-decoration: none;
 }
 
 .platform-tag:hover {
   background: #264a73;
-  color: #a0d0ff;
+  color: var(--link-hover);
   text-decoration: underline;
 }
 

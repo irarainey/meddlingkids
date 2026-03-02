@@ -56,8 +56,9 @@ async def run_ai_analysis(
     storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
-    overlay_count: int = 0,
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    *,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> AsyncGenerator[str]:
     """Run script and tracking analysis concurrently.
 
@@ -69,6 +70,11 @@ async def run_ai_analysis(
     # context.  Earlier phases capture at specific checkpoints
     # (initial load, after overlay click) but deferred scripts
     # and post-consent tracking may have added more since then.
+    yield sse_helpers.format_progress_event(
+        "final-capture",
+        "Capturing final page state...",
+        75,
+    )
     await session.capture_current_cookies()
     storage = await session.capture_storage()
 
@@ -93,7 +99,7 @@ async def run_ai_analysis(
     yield sse_helpers.format_progress_event(
         "analysis-start",
         "Starting analysis...",
-        75,
+        76,
     )
 
     log.info("Starting AI analysis")
@@ -172,7 +178,7 @@ async def run_ai_analysis(
         progress_queue.put_nowait(
             sse_helpers.format_progress_event(
                 "report-section",
-                f"Building report: {label}...",
+                f"Generating report: {label}...",
                 90 + int((done / total) * 4),  # 90-94
             )
         )
@@ -235,7 +241,6 @@ async def run_ai_analysis(
         storage,
         url,
         consent_details,
-        overlay_count,
         analysis_result,
         script_result,
         tracking_summary,
@@ -243,6 +248,7 @@ async def run_ai_analysis(
         domain_knowledge,
         report_task,
         pre_consent_stats,
+        decoded_cookies=decoded_cookies,
     ):
         yield event
 
@@ -637,6 +643,181 @@ def _render_recommendations(
     return lines
 
 
+def _render_tc_string_data(
+    consent_details: consent.ConsentDetails | None,
+) -> list[str]:
+    """Render the decoded TC String section."""
+    if not consent_details or not consent_details.tc_string_data:
+        return []
+    tc = consent_details.tc_string_data
+    lines = [_SECTION_DIVIDER, "TC STRING (euconsent-v2)", _SECTION_DIVIDER]
+    lines.append(f"  Version:                {tc.get('version', '?')}")
+    lines.append(f"  CMP ID:                 {tc.get('cmpId', '?')}")
+    lines.append(f"  CMP version:            {tc.get('cmpVersion', '?')}")
+    lines.append(f"  Consent language:       {tc.get('consentLanguage', '?')}")
+    lines.append(f"  Vendor list version:    {tc.get('vendorListVersion', '?')}")
+    lines.append(f"  Publisher country:      {tc.get('publisherCountryCode', '?')}")
+    lines.append(f"  Service-specific:       {tc.get('isServiceSpecific', '?')}")
+    lines.append(f"  Created:                {tc.get('created', '?')}")
+    lines.append(f"  Last updated:           {tc.get('lastUpdated', '?')}")
+    purposes = tc.get("purposeConsents", [])
+    if purposes:
+        lines.append(f"  Purpose consents:       {purposes}")
+    li_purposes = tc.get("purposeLegitimateInterests", [])
+    if li_purposes:
+        lines.append(f"  Purpose LI:             {li_purposes}")
+    special = tc.get("specialFeatureOptIns", [])
+    if special:
+        lines.append(f"  Special feature opt-ins: {special}")
+    lines.append(f"  Vendor consents:        {tc.get('vendorConsentCount', 0)}")
+    lines.append(f"  Vendor LI:              {tc.get('vendorLiCount', 0)}")
+    lines.append("")
+    return lines
+
+
+def _render_ac_string_data(
+    consent_details: consent.ConsentDetails | None,
+) -> list[str]:
+    """Render the decoded AC String section."""
+    if not consent_details or not consent_details.ac_string_data:
+        return []
+    ac = consent_details.ac_string_data
+    lines = [_SECTION_DIVIDER, "AC STRING (addtl_consent)", _SECTION_DIVIDER]
+    lines.append(f"  Version:            {ac.get('version', '?')}")
+    lines.append(f"  Vendor count:       {ac.get('vendorCount', 0)}")
+    unresolved = ac.get("unresolvedProviderCount", 0)
+    resolved = list(ac.get("resolvedProviders", []))  # type: ignore[call-overload]
+    if resolved:
+        lines.append(f"  Resolved providers: {len(resolved)}")
+        for p in resolved[:20]:
+            name = p.get("name", str(p.get("id", "?")))  # type: ignore[union-attr]
+            lines.append(f"    • {name}")
+        if len(resolved) > 20:
+            lines.append(f"    ... and {len(resolved) - 20} more")
+    if unresolved:
+        lines.append(f"  Unresolved IDs:     {unresolved}")
+    lines.append("")
+    return lines
+
+
+def _render_tc_validation(
+    consent_details: consent.ConsentDetails | None,
+) -> list[str]:
+    """Render the TC validation findings section."""
+    if not consent_details or not consent_details.tc_validation:
+        return []
+    val = consent_details.tc_validation
+    findings: list[dict[str, object]] = val.get("findings", [])  # type: ignore[assignment]
+    special: list[str] = val.get("specialFeatures", [])  # type: ignore[assignment]
+    mismatch = val.get("vendorCountMismatch", False)
+    if not findings and not special and not mismatch:
+        return []
+    lines = [_SECTION_DIVIDER, "TC VALIDATION", _SECTION_DIVIDER]
+    v_consent = val.get("vendorConsentCount", 0)
+    v_li = val.get("vendorLiCount", 0)
+    claimed = val.get("claimedPartnerCount")
+    lines.append(f"  Vendor consents: {v_consent}  |  Vendor LI: {v_li}")
+    if claimed is not None:
+        lines.append(f"  Claimed partner count: {claimed}")
+    if mismatch:
+        lines.append("  ⚠ Vendor count mismatch between dialog and TC String")
+    if special:
+        lines.append(f"  Special features: {', '.join(special)}")
+    if findings:
+        lines.append("")
+        lines.append("  Findings:")
+        for f in findings:
+            sev = str(f.get("severity", "?")).upper()
+            title = f.get("title", "")
+            detail = f.get("detail", "")
+            lines.append(f"    [{sev}] {title}")
+            if detail:
+                lines.append(f"      {detail}")
+    lines.append("")
+    return lines
+
+
+def _render_decoded_cookies(
+    decoded_cookies: dict[str, object] | None,
+) -> list[str]:
+    """Render the decoded privacy cookies section."""
+    if not decoded_cookies:
+        return []
+    lines = [_SECTION_DIVIDER, "DECODED PRIVACY COOKIES", _SECTION_DIVIDER]
+
+    usp = decoded_cookies.get("uspString")
+    if isinstance(usp, dict):
+        lines.append(f"  USP String: {usp.get('rawString', '?')}")
+        lines.append(f"    Notice given: {usp.get('noticeLabel', '?')}")
+        lines.append(f"    Opted out:    {usp.get('optOutLabel', '?')}")
+        lines.append(f"    LSPA:         {usp.get('lspaLabel', '?')}")
+
+    gpp = decoded_cookies.get("gppString")
+    if isinstance(gpp, dict):
+        sections = gpp.get("sections", [])
+        section_names = [s.get("name", str(s.get("id"))) for s in sections] if isinstance(sections, list) else []  # type: ignore[union-attr]
+        lines.append(f"  GPP String: {gpp.get('rawString', '?')[:80]}")
+        lines.append(f"    Segments: {gpp.get('segmentCount', '?')}")
+        if section_names:
+            lines.append(f"    Sections: {', '.join(section_names)}")
+
+    ga = decoded_cookies.get("googleAnalytics")
+    if isinstance(ga, dict):
+        lines.append(f"  Google Analytics (_ga): {ga.get('clientId', '?')}")
+        lines.append(f"    First visit: {ga.get('firstVisit', '?')}")
+
+    fb = decoded_cookies.get("facebookPixel")
+    if isinstance(fb, dict):
+        fbp = fb.get("fbp")
+        fbc = fb.get("fbc")
+        if isinstance(fbp, dict):
+            lines.append(f"  Facebook _fbp: browser {fbp.get('browserId', '?')}")
+            lines.append(f"    Created: {fbp.get('created', '?')}")
+        if isinstance(fbc, dict):
+            lines.append(f"  Facebook _fbc: click {fbc.get('fbclid', '?')[:30]}...")
+            lines.append(f"    Clicked: {fbc.get('clicked', '?')}")
+
+    gads = decoded_cookies.get("googleAds")
+    if isinstance(gads, dict):
+        gau = gads.get("gclAu")
+        gaw = gads.get("gclAw")
+        if isinstance(gau, dict):
+            lines.append(f"  Google Ads _gcl_au: v{gau.get('version', '?')}")
+            lines.append(f"    Created: {gau.get('created', '?')}")
+        if isinstance(gaw, dict):
+            lines.append(f"  Google Ads _gcl_aw: {gaw.get('gclid', '?')[:30]}...")
+            lines.append(f"    Clicked: {gaw.get('clicked', '?')}")
+
+    ot = decoded_cookies.get("oneTrust")
+    if isinstance(ot, dict):
+        cats = ot.get("categories", [])
+        lines.append("  OneTrust (OptanonConsent):")
+        if isinstance(cats, list):
+            for c in cats:
+                if isinstance(c, dict):
+                    status = "✓" if c.get("consented") else "✗"
+                    lines.append(f"    {status} {c.get('name', c.get('id', '?'))}")
+        if ot.get("isGpcApplied"):
+            lines.append("    GPC signal applied")
+
+    cb = decoded_cookies.get("cookiebot")
+    if isinstance(cb, dict):
+        cats = cb.get("categories", [])
+        lines.append("  Cookiebot (CookieConsent):")
+        if isinstance(cats, list):
+            for c in cats:
+                if isinstance(c, dict):
+                    status = "✓" if c.get("consented") else "✗"
+                    lines.append(f"    {status} {c.get('name', '?')}")
+
+    socs = decoded_cookies.get("googleSocs")
+    if isinstance(socs, dict):
+        lines.append(f"  Google SOCS: {socs.get('consentMode', '?')}")
+
+    lines.append("")
+    return lines
+
+
 def _render_llm_usage() -> list[str]:
     """Render the LLM usage summary section."""
     summary = usage_tracking.get_summary()
@@ -664,6 +845,7 @@ def _render_report_text(
     score_breakdown: analysis.ScoreBreakdown | None = None,
     consent_details: consent.ConsentDetails | None = None,
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Render the structured report as a plain-text file.
 
@@ -681,6 +863,10 @@ def _render_report_text(
     lines += _render_cookie_analysis(report)
     lines += _render_storage_analysis(report)
     lines += _render_consent_analysis(report, consent_details)
+    lines += _render_tc_string_data(consent_details)
+    lines += _render_ac_string_data(consent_details)
+    lines += _render_tc_validation(consent_details)
+    lines += _render_decoded_cookies(decoded_cookies)
     lines += _render_key_vendors(report)
     lines += _render_recommendations(report)
     lines += _render_llm_usage()
@@ -694,7 +880,6 @@ async def _score_and_summarise(
     storage: tracking_data.CapturedStorage,
     url: str,
     consent_details: consent.ConsentDetails | None,
-    overlay_count: int,
     analysis_result: analysis.TrackingAnalysisResult,
     script_result: scripts.ScriptAnalysisResult,
     tracking_summary: analysis.TrackingSummary,
@@ -702,6 +887,8 @@ async def _score_and_summarise(
     domain_knowledge: domain_cache.DomainKnowledge | None,
     report_task: asyncio.Task[report_models.StructuredReport],
     pre_consent_stats: analysis.PreConsentStats | None = None,
+    *,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> AsyncGenerator[str]:
     """Summarise and yield the complete event.
 
@@ -788,6 +975,7 @@ async def _score_and_summarise(
             score_breakdown=score_breakdown,
             consent_details=consent_details,
             pre_consent_stats=pre_consent_stats,
+            decoded_cookies=decoded_cookies,
         )
         logger.save_report_file(domain, report_text)
 
@@ -805,11 +993,11 @@ async def _score_and_summarise(
         score_breakdown,
         consent_details,
         script_result,
-        overlay_count,
         analysis_success=bool(full_text),
         final_cookies=final_cookies,
         final_requests=final_requests,
         storage=storage,
+        decoded_cookies=decoded_cookies,
     )
 
 
@@ -819,11 +1007,11 @@ def _build_complete_payload(
     score_breakdown: analysis.ScoreBreakdown,
     consent_details: consent.ConsentDetails | None,
     script_result: scripts.ScriptAnalysisResult,
-    overlay_count: int,
     analysis_success: bool = True,
     final_cookies: list[tracking_data.TrackedCookie] | None = None,
     final_requests: list[tracking_data.NetworkRequest] | None = None,
     storage: tracking_data.CapturedStorage | None = None,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Build the final SSE ``complete`` event payload.
 
@@ -846,13 +1034,14 @@ def _build_complete_payload(
     return sse_helpers.format_sse_event(
         "complete",
         {
-            "message": ("Tracking analyzed after dismissing overlays" if overlay_count > 0 else "Tracking analyzed"),
+            "message": "Investigation complete!",
             "structuredReport": (structured_report.model_dump(by_alias=True) if analysis_success and structured_report else None),
             "summaryFindings": ([{"type": f.type, "text": f.text} for f in summary_findings] if analysis_success else None),
             "privacyScore": (privacy_score if analysis_success else None),
             "privacySummary": (score_breakdown.summary if analysis_success else None),
             "analysisError": (None if analysis_success else "Analysis produced no output"),
             "consentDetails": consent_dict,
+            "decodedCookies": decoded_cookies,
             "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
             "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
             "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.local_storage] if storage else None),

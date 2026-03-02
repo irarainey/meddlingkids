@@ -9,7 +9,6 @@ import contextlib
 import os
 import pathlib
 from collections.abc import AsyncGenerator
-from importlib import metadata
 
 import dotenv
 import fastapi
@@ -18,7 +17,8 @@ from fastapi.middleware import cors
 from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
-from src.analysis import cookie_lookup, storage_lookup, tcf_lookup
+from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
+from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
 from src.utils import cache, logger
@@ -39,7 +39,7 @@ SHOW_UI = os.environ.get("SHOW_UI", "false").lower() == "true"
 
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
-    """Log server start on startup."""
+    """Start shared browser on startup, stop on shutdown."""
     log.section("Meddling Kids Server Started")
     log.info(
         "Configuration",
@@ -48,7 +48,17 @@ async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
             "corsOrigins": _ALLOWED_ORIGINS,
         },
     )
+
+    # Start the shared Playwright + Chrome instance once.
+    # All analysis requests will reuse this browser and
+    # create lightweight, isolated contexts per scan.
+    pw_manager = manager.PlaywrightManager.get_instance()
+    await pw_manager.start()
+
     yield
+
+    # Graceful shutdown: close the shared browser + Playwright.
+    await pw_manager.stop()
 
 
 app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)
@@ -86,12 +96,6 @@ async def disable_static_cache(
 # ============================================================================
 # API Routes
 # ============================================================================
-
-
-@app.get("/api/version")
-async def version_endpoint() -> dict[str, str]:
-    """Return the server version from pyproject.toml."""
-    return {"version": metadata.version("server")}
 
 
 @app.post("/api/clear-cache")
@@ -218,6 +222,30 @@ async def tcf_purposes_endpoint(
 
     result = tcf_lookup.lookup_purposes(purposes)
     return result.model_dump(by_alias=True)
+
+
+@app.post("/api/tc-string-decode")
+async def tc_string_decode_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Decode an IAB TCF v2 TC String.
+
+    Accepts a raw TC String (Base64url-encoded, as stored in
+    the ``euconsent-v2`` cookie) and returns decoded metadata,
+    purpose consents, vendor consents, and legitimate interest
+    signals.  Purely deterministic — no LLM calls.
+    """
+    body = await request.json()
+    raw: str = body.get("tcString", "")
+
+    if not raw:
+        return {"error": "No tcString provided"}
+
+    decoded = tc_string.decode_tc_string(raw)
+    if decoded is None:
+        return {"error": "Failed to decode TC string"}
+
+    return decoded.model_dump(by_alias=True)
 
 
 @app.get("/api/open-browser-stream")

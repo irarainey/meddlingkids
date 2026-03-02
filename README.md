@@ -24,13 +24,17 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), minimap navigation, and resource-type breakdown
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🎯 **TCF Purpose Breakdown** — Maps consent purposes to the IAB TCF v2.2 taxonomy with risk levels, lawful bases, and human-readable explanations
+- 🔓 **TC String Decoding** — Decodes IAB TCF v2 consent strings (euconsent-v2) to reveal purpose consents, vendor consents, legitimate interest signals, and CMP metadata
+- 🔓 **AC String Decoding** — Decodes Google Additional Consent strings (addtl_consent) to expose Google ATP provider opt-ins
+- 🏢 **Vendor Enrichment** — Resolves vendor IDs to names using the IAB Global Vendor List (1,111 vendors) and Google ATP provider list (598 providers)
+- 🍪 **Cookie Decoders** — Automatically decodes structured cookies (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP/GPC/DNT signals, GPP strings) into human-readable breakdowns
 - 🤖 **AI-Powered Analysis** — Uses Microsoft Agent Framework with Azure OpenAI to analyze privacy implications
 - ⚡ **Smart Caching** — Caches script analysis by script domain (cross-site), domain knowledge, and overlay strategies to reduce LLM calls and speed up repeat analyses
 
 ## How It Works
 
 1. **URL Submission** — User enters a URL and selects a device type to emulate
-2. **Browser Automation** — Playwright launches real Chrome (with Chromium fallback) in headed mode on a virtual display, with anti-bot hardening to avoid detection
+2. **Browser Automation** — A shared Playwright Chrome instance (started once at app startup) creates an isolated BrowserContext per request (~50 ms), with anti-bot hardening to avoid detection
 3. **Real-time Streaming** — Results stream to the UI via Server-Sent Events
 4. **Access Check** — Detects bot protection or access denied responses
 5. **Overlay Detection** — AI analyzes the page for overlays (cookie consent, sign-in, newsletter, paywall, age verification)
@@ -89,7 +93,7 @@ And if you want an even deeper dive, we provide a detailed visualization and int
 |-------|------------|
 | Frontend | Vue 3, TypeScript, Vite, D3.js |
 | Backend | Python, FastAPI, Microsoft Agent Framework |
-| Browser Automation | Playwright for Python with real Chrome (headed mode on Xvfb virtual display) |
+| Browser Automation | Playwright for Python with shared Chrome singleton (headed mode on Xvfb virtual display, per-request BrowserContext) |
 | Communication | Server-Sent Events (SSE) |
 
 ## Architecture
@@ -108,14 +112,14 @@ meddlingkids/
 │       ├── main.py            # FastAPI application entry point
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       │   ├── prompts/       # System prompts (one module per agent)
-│       ├── browser/           # Browser automation (Playwright session, device configs)
+│       ├── browser/           # Browser automation (PlaywrightManager singleton, per-request BrowserSession, device configs)
 │       ├── consent/           # Consent handling (detect, click, extract, classify, cache, CMP platform detection)
-│       ├── analysis/          # Tracking analysis, script ID, privacy scoring, caching
+│       ├── analysis/          # Tracking analysis, script ID, privacy scoring, TC/AC string decoding, cookie decoders, vendor enrichment, caching
 │       │   └── scoring/       # Decomposed privacy scoring (8 category scorers + calculator)
 │       ├── pipeline/          # SSE streaming orchestration (phases 1-6)
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
-│       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, consent cookies, lawful bases, purposes)
+│       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, GVL vendors, Google ATP providers, consent cookies, lawful bases, purposes)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Tracking pattern databases (7 JSON files)

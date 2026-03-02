@@ -48,7 +48,10 @@
       "truste"
     ],
     "url": "https://trustarc.com",
-    "privacy_url": "https://trustarc.com/privacy-policy/"
+    "privacy_url": "https://trustarc.com/privacy-policy/",
+    "atp_ids": [
+      494
+    ]
   },
   "inmobi choice": {
     "concerns": [
@@ -347,7 +350,10 @@
       "betrad"
     ],
     "url": "https://www.crownpeak.com",
-    "privacy_url": "https://www.crownpeak.com/privacy"
+    "privacy_url": "https://www.crownpeak.com/privacy",
+    "atp_ids": [
+      196
+    ]
   },
   "commander act cmp": {
     "concerns": [
@@ -411,7 +417,10 @@
       "eyeo partner"
     ],
     "url": "https://www.blockthrough.com",
-    "privacy_url": "https://blockthrough.com/privacy-policy/"
+    "privacy_url": "https://blockthrough.com/privacy-policy/",
+    "gvl_ids": [
+      815
+    ]
   },
   "mpp global": {
     "concerns": [
