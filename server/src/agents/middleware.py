@@ -120,6 +120,50 @@ class EmptyResponseError(Exception):
     """
 
 
+def _describe_response(result: object) -> str:
+    """Build a short diagnostic string from an LLM response.
+
+    Extracts ``finish_reason``, ``model_id``, and
+    ``usage_details`` (input/output token counts) when
+    available on the response object.
+
+    Args:
+        result: The ``ChatResponse`` or similar object
+            returned by the agent framework.
+
+    Returns:
+        A formatted string such as
+        ``finish_reason=length, model=gpt-5.2-chat,
+        input_tokens=52630, output_tokens=2048``.
+        Falls back to ``"(no metadata)"`` when nothing
+        is available.
+    """
+    parts: list[str] = []
+
+    finish = getattr(result, "finish_reason", None)
+    if finish is not None:
+        parts.append(f"finish_reason={finish}")
+
+    model = getattr(result, "model_id", None)
+    if model is not None:
+        parts.append(f"model={model}")
+
+    usage = getattr(result, "usage_details", None)
+    if isinstance(usage, dict):
+        inp = usage.get("input_token_count")
+        out = usage.get("output_token_count")
+        if inp is not None:
+            parts.append(f"input_tokens={inp}")
+        if out is not None:
+            parts.append(f"output_tokens={out}")
+
+    extra = getattr(result, "additional_properties", None)
+    if extra:
+        parts.append(f"extra={extra}")
+
+    return ", ".join(parts) if parts else "(no metadata)"
+
+
 def _is_retryable(error: BaseException) -> bool:
     """Check if an error is transient and worth retrying.
 
@@ -264,8 +308,13 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         except Exception:
             return
         if not text:
-            log.warn(f"Agent '{self.agent_name}' received an empty response from the LLM, retrying")
-            raise EmptyResponseError(f"Agent '{self.agent_name}' received an empty (0-character) response")
+            detail = _describe_response(result)
+            log.warn(
+                f"Agent '{self.agent_name}' received an empty response from the LLM — {detail}",
+            )
+            raise EmptyResponseError(
+                f"Agent '{self.agent_name}' received an empty (0-character) response — {detail}",
+            )
 
     def _log_retry(
         self,

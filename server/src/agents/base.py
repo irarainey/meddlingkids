@@ -286,8 +286,10 @@ class BaseAgent:
         )
         async with self._build_agent(instructions, max_tokens, response_model) as agent:
             session = agent_framework.AgentSession()
-            response = await agent.run(message, session=session)
-            logger.save_agent_thread(self.agent_name, session.to_dict())
+            try:
+                response = await agent.run(message, session=session)
+            finally:
+                logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -335,8 +337,10 @@ class BaseAgent:
         )
         async with self._build_agent(instructions, max_tokens) as agent:
             session = agent_framework.AgentSession()
-            response = await agent.run(message, session=session)
-            logger.save_agent_thread(self.agent_name, session.to_dict())
+            try:
+                response = await agent.run(message, session=session)
+            finally:
+                logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: vision response received",
             {"responseChars": len(response.text) if response.text else 0},

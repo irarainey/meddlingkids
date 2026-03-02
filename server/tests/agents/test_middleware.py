@@ -231,3 +231,93 @@ class TestSemaphoreIntegration:
         with pytest.raises(ValueError):
             await middleware.process(context, fail_next)
         assert middleware_mod._llm_semaphore._value == initial
+
+
+# ── _describe_response ─────────────────────────────────────────
+
+
+class TestDescribeResponse:
+    """Tests for the LLM response metadata extractor."""
+
+    def test_no_metadata_returns_fallback(self) -> None:
+        result = object()
+        assert middleware_mod._describe_response(result) == "(no metadata)"
+
+    def test_finish_reason_only(self) -> None:
+        result = mock.MagicMock(spec=[])
+        result.finish_reason = "stop"
+        result.model_id = None
+        result.usage_details = None
+        result.additional_properties = None
+        desc = middleware_mod._describe_response(result)
+        assert desc == "finish_reason=stop"
+
+    def test_full_metadata(self) -> None:
+        result = mock.MagicMock(spec=[])
+        result.finish_reason = "length"
+        result.model_id = "gpt-5.2-chat"
+        result.usage_details = {
+            "input_token_count": 50000,
+            "output_token_count": 2048,
+        }
+        result.additional_properties = {"system_fingerprint": None}
+        desc = middleware_mod._describe_response(result)
+        assert "finish_reason=length" in desc
+        assert "model=gpt-5.2-chat" in desc
+        assert "input_tokens=50000" in desc
+        assert "output_tokens=2048" in desc
+        assert "extra=" in desc
+
+    def test_usage_without_token_counts(self) -> None:
+        result = mock.MagicMock(spec=[])
+        result.finish_reason = "content_filter"
+        result.model_id = None
+        result.usage_details = {}
+        result.additional_properties = None
+        desc = middleware_mod._describe_response(result)
+        assert desc == "finish_reason=content_filter"
+
+    def test_model_id_without_finish_reason(self) -> None:
+        result = mock.MagicMock(spec=[])
+        result.finish_reason = None
+        result.model_id = "gpt-5.2-chat"
+        result.usage_details = None
+        result.additional_properties = None
+        desc = middleware_mod._describe_response(result)
+        assert desc == "model=gpt-5.2-chat"
+
+    def test_none_result(self) -> None:
+        """None has no attributes — should return fallback."""
+        assert middleware_mod._describe_response(None) == "(no metadata)"
+
+
+# ── Empty response metadata ────────────────────────────────────
+
+
+class TestEmptyResponseMetadata:
+    """The empty response error should include LLM metadata."""
+
+    @pytest.mark.asyncio
+    async def test_empty_response_includes_metadata(self) -> None:
+        """EmptyResponseError message contains finish_reason."""
+        middleware = middleware_mod.RetryChatMiddleware(
+            "TestAgent",
+            max_retries=0,
+        )
+        context = mock.MagicMock()
+        result = mock.MagicMock(spec=[])
+        result.text = ""
+        result.finish_reason = "content_filter"
+        result.model_id = "gpt-5.2-chat"
+        result.usage_details = {
+            "input_token_count": 114000,
+            "output_token_count": 0,
+        }
+        result.additional_properties = None
+        context.result = result
+
+        async def ok_next() -> None:
+            pass
+
+        with pytest.raises(middleware_mod.EmptyResponseError, match="finish_reason=content_filter"):
+            await middleware.process(context, ok_next)
