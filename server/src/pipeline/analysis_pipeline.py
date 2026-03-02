@@ -178,7 +178,7 @@ async def run_ai_analysis(
         progress_queue.put_nowait(
             sse_helpers.format_progress_event(
                 "report-section",
-                f"Building report: {label}...",
+                f"Generating report: {label}...",
                 90 + int((done / total) * 4),  # 90-94
             )
         )

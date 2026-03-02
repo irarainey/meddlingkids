@@ -231,6 +231,13 @@ function riskLabel(level: string): string {
         Cookie categories and risk levels determined by AI analysis of cookie
         names, domains, and values.
       </p>
+      <p class="ai-section-summary">
+        Cookies are small text files that websites store in your browser. They are sent
+        back to the server with every request, allowing sites to remember your preferences,
+        keep you logged in, and track your activity. While some cookies are essential for
+        a site to function, others are used by advertisers and analytics companies to build
+        profiles of your browsing behaviour across multiple websites.
+      </p>
       <div
         v-for="(group, i) in structuredReport.cookieAnalysis.groups"
         :key="i"
@@ -249,7 +256,7 @@ function riskLabel(level: string): string {
         <h3>⚠️ Concerning Cookies</h3>
         <ul>
           <li v-for="(concern, i) in structuredReport.cookieAnalysis.concerningCookies" :key="i">
-            {{ stripMarkdown(concern) }}
+            <strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}
           </li>
         </ul>
       </div>
@@ -556,7 +563,7 @@ function riskLabel(level: string): string {
 
 <style scoped>
 .cookie-item {
-  padding: 0.6rem 0.5rem;
+  padding: 0.7rem 0.5rem;
   border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
 }
@@ -582,6 +589,10 @@ function riskLabel(level: string): string {
   align-items: center;
   gap: 0.4rem;
   transition: color 0.15s;
+}
+
+.cookie-details {
+  margin-top: 0.15rem;
 }
 
 .info-toggle {
@@ -617,11 +628,11 @@ function riskLabel(level: string): string {
   background: var(--surface-code);
   padding: 0.25rem;
   border-radius: 4px;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .cookie-meta {
-  margin-top: 0.35rem;
+  margin-top: 0.45rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -729,12 +740,12 @@ function riskLabel(level: string): string {
 
 /* ── Decoded Privacy Cookies ─────────────────── */
 .decoded-cookies-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 /* ── Cookie Analysis (domain listing) ────────── */
 .cookie-analysis-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding: 1rem;
   background: var(--surface-section);
   border-radius: 8px;
@@ -743,7 +754,7 @@ function riskLabel(level: string): string {
 
 /* ── AI Cookie Analysis ──────────────────────── */
 .ai-cookie-analysis {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding: 1rem;
   background: var(--surface-section);
   border-radius: 8px;
@@ -752,6 +763,12 @@ function riskLabel(level: string): string {
 
 .cookie-ai-group {
   margin-bottom: 0.75rem;
+}
+
+.cookie-ai-group:first-of-type {
+  border-top: 1px solid var(--border-card);
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
 }
 
 .cookie-ai-group-header {
@@ -803,8 +820,13 @@ function riskLabel(level: string): string {
 .concerning-section ul {
   margin: 0.25rem 0 0 0.75rem;
   padding-left: 0.75rem;
-  font-size: var(--body-size);
+  font-size: var(--summary-size);
   color: var(--body-color);
+  line-height: 1.7;
+}
+
+.concerning-section li strong {
+  color: #f1f5f9;
 }
 
 .count-badge {
@@ -873,6 +895,12 @@ function riskLabel(level: string): string {
   color: var(--section-subtitle-color);
   margin: 0 0 0.75rem;
   line-height: 1.4;
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
 }
 
 .decoded-card {

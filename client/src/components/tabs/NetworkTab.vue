@@ -53,12 +53,33 @@ watch(
     <div v-if="filteredNetworkRequests.length === 0" class="empty-state">
       No network requests detected
     </div>
-    <div v-else class="domain-groups">
-      <p class="filter-note">
-        Showing {{ filteredNetworkRequests.length }} data requests (XHR, fetch, and POST only).
-        Script, stylesheet, image, font, and document loads are excluded.
-      </p>
-      <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
+    <div v-else>
+      <section class="network-overview-section">
+        <h2 class="section-title">🌐 Overview</h2>
+        <p class="section-subtitle">
+          Network data transfers detected during the page scan.
+        </p>
+        <p class="ai-section-summary">
+          When you visit a website, your browser makes network requests to load content
+          and send data to remote servers. These requests reveal what is being shared,
+          with whom, and whether it happens before or after consent. Scripts often silently
+          transmit personal data — such as device fingerprints, browsing history, or unique
+          identifiers — to third-party trackers without any visible indication on the page.
+          This view focuses on data-transfer requests (XHR, fetch, and POST) as these are
+          most likely to carry personal data. Script, stylesheet, image, font, and document
+          loads are filtered out as they are the building blocks of the page and rarely
+          pose a direct privacy concern.
+        </p>
+      </section>
+      <section class="network-analysis-section">
+        <h2 class="section-title">🔎 Analysis
+          <span class="count-badge">{{ filteredNetworkRequests.length }} requests</span>
+        </h2>
+        <p class="section-subtitle">
+          All data requests grouped by domain. Click on any URL to view it in a new tab.
+        </p>
+        <div class="domain-groups">
+        <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
           <div class="domain-header-line">
             <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
@@ -95,19 +116,59 @@ watch(
           </div>
         </div>
       </div>
+      </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.filter-note {
-  font-size: var(--body-size);
-  color: var(--muted-light);
+.section-title {
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  color: var(--section-title-color);
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.network-overview-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.network-analysis-section {
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+}
+
+.section-subtitle {
+  font-size: var(--section-subtitle-size);
+  color: var(--section-subtitle-color);
   margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-panel);
-  border-radius: 6px;
-  border-left: 3px solid var(--border-accent);
+  line-height: 1.4;
+}
+
+.count-badge {
+  font-size: var(--badge-size);
+  font-weight: 600;
+  background: var(--surface-code);
+  color: var(--muted-light);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--badge-radius);
+}
+
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
 }
 
 .third-party-badge {

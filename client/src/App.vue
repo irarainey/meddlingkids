@@ -246,7 +246,7 @@ function onUrlMouseUp(event: Event): void {
         />
 
         <CookiesTab
-          v-if="activeTab === 'cookies'"
+          v-show="activeTab === 'cookies'"
           :cookies-by-domain="cookiesByDomain"
           :cookie-count="cookies.length"
           :analyzed-url="inputValue"
@@ -261,14 +261,14 @@ function onUrlMouseUp(event: Event): void {
         />
 
         <StorageTab
-          v-if="activeTab === 'storage'"
+          v-show="activeTab === 'storage'"
           :local-storage="localStorage"
           :session-storage="sessionStorage"
           :structured-report="structuredReport"
         />
 
         <NetworkTab
-          v-if="activeTab === 'network'"
+          v-show="activeTab === 'network'"
           :network-by-domain="networkByDomain"
           :filtered-network-requests="filteredNetworkRequests"
         />
@@ -281,7 +281,7 @@ function onUrlMouseUp(event: Event): void {
         />
 
         <ScriptsTab
-          v-if="activeTab === 'scripts'"
+          v-show="activeTab === 'scripts'"
           :scripts-by-domain="scriptsByDomain"
           :script-count="scripts.length"
           :script-groups="scriptGroups"

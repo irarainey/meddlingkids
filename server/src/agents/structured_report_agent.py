@@ -139,7 +139,7 @@ class StructuredReportAgent(base.BaseAgent):
         #
         # Wrap each coroutine so the optional progress callback
         # fires as sections finish, giving the client granular
-        # "Building report: <section> (N/10)..." updates.
+        # "Generating report: <section> (N/10)..." updates.
         _sections_done = 0
         _total_sections = 10
 
@@ -608,7 +608,7 @@ def _enrich_vendor_urls(
         if not vendor.category:
             enrichment = vlookup._enrich(vendor.name)
             if enrichment:
-                vendor.category = enrichment["category"]
+                vendor.category = enrichment.get("category", "")
                 if "concerns" in enrichment and not vendor.concerns:
                     vendor.concerns = enrichment["concerns"]
                 if "url" in enrichment and not vendor.url:

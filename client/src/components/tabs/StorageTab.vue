@@ -151,30 +151,43 @@ function riskClass(level: string): string {
         Analysis of localStorage and sessionStorage usage patterns determined
         by AI examination of key names and values.
       </p>
-      <div class="storage-ai-stats">
-        <div class="ai-stat-card">
-          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.localStorageCount }}</span>
-          <span class="ai-stat-label">localStorage items</span>
-        </div>
-        <div class="ai-stat-card">
-          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.sessionStorageCount }}</span>
-          <span class="ai-stat-label">sessionStorage items</span>
-        </div>
-      </div>
+      <p class="ai-section-summary">
+        Websites can store data directly in your browser using two mechanisms:
+        localStorage persists indefinitely (even after closing the browser),
+        while sessionStorage is cleared when the tab is closed.
+        Unlike cookies, storage data is never sent to servers automatically — but scripts
+        on the page can read it freely. Some companies prefer storage over cookies because
+        it has no size limits, is harder for users to discover or clear, and is not affected
+        by cookie-blocking browser settings or consent tools.
+      </p>
       <p v-if="structuredReport.storageAnalysis.summary" class="ai-section-summary">
         {{ stripMarkdown(structuredReport.storageAnalysis.summary) }}
       </p>
-      <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="storage-ai-concerns">
-        <h3>localStorage Concerns</h3>
-        <ul>
-          <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
-        </ul>
+      <div class="storage-ai-stats">
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.localStorageCount }}</span>
+          <span class="storage-type-badge local">localStorage</span>
+        </div>
+        <div class="ai-stat-card">
+          <span class="ai-stat-value">{{ structuredReport.storageAnalysis.sessionStorageCount }}</span>
+          <span class="storage-type-badge session">sessionStorage</span>
+        </div>
       </div>
-      <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-ai-concerns">
-        <h3>sessionStorage Concerns</h3>
-        <ul>
-          <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
-        </ul>
+      <hr v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0 || structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="section-divider">
+      <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0 || structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="storage-ai-concerns">
+        <h3>⚠️ Concerning Storage</h3>
+        <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="concern-group">
+          <span class="storage-type-badge local">localStorage</span>
+          <ul>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+          </ul>
+        </div>
+        <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="concern-group">
+          <span class="storage-type-badge session">sessionStorage</span>
+          <ul>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -182,7 +195,7 @@ function riskClass(level: string): string {
     <section v-if="localStorage.length > 0 || sessionStorage.length > 0" class="storage-analysis-section">
       <h2 class="ai-section-title">🔍 Analysis</h2>
       <p class="ai-section-subtitle">
-        All storage keys set by the page, with expandable details for each item.
+        All storage keys set by the page. Click on any item to see more details.
       </p>
       <div class="domain-groups">
       <div v-if="localStorage.length > 0" class="domain-group">
@@ -462,7 +475,7 @@ function riskClass(level: string): string {
 
 /* ── AI Storage Analysis ─────────────────────── */
 .ai-storage-analysis {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding: 1rem;
   background: var(--surface-section);
   border-radius: 8px;
@@ -470,7 +483,7 @@ function riskClass(level: string): string {
 }
 
 .storage-analysis-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding: 1rem;
   background: var(--surface-section);
   border-radius: 8px;
@@ -498,6 +511,12 @@ function riskClass(level: string): string {
   color: var(--summary-color);
   margin: 0.25rem 0 0.75rem 0;
   font-size: var(--summary-size);
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border-card);
+  margin: 0.75rem 0;
 }
 
 .source-badge {
@@ -552,10 +571,43 @@ function riskClass(level: string): string {
   margin: 0.5rem 0 0.25rem;
 }
 
+.concern-group {
+  margin-top: 0.5rem;
+}
+
+.concern-group + .concern-group {
+  margin-top: 0.75rem;
+}
+
+.storage-type-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--badge-radius);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.storage-type-badge.local {
+  background: #1a2e3d;
+  color: #22d3ee;
+}
+
+.storage-type-badge.session {
+  background: #2a2040;
+  color: #a78bfa;
+}
+
 .storage-ai-concerns ul {
   margin: 0.25rem 0 0 0.75rem;
   padding-left: 0.75rem;
-  font-size: var(--body-size);
+  font-size: var(--summary-size);
   color: var(--body-color);
+  line-height: 1.7;
+}
+
+.storage-ai-concerns li strong {
+  color: #f1f5f9;
 }
 </style>

@@ -269,6 +269,13 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
           Consent metrics from dialog analysis and verified consent signals
           decoded from TC &amp; AC Strings.
         </p>
+        <p class="ai-section-summary">
+          Under GDPR and ePrivacy rules, websites must obtain your informed consent before
+          setting non-essential cookies or tracking your activity. Most sites use a Consent
+          Management Platform (CMP) to present a dialog and record your choices. This tab
+          shows what the dialog disclosed, which purposes and vendors were declared, and
+          whether the encoded consent signals match what was actually presented to you.
+        </p>
         <div class="meta-cards">
           <div v-if="consentDetails.consentPlatform" class="meta-card">
             <span class="meta-icon">🛡️</span>
@@ -602,7 +609,14 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 .consent-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.75rem;
+}
+
+.consent-meta {
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
 }
 
 /* ── Metadata Cards ─────────────────────────── */
@@ -675,6 +689,12 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   line-height: 1.4;
 }
 
+.ai-section-summary {
+  color: var(--summary-color);
+  margin: 0.25rem 0 0.75rem 0;
+  font-size: var(--summary-size);
+}
+
 .section-subtitle code {
   font-size: 0.78rem;
   background: var(--surface-code);
@@ -716,8 +736,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── TCF Purpose Cards ──────────────────────── */
 .tcf-section {
-  border-top: 1px solid var(--border-separator);
-  padding-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
 }
 
 .tcf-loading {
@@ -905,8 +927,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── Consent Categories ─────────────────────── */
 .categories-section {
-  border-top: 1px solid var(--border-separator);
-  padding-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
 }
 
 .category-list {
@@ -962,8 +986,10 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
 
 /* ── TC String / Purpose Matrix ────────────── */
 .tc-verification-section {
-  border-top: 1px solid var(--border-separator);
-  padding-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-section);
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
 }
 
 .tc-subsection-title {
