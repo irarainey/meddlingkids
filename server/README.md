@@ -62,7 +62,7 @@ src/
 │   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides and cached validation
 │   ├── llm_client.py                # Chat client factory (supports per-agent deployment overrides)
 │   ├── middleware.py                # Timing & retry middleware
-│   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall)
+│   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall); reason field constrained to max 120 chars / 15 words
 │   ├── consent_extraction_agent.py  # Extract consent details agent
 │   ├── script_analysis_agent.py     # Script identification agent
 │   ├── structured_report_agent.py   # Structured privacy report agent
@@ -95,7 +95,7 @@ src/
 │   ├── constants.py                 # Shared consent-manager detection constants, selectors, and utilities
 │   ├── detection.py                 # Overlay detection orchestration
 │   ├── extraction.py                # Consent detail extraction orchestration
-│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON)
+│   ├── overlay_cache.py             # Domain-level cache for overlay strategies (locator strategy, frame type, consent platform, JSON); includes backfill_consent_platform() for late CMP detection
 │   ├── partner_classification.py    # Consent partner risk classification and URL enrichment
 │   ├── platform_detection.py        # CMP detection (cookies, media groups, DOM) and deterministic button selectors
 │   └── text_parser.py               # Local regex-based consent text parser (categories, TCF purposes, partners, CMP platform detection)
@@ -112,7 +112,7 @@ src/
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   ├── tcf_lookup.py                # TCF purpose matching (purpose strings → IAB TCF v2.2 taxonomy)
-│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL)
+│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL, dynamic timestamp validation)
 │   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
@@ -127,7 +127,7 @@ src/
 │       ├── social_media.py          # Social media pixels, SDKs, plugins
 │       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
-│   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators)
+│   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators); late CMP detection with consent_platform backfill
 │   ├── browser_phases.py            # Phases 1-3: navigate, page load, access check, initial data capture
 │   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture()
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline (screenshot error recovery)
@@ -219,7 +219,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Agent | Input | Output | Description |
 |-------|-------|--------|-------------|
-| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found") |
+| `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
