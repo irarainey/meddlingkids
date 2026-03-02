@@ -15,10 +15,9 @@ from urllib import parse
 
 import pydantic
 
-from src.agents import base, gdpr_context
+from src.agents import base, gdpr_context, tracking_analysis_agent
 from src.agents.prompts import structured_report
-from src.analysis import domain_cache
-from src.analysis import vendor_lookup as vlookup
+from src.analysis import domain_cache, vendor_lookup
 from src.data import loader
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
@@ -103,6 +102,8 @@ class StructuredReportAgent(base.BaseAgent):
         score_breakdown: analysis.ScoreBreakdown | None = None,
         domain_knowledge: domain_cache.DomainKnowledge | None = None,
         on_section_done: Callable[[str, int, int], None] | None = None,
+        *,
+        decoded_cookies: dict[str, object] | None = None,
     ) -> report.StructuredReport:
         """Build a complete structured report.
 
@@ -130,6 +131,7 @@ class StructuredReportAgent(base.BaseAgent):
             pre_consent_stats,
             score_breakdown,
             domain_knowledge,
+            decoded_cookies=decoded_cookies,
         )
 
         # All sections are independent — they share the same
@@ -606,7 +608,7 @@ def _enrich_vendor_urls(
         # Try partner enrichment first (curated data),
         # then GVL details (automated enrichment).
         if not vendor.category:
-            enrichment = vlookup._enrich(vendor.name)
+            enrichment = vendor_lookup._enrich(vendor.name)
             if enrichment:
                 vendor.category = enrichment.get("category", "")
                 if "concerns" in enrichment and not vendor.concerns:
@@ -754,6 +756,8 @@ def _build_data_context(
     pre_consent_stats: analysis.PreConsentStats | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    *,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Build the data context string sent to each section LLM call.
 
@@ -886,6 +890,16 @@ def _build_data_context(
     media_ctx = loader.build_media_group_context(tracking_summary.analyzed_url)
     if media_ctx:
         sections.append(media_ctx)
+
+    # Append TC/AC String and TC Validation context.
+    tc_ac = tracking_analysis_agent._build_tc_ac_section(consent_details)
+    if tc_ac:
+        sections.append(tc_ac)
+
+    # Append decoded privacy cookies (ground-truth consent state).
+    decoded = tracking_analysis_agent._build_decoded_cookies_section(decoded_cookies)
+    if decoded:
+        sections.append(decoded)
 
     return "\n".join(sections)
 
