@@ -179,13 +179,13 @@ function riskClass(level: string): string {
         <div v-if="structuredReport.storageAnalysis.localStorageConcerns.length > 0" class="concern-group">
           <span class="storage-type-badge local">localStorage</span>
           <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.localStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
           </ul>
         </div>
         <div v-if="structuredReport.storageAnalysis.sessionStorageConcerns.length > 0" class="concern-group">
           <span class="storage-type-badge session">sessionStorage</span>
           <ul>
-            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i"><strong>{{ stripMarkdown(concern).split(' ')[0] }}</strong> {{ stripMarkdown(concern).split(' ').slice(1).join(' ') }}</li>
+            <li v-for="(concern, i) in structuredReport.storageAnalysis.sessionStorageConcerns" :key="i">{{ stripMarkdown(concern) }}</li>
           </ul>
         </div>
       </div>

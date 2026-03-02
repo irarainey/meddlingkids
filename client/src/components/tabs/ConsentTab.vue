@@ -658,6 +658,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   font-size: var(--stat-value-size);
   font-weight: 700;
   color: var(--stat-value-color);
+  text-align: center;
 }
 
 /* ── Overview Summary ────────────────────────── */
