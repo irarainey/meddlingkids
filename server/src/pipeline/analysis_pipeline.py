@@ -44,7 +44,6 @@ _SECTION_LABELS: dict[str, str] = {
     "cookie-analysis": "Cookie analysis",
     "storage-analysis": "Storage analysis",
     "privacy-risk": "Privacy risk",
-    "key-vendors": "Key vendors",
     "consent-analysis": "Consent analysis",
     "social-media-implications": "Social media",
     "recommendations": "Recommendations",
@@ -611,26 +610,6 @@ def _render_consent_analysis(
     return lines
 
 
-def _render_key_vendors(
-    report: report_models.StructuredReport,
-) -> list[str]:
-    """Render the key vendors section."""
-    if not report.key_vendors.vendors:
-        return []
-    lines = [_SECTION_DIVIDER, "TOP VENDORS AND PARTNERS", _SECTION_DIVIDER]
-    for v in report.key_vendors.vendors:
-        label = v.role
-        if v.category and v.category.lower() != v.role.lower():
-            label = f"{v.role} · {v.category}"
-        if v.url:
-            lines.append(f"  • {v.name} ({label}) — {v.url}")
-        else:
-            lines.append(f"  • {v.name} ({label})")
-        lines.append(f"    {v.privacy_impact}")
-    lines.append("")
-    return lines
-
-
 def _render_recommendations(
     report: report_models.StructuredReport,
 ) -> list[str]:
@@ -870,7 +849,6 @@ def _render_report_text(
     lines += _render_ac_string_data(consent_details)
     lines += _render_tc_validation(consent_details)
     lines += _render_decoded_cookies(decoded_cookies)
-    lines += _render_key_vendors(report)
     lines += _render_recommendations(report)
     lines += _render_llm_usage()
     lines.append("=" * 72)

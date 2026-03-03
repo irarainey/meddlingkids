@@ -42,7 +42,6 @@ class TestDomainCacheUnknownGuard:
                 total=1,
                 groups=[],
             ),
-            key_vendors=report.VendorSection(vendors=[]),
             data_collection=report.DataCollectionSection(items=[]),
         )
         with patch.object(domain_cache, "_CACHE_DIR", tmp_path):

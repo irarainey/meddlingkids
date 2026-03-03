@@ -231,8 +231,6 @@ Located in `types/tracking.ts`:
 | `StorageAnalysisSection` | Storage analysis details |
 | `ConsentDiscrepancy` | Discrepancy between consent claims and observed tracking |
 | `ConsentAnalysisSection` | Consent analysis with discrepancies and summary |
-| `VendorEntry` | Vendor with name, category, and tracking details |
-| `VendorSection` | Collection of vendor entries with total count |
 | `RecommendationGroup` | Group of recommendations by priority |
 | `RecommendationsSection` | Collection of recommendation groups |
 | `SocialMediaRisk` | Per-platform social media privacy risk with severity |

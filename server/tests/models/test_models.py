@@ -457,7 +457,6 @@ class TestStructuredReport:
         assert "cookieAnalysis" in data
         assert "storageAnalysis" in data
         assert "consentAnalysis" in data
-        assert "keyVendors" in data
         assert "recommendations" in data
 
     def test_nested_model(self) -> None:
