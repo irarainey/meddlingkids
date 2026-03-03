@@ -60,9 +60,7 @@ class TestBestDisconnectCategory:
     def test_email_maps_to_advertising(self) -> None:
         """Email categories are treated as advertising."""
         assert _best_disconnect_category(["Email"]) == "advertising"
-        assert (
-            _best_disconnect_category(["EmailAggressive"]) == "advertising"
-        )
+        assert _best_disconnect_category(["EmailAggressive"]) == "advertising"
 
     def test_email_loses_to_social(self) -> None:
         """Social is preferred over Email."""

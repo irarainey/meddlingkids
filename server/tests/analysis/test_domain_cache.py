@@ -161,7 +161,6 @@ class TestBuildContextHint:
         assert "analytics" in hint
 
 
-
 # ── Load / Save round-trip ──────────────────────────────────────
 
 

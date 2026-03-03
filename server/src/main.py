@@ -276,18 +276,20 @@ async def fetch_script_endpoint(
 
     try:
         timeout = aiohttp.ClientTimeout(total=10)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as session,
+            session.get(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
                 max_redirects=3,
-            ) as resp:
-                if resp.status >= 400:
-                    return {"error": f"HTTP {resp.status}", "content": None}
-                raw = await resp.content.read(_MAX_PREVIEW_BYTES)
-                content = raw.decode("utf-8", errors="replace")
-                truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
-                return {"content": content, "truncated": truncated}
+            ) as resp,
+        ):
+            if resp.status >= 400:
+                return {"error": f"HTTP {resp.status}", "content": None}
+            raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+            content = raw.decode("utf-8", errors="replace")
+            truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
+            return {"content": content, "truncated": truncated}
     except TimeoutError:
         return {"error": "Request timed out", "content": None}
     except Exception as exc:

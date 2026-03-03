@@ -114,54 +114,63 @@ _DISCONNECT_OVERRIDES: dict[str, TrackerCategory] = {
 
 _DOMAIN_KEYWORD_CLASSIFIERS: list[tuple[re.Pattern[str], TrackerCategory]] = [
     # ── Advertising ──
-    (re.compile(
-        r"(?:^|[.\-])"
-        r"(?:adserv|adserver|adtech|adnetwork|adexchange"
-        r"|adsystem|adservice|adclick|adform|admarvel|adgrx"
-        r"|adnexus|adnxs|advert|admanag"
-        r"|doubleclick|syndication|clicktrack|smartad|bidswitch"
-        r"|pubmatic|criteo|outbrain|taboola|rubiconproject"
-        r"|magnite|openx|sharethrough|prebid|bidder|programmatic"
-        r"|demand.?side|supply.?side|dsp|ssp|rtb"
-        r"|retarget|remarket|pixel\.)"
-        r"(?:[.\-]|$)",
-        re.I,
-    ), "advertising"),
-
+    (
+        re.compile(
+            r"(?:^|[.\-])"
+            r"(?:adserv|adserver|adtech|adnetwork|adexchange"
+            r"|adsystem|adservice|adclick|adform|admarvel|adgrx"
+            r"|adnexus|adnxs|advert|admanag"
+            r"|doubleclick|syndication|clicktrack|smartad|bidswitch"
+            r"|pubmatic|criteo|outbrain|taboola|rubiconproject"
+            r"|magnite|openx|sharethrough|prebid|bidder|programmatic"
+            r"|demand.?side|supply.?side|dsp|ssp|rtb"
+            r"|retarget|remarket|pixel\.)"
+            r"(?:[.\-]|$)",
+            re.I,
+        ),
+        "advertising",
+    ),
     # ── Analytics ──
-    (re.compile(
-        r"(?:^|[.\-])"
-        r"(?:analytics|metric[s]?|telemetry|chartbeat|parse\.ly"
-        r"|amplitude|mixpanel|segment\.|matomo|piwik"
-        r"|newrelic|datadog|plausible|etracker|leadinfo"
-        r"|rudderstack|rudderlabs|heap\.io|heapanalytics"
-        r"|sentry|bugsnag|trackjs|errortrack"
-        r"|gtm\.|tagmanager|tag\.)"
-        r"(?:[.\-]|$)",
-        re.I,
-    ), "analytics"),
-
+    (
+        re.compile(
+            r"(?:^|[.\-])"
+            r"(?:analytics|metric[s]?|telemetry|chartbeat|parse\.ly"
+            r"|amplitude|mixpanel|segment\.|matomo|piwik"
+            r"|newrelic|datadog|plausible|etracker|leadinfo"
+            r"|rudderstack|rudderlabs|heap\.io|heapanalytics"
+            r"|sentry|bugsnag|trackjs|errortrack"
+            r"|gtm\.|tagmanager|tag\.)"
+            r"(?:[.\-]|$)",
+            re.I,
+        ),
+        "analytics",
+    ),
     # ── Social media ──
-    (re.compile(
-        r"(?:^|[.\-])"
-        r"(?:facebook|fbcdn|fb\.com|twitter|x\.com"
-        r"|linkedin|pinterest|tiktok|instagram"
-        r"|snapchat|reddit|addthis|sharethis|addtoany)"
-        r"(?:[.\-]|$)",
-        re.I,
-    ), "social_media"),
-
+    (
+        re.compile(
+            r"(?:^|[.\-])"
+            r"(?:facebook|fbcdn|fb\.com|twitter|x\.com"
+            r"|linkedin|pinterest|tiktok|instagram"
+            r"|snapchat|reddit|addthis|sharethis|addtoany)"
+            r"(?:[.\-]|$)",
+            re.I,
+        ),
+        "social_media",
+    ),
     # ── Identity resolution ──
-    (re.compile(
-        r"(?:^|[.\-])"
-        r"(?:liveramp|tapad|drawbridge|lotame|zeotap"
-        r"|id5|thetradedesk|adsrvr|unified.?id|uidapi"
-        r"|devicegraph|identity.?resolution|crossdevice"
-        r"|fingerprint|fpjs|fingerprintjs"
-        r"|acxiom|experian|neustar)"
-        r"(?:[.\-]|$)",
-        re.I,
-    ), "identity_resolution"),
+    (
+        re.compile(
+            r"(?:^|[.\-])"
+            r"(?:liveramp|tapad|drawbridge|lotame|zeotap"
+            r"|id5|thetradedesk|adsrvr|unified.?id|uidapi"
+            r"|devicegraph|identity.?resolution|crossdevice"
+            r"|fingerprint|fpjs|fingerprintjs"
+            r"|acxiom|experian|neustar)"
+            r"(?:[.\-]|$)",
+            re.I,
+        ),
+        "identity_resolution",
+    ),
 ]
 
 

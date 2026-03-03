@@ -143,7 +143,6 @@ async def run_ai_analysis(
                 "domain": domain,
                 "scanCount": domain_knowledge.scan_count,
                 "trackers": len(domain_knowledge.trackers),
-                "vendors": len(domain_knowledge.vendors),
             },
         )
     else:
