@@ -317,7 +317,7 @@ async def _run_analysis(
     """Core analysis loop — runs inside the concurrency semaphore."""
     domain = url_mod.extract_domain(url)
     hostname = parse.urlparse(url).hostname or url
-    logger.clear_log_buffer()
+    logger.clear_timers()
     logger.start_log_file(domain)
 
     usage_tracking.reset()

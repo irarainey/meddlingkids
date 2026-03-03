@@ -18,7 +18,7 @@ import aiohttp
 import dotenv
 import fastapi
 from fastapi import staticfiles
-from fastapi.middleware import cors
+from fastapi.middleware import cors, gzip
 from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
@@ -97,6 +97,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# GZip-compress responses above 500 bytes.  SSE tracking events
+# (JSON arrays of cookies/requests) compress ~85-90 %, keeping
+# even extreme sites well under browser EventSource limits.
+app.add_middleware(gzip.GZipMiddleware, minimum_size=500)
 
 
 @app.middleware("http")

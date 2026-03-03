@@ -36,7 +36,6 @@ src/
 │       ├── SummaryTab.vue       # AI analysis results with structured report and findings
 │       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown
 │       ├── CookiesTab.vue       # Cookies by domain
-│       ├── DebugLogTab.vue      # Server debug log (debug mode only)
 │       ├── NetworkTab.vue       # Network requests
 │       ├── ScriptsTab.vue       # Scripts by domain
 │       ├── StorageTab.vue       # localStorage/sessionStorage
@@ -123,7 +122,6 @@ Each tab is a self-contained component with its own template and scoped styles:
 | `SummaryTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
 | `ConsentTab` | Consent dialog details with IAB TCF v2.2 purpose breakdown, consent categories, and partners grouped by risk level |
 | `CookiesTab` | Cookies grouped by domain with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
-| `DebugLogTab` | Server debug log output (visible in debug mode only) |
 | `NetworkTab` | Network requests with third-party filter and filter explanation note |
 | `ScriptsTab` | JavaScript files grouped by domain with click-to-view source dialog (syntax highlighted, auto-formatted) |
 | `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
@@ -170,7 +168,6 @@ const {
   progressStep,         // Current step identifier
   progressPercent,      // Progress bar value (0-100)
   selectedScreenshot,   // Currently selected screenshot index
-  debugLog,             // Server debug log lines
 
   // Computed
   scriptsByDomain,      // Scripts grouped by domain
@@ -280,7 +277,6 @@ Located in `utils/formatters.ts`:
 | **Network** | HTTP requests with third-party filter |
 | **Graph** | Interactive tracker relationship graph showing domain connections, colour-coded by category with first-party and CDN classification, view modes for all domains, third-party only, and pre-consent only |
 | **Scripts** | JavaScript files grouped by domain — click any URL to view syntax-highlighted source in a fullscreen dialog |
-| **Debug Log** | Server debug log output (debug mode only, enabled via `?debug=true`) |
 
 ### Visual Indicators
 
@@ -333,7 +329,9 @@ The environment is configured via:
 | `consentDetails` | `ConsentDetails` | Store consent dialog information |
 | `decodedCookies` | `DecodedCookies` | Store decoded structured cookie breakdowns |
 | `pageError` | `{ type, message, statusCode }` | Display page error dialog |
-| `complete` | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final results with AI analysis and privacy score |
+| `completeTracking` | `{ cookies, networkRequests, localStorage, sessionStorage }` | Final tracking data snapshot (uncapped) |
+| `completeScripts` | `{ scripts, scriptGroups }` | Analysed scripts and groups |
+| `complete` | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies }` | Final results with AI analysis and privacy score |
 | `error` | `{ error }` | Display error message |
 
 ## Development

@@ -302,7 +302,6 @@ Analysis complete
          sessionStorage,    // sessionStorage items
          scripts,           // Scripts with descriptions
          scriptGroups,      // Grouped similar scripts
-         debugLog           // Server debug log lines
        })
    │
    └── await session.close() → Close BrowserContext (in finally block)
@@ -349,7 +348,6 @@ privacySummary       // One-sentence summary
 consentDetails       // Extracted consent info
 decodedCookies       // Decoded structured cookies (TC/AC strings, OneTrust, etc.)
 analysisError        // Error message if AI analysis failed
-debugLog             // Server debug log lines
 
 // Dialog state
 showScoreDialog      // Privacy score popup
@@ -433,7 +431,6 @@ App.vue
     ├── NetworkTab
     ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
     ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
-    └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```
 
 ---
@@ -798,7 +795,9 @@ class ThirdPartyGroup(BaseModel):
 | `pageError` | Server → Client | `{ type, message, statusCode, isAccessDenied?, isOverlayBlocked?, reason? }` | Access denied, HTTP error, or overlay blocked |
 | `consentDetails` | Server → Client | `ConsentDetails` | Extracted consent dialog info |
 | `decodedCookies` | Server → Client | `DecodedCookies` | Decoded structured cookies (OneTrust, Cookiebot, GA, Facebook, Google Ads, USP, GPC/DNT, GPP, TC/AC strings) |
-| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies, cookies, networkRequests, localStorage, sessionStorage, scripts, scriptGroups, debugLog }` | Final analysis results |
+| `completeTracking` | Server → Client | `{ cookies, networkRequests, localStorage, sessionStorage }` | Final tracking data snapshot (uncapped) |
+| `completeScripts` | Server → Client | `{ scripts, scriptGroups }` | Analysed scripts and groups |
+| `complete` | Server → Client | `{ message, structuredReport, summaryFindings, privacyScore, privacySummary, analysisError, consentDetails, decodedCookies }` | Final analysis results |
 | `error` | Server → Client | `{ error }` | Error message |
 
 ---
@@ -1194,7 +1193,7 @@ Every LLM call is automatically tracked for call count and token usage via `usag
   [12:36:14.789] ℹ [LLM-Usage] LLM usage summary totalCalls=7 totalInputTokens=18400 totalOutputTokens=9200 totalTokens=27600
   ```
 - **Reset:** Counters are reset at the start of every `analyze_url_stream()` call.
-- **Log only:** Usage data appears in the console, debug tab, and log files. It is not included in the analysis report.
+- **Log only:** Usage data appears in the console and log files. It is not included in the analysis report.
 
 ### Rate Limit Handling
 

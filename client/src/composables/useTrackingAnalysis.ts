@@ -105,9 +105,6 @@ export function useTrackingAnalysis() {
   /** Screenshot modal state */
   const selectedScreenshot = ref<ScreenshotModal | null>(null)
 
-  /** Server debug log lines collected during analysis */
-  const debugLog = ref<string[]>([])
-
   /** Active SSE connection (tracked for cleanup) */
   let activeEventSource: EventSource | null = null
 
@@ -270,7 +267,6 @@ export function useTrackingAnalysis() {
     statusMessage.value = 'Initializing...'
     progressStep.value = 'init'
     progressPercent.value = 0
-    debugLog.value = []
   }
 
   /**
@@ -339,6 +335,12 @@ export function useTrackingAnalysis() {
         }
       }, 15_000)
 
+      // Safety-net timeout — if the server sends the progress
+      // "complete" event (100%) but the subsequent 'complete' SSE
+      // event never arrives (e.g. payload too large, proxy drop),
+      // surface an error instead of leaving the UI stuck.
+      let completionTimeout: ReturnType<typeof setTimeout> | null = null
+
       eventSource.addEventListener('progress', (event) => {
         try {
           clearTimeout(connectionTimeout)
@@ -352,6 +354,28 @@ export function useTrackingAnalysis() {
             statusMessage.value = data.message
             progressStep.value = data.step
             progressPercent.value = data.progress
+          }
+
+          // When the server signals 100% progress, start a timer.
+          // The actual 'complete' event (with the full payload)
+          // should arrive within seconds.  If it doesn't, the
+          // payload was likely too large or got dropped.
+          if (data.progress >= 100 && !completionTimeout) {
+            completionTimeout = setTimeout(() => {
+              if (!hasCompleted && !isComplete.value) {
+                console.error('[SSE] Completion timeout — complete event not received')
+                errorDialog.value = {
+                  title: 'Results Not Received',
+                  message: 'The analysis completed on the server but the results could not be delivered. '
+                    + 'This can happen on sites with very large amounts of tracking data. '
+                    + 'Please try again.',
+                }
+                showErrorDialog.value = true
+                isLoading.value = false
+                eventSource.close()
+                activeEventSource = null
+              }
+            }, 15_000)
           }
         } catch {
           console.error('[SSE] Failed to parse progress event')
@@ -420,9 +444,53 @@ export function useTrackingAnalysis() {
         }
       })
 
+      // ── Multi-part completion events ──────────────────────
+      // The server splits the final payload across several SSE
+      // events to keep each well under browser/proxy size limits.
+      // These three arrive before the final 'complete' event and
+      // populate the data tabs with the full (uncapped) collections.
+
+      eventSource.addEventListener('completeTracking', (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.cookies) {
+            cookies.value = data.cookies
+          }
+          if (data.networkRequests) {
+            networkRequests.value = data.networkRequests
+          }
+          if (data.localStorage) {
+            localStorage.value = data.localStorage
+          }
+          if (data.sessionStorage) {
+            sessionStorage.value = data.sessionStorage
+          }
+        } catch {
+          console.error('[SSE] Failed to parse completeTracking event')
+        }
+      })
+
+      eventSource.addEventListener('completeScripts', (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.scripts) {
+            scripts.value = data.scripts
+          }
+          if (data.scriptGroups) {
+            scriptGroups.value = data.scriptGroups
+          }
+        } catch {
+          console.error('[SSE] Failed to parse completeScripts event')
+        }
+      })
+
       eventSource.addEventListener('complete', (event) => {
         try {
           clearTimeout(connectionTimeout)
+          if (completionTimeout) {
+            clearTimeout(completionTimeout)
+            completionTimeout = null
+          }
           const data = JSON.parse(event.data)
 
           if (data.summaryFindings) {
@@ -444,34 +512,6 @@ export function useTrackingAnalysis() {
           if (data.decodedCookies) {
             decodedCookies.value = data.decodedCookies
           }
-          // Update final tracking data — the complete event
-          // carries the definitive snapshot captured right before
-          // analysis, which includes cookies set by deferred scripts
-          // and post-consent tracking that arrived after the initial
-          // screenshot event.
-          if (data.cookies) {
-            cookies.value = data.cookies
-          }
-          if (data.networkRequests) {
-            networkRequests.value = data.networkRequests
-          }
-          if (data.localStorage) {
-            localStorage.value = data.localStorage
-          }
-          if (data.sessionStorage) {
-            sessionStorage.value = data.sessionStorage
-          }
-          // Update scripts with analyzed descriptions if available
-          if (data.scripts) {
-            scripts.value = data.scripts
-          }
-          // Update script groups if available
-          if (data.scriptGroups) {
-            scriptGroups.value = data.scriptGroups
-          }
-          if (data.debugLog) {
-            debugLog.value = data.debugLog
-          }
 
           activeTab.value = 'summary'
           statusMessage.value = data.message
@@ -492,8 +532,22 @@ export function useTrackingAnalysis() {
           }, 700)
           eventSource.close()
           activeEventSource = null
-        } catch {
-          console.error('[SSE] Failed to parse complete event')
+        } catch (err) {
+          console.error('[SSE] Failed to parse complete event', err)
+          if (completionTimeout) {
+            clearTimeout(completionTimeout)
+            completionTimeout = null
+          }
+          errorDialog.value = {
+            title: 'Results Error',
+            message: 'The analysis completed but the results could not be processed. '
+              + 'This can happen on sites with very large amounts of tracking data. '
+              + 'Please try again.',
+          }
+          showErrorDialog.value = true
+          isLoading.value = false
+          eventSource.close()
+          activeEventSource = null
         }
       })
 
@@ -510,6 +564,10 @@ export function useTrackingAnalysis() {
 
       eventSource.addEventListener('error', (event) => {
         clearTimeout(connectionTimeout)
+        if (completionTimeout) {
+          clearTimeout(completionTimeout)
+          completionTimeout = null
+        }
         hasServerError = true
         if (event instanceof MessageEvent) {
           try {
@@ -549,6 +607,10 @@ export function useTrackingAnalysis() {
 
       eventSource.onerror = () => {
         clearTimeout(connectionTimeout)
+        if (completionTimeout) {
+          clearTimeout(completionTimeout)
+          completionTimeout = null
+        }
         // After a successful 'complete' event the handler calls
         // eventSource.close(), which sets readyState to CLOSED.
         // In that case the error is just the browser noticing the
@@ -642,7 +704,6 @@ export function useTrackingAnalysis() {
     progressStep,
     progressPercent,
     selectedScreenshot,
-    debugLog,
 
     // Computed
     scriptsByDomain,

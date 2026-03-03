@@ -12,7 +12,6 @@
 - **Blocking DNS resolution in async context** — `validate_analysis_url()` now uses non-blocking `loop.getaddrinfo()` instead of the synchronous `socket.getaddrinfo()`, avoiding event-loop stalls during SSRF validation.
 - **Multicast address bypass in SSRF validation** — Both `validate_analysis_url()` and the fetch-script proxy now reject multicast IP addresses in addition to private, loopback, link-local, and reserved ranges.
 - **Malformed JSON returns 500** — Added a global `JSONDecodeError` exception handler so all POST endpoints return a clean `400 Bad Request` instead of an unhandled 500 when the request body contains invalid JSON.
-- **Debug log sanitisation** — The `debugLog` array sent to the client in the SSE `complete` event is now filtered to remove lines that may contain API keys, tokens, passwords, credentials, or internal file paths.
 - **Hardcoded TLD list replaced with Public Suffix List** — `get_base_domain()` now uses `tldextract` (backed by the Mozilla Public Suffix List) instead of a 9-entry hardcoded `_TWO_PART_TLDS` set, correctly handling all multi-part TLDs (e.g. `.co.uk`, `.com.au`, `.co.jp`) and newly registered suffixes.
 - **Duplicated retry layers in consent extraction agent** — `ConsentExtractionAgent.extract()` and `_text_only_fallback()` had manual retry loops and `asyncio.wait_for` wrappers that duplicated the middleware retry/timeout behaviour. Flattened to single-attempt calls that rely on `RetryChatMiddleware` and `per_call_timeout`.
 - **Retry delay logging mismatch in middleware** — `_log_retry()` computed its own jitter independently of `_backoff()`, so the logged delay could differ from the actual sleep duration. Merged into a single `_backoff_and_log()` method that computes jitter once for both logging and sleeping.
@@ -28,6 +27,11 @@
 - **Script viewer dialog shows short URL** — The dialog link now displays `origin + pathname` (without query string or fragment) for readability, with the full URL available in the tooltip.
 - **Truncation notice directs user to original script** — The truncation warning in the script viewer dialog now reads "Click the link above to view the full script" instead of the generic "The full file may be larger".
 - **Dead code removed** — Removed the unused `llm_failures` counter and its `nonlocal` declaration from `_analyze_unknowns()`, the redundant `ConnectionResetError` entry from `_is_retryable()` (already covered by its parent `ConnectionError`), and an unused `import re` from `url.py`.
+- **Multi-part SSE completion events** — The monolithic `complete` SSE event is split into three separate events (`completeTracking`, `completeScripts`, `complete`) so no single data line exceeds browser or proxy size limits. Sites like Bristol Post with 1900+ network requests, 167 cookies, and 83 storage items now deliver all data without truncation.
+- **GZip compression for SSE stream** — Added `GZipMiddleware` to compress all HTTP responses ≥ 500 bytes. JSON payloads compress 85–90 %, so even the largest tracking events stay well under 100 KB on the wire. The browser decompresses transparently via `Content-Encoding: gzip`.
+- **Debug log tab removed** — Removed the `?debug=true` client-side debug log tab, the `completeDebug` SSE event, the in-memory log buffer (`_log_buffer_var`) that accumulated a stripped copy of every log line, and the `_sanitize_log_buffer` filter. Server logs remain available in stderr and the log files under `.output/logs/`.
+- **`orjson` for SSE serialization** — Replaced `json.dumps()` with `orjson` (C extension) in `format_sse_event()` for 3–10× faster JSON serialization of large SSE payloads.
+- **`uvloop` and `httptools`** — Switched to `uvicorn[standard]` which auto-enables `uvloop` (2–4× faster async event loop) and `httptools` (C-based HTTP parser) with zero code changes.
 
 ### Refactored
 

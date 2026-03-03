@@ -5,7 +5,6 @@
 export { default as SummaryTab } from './SummaryTab.vue'
 export { default as ConsentTab } from './ConsentTab.vue'
 export { default as CookiesTab } from './CookiesTab.vue'
-export { default as DebugLogTab } from './DebugLogTab.vue'
 export { default as NetworkTab } from './NetworkTab.vue'
 export { default as ScriptsTab } from './ScriptsTab.vue'
 export { default as StorageTab } from './StorageTab.vue'
