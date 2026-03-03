@@ -348,9 +348,6 @@ The development server runs on `http://localhost:5173` by default.
 ```bash
 # Type check and build for production
 npm run build
-
-# Preview production build
-npm run preview
 ```
 
 ### Scripts
@@ -359,7 +356,6 @@ npm run preview
 |---------|-------------|
 | `npm run dev` | Start Vite dev server with HMR |
 | `npm run build` | Type check and build for production |
-| `npm run preview` | Preview production build locally |
 
 ## Technology Stack
 

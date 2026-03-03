@@ -38,16 +38,19 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ github.event.release.tag_name && format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, github.event.release.tag_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
 
       - name: Delete old untagged versions
         uses: actions/delete-package-versions@v5
         continue-on-error: true
         with:
+          owner: ${{ github.repository_owner }}
           package-name: meddlingkids
           package-type: container
+          token: ${{ secrets.GITHUB_TOKEN }}
           min-versions-to-keep: 0
           delete-only-untagged-versions: true
