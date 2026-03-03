@@ -34,7 +34,7 @@ import type { NetworkRequest, StructuredReport } from '../../types'
 // ============================================================================
 
 /** Category label used to colour-code graph nodes. */
-type TrackerCategory = 'origin' | 'analytics' | 'advertising' | 'social' | 'identity' | 'other'
+type TrackerCategory = 'origin' | 'analytics' | 'advertising' | 'social' | 'identity' | 'replay' | 'consent' | 'other'
 
 /** Available graph view modes. */
 type ViewMode = 'all' | 'third-party' | 'pre-consent'
@@ -79,6 +79,8 @@ const CATEGORY_COLOURS: Record<TrackerCategory, string> = {
   advertising: '#ef4444',
   social: '#a855f7',
   identity: '#f59e0b',
+  replay: '#ec4899',
+  consent: '#06b6d4',
   other: '#6b7280',
 }
 
@@ -88,8 +90,68 @@ const CATEGORY_LABELS: Record<TrackerCategory, string> = {
   advertising: 'Advertising',
   social: 'Social Media',
   identity: 'Identity Resolution',
+  replay: 'Session Replay',
+  consent: 'Consent Management',
   other: 'Other',
 }
+
+/**
+ * Known session-replay / experience-analytics domain fragments.
+ * Sourced from `tracker_patterns.py` SESSION_REPLAY_PATTERNS and
+ * BEHAVIOURAL_TRACKING_PATTERNS.
+ */
+const REPLAY_DOMAIN_FRAGMENTS: ReadonlyArray<string> = [
+  // Session replay
+  'hotjar.com',
+  'fullstory.com',
+  'clarity.ms',
+  'logrocket.io', 'lr-ingest.io', 'lr-in.com',
+  'mouseflow.com',
+  'smartlook.com',
+  'luckyorange.com', 'luckyorange.net',
+  'inspectlet.com',
+  // Experience analytics / heatmap platforms
+  'contentsquare.com', 'contentsquare.net',
+  'crazyegg.com',
+  'clicktale.com', 'clicktale.net',
+  'decibelinsight.com',
+  'glassboxdigital.com',
+  'quantummetric.com',
+]
+
+/**
+ * Known CMP domain fragments used to classify consent-management nodes.
+ * Sourced from `consent-platforms.json` iframe patterns.
+ */
+const CMP_DOMAIN_FRAGMENTS: ReadonlyArray<string> = [
+  // Sourcepoint
+  'sourcepoint.mgr.consensu.org', 'notice.sp-prod.net', 'cdn.privacy-mgmt.com', 'sp-prod.net',
+  // InMobi / Quantcast Choice
+  'quantcast.mgr.consensu.org',
+  // Cookiebot
+  'consent.cookiebot.com', 'consentcdn.cookiebot.com',
+  // Didomi
+  'sdk.privacy-center.org',
+  // TrustArc
+  'consent.trustarc.com', 'consent-pref.trustarc.com', 'consent.truste.com',
+  // Usercentrics
+  'app.usercentrics.eu',
+  // consentmanager
+  'delivery.consentmanager.net', 'cdn.consentmanager.net', 'app.consentmanager.net',
+  'consentmanager.mgr.consensu.org',
+  // iubenda
+  'cdn.iubenda.com',
+  // Google Funding Choices
+  'fundingchoicesmessages.google.com', 'consent.google.com',
+  // Termly
+  'app.termly.io',
+  // Sirdata
+  'sddan.com',
+  // Crownpeak / Evidon
+  'evidon.com', 'betrad.com',
+  // Commanders Act / TrustCommander
+  'cdn.trustcommander.net',
+]
 
 // ============================================================================
 // Refs
@@ -102,6 +164,21 @@ const selectedNode = ref<GraphNode | null>(null)
 const isFullscreen = ref(false)
 const viewMode = ref<ViewMode>('all')
 const showExplanation = ref(true)
+
+/** The single active category filter — null means "show all". */
+const activeCategory = ref<TrackerCategory | null>(null)
+
+/** Select a category exclusively (click again to deselect). Origin is ignored. */
+function toggleCategory(cat: TrackerCategory): void {
+  if (cat === 'origin') return
+  activeCategory.value = activeCategory.value === cat ? null : cat
+}
+
+/** Whether a category is currently highlighted in the legend. */
+function isCategoryActive(cat: TrackerCategory): boolean {
+  if (cat === 'origin') return true
+  return activeCategory.value === null || activeCategory.value === cat
+}
 
 const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   all: 'All Domains',
@@ -130,6 +207,9 @@ let currentTransform = { x: 0, y: 0, k: 1 }
 let zoomRef: ZoomBehavior<SVGSVGElement, unknown> | null = null
 /** Last-computed minimap coordinate mapping for click handling. */
 let minimapMapping: { minX: number; minY: number; scale: number; offsetX: number; offsetY: number } | null = null
+/** Snapshot of the currently rendered graph data for minimap redraws outside simulation ticks. */
+let renderedNodes: GraphNode[] = []
+let renderedEdges: GraphEdge[] = []
 
 /**
  * Toggle fullscreen mode.
@@ -284,8 +364,18 @@ const graphData = computed(() => {
     edges: Array.from(edgeMap.values()),
   }
 
+  function matchesDomainList(domain: string, fragments: ReadonlyArray<string>): boolean {
+    return fragments.some(f => domain === f || domain.endsWith(`.${f}`))
+  }
+
   function lookupCategory(domain: string): TrackerCategory {
-    // Exact match first
+    // Session-replay services take priority — they are often
+    // classified as "analytics" by Disconnect but warrant a
+    // distinct colour on the graph.
+    if (matchesDomainList(domain, REPLAY_DOMAIN_FRAGMENTS)) return 'replay'
+    // Consent-management platform domains.
+    if (matchesDomainList(domain, CMP_DOMAIN_FRAGMENTS)) return 'consent'
+    // Exact match from structured report categories.
     const direct = domainCategoryMap.value.get(domain)
     if (direct) return direct
     // Try matching the parent domain (e.g. "pixel.facebook.com" → "facebook.com")
@@ -314,33 +404,82 @@ const stats = computed(() => {
 const filteredGraphData = computed(() => {
   const { nodes, edges } = graphData.value
   const mode = viewMode.value
+  const catFilter = activeCategory.value
 
-  if (mode === 'all') return { nodes, edges }
+  // 1. View-mode filter
+  let modeNodes = nodes
+  let modeEdges = edges
 
-  let filteredEdges: GraphEdge[]
-  if (mode === 'third-party') {
-    // Keep edges where at least one endpoint is third-party
-    filteredEdges = edges.filter(e => {
-      const src = nodes.find(n => n.id === e.sourceId)
-      const tgt = nodes.find(n => n.id === e.targetId)
-      return (src?.isThirdParty || tgt?.isThirdParty)
-    })
-  } else {
-    // pre-consent: keep only pre-consent edges
-    filteredEdges = edges.filter(e => e.preConsent)
+  if (mode !== 'all') {
+    if (mode === 'third-party') {
+      modeEdges = edges.filter(e => {
+        const src = nodes.find(n => n.id === e.sourceId)
+        const tgt = nodes.find(n => n.id === e.targetId)
+        return (src?.isThirdParty || tgt?.isThirdParty)
+      })
+    } else {
+      // pre-consent
+      modeEdges = edges.filter(e => e.preConsent)
+    }
+
+    const referencedIds = new Set<string>()
+    for (const e of modeEdges) {
+      referencedIds.add(e.sourceId)
+      referencedIds.add(e.targetId)
+    }
+    referencedIds.add(originDomain.value)
+    modeNodes = nodes.filter(n => referencedIds.has(n.id))
   }
 
-  // Collect nodes referenced by surviving edges, always include origin
-  const referencedIds = new Set<string>()
-  for (const e of filteredEdges) {
-    referencedIds.add(e.sourceId)
-    referencedIds.add(e.targetId)
-  }
-  const origin = originDomain.value
-  referencedIds.add(origin)
+  // 2. Category filter — trace full path chains from origin
+  //    through any intermediate categories to nodes of the
+  //    selected category.  Reverse-BFS from target nodes finds
+  //    every ancestor on a path leading to them, so chains like
+  //    origin → advertising → social are kept when "Social" is
+  //    selected, but branches ending at other categories are pruned.
+  if (catFilter !== null) {
+    // Target node IDs (the selected category)
+    const targetIds = new Set(
+      modeNodes.filter(n => n.category === catFilter).map(n => n.id),
+    )
 
-  const filteredNodes = nodes.filter(n => referencedIds.has(n.id))
-  return { nodes: filteredNodes, edges: filteredEdges }
+    // Build a reverse adjacency list (targetId → set of sourceIds)
+    const reverseAdj = new Map<string, string[]>()
+    for (const e of modeEdges) {
+      let sources = reverseAdj.get(e.targetId)
+      if (!sources) { sources = []; reverseAdj.set(e.targetId, sources) }
+      sources.push(e.sourceId)
+    }
+
+    // BFS backwards from every target node to discover all ancestors
+    const reachable = new Set<string>(targetIds)
+    const queue = [...targetIds]
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      const sources = reverseAdj.get(current)
+      if (sources) {
+        for (const src of sources) {
+          if (!reachable.has(src)) {
+            reachable.add(src)
+            queue.push(src)
+          }
+        }
+      }
+    }
+    reachable.add(originDomain.value)
+
+    // Keep only edges and nodes on the discovered paths
+    modeEdges = modeEdges.filter(e => reachable.has(e.sourceId) && reachable.has(e.targetId))
+    const edgeNodeIds = new Set<string>()
+    for (const e of modeEdges) {
+      edgeNodeIds.add(e.sourceId)
+      edgeNodeIds.add(e.targetId)
+    }
+    edgeNodeIds.add(originDomain.value)
+    modeNodes = modeNodes.filter(n => edgeNodeIds.has(n.id))
+  }
+
+  return { nodes: modeNodes, edges: modeEdges }
 })
 
 // ============================================================================
@@ -399,6 +538,8 @@ function renderGraphInner() {
     .on('zoom', (event) => {
       container.attr('transform', event.transform)
       currentTransform = { x: event.transform.x, y: event.transform.y, k: event.transform.k }
+      // Redraw minimap viewport rectangle on every zoom / pan event
+      renderMinimap(renderedNodes, renderedEdges)
     })
   svgSel.call(zoomRef)
 
@@ -493,6 +634,11 @@ function renderGraphInner() {
     .attr('dy', d => -(d.category === 'origin' ? 20 : radiusScale(d.requestCount) + 6))
     .attr('pointer-events', 'none')
     .attr('opacity', d => showLabel(d) ? 1 : 0)
+
+  // Store a reference to the currently rendered data so the
+  // zoom handler can redraw the minimap after simulation stops.
+  renderedNodes = nodes
+  renderedEdges = edges
 
   // Force simulation — increased alphaDecay for faster convergence
   simulation = forceSimulation<GraphNode, GraphEdge>(nodes)
@@ -749,7 +895,7 @@ watch(filteredGraphData, () => {
   lastWidth = 0
   lastHeight = 0
   renderGraph()
-})
+}, { flush: 'post' })
 
 watch(selectedNode, () => {
   applyHighlight()
@@ -858,20 +1004,41 @@ const selectedResourceBreakdown = computed(() => {
         </button>
       </div>
 
-      <!-- Legend -->
+      <!-- Legend (clickable category filters) -->
       <div class="graph-legend">
-        <span v-for="(colour, cat) in CATEGORY_COLOURS" :key="cat" class="legend-item">
+        <button
+          v-for="(colour, cat) in CATEGORY_COLOURS"
+          :key="cat"
+          class="legend-btn"
+          :class="{
+            dimmed: !isCategoryActive(cat as TrackerCategory),
+            'legend-btn-fixed': (cat as TrackerCategory) === 'origin',
+          }"
+          :title="(cat as TrackerCategory) === 'origin'
+            ? 'Origin site (always visible)'
+            : `Toggle ${CATEGORY_LABELS[cat as TrackerCategory]}`"
+          @click="toggleCategory(cat as TrackerCategory)"
+        >
           <span class="legend-dot" :style="{ background: colour }"></span>
-          {{ CATEGORY_LABELS[cat] }}
-        </span>
+          {{ CATEGORY_LABELS[cat as TrackerCategory] }}
+        </button>
         <span class="legend-item">
           <span class="legend-line legend-line-dashed"></span>
           Pre-consent
         </span>
+        <button
+          v-if="activeCategory !== null"
+          class="legend-reset"
+          title="Show all categories"
+          @click="activeCategory = null"
+        >
+          Show all
+        </button>
       </div>
 
       <div v-if="filteredGraphData.nodes.length <= 1" class="empty-state">
-        No connections to show in this view mode.
+        No connections to show for the current filters.
+        <button v-if="activeCategory !== null" class="legend-reset" style="margin-top: 0.5rem" @click="activeCategory = null">Show all categories</button>
       </div>
 
       <!-- Graph container -->
@@ -1102,11 +1269,67 @@ const selectedResourceBreakdown = computed(() => {
   gap: 0.35rem;
 }
 
+.legend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.legend-btn:hover {
+  border-color: #4b5563;
+  color: #e0e7ff;
+}
+
+.legend-btn.dimmed {
+  opacity: 0.35;
+}
+
+.legend-btn.dimmed:hover {
+  opacity: 0.7;
+}
+
+.legend-btn-fixed {
+  cursor: default;
+  opacity: 1 !important;
+}
+
+.legend-btn-fixed:hover {
+  border-color: transparent;
+  color: #9ca3af;
+}
+
+.legend-reset {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border-separator);
+  border-radius: 4px;
+  background: var(--surface-section);
+  color: #9ca3af;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.legend-reset:hover {
+  border-color: #6366f1;
+  color: #c7d2fe;
+}
+
 .legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .legend-line {

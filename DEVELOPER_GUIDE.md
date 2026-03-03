@@ -432,7 +432,7 @@ App.vue
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
-    ├── TrackerGraphTab (D3.js force-directed network graph)
+    ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
     ├── ScriptsTab
     └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```

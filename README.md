@@ -21,7 +21,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering and initiator domain tracking
-- 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), minimap navigation, and resource-type breakdown
+- 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), clickable category filters (analytics, advertising, social, identity, session replay, consent management), minimap navigation, and resource-type breakdown
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🎯 **TCF Purpose Breakdown** — Maps consent purposes to the IAB TCF v2.2 taxonomy with risk levels, lawful bases, and human-readable explanations
 - 🔓 **TC String Decoding** — Decodes IAB TCF v2 consent strings (euconsent-v2) to reveal purpose consents, vendor consents, legitimate interest signals, and CMP metadata

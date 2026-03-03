@@ -20,6 +20,27 @@
 - **Standard consent keys in localStorage** — `euconsent-v2` and
   `addtl_consent` added to the tier 1 named localStorage lookup, covering CMPs
   (e.g. Didomi) that mirror the standard cookie names to localStorage.
+- **CMP node colour in network graph** — consent management platform domains
+  (Sourcepoint, Cookiebot, Didomi, TrustArc, Usercentrics, consentmanager, etc.)
+  are now classified as "Consent Management" in the tracker network graph and
+  rendered in cyan (`#06b6d4`), making CMP traffic visually distinct from other
+  third-party categories.
+- **Session replay node colour in network graph** — session replay and
+  experience-analytics domains (Hotjar, FullStory, Microsoft Clarity, LogRocket,
+  Mouseflow, Smartlook, Contentsquare, Crazy Egg, etc.) are now classified as
+  "Session Replay" and rendered in pink (`#ec4899`), distinguishing them from
+  regular analytics nodes.
+- **Clickable category legend in network graph** — legend items are now
+  single-select filter buttons. Click a category to isolate it plus the full
+  path chain back to the origin (e.g. clicking "Social" reveals
+  origin → advertising → social chains). Click again or press "Show all" to
+  reset. The origin node is always visible and cannot be toggled off.
+
+### Fixed
+
+- **Network graph minimap not updating on zoom/pan** — the minimap viewport
+  rectangle now redraws on every zoom and pan event, not only during simulation
+  ticks, so it correctly tracks the visible area after the force layout settles.
 
 ### Changed
 

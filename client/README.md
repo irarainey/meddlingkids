@@ -113,7 +113,7 @@ Each tab is a self-contained component with its own template and scoped styles:
 | `NetworkTab` | Network requests with third-party filter and filter explanation note |
 | `ScriptsTab` | JavaScript files grouped by domain |
 | `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
-| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Includes view modes (all domains, third-party only, pre-consent only), subgraph highlighting, minimap navigation, and resource-type breakdown |
+| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Colour-coded by category (analytics, advertising, social, identity, session replay, consent management). Includes view modes (all domains, third-party only, pre-consent only), clickable category legend for single-category path filtering, subgraph highlighting, minimap navigation, and resource-type breakdown |
 
 ### useTrackingAnalysis Composable
 
