@@ -22,7 +22,8 @@ from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
 from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
-from src.utils import cache, logger
+from src.utils import cache
+from src.utils.logger import log
 
 
 def _bootstrap() -> None:
@@ -294,7 +295,7 @@ async def fetch_script_endpoint(
         return {"error": "Request timed out", "content": None}
     except Exception as exc:
         log.debug("Script fetch proxy error", {"url": url, "error": str(exc)})
-        return {"error": str(exc), "content": None}
+        return {"error": "Unexpected error fetching script", "content": None}
 
 
 @app.get("/api/open-browser-stream")
