@@ -124,7 +124,15 @@ async def _fetch_script_content(
                     log.debug("Script fetch failed", {"url": url, "status": response.status})
                     return None
                 body = await response.content.read(_MAX_SCRIPT_BYTES)
-                return body.decode("utf-8", errors="replace")
+                extra = await response.content.read(1)
+                truncated = len(extra) > 0
+                text = body.decode("utf-8", errors="replace")
+                if truncated:
+                    log.debug(
+                        "Script content truncated",
+                        {"url": url, "maxBytes": _MAX_SCRIPT_BYTES},
+                    )
+                return text
         except Exception as exc:
             if attempt < retries:
                 await asyncio.sleep(0.5 * (attempt + 1))
@@ -529,7 +537,6 @@ async def _analyze_unknowns(
     # ── LLM analysis for cache misses ──────────────────────
     semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
     completed_count = cache_hit_scripts
-    llm_failures = 0
 
     if on_progress:
         if cache_hits:
@@ -550,7 +557,7 @@ async def _analyze_unknowns(
         result_indices: list[int],
     ) -> None:
         """Analyse one script, update results, and save to cache immediately."""
-        nonlocal completed_count, llm_failures
+        nonlocal completed_count
         async with semaphore:
             _, description = await _analyze_one_with_llm(url, content)
 

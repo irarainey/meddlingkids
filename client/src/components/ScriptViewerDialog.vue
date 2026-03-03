@@ -33,6 +33,22 @@ const errorMessage = ref('')
 const isTruncated = ref(false)
 const copied = ref(false)
 
+/** URL without query string or fragment, matching the panel display. */
+const shortUrl = computed(() => {
+  try {
+    const u = new URL(props.scriptUrl)
+    return u.origin + u.pathname
+  } catch {
+    const noQuery = props.scriptUrl.indexOf('?') >= 0
+      ? props.scriptUrl.substring(0, props.scriptUrl.indexOf('?'))
+      : props.scriptUrl
+    const noFrag = noQuery.indexOf('#') >= 0
+      ? noQuery.substring(0, noQuery.indexOf('#'))
+      : noQuery
+    return noFrag
+  }
+})
+
 /** Syntax-highlighted HTML produced by highlight.js. */
 const highlightedHtml = computed(() => {
   if (!rawCode.value) return ''
@@ -156,13 +172,13 @@ onUnmounted(() => {
           </div>
           <div v-if="scriptDescription" class="script-description">{{ scriptDescription }}</div>
           <div class="script-url-row">
-            <a :href="scriptUrl" target="_blank" class="script-url" :title="scriptUrl">{{ scriptUrl }}</a>
+            <a :href="scriptUrl" target="_blank" class="script-url" :title="scriptUrl">{{ shortUrl }}</a>
             <button class="copy-btn" :class="{ copied }" @click="copyToClipboard" :disabled="!rawCode">
               {{ copied ? '✓ Copied' : '📋 Copy' }}
             </button>
           </div>
           <div v-if="isTruncated" class="truncation-notice">
-            ⚠️ This script was truncated at 512 KB. The full file may be larger.
+            ⚠️ This script was truncated at 4096 KB. Click the link above to view the full script.
           </div>
         </header>
 

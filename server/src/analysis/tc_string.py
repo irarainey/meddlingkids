@@ -657,8 +657,8 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
     {
         # Advertising / bidding identifiers
         "pid",
-        "TDCPM",
-        "TDID",
+        "tdcpm",
+        "tdid",
         "uid",
         "uuid",
         "uuid2",
@@ -671,11 +671,11 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         "id",
         "i",
         "u",
-        "IDE",
-        "DSID",
-        "FLC",
-        "MUID",
-        "ANONCHK",
+        "ide",
+        "dsid",
+        "flc",
+        "muid",
+        "anonchk",
         "_uetvid",
         "_uetsid",
         # Google Analytics / Ads
@@ -685,17 +685,17 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         "_gcl_au",
         "_gcl_aw",
         "_gac",
-        "NID",
-        "SID",
-        "HSID",
-        "SSID",
-        "APISID",
-        "SAPISID",
-        "1P_JAR",
-        "CONSENT",
-        "DV",
-        "SIDCC",
-        "SOCS",
+        "nid",
+        "sid",
+        "hsid",
+        "ssid",
+        "apisid",
+        "sapisid",
+        "1p_jar",
+        "consent",
+        "dv",
+        "sidcc",
+        "socs",
         # Facebook
         "_fbp",
         "_fbc",
@@ -705,7 +705,6 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         # General session / auth
         "session",
         "sess",
-        "sid",
         "token",
         "auth",
         "csrf",
@@ -1166,7 +1165,7 @@ def scan_for_tc_string(
         name, value = _extract_name_value(cookie)
         if not value or not _looks_like_tc_string(value):
             continue
-        if name.lower() in _HEURISTIC_SKIP_COOKIE_NAMES or name in _HEURISTIC_SKIP_COOKIE_NAMES:
+        if name.lower() in _HEURISTIC_SKIP_COOKIE_NAMES:
             continue
         decoded = decode_tc_string(value)
         if decoded is not None:

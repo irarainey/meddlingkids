@@ -6,24 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
-import re
 from urllib import parse
 
-from src.data import loader
+import tldextract
 
-_TWO_PART_TLDS = frozenset(
-    [
-        "co.uk",
-        "com.au",
-        "co.nz",
-        "co.jp",
-        "com.br",
-        "co.in",
-        "org.uk",
-        "net.uk",
-        "gov.uk",
-    ]
-)
+from src.data import loader
 
 
 def extract_domain(url: str) -> str:
@@ -43,8 +30,9 @@ def extract_domain(url: str) -> str:
 def get_base_domain(domain: str) -> str:
     """Extract the registrable base domain from a full hostname.
 
-    Handles common multi-part TLDs (e.g. ``co.uk``,
-    ``com.au``) and strips a leading ``www.`` prefix.
+    Uses the Public Suffix List (via ``tldextract``) to
+    correctly handle all TLDs, including multi-part ones
+    like ``co.uk``, ``com.au``, ``co.jp``, etc.
 
     Args:
         domain: A hostname like ``"www.example.co.uk"``.
@@ -52,14 +40,12 @@ def get_base_domain(domain: str) -> str:
     Returns:
         The base domain, e.g. ``"example.co.uk"``.
     """
-    clean = re.sub(r"^www\.", "", domain).lower()
-    parts = clean.split(".")
-    if len(parts) >= 2:
-        last_two = ".".join(parts[-2:])
-        if last_two in _TWO_PART_TLDS and len(parts) >= 3:
-            return ".".join(parts[-3:])
-        return last_two
-    return clean
+    ext = tldextract.extract(domain)
+    registered = ext.top_domain_under_public_suffix
+    if registered:
+        return registered.lower()
+    # Single-label host (e.g. "localhost") or bare suffix.
+    return domain.lower()
 
 
 def is_third_party(request_url: str, page_url: str) -> bool:

@@ -6,13 +6,28 @@
 ### Fixed
 
 - **Device emulation user agent bug** — Fixed a critical issue where device emulation (mobile/tablet/desktop) did not apply the intended user agent string. All browser sessions now use the correct `user_agent` for the selected device, ensuring accurate content and consent dialog rendering for mobile and tablet analysis.
-- **SSRF redirect bypass in script fetch proxy** — The `POST /api/fetch-script` endpoint now rejects redirects (`max_redirects=0`) instead of following up to 3 hops, preventing an attacker-controlled redirect to internal hosts (e.g. cloud metadata endpoints). Redirect responses return a clear error to the client.
+- **SSRF redirect bypass in script fetch proxy** — The `POST /api/fetch-script` endpoint now follows up to 3 redirects (previously rejected outright) with SSRF validation on the final resolved URL, preventing open-redirect chains to internal hosts while supporting legitimate CDN redirects.
 - **Script fetch truncation detection** — Replaced the unreliable `total_bytes` check with a 1-extra-byte read, so the `truncated` flag is now accurate regardless of `Content-Length` or chunked encoding.
 - **Server environment leaked to browser process** — The Chrome launch environment is now restricted to an explicit allowlist of safe variables (`HOME`, `PATH`, `DISPLAY`, etc.) instead of forwarding the entire server environment, preventing accidental exposure of API keys or secrets.
 - **Blocking DNS resolution in async context** — `validate_analysis_url()` now uses non-blocking `loop.getaddrinfo()` instead of the synchronous `socket.getaddrinfo()`, avoiding event-loop stalls during SSRF validation.
 - **Multicast address bypass in SSRF validation** — Both `validate_analysis_url()` and the fetch-script proxy now reject multicast IP addresses in addition to private, loopback, link-local, and reserved ranges.
 - **Malformed JSON returns 500** — Added a global `JSONDecodeError` exception handler so all POST endpoints return a clean `400 Bad Request` instead of an unhandled 500 when the request body contains invalid JSON.
 - **Debug log sanitisation** — The `debugLog` array sent to the client in the SSE `complete` event is now filtered to remove lines that may contain API keys, tokens, passwords, credentials, or internal file paths.
+- **Hardcoded TLD list replaced with Public Suffix List** — `get_base_domain()` now uses `tldextract` (backed by the Mozilla Public Suffix List) instead of a 9-entry hardcoded `_TWO_PART_TLDS` set, correctly handling all multi-part TLDs (e.g. `.co.uk`, `.com.au`, `.co.jp`) and newly registered suffixes.
+- **Duplicated retry layers in consent extraction agent** — `ConsentExtractionAgent.extract()` and `_text_only_fallback()` had manual retry loops and `asyncio.wait_for` wrappers that duplicated the middleware retry/timeout behaviour. Flattened to single-attempt calls that rely on `RetryChatMiddleware` and `per_call_timeout`.
+- **Retry delay logging mismatch in middleware** — `_log_retry()` computed its own jitter independently of `_backoff()`, so the logged delay could differ from the actual sleep duration. Merged into a single `_backoff_and_log()` method that computes jitter once for both logging and sleeping.
+- **`api_version` not applied to non-Responses Azure client** — The `AzureOpenAIChatClient` code path in `_create_azure_client()` used `cfg.api_version` directly instead of the local `api_version` variable, which may have been upgraded for Responses API compatibility. Both code paths now use the same local variable.
+- **Case-sensitive TC String heuristic skip list** — `_HEURISTIC_SKIP_COOKIE_NAMES` contained mixed-case entries (e.g. `"IDE"`, `"MUID"`, `"NID"`) but was checked with `name.lower()`, so the mixed-case entries never matched. All entries normalised to lowercase and the redundant `name in ...` fallback removed.
+- **Deprecated `asyncio.get_event_loop()` usage** — Two calls in `stream.py` replaced with `asyncio.get_running_loop()` to avoid the deprecation warning and ensure correctness when no current event loop is set.
+- **Internal script fetch truncation undetected** — `_fetch_script_content()` in the script analysis pipeline silently discarded content beyond `_MAX_SCRIPT_BYTES` without logging. Added a 1-extra-byte probe so truncation is detected and logged at DEBUG level.
+- **Non-script files appearing in Scripts panel** — The browser session now filters out URLs with non-script file extensions (`.json`, `.css`, `.html`, `.xml`, `.svg`, fonts, images) even when the browser tags them as `resource_type == "script"`, preventing false entries in the script analysis results.
+
+### Changed
+
+- **Script preview limit increased to 4096 KB** — The `POST /api/fetch-script` proxy cap raised from 512 KB to 4096 KB, allowing larger bundled scripts to be viewed in full in the script source dialog.
+- **Script viewer dialog shows short URL** — The dialog link now displays `origin + pathname` (without query string or fragment) for readability, with the full URL available in the tooltip.
+- **Truncation notice directs user to original script** — The truncation warning in the script viewer dialog now reads "Click the link above to view the full script" instead of the generic "The full file may be larger".
+- **Dead code removed** — Removed the unused `llm_failures` counter and its `nonlocal` declaration from `_analyze_unknowns()`, the redundant `ConnectionResetError` entry from `_is_retryable()` (already covered by its parent `ConnectionError`), and an unused `import re` from `url.py`.
 
 ## 1.6.2
 

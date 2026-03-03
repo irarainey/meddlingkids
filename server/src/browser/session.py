@@ -41,6 +41,44 @@ _CLOSE_TIMEOUT_SECONDS = 8
 # SSE stream.
 _CAPTURE_TIMEOUT_SECONDS = 10
 
+# File extensions that are not JavaScript and should be
+# excluded even when the browser tags them as "script".
+_NON_SCRIPT_EXTENSIONS = frozenset(
+    {
+        ".json",
+        ".css",
+        ".html",
+        ".htm",
+        ".xml",
+        ".svg",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".ico",
+    }
+)
+
+
+def _is_non_script_url(url: str) -> bool:
+    """Return ``True`` when the URL path has a non-script extension.
+
+    Strips query strings and fragments before checking so that
+    URLs like ``data.json?callback=cb`` are correctly rejected.
+    """
+    # Strip query and fragment
+    path = url.split("?", 1)[0].split("#", 1)[0]
+    dot = path.rfind(".")
+    if dot == -1:
+        return False
+    ext = path[dot:].lower()
+    return ext in _NON_SCRIPT_EXTENSIONS
+
 
 class BrowserSession:
     """Isolated session for a single URL analysis.
@@ -142,8 +180,10 @@ class BrowserSession:
         # Track scripts — O(1) set lookup for deduplication.
         # Skip blob: URLs which are browser-internal inline
         # scripts that cannot be fetched or meaningfully
-        # analysed.
-        if resource_type == "script" and not request_url.startswith("blob:"):
+        # analysed.  Also skip non-script file extensions
+        # (e.g. .json) that the browser may tag as "script"
+        # when loaded via <script src="...">.
+        if resource_type == "script" and not request_url.startswith("blob:") and not _is_non_script_url(request_url):
             if len(self._tracked_scripts) < MAX_TRACKED_SCRIPTS and request_url not in self._seen_script_urls:
                 self._seen_script_urls.add(request_url)
                 self._tracked_scripts.append(

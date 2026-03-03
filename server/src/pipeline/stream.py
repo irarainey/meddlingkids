@@ -253,7 +253,7 @@ async def _run_analysis(
     )
 
     log.start_timer("total-analysis")
-    analysis_start = asyncio.get_event_loop().time()
+    analysis_start = asyncio.get_running_loop().time()
 
     try:
         async with asyncio.timeout(STREAM_TIMEOUT_SECONDS):
@@ -281,7 +281,7 @@ async def _run_analysis(
             )
 
     except TimeoutError:
-        elapsed = asyncio.get_event_loop().time() - analysis_start
+        elapsed = asyncio.get_running_loop().time() - analysis_start
         elapsed_str = f"{int(elapsed)} seconds" if elapsed < 120 else f"{elapsed / 60:.1f} minutes"
         log.error(
             "Analysis timed out",

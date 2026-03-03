@@ -213,70 +213,45 @@ class ConsentExtractionAgent(base.BaseAgent):
             " any manage options button."
         )
 
-        vision_timeout = 30
-        max_vision_attempts = 2
-        last_error: Exception | None = None
+        try:
+            response = await self._complete_vision(
+                user_text=vision_user_text,
+                screenshot=llm_screenshot,
+            )
+            log.end_timer(
+                "vision-extraction",
+                "Vision extraction complete",
+            )
 
-        for attempt in range(1, max_vision_attempts + 1):
-            try:
-                response = await asyncio.wait_for(
-                    self._complete_vision(
-                        user_text=vision_user_text,
-                        screenshot=llm_screenshot,
-                    ),
-                    timeout=vision_timeout,
+            parsed = self._parse_response(response, _ConsentExtractionResponse)
+            if parsed:
+                llm_result = _to_domain(parsed, consent_text)
+                result = _merge_results(llm_result, local_result)
+                log.info(
+                    "Extraction result (LLM + local merge)",
+                    {
+                        "categories": len(result.categories),
+                        "partners": len(result.partners),
+                        "purposes": len(result.purposes),
+                        "hasManageOptions": result.has_manage_options,
+                        "claimedPartnerCount": result.claimed_partner_count,
+                    },
                 )
-                log.end_timer(
-                    "vision-extraction",
-                    "Vision extraction complete",
-                )
+                return result
 
-                parsed = self._parse_response(response, _ConsentExtractionResponse)
-                if parsed:
-                    llm_result = _to_domain(parsed, consent_text)
-                    result = _merge_results(llm_result, local_result)
-                    log.info(
-                        "Extraction result (LLM + local merge)",
-                        {
-                            "categories": len(result.categories),
-                            "partners": len(result.partners),
-                            "purposes": len(result.purposes),
-                            "hasManageOptions": result.has_manage_options,
-                            "claimedPartnerCount": result.claimed_partner_count,
-                        },
-                    )
-                    return result
+            # Fallback: manual parse from text
+            log.debug("Structured parse failed, trying text fallback")
+            llm_result = _parse_text_fallback(response.text, consent_text)
+            return _merge_results(llm_result, local_result)
+        except Exception as error:
+            error_msg = errors.get_error_message(error)
+            is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
 
-                # Fallback: manual parse from text
-                log.debug("Structured parse failed, trying text fallback")
-                llm_result = _parse_text_fallback(response.text, consent_text)
-                return _merge_results(llm_result, local_result)
-            except Exception as error:
-                last_error = error
-                error_msg = errors.get_error_message(error)
-                is_timeout = isinstance(error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
-                if is_timeout and attempt < max_vision_attempts:
-                    log.warn(
-                        "Vision timed out — retrying",
-                        {"attempt": attempt, "error": error_msg},
-                    )
-                    continue
-                if not is_timeout:
-                    # Non-timeout error — break immediately.
-                    break
-                log.warn(
-                    "Vision timed out — trying text-only LLM fallback",
-                    {"attempt": attempt, "error": error_msg},
-                )
+            log.end_timer(
+                "vision-extraction",
+                "Vision extraction failed",
+            )
 
-        # ── Vision exhausted — try text-only LLM ───────
-        log.end_timer(
-            "vision-extraction",
-            "Vision extraction failed",
-        )
-        if last_error is not None:
-            error_msg = errors.get_error_message(last_error)
-            is_timeout = isinstance(last_error, (asyncio.TimeoutError, TimeoutError)) or "timed out" in error_msg.lower()
             if is_timeout:
                 text_result = await self._text_only_fallback(
                     consent_text,
@@ -290,6 +265,7 @@ class ConsentExtractionAgent(base.BaseAgent):
                     "Consent extraction failed — using local parse",
                     {"error": error_msg},
                 )
+
             # LLM failed entirely — use the local parse as
             # the primary result, supplemented with partner
             # count from regex if the local parser missed it.
@@ -297,22 +273,16 @@ class ConsentExtractionAgent(base.BaseAgent):
                 local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
             return local_result
 
-        # All vision attempts failed without raising — fall
-        # back to the local parse result.
-        if not local_result.claimed_partner_count:
-            local_result.claimed_partner_count = _extract_partner_count_from_text(consent_text)
-        return local_result
-
     async def _text_only_fallback(
         self,
         consent_text: str,
         local_result: consent.ConsentDetails,
     ) -> consent.ConsentDetails | None:
-        """Attempt a text-only LLM call when vision times out.
+        """Attempt a text-only LLM call when vision fails.
 
-        Tries up to two attempts with a 20 s timeout each.
-        Returns the merged result on success, or ``None``
-        when both attempts fail.
+        Relies on the middleware retry layer for timeout and
+        retry handling.  Returns the merged result on success,
+        or ``None`` when the call fails.
         """
         if not consent_text.strip():
             return None
@@ -328,56 +298,37 @@ class ConsentExtractionAgent(base.BaseAgent):
             " categories, partners, purposes,"
             " and any manage options button."
         )
-        text_timeout = 20
-        max_text_attempts = 2
 
-        for attempt in range(1, max_text_attempts + 1):
-            try:
-                response = await asyncio.wait_for(
-                    self._complete(
-                        user_prompt=text_user_prompt,
-                        response_model=_ConsentExtractionResponse,
-                    ),
-                    timeout=text_timeout,
+        try:
+            response = await self._complete(
+                user_prompt=text_user_prompt,
+                response_model=_ConsentExtractionResponse,
+            )
+            parsed = self._parse_response(response, _ConsentExtractionResponse)
+            if parsed:
+                llm_text_result = _to_domain(parsed, consent_text)
+                result = _merge_results(llm_text_result, local_result)
+                log.info(
+                    "Text-only LLM fallback succeeded",
+                    {
+                        "categories": len(result.categories),
+                        "partners": len(result.partners),
+                        "purposes": len(result.purposes),
+                        "claimedPartnerCount": result.claimed_partner_count,
+                    },
                 )
-                parsed = self._parse_response(response, _ConsentExtractionResponse)
-                if parsed:
-                    llm_text_result = _to_domain(parsed, consent_text)
-                    result = _merge_results(llm_text_result, local_result)
-                    log.info(
-                        "Text-only LLM fallback succeeded",
-                        {
-                            "categories": len(result.categories),
-                            "partners": len(result.partners),
-                            "purposes": len(result.purposes),
-                            "claimedPartnerCount": result.claimed_partner_count,
-                        },
-                    )
-                    return result
+                return result
 
-                # Structured parse failed — try manual JSON parse.
-                text_fallback = _parse_text_fallback(response.text, consent_text)
-                if text_fallback.categories or text_fallback.purposes:
-                    return _merge_results(text_fallback, local_result)
-            except Exception as fallback_err:
-                error_msg = errors.get_error_message(fallback_err)
-                is_timeout = (
-                    isinstance(
-                        fallback_err,
-                        (asyncio.TimeoutError, TimeoutError),
-                    )
-                    or "timed out" in error_msg.lower()
-                )
-                if is_timeout and attempt < max_text_attempts:
-                    log.warn(
-                        "Text-only LLM fallback timed out — retrying",
-                        {"attempt": attempt, "error": error_msg},
-                    )
-                    continue
-                log.debug(
-                    "Text-only LLM fallback failed",
-                    {"attempt": attempt, "error": error_msg},
-                )
+            # Structured parse failed — try manual JSON parse.
+            text_fallback = _parse_text_fallback(response.text, consent_text)
+            if text_fallback.categories or text_fallback.purposes:
+                return _merge_results(text_fallback, local_result)
+        except Exception as fallback_err:
+            error_msg = errors.get_error_message(fallback_err)
+            log.debug(
+                "Text-only LLM fallback failed",
+                {"error": error_msg},
+            )
         return None
 
 

@@ -266,8 +266,8 @@ async def tc_string_decode_endpoint(
     return decoded.model_dump(by_alias=True)
 
 
-# Maximum bytes to fetch for script preview (512 KB).
-_MAX_PREVIEW_BYTES = 512 * 1024
+# Maximum bytes to fetch for script preview (4096 KB).
+_MAX_PREVIEW_BYTES = 4096 * 1024
 
 
 async def _is_safe_remote_url(url: str) -> bool:
@@ -314,7 +314,7 @@ async def fetch_script_endpoint(
     Acts as a same-origin proxy so the client can display
     syntax-highlighted script source without CORS restrictions.
     Only HTTP(S) URLs are accepted and the response is capped
-    at 512 KB to prevent abuse.
+    at 4096 KB to prevent abuse.
     """
 
     body = await request.json()
@@ -336,15 +336,15 @@ async def fetch_script_endpoint(
             session.get(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
-                max_redirects=0,
-                allow_redirects=False,
+                max_redirects=3,
             ) as resp,
         ):
+            # Validate the final URL after redirects to prevent
+            # SSRF via an open-redirect chain.
+            if resp.url is not None and str(resp.url) != url and not await _is_safe_remote_url(str(resp.url)):
+                return {"error": "Redirect target points to a disallowed host", "content": None}
             if resp.status >= 400:
                 return {"error": f"HTTP {resp.status}", "content": None}
-            # Reject redirects — the target could point to an internal host.
-            if resp.status in {301, 302, 303, 307, 308}:
-                return {"error": f"HTTP {resp.status} redirect rejected", "content": None}
             raw = await resp.content.read(_MAX_PREVIEW_BYTES)
             extra = await resp.content.read(1)
             content = raw.decode("utf-8", errors="replace")

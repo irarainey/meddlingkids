@@ -230,7 +230,6 @@ def _is_retryable(error: BaseException) -> bool:
         (
             ConnectionError,
             TimeoutError,
-            ConnectionResetError,
             EmptyResponseError,
         ),
     )
@@ -315,8 +314,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                     log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {last_error}")
                     raise last_error from exc
 
-                self._log_retry(attempt, last_error, delay_ms)
-                delay_ms = await self._backoff(last_error, delay_ms)
+                delay_ms = await self._backoff_and_log(attempt, last_error, delay_ms)
             except Exception as exc:
                 last_error = exc
                 if attempt >= self.max_retries or not _is_retryable(exc):
@@ -324,8 +322,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                         log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {exc}")
                     raise
 
-                self._log_retry(attempt, exc, delay_ms)
-                delay_ms = await self._backoff(exc, delay_ms)
+                delay_ms = await self._backoff_and_log(attempt, exc, delay_ms)
 
         if last_error:  # pragma: no cover — defensive
             raise last_error
@@ -378,43 +375,42 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
         self,
         attempt: int,
         exc: BaseException,
-        delay_ms: int,
+        total_ms: float,
     ) -> None:
         """Log a retry warning with attempt details.
 
         Args:
             attempt: Zero-based attempt index.
             exc: The exception that triggered the retry.
-            delay_ms: Base delay before jitter.
+            total_ms: Actual delay (with jitter) to be slept.
         """
-        retry_after = self._get_retry_after(exc)
-        wait_ms = retry_after or delay_ms
-        jitter = random.uniform(0, wait_ms * 0.1)
-        total_ms = min(wait_ms + jitter, self.max_delay_ms)
         log.warn(
             f"Agent '{self.agent_name}' attempt {attempt + 1}/{self.max_retries + 1} failed, retrying in {total_ms / 1000:.1f}s: {exc}"
         )
 
-    async def _backoff(
+    async def _backoff_and_log(
         self,
+        attempt: int,
         exc: BaseException,
         delay_ms: int,
     ) -> int:
-        """Sleep for backoff and return the next delay.
+        """Compute jitter once, log the delay, sleep, and return the next base delay.
 
         Respects ``Retry-After`` headers when present.
 
         Args:
+            attempt: Zero-based attempt index.
             exc: The exception (may contain headers).
             delay_ms: Current base delay in ms.
 
         Returns:
-            Updated delay for the next attempt.
+            Updated base delay for the next attempt.
         """
         retry_after = self._get_retry_after(exc)
         wait_ms = retry_after or delay_ms
         jitter = random.uniform(0, wait_ms * 0.1)
         total_ms = min(wait_ms + jitter, self.max_delay_ms)
+        self._log_retry(attempt, exc, total_ms)
         await asyncio.sleep(total_ms / 1000)
         return int(delay_ms * _BACKOFF_MULTIPLIER)
 
