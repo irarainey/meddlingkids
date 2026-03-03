@@ -43,6 +43,9 @@ log = logger.create_logger("ScriptCache")
 # Cache directory — lives under server/.output/cache/, gitignored.
 _CACHE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "cache" / "scripts"
 
+# Maximum length for sanitised cache filenames (before ".json").
+_CACHE_FILENAME_MAX_LENGTH = 100
+
 
 def is_valid_script_url(url: str) -> bool:
     """Return True when *url* looks like a real HTTP(S) script URL.
@@ -119,7 +122,7 @@ def _domain_path(domain: str) -> pathlib.Path:
     ``example.com`` share the same cache entry.
     """
     safe = domain.lower().removeprefix("www.")
-    safe = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe)[:100]
+    safe = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe)[:_CACHE_FILENAME_MAX_LENGTH]
     return _CACHE_DIR / f"{safe}.json"
 
 

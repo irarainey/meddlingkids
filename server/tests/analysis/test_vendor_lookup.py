@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from collections.abc import Generator
+from unittest import mock
 
-from src.analysis.vendor_lookup import (
-    AcResolutionResult,
-    ResolvedAcProvider,
-    ResolvedVendor,
-    VendorEnrichment,
-    VendorResolutionResult,
-    _normalise_keys,
-    resolve_ac_providers,
-    resolve_gvl_vendors,
-)
+import pytest
+
+from src.analysis import vendor_lookup
 
 # ── GVL Vendor Resolution ───────────────────────────────────────
 
@@ -30,18 +24,18 @@ _FAKE_GVL_DETAILS: dict[str, dict[str, object]] = {
     "10": {"name": "Index Exchange"},
 }
 
-_FAKE_ENRICHMENT: dict[str, VendorEnrichment] = {
-    "captify technologies": VendorEnrichment(
+_FAKE_ENRICHMENT: dict[str, vendor_lookup.VendorEnrichment] = {
+    "captify technologies": vendor_lookup.VendorEnrichment(
         category="Ad Network",
         concerns=["Contextual and semantic advertising"],
         url="https://captify.tech",
     ),
-    "index exchange": VendorEnrichment(
+    "index exchange": vendor_lookup.VendorEnrichment(
         category="Ad Network",
         concerns=["Ad marketplace"],
         url="https://indexexchange.com",
     ),
-    "meta": VendorEnrichment(
+    "meta": vendor_lookup.VendorEnrichment(
         category="Ad Network",
         concerns=[
             "Facebook pixel on millions of sites",
@@ -49,7 +43,7 @@ _FAKE_ENRICHMENT: dict[str, VendorEnrichment] = {
         ],
         url="https://facebook.com",
     ),
-    "taboola": VendorEnrichment(
+    "taboola": vendor_lookup.VendorEnrichment(
         category="Analytics",
     ),
 }
@@ -58,15 +52,24 @@ _FAKE_ENRICHMENT: dict[str, VendorEnrichment] = {
 class TestResolveGvlVendors:
     """Tests for resolve_gvl_vendors()."""
 
-    @patch(
+    @pytest.fixture(autouse=True)
+    def _empty_id_indexes(self) -> Generator[None]:
+        """Prevent real data loading via ID-based enrichment lookups."""
+        with mock.patch(
+            "src.analysis.vendor_lookup._build_enrichment_indexes",
+            return_value=({}, {}, {}),
+        ):
+            yield
+
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -76,11 +79,11 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([2, 1])
-        assert result == VendorResolutionResult(
+        result = vendor_lookup.resolve_gvl_vendors([2, 1])
+        assert result == vendor_lookup.VendorResolutionResult(
             resolved=[
-                ResolvedVendor(id=1, name="Exponential Interactive"),
-                ResolvedVendor(
+                vendor_lookup.ResolvedVendor(id=1, name="Exponential Interactive"),
+                vendor_lookup.ResolvedVendor(
                     id=2,
                     name="Captify Technologies",
                     category="Ad Network",
@@ -91,15 +94,15 @@ class TestResolveGvlVendors:
             unresolved_count=0,
         )
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -109,19 +112,19 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([999])
+        result = vendor_lookup.resolve_gvl_vendors([999])
         assert result["resolved"] == []
         assert result["unresolved_count"] == 1
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -131,20 +134,20 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([10, 500, 1])
+        result = vendor_lookup.resolve_gvl_vendors([10, 500, 1])
         assert len(result["resolved"]) == 2
         assert result["resolved"][1]["category"] == "Ad Network"
         assert result["unresolved_count"] == 1
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -154,19 +157,19 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([])
+        result = vendor_lookup.resolve_gvl_vendors([])
         assert result["resolved"] == []
         assert result["unresolved_count"] == 0
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -176,19 +179,19 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([10, 2, 1])
+        result = vendor_lookup.resolve_gvl_vendors([10, 2, 1])
         ids = [v["id"] for v in result["resolved"]]
         assert ids == [1, 2, 10]
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -198,19 +201,19 @@ class TestResolveGvlVendors:
         _det: object,
         _enr: object,
     ) -> None:
-        result = resolve_gvl_vendors([1, 1, 1, 2, 2, 10])
+        result = vendor_lookup.resolve_gvl_vendors([1, 1, 1, 2, 2, 10])
         assert len(result["resolved"]) == 3
         assert result["unresolved_count"] == 0
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -221,7 +224,7 @@ class TestResolveGvlVendors:
         _enr: object,
     ) -> None:
         """Vendors matching the enrichment index get category/concerns/url."""
-        result = resolve_gvl_vendors([2])
+        result = vendor_lookup.resolve_gvl_vendors([2])
         vendor = result["resolved"][0]
         assert vendor["category"] == "Ad Network"
         assert vendor["concerns"] == [
@@ -229,15 +232,15 @@ class TestResolveGvlVendors:
         ]
         assert vendor["url"] == "https://captify.tech"
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value=_FAKE_GVL_DETAILS,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value=_FAKE_GVL,
     )
@@ -248,17 +251,17 @@ class TestResolveGvlVendors:
         _enr: object,
     ) -> None:
         """Vendors not in the enrichment index omit extra keys."""
-        result = resolve_gvl_vendors([1])
+        result = vendor_lookup.resolve_gvl_vendors([1])
         vendor = result["resolved"][0]
         assert "category" not in vendor
         assert "concerns" not in vendor
         assert "url" not in vendor
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value={
             "1": {
@@ -269,7 +272,7 @@ class TestResolveGvlVendors:
             },
         },
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value={"1": "Exponential Interactive"},
     )
@@ -280,17 +283,17 @@ class TestResolveGvlVendors:
         _enr: object,
     ) -> None:
         """Enrichment embedded in GVL data is used when available."""
-        result = resolve_gvl_vendors([1])
+        result = vendor_lookup.resolve_gvl_vendors([1])
         vendor = result["resolved"][0]
         assert vendor["category"] == "Ad Network"
         assert vendor["concerns"] == ["Retargeting"]
         assert vendor["url"] == "https://exponential.com"
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendor_details",
         return_value={
             "1": {
@@ -301,7 +304,7 @@ class TestResolveGvlVendors:
             },
         },
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_gvl_vendors",
         return_value={"1": "Exponential Interactive"},
     )
@@ -312,7 +315,7 @@ class TestResolveGvlVendors:
         _enr: object,
     ) -> None:
         """GVL-sourced policyUrl and purposes are attached to resolved vendors."""
-        result = resolve_gvl_vendors([1])
+        result = vendor_lookup.resolve_gvl_vendors([1])
         vendor = result["resolved"][0]
         assert vendor["policy_url"] == "https://exponential.com/privacy"
         assert vendor["purposes"] == [1, 2, 3, 4]
@@ -328,11 +331,20 @@ _FAKE_ATP: dict[str, dict[str, str]] = {
 class TestResolveAcProviders:
     """Tests for resolve_ac_providers()."""
 
-    @patch(
+    @pytest.fixture(autouse=True)
+    def _empty_id_indexes(self) -> Generator[None]:
+        """Prevent real data loading via ID-based enrichment lookups."""
+        with mock.patch(
+            "src.analysis.vendor_lookup._build_enrichment_indexes",
+            return_value=({}, {}, {}),
+        ):
+            yield
+
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -341,16 +353,16 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([89, 42])
-        assert result == AcResolutionResult(
+        result = vendor_lookup.resolve_ac_providers([89, 42])
+        assert result == vendor_lookup.AcResolutionResult(
             resolved=[
-                ResolvedAcProvider(
+                vendor_lookup.ResolvedAcProvider(
                     id=42,
                     name="Taboola",
                     policy_url="https://taboola.com/privacy",
                     category="Analytics",
                 ),
-                ResolvedAcProvider(
+                vendor_lookup.ResolvedAcProvider(
                     id=89,
                     name="Meta",
                     policy_url="https://facebook.com/privacy",
@@ -365,11 +377,11 @@ class TestResolveAcProviders:
             unresolved_count=0,
         )
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -378,15 +390,15 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([7777])
+        result = vendor_lookup.resolve_ac_providers([7777])
         assert result["resolved"] == []
         assert result["unresolved_count"] == 1
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -395,9 +407,9 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([100])
+        result = vendor_lookup.resolve_ac_providers([100])
         assert result["resolved"] == [
-            ResolvedAcProvider(
+            vendor_lookup.ResolvedAcProvider(
                 id=100,
                 name="No Policy Provider",
                 policy_url="",
@@ -405,11 +417,11 @@ class TestResolveAcProviders:
         ]
         assert result["unresolved_count"] == 0
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -418,15 +430,15 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([])
+        result = vendor_lookup.resolve_ac_providers([])
         assert result["resolved"] == []
         assert result["unresolved_count"] == 0
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -435,15 +447,15 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([89, 42, 100])
+        result = vendor_lookup.resolve_ac_providers([89, 42, 100])
         ids = [p["id"] for p in result["resolved"]]
         assert ids == [42, 89, 100]
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -452,15 +464,15 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([89, 89, 89, 42, 42])
+        result = vendor_lookup.resolve_ac_providers([89, 89, 89, 42, 42])
         assert len(result["resolved"]) == 2
         assert result["unresolved_count"] == 0
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -469,15 +481,15 @@ class TestResolveAcProviders:
         _atp: object,
         _enr: object,
     ) -> None:
-        result = resolve_ac_providers([89, 1, 1, 1, 42, 5, 5])
+        result = vendor_lookup.resolve_ac_providers([89, 1, 1, 1, 42, 5, 5])
         assert len(result["resolved"]) == 2
         assert result["unresolved_count"] == 2  # IDs 1 and 5
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -487,16 +499,16 @@ class TestResolveAcProviders:
         _enr: object,
     ) -> None:
         """ATP providers matching enrichment get category/concerns."""
-        result = resolve_ac_providers([89])
+        result = vendor_lookup.resolve_ac_providers([89])
         provider = result["resolved"][0]
         assert provider["category"] == "Ad Network"
         assert "Facebook pixel" in provider["concerns"][0]
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value=_FAKE_ENRICHMENT,
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value=_FAKE_ATP,
     )
@@ -506,16 +518,16 @@ class TestResolveAcProviders:
         _enr: object,
     ) -> None:
         """Disconnect-only enrichment has category but no concerns."""
-        result = resolve_ac_providers([42])
+        result = vendor_lookup.resolve_ac_providers([42])
         provider = result["resolved"][0]
         assert provider["category"] == "Analytics"
         assert "concerns" not in provider
 
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup._get_enrichment_index",
         return_value={},
     )
-    @patch(
+    @mock.patch(
         "src.analysis.vendor_lookup.loader.get_google_atp_providers",
         return_value={
             "50": {
@@ -533,7 +545,7 @@ class TestResolveAcProviders:
         _enr: object,
     ) -> None:
         """Enrichment embedded in ATP data is used when available."""
-        result = resolve_ac_providers([50])
+        result = vendor_lookup.resolve_ac_providers([50])
         provider = result["resolved"][0]
         assert provider["category"] == "Data Broker"
         assert provider["concerns"] == ["Sells data"]
@@ -547,15 +559,15 @@ class TestNormaliseKeys:
     """Tests for _normalise_keys() name normalisation."""
 
     def test_strips_corporate_suffixes(self) -> None:
-        keys = _normalise_keys("Criteo SA")
+        keys = vendor_lookup._normalise_keys("Criteo SA")
         assert "criteo" in keys
 
     def test_lowercase(self) -> None:
-        keys = _normalise_keys("Index Exchange Inc.")
+        keys = vendor_lookup._normalise_keys("Index Exchange Inc.")
         assert "index exchange inc." in keys
         assert "index exchange" in keys
 
     def test_single_word_no_extra_keys(self) -> None:
-        keys = _normalise_keys("Quantcast")
+        keys = vendor_lookup._normalise_keys("Quantcast")
         assert "quantcast" in keys
         assert len(keys) == 2  # lowercase + suffix-stripped

@@ -12,6 +12,11 @@ from src.utils import logger
 
 log = logger.create_logger("Score-DataCollection")
 
+# Third-party image requests with URLs longer than this are
+# classified as tracking beacons / pixels.  Long query strings
+# typically carry user-identification or event-telemetry data.
+_BEACON_URL_LENGTH_THRESHOLD = 200
+
 
 def calculate(
     local_storage: list[tracking_data.StorageItem],
@@ -45,7 +50,9 @@ def calculate(
     )
 
     tracking_storage = [item for item in local_storage if any(p.search(item.key) for p in tracker_patterns.TRACKING_STORAGE_PATTERNS)]
-    beacon_requests = [r for r in network_requests if r.resource_type == "image" and r.is_third_party and len(r.url) > 200]
+    beacon_requests = [
+        r for r in network_requests if r.resource_type == "image" and r.is_third_party and len(r.url) > _BEACON_URL_LENGTH_THRESHOLD
+    ]
     third_party_posts = [r for r in network_requests if r.method == "POST" and r.is_third_party]
     analytics_urls = [r for r in network_requests if any(p.search(r.url) for p in tracker_patterns.ANALYTICS_TRACKERS)]
 

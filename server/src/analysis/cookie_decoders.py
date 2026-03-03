@@ -35,6 +35,12 @@ from src.utils import logger
 
 log = logger.create_logger("CookieDecoders")
 
+# Maximum characters retained for raw cookie value previews.
+_RAW_VALUE_PREVIEW_LIMIT = 200
+
+# Shorter preview limit for minimal decoders (e.g. SOCS).
+_SOCS_PREVIEW_LIMIT = 100
+
 
 # ====================================================================
 # Helper: cookie value extractor
@@ -487,7 +493,7 @@ def decode_optanon_consent(raw: str) -> dict[str, object] | None:
         "datestamp": parts.get("datestamp"),
         "isGpcApplied": parts.get("isGpcApplied") == "true",
         "consentId": parts.get("consentId"),
-        "rawValue": raw[:200],  # Truncate for display.
+        "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
     }
 
 
@@ -540,7 +546,7 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
                 "categories": categories,
                 "stamp": data.get("stamp"),
                 "utc": data.get("utc"),
-                "rawValue": raw[:200],
+                "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
             }
     except (json.JSONDecodeError, TypeError):
         pass
@@ -573,7 +579,7 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
         "categories": categories,
         "stamp": parts.get("stamp"),
         "utc": parts.get("utc"),
-        "rawValue": raw[:200],
+        "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
     }
 
 
@@ -627,7 +633,7 @@ def decode_socs_cookie(raw: str) -> dict[str, object] | None:
     return {
         "consentMode": mode,
         "modeChar": mode_char,
-        "rawValue": raw[:100],
+        "rawValue": raw[:_SOCS_PREVIEW_LIMIT],
     }
 
 

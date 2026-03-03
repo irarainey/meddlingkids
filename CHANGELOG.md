@@ -38,6 +38,9 @@
 - **`_find_button_by_patterns()` helper** — The structurally identical `find_accept_button()` and `find_reject_button()` functions in `platform_detection.py` now delegate to a shared `_find_button_by_patterns()` helper, differing only in the pattern list and log label.
 - **Shared `attach_vendor_metadata()` helper** — Cookie and storage lookup modules now call a generic `attach_vendor_metadata()` function in `models/item_info.py` instead of maintaining separate but identical vendor-enrichment loops.
 - **Domain and ANSI text utilities** — Extracted `strip_ansi()` and `sanitize_domain()` into a new `utils/text.py` module, replacing six inline `re.sub()` calls and two duplicated domain-truncation blocks in `logger.py`.
+- **Magic numbers promoted to named constants** — Hardcoded thresholds and truncation limits across `risk.py`, `cookie_decoders.py`, `tracking_summary.py`, `data_collection.py`, `script_cache.py`, `browser_phases.py`, and `tc_validation.py` replaced with descriptive module-level constants (e.g. `CRITICAL_THRESHOLD`, `_RAW_VALUE_PREVIEW_LIMIT`, `_BEACON_URL_LENGTH_THRESHOLD`).
+- **Cached pattern and domain lookups** — `get_tracking_cookie_patterns()` and `get_tracking_storage_patterns()` in `loader.py` now use `@functools.cache` for zero-cost repeated calls; `get_domain_description()` pre-builds an O(1) domain index instead of scanning the partner databases linearly on every lookup.
+- **Lazy global caches replaced with `@functools.cache`** — The manual `None`-sentinel / `global` cache patterns in `vendor_lookup.py` (3 indexes) and `tcf_lookup.py` (1 index) are replaced with `@functools.cache`-decorated builder functions, eliminating mutable module-level state.
 
 ## 1.6.2
 

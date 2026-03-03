@@ -7,6 +7,7 @@ Matching is purely deterministic — no LLM calls.
 
 from __future__ import annotations
 
+import functools
 import re
 from typing import Any, Literal
 
@@ -88,16 +89,10 @@ def _build_index() -> list[tuple[str, TcfPurposeMatch]]:
     return index
 
 
-# Module-level cache — built once on first call.
-_INDEX: list[tuple[str, TcfPurposeMatch]] | None = None
-
-
-def _get_index() -> list[tuple[str, TcfPurposeMatch]]:
+@functools.cache
+def _get_index() -> tuple[tuple[str, TcfPurposeMatch], ...]:
     """Return the cached TCF index, building it on first access."""
-    global _INDEX
-    if _INDEX is None:
-        _INDEX = _build_index()
-    return _INDEX
+    return tuple(_build_index())
 
 
 def _match_purpose(purpose: str) -> TcfPurposeMatch | None:
