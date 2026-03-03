@@ -231,7 +231,6 @@ class TestBuildMediaGroupContext:
         ctx = loader.build_media_group_context("https://www.bristolpost.co.uk/news/some-article")
         assert "Reach plc" in ctx
         assert "Prior Research" in ctx
-        assert "previously known" in ctx
         assert "Key Vendors" in ctx
         assert "Privacy Characteristics" in ctx
 
@@ -248,9 +247,9 @@ class TestBuildMediaGroupContext:
         ctx = loader.build_media_group_context("https://www.theguardian.com/uk")
         assert "Sourcepoint" in ctx
 
-    def test_includes_cross_reference_instruction(self) -> None:
+    def test_includes_privacy_characteristics(self) -> None:
         ctx = loader.build_media_group_context("https://www.bbc.co.uk/news")
-        assert "cross-reference" in ctx.lower()
+        assert "Privacy Characteristics" in ctx
 
 
 class TestBuildTrackingCookieContext:

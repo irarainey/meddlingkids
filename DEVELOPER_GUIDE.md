@@ -458,7 +458,7 @@ Key framework types used:
 |-------|--------|---------------|
 | `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
-| `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model |
+| `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model. Uses the Responses API when targeting a codex deployment |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Uses `run(stream=True)` with a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
@@ -467,10 +467,10 @@ Key framework types used:
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
-| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, and per-agent deployment override support via `config.get_agent_deployment()` |
+| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, per-agent deployment override support via `config.get_agent_deployment()`, and `use_responses_api` flag for Responses API client selection |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` — environment variables are read once at startup |
-| `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection |
-| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint |
+| `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection and `use_responses_api` for creating `AzureOpenAIResponsesClient` instances (auto-upgrades API version to `2025-03-01-preview` minimum when needed) |
+| `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking + token estimation before each call) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint. Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
@@ -519,6 +519,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `tc_validation.py` | TC String validation — cross-references decoded TC String data with observed tracking to produce validation findings (e.g. tracking without consent, undisclosed vendors). Deterministic — no LLM calls |
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
+| `domain_classifier.py` | Deterministic domain classification using Disconnect services and partner databases — classifies domains into tracker categories (`Social`, `Advertising`, `Analytics`, `Fingerprinting`) without LLM calls. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
@@ -1190,6 +1191,7 @@ Every LLM call is automatically tracked for call count and token usage via `usag
 All LLM calls are wrapped by `RetryChatMiddleware` (in `server/src/agents/middleware.py`), which provides automatic retry with exponential backoff:
 
 - **Retryable errors:** 429 (rate limit), 5xx (server errors), network failures
+- **Non-retryable errors:** `OutputTruncatedError` — raised when `finish_reason=length` produces an empty response (indicates `max_tokens` is too low for the output schema)
 - **Backoff strategy:** Starts at 1s, doubles each retry, max 30s
 - **Jitter:** ±20% randomization to prevent thundering herd
 - **Max retries:** 5 (configurable per agent via `max_retries`)

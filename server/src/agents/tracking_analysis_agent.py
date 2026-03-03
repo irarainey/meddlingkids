@@ -194,11 +194,10 @@ def _build_user_prompt(
         consent_section = _build_consent_section(consent_details)
 
     breakdown = json.dumps(
-        [d.model_dump() for d in tracking_summary.domain_breakdown],
-        indent=2,
+        [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
     )
-    local_json = json.dumps(tracking_summary.local_storage, indent=2)
-    session_json = json.dumps(tracking_summary.session_storage, indent=2)
+    local_json = json.dumps(tracking_summary.local_storage)
+    session_json = json.dumps(tracking_summary.session_storage)
 
     pre_consent_section = ""
     if pre_consent_stats:

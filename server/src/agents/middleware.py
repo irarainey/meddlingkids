@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, cast
 
 import agent_framework
@@ -52,13 +52,20 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
             call_next: Callable to invoke the next middleware or LLM.
         """
         message_count = len(context.messages)
-        log.debug(f"Agent '{self.agent_name}' sending {message_count} message(s) to LLM")
+        total_chars = _estimate_message_chars(context.messages)
+        est_tokens = total_chars // 4
+        log.info(
+            f"Agent '{self.agent_name}' sending {message_count} message(s) (~{total_chars:,} chars, ~{est_tokens:,} est. tokens)",
+        )
 
         start_time = time.perf_counter()
         await call_next()
         duration = time.perf_counter() - start_time
 
-        log.info(f"Agent '{self.agent_name}' completed in {duration:.2f}s")
+        response_meta = _describe_response(context.result)
+        log.info(
+            f"Agent '{self.agent_name}' completed in {duration:.2f}s — {response_meta}",
+        )
 
         metadata = cast(dict[str, Any], context.metadata)
         metadata["timing"] = {
@@ -118,6 +125,35 @@ class EmptyResponseError(Exception):
     Treated as a transient failure so the retry middleware
     can re-attempt the request.
     """
+
+
+class OutputTruncatedError(EmptyResponseError):
+    """Raised when the LLM output was truncated by the token limit.
+
+    This is a *deterministic* failure — the output needs more
+    tokens than ``max_tokens`` allows — so retrying with the
+    same prompt is pointless.  Not treated as retryable.
+    """
+
+
+def _estimate_message_chars(messages: Sequence[Any]) -> int:
+    """Estimate total character count across all messages.
+
+    Sums ``len(msg.text)`` for each message with a text
+    attribute, providing a rough input-size approximation.
+
+    Args:
+        messages: List of agent framework message objects.
+
+    Returns:
+        Total character count.
+    """
+    total = 0
+    for msg in messages:
+        text = getattr(msg, "text", None)
+        if text:
+            total += len(text)
+    return total
 
 
 def _describe_response(result: object) -> str:
@@ -185,6 +221,10 @@ def _is_retryable(error: BaseException) -> bool:
         code = getattr(error, attr, None)
         if isinstance(code, int) and (code == 429 or 500 <= code < 600):
             return True
+    # OutputTruncatedError is a subclass of EmptyResponseError
+    # but is deterministic (max_tokens too low), so exclude it.
+    if isinstance(error, OutputTruncatedError):
+        return False
     return isinstance(
         error,
         (
@@ -307,11 +347,29 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
             text = result.text  # type: ignore[union-attr]
         except Exception:
             return
+
+        # Warn when the response was cut short by the token limit.
+        finish = getattr(result, "finish_reason", None)
+        if finish == "length":
+            detail = _describe_response(result)
+            log.warn(
+                f"Agent '{self.agent_name}' response truncated (finish_reason=length) — {detail}",
+            )
+
         if not text:
             detail = _describe_response(result)
             log.warn(
                 f"Agent '{self.agent_name}' received an empty response from the LLM — {detail}",
             )
+            # When finish_reason=length, the output was truncated
+            # by the max_tokens ceiling.  With structured output
+            # (response_format=json_schema) the API cannot return
+            # partial JSON, so it returns empty text.  This is
+            # deterministic — retrying won't help.
+            if finish == "length":
+                raise OutputTruncatedError(
+                    f"Agent '{self.agent_name}' output exceeded max_tokens (response truncated with 0 usable characters) — {detail}",
+                )
             raise EmptyResponseError(
                 f"Agent '{self.agent_name}' received an empty (0-character) response — {detail}",
             )

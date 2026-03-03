@@ -229,6 +229,7 @@ class TestFallbackClient:
         mock_get.assert_any_call(
             agent_name="ScriptAnalysisAgent",
             deployment_override="codex-mini",
+            use_responses_api=False,
         )
         mock_get.assert_any_call(
             agent_name="ScriptAnalysisAgent",
