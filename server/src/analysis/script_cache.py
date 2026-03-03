@@ -32,7 +32,7 @@ import contextlib
 import hashlib
 import json
 import pathlib
-from urllib.parse import urlparse, urlunparse
+from urllib import parse
 
 import pydantic
 
@@ -55,7 +55,7 @@ def is_valid_script_url(url: str) -> bool:
     """
     if not url or not url.strip():
         return False
-    parsed = urlparse(url)
+    parsed = parse.urlparse(url)
     if parsed.scheme not in ("http", "https"):
         return False
     if not parsed.netloc:
@@ -151,8 +151,8 @@ def strip_query_string(url: str) -> str:
         >>> strip_query_string("https://cdn.example.com/tracker.js")
         'https://cdn.example.com/tracker.js'
     """
-    parsed = urlparse(url)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    parsed = parse.urlparse(url)
+    return parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
 
 
 # ── Public API ──────────────────────────────────────────────────

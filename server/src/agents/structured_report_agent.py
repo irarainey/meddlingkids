@@ -15,8 +15,7 @@ from urllib import parse
 
 import pydantic
 
-from src.agents import base, gdpr_context
-from src.agents import middleware as middleware_mod
+from src.agents import base, gdpr_context, middleware
 from src.agents.prompts import structured_report
 from src.analysis import domain_cache, domain_classifier
 from src.data import loader
@@ -421,7 +420,7 @@ class StructuredReportAgent(base.BaseAgent):
             # Include LLM response metadata so finish_reason and
             # token counts are visible when parsing fails (e.g.
             # finish_reason=length means the context was too large).
-            meta = middleware_mod._describe_response(response)
+            meta = middleware._describe_response(response)
             log.warn(
                 "Section parse failed",
                 {"section": section_name, "llm": meta, "responsePreview": (response.text or "")[:200]},

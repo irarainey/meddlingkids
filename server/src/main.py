@@ -10,6 +10,7 @@ import os
 import pathlib
 from collections.abc import AsyncGenerator
 
+import aiohttp
 import dotenv
 import fastapi
 from fastapi import staticfiles
@@ -263,7 +264,6 @@ async def fetch_script_endpoint(
     Only HTTP(S) URLs are accepted and the response is capped
     at 512 KB to prevent abuse.
     """
-    import aiohttp
 
     body = await request.json()
     url: str = body.get("url", "").strip()

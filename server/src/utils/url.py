@@ -9,6 +9,8 @@ import re
 import socket
 from urllib import parse
 
+from src.data import loader
+
 _TWO_PART_TLDS = frozenset(
     [
         "co.uk",
@@ -86,7 +88,6 @@ def is_third_party(request_url: str, page_url: str) -> bool:
 
         # CNAME cloaking check: a request that looks
         # first-party may actually resolve to a tracker.
-        from src.data import loader
 
         cname_target = loader.get_cname_target(request_domain)
         if cname_target:
@@ -106,7 +107,6 @@ def get_cname_target(request_url: str) -> str | None:
     Returns:
         The real tracker domain, or ``None`` if not cloaked.
     """
-    from src.data import loader
 
     domain = extract_domain(request_url)
     return loader.get_cname_target(domain)
