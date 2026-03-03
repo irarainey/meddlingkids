@@ -305,6 +305,7 @@ class PlaywrightManager:
             locale="en-GB",
             timezone_id="Europe/London",
             java_script_enabled=True,
+            user_agent=device_config.user_agent,
         )
         await context.add_init_script(_ANTI_BOT_INIT_SCRIPT)
 

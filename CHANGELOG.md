@@ -1,4 +1,11 @@
+
 # Changelog
+
+## 1.6.3
+
+### Fixed
+
+- **Device emulation user agent bug** — Fixed a critical issue where device emulation (mobile/tablet/desktop) did not apply the intended user agent string. All browser sessions now use the correct `user_agent` for the selected device, ensuring accurate content and consent dialog rendering for mobile and tablet analysis.
 
 ## 1.6.2
 
