@@ -16,6 +16,9 @@ import fastapi
 from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
+import asyncio
+import ipaddress
+import urllib.parse
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
@@ -254,6 +257,48 @@ async def tc_string_decode_endpoint(
 _MAX_PREVIEW_BYTES = 512 * 1024
 
 
+async def _is_safe_remote_url(url: str) -> bool:
+    """
+    Validate that a URL points to a public HTTP(S) host and not to
+    loopback, private, link-local, or otherwise special IP ranges.
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if not parsed.hostname:
+        return False
+
+    host = parsed.hostname
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    try:
+        addrinfo = await loop.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except OSError:
+        return False
+
+    for family, _, _, _, sockaddr in addrinfo:
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+        ):
+            return False
+
+    return True
+
+
 @app.post("/api/fetch-script")
 async def fetch_script_endpoint(
     request: fastapi.Request,
@@ -274,6 +319,9 @@ async def fetch_script_endpoint(
 
     if not url.startswith(("http://", "https://")):
         raise fastapi.HTTPException(status_code=400, detail="Only HTTP(S) URLs are accepted")
+
+    if not await _is_safe_remote_url(url):
+        raise fastapi.HTTPException(status_code=400, detail="URL points to a disallowed host")
 
     try:
         timeout = aiohttp.ClientTimeout(total=10)
