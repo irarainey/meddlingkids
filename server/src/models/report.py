@@ -13,20 +13,31 @@ import pydantic
 
 from src.utils import serialization
 
-# ── Shared entity with optional URL ─────────────────────────────
+# ── Shared camelCase base ───────────────────────────────────────
 
 
-class NamedEntity(pydantic.BaseModel):
-    """A company or service name with an optional URL.
+class CamelCaseModel(pydantic.BaseModel):
+    """Base model with snake_case → camelCase alias generation.
 
-    Used in shared_with lists and third-party service lists
-    so the client can render names as clickable links.
+    All report section models inherit from this so the
+    ``model_config`` boilerplate is defined once.
     """
 
     model_config = pydantic.ConfigDict(
         alias_generator=serialization.snake_to_camel,
         populate_by_name=True,
     )
+
+
+# ── Shared entity with optional URL ─────────────────────────────
+
+
+class NamedEntity(CamelCaseModel):
+    """A company or service name with an optional URL.
+
+    Used in shared_with lists and third-party service lists
+    so the client can render names as clickable links.
+    """
 
     name: str
     url: str = ""
@@ -56,10 +67,8 @@ def _coerce_named_entities(
 # ── Section 1: Tracking Technologies ────────────────────────────
 
 
-class TrackerEntry(pydantic.BaseModel):
+class TrackerEntry(CamelCaseModel):
     """A single identified tracking technology."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     name: str
     domains: list[str]
@@ -69,10 +78,8 @@ class TrackerEntry(pydantic.BaseModel):
     url: str = ""
 
 
-class TrackingTechnologiesSection(pydantic.BaseModel):
+class TrackingTechnologiesSection(CamelCaseModel):
     """Categorised tracking technologies found on the page."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     analytics: list[TrackerEntry] = pydantic.Field(default_factory=list)
     advertising: list[TrackerEntry] = pydantic.Field(default_factory=list)
@@ -101,10 +108,8 @@ _CANONICAL_CATEGORY_DEFAULTS: dict[str, tuple[Literal["low", "medium", "high", "
 }
 
 
-class DataCollectionItem(pydantic.BaseModel):
+class DataCollectionItem(CamelCaseModel):
     """A type of data being collected."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     category: str
     details: list[str]
@@ -136,10 +141,8 @@ class DataCollectionItem(pydantic.BaseModel):
         return _coerce_named_entities(v)
 
 
-class DataCollectionSection(pydantic.BaseModel):
+class DataCollectionSection(CamelCaseModel):
     """What data the page collects from users."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     items: list[DataCollectionItem] = pydantic.Field(default_factory=list)
 
@@ -147,10 +150,8 @@ class DataCollectionSection(pydantic.BaseModel):
 # ── Section 3: Third-Party Services ────────────────────────────
 
 
-class ThirdPartyGroup(pydantic.BaseModel):
+class ThirdPartyGroup(CamelCaseModel):
     """A categorised group of third-party services."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     category: str
     services: list[NamedEntity] = pydantic.Field(default_factory=list)
@@ -165,10 +166,8 @@ class ThirdPartyGroup(pydantic.BaseModel):
         return _coerce_named_entities(v)
 
 
-class ThirdPartySection(pydantic.BaseModel):
+class ThirdPartySection(CamelCaseModel):
     """Third-party services contacted by the page."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     total_domains: int = 0
     groups: list[ThirdPartyGroup] = pydantic.Field(default_factory=list)
@@ -180,19 +179,15 @@ class ThirdPartySection(pydantic.BaseModel):
 RiskLevel = Literal["low", "medium", "high", "very-high"]
 
 
-class RiskFactor(pydantic.BaseModel):
+class RiskFactor(CamelCaseModel):
     """A specific factor contributing to risk level."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     description: str
     severity: Literal["low", "medium", "high", "critical"]
 
 
-class PrivacyRiskSection(pydantic.BaseModel):
+class PrivacyRiskSection(CamelCaseModel):
     """Overall privacy risk assessment."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     overall_risk: RiskLevel = "medium"
     factors: list[RiskFactor] = pydantic.Field(default_factory=list)
@@ -202,10 +197,8 @@ class PrivacyRiskSection(pydantic.BaseModel):
 # ── Section 5: Cookie Analysis ──────────────────────────────────
 
 
-class CookieGroup(pydantic.BaseModel):
+class CookieGroup(CamelCaseModel):
     """A group of cookies by purpose."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     category: str
     cookies: list[str]
@@ -213,10 +206,8 @@ class CookieGroup(pydantic.BaseModel):
     concern_level: Literal["none", "low", "medium", "high"] = "none"
 
 
-class CookieAnalysisSection(pydantic.BaseModel):
+class CookieAnalysisSection(CamelCaseModel):
     """Analysis of cookies by purpose and risk."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     total: int = 0
     groups: list[CookieGroup] = pydantic.Field(default_factory=list)
@@ -232,10 +223,8 @@ class CookieAnalysisSection(pydantic.BaseModel):
 # ── Section 6: Storage Analysis ──────────────────────────────────
 
 
-class StorageAnalysisSection(pydantic.BaseModel):
+class StorageAnalysisSection(CamelCaseModel):
     """Analysis of localStorage and sessionStorage usage."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     local_storage_count: int = 0
     session_storage_count: int = 0
@@ -247,20 +236,16 @@ class StorageAnalysisSection(pydantic.BaseModel):
 # ── Section 7: Consent Analysis ─────────────────────────────────
 
 
-class ConsentDiscrepancy(pydantic.BaseModel):
+class ConsentDiscrepancy(CamelCaseModel):
     """A discrepancy between consent claims and reality."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     claimed: str
     actual: str
     severity: Literal["low", "medium", "high", "critical"]
 
 
-class ConsentAnalysisSection(pydantic.BaseModel):
+class ConsentAnalysisSection(CamelCaseModel):
     """Analysis of the consent dialog vs actual tracking."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     has_consent_dialog: bool = False
     categories_disclosed: int = 0
@@ -274,31 +259,21 @@ class ConsentAnalysisSection(pydantic.BaseModel):
 # ── Section 8: Social Media Implications ────────────────────────
 
 
-class SocialMediaRisk(pydantic.BaseModel):
+class SocialMediaRisk(CamelCaseModel):
     """A specific social media privacy risk."""
-
-    model_config = pydantic.ConfigDict(
-        alias_generator=serialization.snake_to_camel,
-        populate_by_name=True,
-    )
 
     platform: str
     risk: str
     severity: Literal["low", "medium", "high", "critical"]
 
 
-class SocialMediaImplicationsSection(pydantic.BaseModel):
+class SocialMediaImplicationsSection(CamelCaseModel):
     """Analysis of social media tracking implications.
 
     Explains how detected social media integrations can
     link browsing activity to real identities when users
     are logged into those platforms.
     """
-
-    model_config = pydantic.ConfigDict(
-        alias_generator=serialization.snake_to_camel,
-        populate_by_name=True,
-    )
 
     platforms_detected: list[str] = pydantic.Field(
         default_factory=list,
@@ -313,19 +288,15 @@ class SocialMediaImplicationsSection(pydantic.BaseModel):
 # ── Section 9: Recommendations ──────────────────────────────────
 
 
-class RecommendationGroup(pydantic.BaseModel):
+class RecommendationGroup(CamelCaseModel):
     """A group of recommendations."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     category: str
     items: list[str]
 
 
-class RecommendationsSection(pydantic.BaseModel):
+class RecommendationsSection(CamelCaseModel):
     """Actionable recommendations for users."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     groups: list[RecommendationGroup] = pydantic.Field(default_factory=list)
 
@@ -333,14 +304,12 @@ class RecommendationsSection(pydantic.BaseModel):
 # ── Complete Report ─────────────────────────────────────────────
 
 
-class StructuredReport(pydantic.BaseModel):
+class StructuredReport(CamelCaseModel):
     """Complete structured privacy analysis report.
 
     Each section is populated by a separate, focused LLM call
     so the output is deterministic and consistently formatted.
     """
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
 
     tracking_technologies: TrackingTechnologiesSection = pydantic.Field(default_factory=TrackingTechnologiesSection)
     data_collection: DataCollectionSection = pydantic.Field(default_factory=DataCollectionSection)

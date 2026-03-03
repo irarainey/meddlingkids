@@ -2,7 +2,49 @@
 
 from __future__ import annotations
 
+from typing import Protocol, runtime_checkable
+
 import pydantic
+
+# ────────────────────────────────────────────────────────────
+# Structural protocols for cookie / storage duck-typing
+# ────────────────────────────────────────────────────────────
+
+
+@runtime_checkable
+class CookieLike(Protocol):
+    """Structural protocol for cookie-like objects.
+
+    Satisfied by :class:`TrackedCookie` and plain ``dict``
+    objects with ``name`` and ``value`` keys (via the existing
+    ``isinstance(cookie, dict)`` guard in consumer code).
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def value(self) -> str: ...
+
+
+@runtime_checkable
+class StorageItemLike(Protocol):
+    """Structural protocol for storage-item-like objects.
+
+    Satisfied by :class:`StorageItem` and plain ``dict``
+    objects with ``key`` and ``value`` keys.
+    """
+
+    @property
+    def key(self) -> str: ...
+
+    @property
+    def value(self) -> str: ...
+
+
+# ────────────────────────────────────────────────────────────
+# Concrete models
+# ────────────────────────────────────────────────────────────
 
 
 class TrackedCookie(pydantic.BaseModel):

@@ -27,13 +27,20 @@ from __future__ import annotations
 import base64
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from urllib import parse
 
+from src.models import tracking_data
 from src.utils import logger
 
 log = logger.create_logger("CookieDecoders")
+
+# Maximum characters retained for raw cookie value previews.
+_RAW_VALUE_PREVIEW_LIMIT = 200
+
+# Shorter preview limit for minimal decoders (e.g. SOCS).
+_SOCS_PREVIEW_LIMIT = 100
 
 
 # ====================================================================
@@ -42,7 +49,7 @@ log = logger.create_logger("CookieDecoders")
 
 
 def _cookie_value(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
     target_name: str,
 ) -> str | None:
     """Return the value of the first cookie matching *target_name*."""
@@ -106,7 +113,7 @@ def decode_usp_string(raw: str) -> dict[str, object] | None:
 
 
 def find_usp_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode the ``usprivacy`` cookie."""
     raw = _cookie_value(cookies, "usprivacy")
@@ -206,7 +213,7 @@ def decode_gpp_string(
 
 
 def find_gpp_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode ``__gpp`` / ``__gpp_sid`` cookies."""
     gpp_raw = _cookie_value(cookies, "__gpp")
@@ -254,7 +261,7 @@ def decode_ga_cookie(raw: str) -> dict[str, object] | None:
 
 
 def find_ga_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode the ``_ga`` cookie."""
     raw = _cookie_value(cookies, "_ga")
@@ -334,7 +341,7 @@ def decode_fbc_cookie(raw: str) -> dict[str, object] | None:
 
 
 def find_fb_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode Facebook ``_fbp`` and ``_fbc`` cookies.
 
@@ -416,7 +423,7 @@ def decode_gcl_aw_cookie(raw: str) -> dict[str, object] | None:
 
 
 def find_gcl_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode Google Ads ``_gcl_au`` and ``_gcl_aw``."""
     au_raw = _cookie_value(cookies, "_gcl_au")
@@ -487,12 +494,12 @@ def decode_optanon_consent(raw: str) -> dict[str, object] | None:
         "datestamp": parts.get("datestamp"),
         "isGpcApplied": parts.get("isGpcApplied") == "true",
         "consentId": parts.get("consentId"),
-        "rawValue": raw[:200],  # Truncate for display.
+        "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
     }
 
 
 def find_optanon_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode the ``OptanonConsent`` cookie."""
     raw = _cookie_value(cookies, "OptanonConsent")
@@ -540,7 +547,7 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
                 "categories": categories,
                 "stamp": data.get("stamp"),
                 "utc": data.get("utc"),
-                "rawValue": raw[:200],
+                "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
             }
     except (json.JSONDecodeError, TypeError):
         pass
@@ -573,12 +580,12 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
         "categories": categories,
         "stamp": parts.get("stamp"),
         "utc": parts.get("utc"),
-        "rawValue": raw[:200],
+        "rawValue": raw[:_RAW_VALUE_PREVIEW_LIMIT],
     }
 
 
 def find_cookiebot_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode the ``CookieConsent`` cookie."""
     raw = _cookie_value(cookies, "CookieConsent")
@@ -627,12 +634,12 @@ def decode_socs_cookie(raw: str) -> dict[str, object] | None:
     return {
         "consentMode": mode,
         "modeChar": mode_char,
-        "rawValue": raw[:100],
+        "rawValue": raw[:_SOCS_PREVIEW_LIMIT],
     }
 
 
 def find_socs_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object] | None:
     """Find and decode the ``SOCS`` cookie."""
     raw = _cookie_value(cookies, "SOCS")
@@ -647,7 +654,7 @@ def find_socs_in_cookies(
 
 
 def detect_gpc_dnt(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
     *,
     response_headers: dict[str, str] | None = None,
 ) -> dict[str, object] | None:
@@ -681,7 +688,7 @@ def detect_gpc_dnt(
 
 
 def decode_all_privacy_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> dict[str, object]:
     """Scan cookies and decode all recognised privacy formats.
 

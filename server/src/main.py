@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ipaddress
+import json
 import os
 import pathlib
 import urllib.parse
@@ -17,7 +18,7 @@ import aiohttp
 import dotenv
 import fastapi
 from fastapi import staticfiles
-from fastapi.middleware import cors
+from fastapi.middleware import cors, gzip
 from starlette import responses
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
@@ -67,6 +68,19 @@ async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
 
 app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)
 
+
+@app.exception_handler(json.JSONDecodeError)
+async def _json_decode_error_handler(
+    _request: fastapi.Request,
+    _exc: json.JSONDecodeError,
+) -> fastapi.responses.JSONResponse:
+    """Return 400 for malformed JSON request bodies."""
+    return fastapi.responses.JSONResponse(
+        status_code=400,
+        content={"detail": "Invalid JSON in request body"},
+    )
+
+
 # ============================================================================
 # Middleware
 # ============================================================================
@@ -83,6 +97,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# GZip-compress responses above 500 bytes.  SSE tracking events
+# (JSON arrays of cookies/requests) compress ~85-90 %, keeping
+# even extreme sites well under browser EventSource limits.
+app.add_middleware(gzip.GZipMiddleware, minimum_size=500)
 
 
 @app.middleware("http")
@@ -252,14 +271,15 @@ async def tc_string_decode_endpoint(
     return decoded.model_dump(by_alias=True)
 
 
-# Maximum bytes to fetch for script preview (512 KB).
-_MAX_PREVIEW_BYTES = 512 * 1024
+# Maximum bytes to fetch for script preview (4096 KB).
+_MAX_PREVIEW_BYTES = 4096 * 1024
 
 
 async def _is_safe_remote_url(url: str) -> bool:
-    """
-    Validate that a URL points to a public HTTP(S) host and not to
-    loopback, private, link-local, or otherwise special IP ranges.
+    """Validate that a URL points to a public HTTP(S) host.
+
+    Rejects loopback, private, link-local, multicast, and
+    reserved IP ranges to prevent SSRF.
     """
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in {"http", "https"}:
@@ -268,15 +288,13 @@ async def _is_safe_remote_url(url: str) -> bool:
         return False
 
     host = parsed.hostname
+    loop = asyncio.get_running_loop()
 
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    try:
-        addrinfo = await loop.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+        addrinfo = await loop.getaddrinfo(
+            host,
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+        )
     except OSError:
         return False
 
@@ -301,7 +319,7 @@ async def fetch_script_endpoint(
     Acts as a same-origin proxy so the client can display
     syntax-highlighted script source without CORS restrictions.
     Only HTTP(S) URLs are accepted and the response is capped
-    at 512 KB to prevent abuse.
+    at 4096 KB to prevent abuse.
     """
 
     body = await request.json()
@@ -326,11 +344,16 @@ async def fetch_script_endpoint(
                 max_redirects=3,
             ) as resp,
         ):
+            # Validate the final URL after redirects to prevent
+            # SSRF via an open-redirect chain.
+            if resp.url is not None and str(resp.url) != url and not await _is_safe_remote_url(str(resp.url)):
+                return {"error": "Redirect target points to a disallowed host", "content": None}
             if resp.status >= 400:
                 return {"error": f"HTTP {resp.status}", "content": None}
             raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+            extra = await resp.content.read(1)
             content = raw.decode("utf-8", errors="replace")
-            truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
+            truncated = len(extra) > 0
             return {"content": content, "truncated": truncated}
     except TimeoutError:
         return {"error": "Request timed out", "content": None}

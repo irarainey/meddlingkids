@@ -64,9 +64,13 @@ def _build_domain_breakdown(
     ]
 
 
+# Maximum characters shown for a storage-value preview.
+_STORAGE_VALUE_PREVIEW_LIMIT = 100
+
+
 def _build_storage_preview(items: list[tracking_data.StorageItem]) -> list[dict[str, str]]:
     """Build preview of storage items for analysis."""
-    return [{"key": item.key, "valuePreview": item.value[:100]} for item in items]
+    return [{"key": item.key, "valuePreview": item.value[:_STORAGE_VALUE_PREVIEW_LIMIT]} for item in items]
 
 
 def build_tracking_summary(

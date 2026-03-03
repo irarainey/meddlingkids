@@ -36,6 +36,7 @@ class TestIsRetryable:
         assert middleware_mod._is_retryable(ConnectionError("reset"))
 
     def test_connection_reset_error_type(self) -> None:
+        # ConnectionResetError is a subclass of ConnectionError
         assert middleware_mod._is_retryable(ConnectionResetError("peer reset"))
 
     def test_empty_response_error(self) -> None:

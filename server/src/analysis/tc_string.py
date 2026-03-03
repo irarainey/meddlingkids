@@ -38,6 +38,7 @@ from typing import Any
 
 import pydantic
 
+from src.models import tracking_data
 from src.utils import logger, serialization
 
 log = logger.create_logger("TcString")
@@ -305,7 +306,9 @@ def decode_tc_string(tc_string: str) -> TcStringData | None:
 # ====================================================================
 
 
-def _extract_name_value(item: object) -> tuple[str, str]:
+def _extract_name_value(
+    item: tracking_data.CookieLike | tracking_data.StorageItemLike | Mapping[str, str],
+) -> tuple[str, str]:
     """Extract ``(name, value)`` from a cookie or storage item.
 
     Supports both dict and attribute-based access patterns so
@@ -472,7 +475,7 @@ def _search_json_for_field(
 
 
 def find_tc_string_in_json_storage(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Find a TC String embedded in a JSON localStorage value.
 
@@ -512,7 +515,7 @@ def find_tc_string_in_json_storage(
 
 
 def find_ac_string_in_json_storage(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Find an AC String embedded in a JSON localStorage value.
 
@@ -550,7 +553,7 @@ def find_ac_string_in_json_storage(
 
 
 def scan_json_for_tc_string(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Heuristic scan of JSON localStorage values for TC Strings.
 
@@ -600,7 +603,7 @@ def scan_json_for_tc_string(
 
 
 def scan_json_for_ac_string(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Heuristic scan of JSON localStorage values for AC Strings.
 
@@ -657,8 +660,8 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
     {
         # Advertising / bidding identifiers
         "pid",
-        "TDCPM",
-        "TDID",
+        "tdcpm",
+        "tdid",
         "uid",
         "uuid",
         "uuid2",
@@ -671,11 +674,11 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         "id",
         "i",
         "u",
-        "IDE",
-        "DSID",
-        "FLC",
-        "MUID",
-        "ANONCHK",
+        "ide",
+        "dsid",
+        "flc",
+        "muid",
+        "anonchk",
         "_uetvid",
         "_uetsid",
         # Google Analytics / Ads
@@ -685,17 +688,17 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         "_gcl_au",
         "_gcl_aw",
         "_gac",
-        "NID",
-        "SID",
-        "HSID",
-        "SSID",
-        "APISID",
-        "SAPISID",
-        "1P_JAR",
-        "CONSENT",
-        "DV",
-        "SIDCC",
-        "SOCS",
+        "nid",
+        "sid",
+        "hsid",
+        "ssid",
+        "apisid",
+        "sapisid",
+        "1p_jar",
+        "consent",
+        "dv",
+        "sidcc",
+        "socs",
         # Facebook
         "_fbp",
         "_fbc",
@@ -705,7 +708,6 @@ _HEURISTIC_SKIP_COOKIE_NAMES: frozenset[str] = frozenset(
         # General session / auth
         "session",
         "sess",
-        "sid",
         "token",
         "auth",
         "csrf",
@@ -776,7 +778,7 @@ def _is_plausible_tc_decode(decoded: TcStringData) -> bool:
 
 
 def find_tc_string_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> str | None:
     """Find the TC String value from a list of browser cookies.
 
@@ -800,7 +802,7 @@ def find_tc_string_in_cookies(
 
 
 def find_tc_string_in_storage(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Find the TC String in localStorage items.
 
@@ -907,7 +909,7 @@ def decode_ac_string(ac_string: str) -> AcStringData | None:
 
 
 def find_ac_string_in_cookies(
-    cookies: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
 ) -> str | None:
     """Find the AC String value from a list of browser cookies.
 
@@ -931,7 +933,7 @@ def find_ac_string_in_cookies(
 
 
 def find_ac_string_in_storage(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Find the AC String in localStorage items.
 
@@ -977,8 +979,8 @@ def find_ac_string_in_storage(
 
 
 def find_tc_string_by_profile(
-    cookies: Sequence[object],
-    storage_items: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
     tc_sources: dict[str, Any],
 ) -> tuple[str, str] | None:
     """Find TC String using CMP-specific source locations.
@@ -1028,7 +1030,7 @@ def find_tc_string_by_profile(
 
 
 def _match_storage_key_patterns(
-    storage_items: Sequence[object],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
     patterns: list[dict[str, str]],
     validator: _FieldValidator,
     *,
@@ -1084,8 +1086,8 @@ def _match_storage_key_patterns(
 
 
 def find_ac_string_by_profile(
-    cookies: Sequence[object],
-    storage_items: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
     tc_sources: dict[str, Any],
 ) -> tuple[str, str] | None:
     """Find AC String using CMP-specific source locations.
@@ -1140,8 +1142,8 @@ def find_ac_string_by_profile(
 
 
 def scan_for_tc_string(
-    cookies: Sequence[object],
-    storage_items: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Scan all cookie and localStorage values for a TC String.
 
@@ -1166,7 +1168,7 @@ def scan_for_tc_string(
         name, value = _extract_name_value(cookie)
         if not value or not _looks_like_tc_string(value):
             continue
-        if name.lower() in _HEURISTIC_SKIP_COOKIE_NAMES or name in _HEURISTIC_SKIP_COOKIE_NAMES:
+        if name.lower() in _HEURISTIC_SKIP_COOKIE_NAMES:
             continue
         decoded = decode_tc_string(value)
         if decoded is not None:
@@ -1217,8 +1219,8 @@ def scan_for_tc_string(
 
 
 def scan_for_ac_string(
-    cookies: Sequence[object],
-    storage_items: Sequence[object],
+    cookies: Sequence[tracking_data.CookieLike | Mapping[str, str]],
+    storage_items: Sequence[tracking_data.StorageItemLike | Mapping[str, str]],
 ) -> tuple[str, str] | None:
     """Scan all cookie and localStorage values for an AC String.
 

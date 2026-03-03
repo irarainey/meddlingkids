@@ -9,28 +9,15 @@ from __future__ import annotations
 
 from src.agents import storage_info_agent
 from src.data import loader
+from src.models import item_info
 from src.utils import logger
 
 log = logger.create_logger("StorageLookup")
 
 
 def _attach_vendor_metadata(result: storage_info_agent.StorageInfoResult) -> storage_info_agent.StorageInfoResult:
-    """Enrich a storage result with vendor cross-reference data.
-
-    Looks up the ``set_by`` value in the tracking-storage vendor
-    index and populates vendor metadata fields when a match is
-    found.
-    """
-    vendor_index = loader.get_tracking_storage_vendor_index()
-    vendor = vendor_index.get(result.set_by)
-    if not vendor:
-        return result
-    result.vendor_category = vendor.get("category")
-    result.vendor_url = vendor.get("url")
-    result.vendor_concerns = vendor.get("concerns")
-    result.vendor_gvl_ids = vendor.get("gvl_ids")
-    result.vendor_atp_ids = vendor.get("atp_ids")
-    return result
+    """Enrich a storage result with vendor cross-reference data."""
+    return item_info.attach_vendor_metadata(result, loader.get_tracking_storage_vendor_index())
 
 
 def _check_tracking_storage_pattern(key: str) -> storage_info_agent.StorageInfoResult | None:

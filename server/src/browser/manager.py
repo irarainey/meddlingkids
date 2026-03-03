@@ -214,7 +214,21 @@ class PlaywrightManager:
             raise RuntimeError(f"Playwright failed to start within {_START_TIMEOUT_SECONDS}s") from None
         self._playwright = pw
 
-        launch_env = {**os.environ, "DISPLAY": display}
+        # Only pass essential environment variables to the browser
+        # process.  Avoid leaking API keys or other secrets from
+        # the server environment.
+        browser_env_allowlist = (
+            "DISPLAY",
+            "HOME",
+            "PATH",
+            "LD_LIBRARY_PATH",
+            "XDG_RUNTIME_DIR",
+            "DBUS_SESSION_BUS_ADDRESS",
+            "FONTCONFIG_PATH",
+            "TMPDIR",
+        )
+        launch_env: dict[str, str] = {k: os.environ[k] for k in browser_env_allowlist if k in os.environ}
+        launch_env["DISPLAY"] = display
         launch_kwargs: dict[str, object] = {
             "headless": False,
             "args": [
@@ -305,6 +319,7 @@ class PlaywrightManager:
             locale="en-GB",
             timezone_id="Europe/London",
             java_script_enabled=True,
+            user_agent=device_config.user_agent,
         )
         await context.add_init_script(_ANTI_BOT_INIT_SCRIPT)
 

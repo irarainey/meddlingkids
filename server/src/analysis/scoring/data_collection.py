@@ -7,10 +7,35 @@ third-party POST requests, and analytics tracker presence.
 from __future__ import annotations
 
 from src.analysis import tracker_patterns
+from src.analysis.scoring import _tiers
 from src.models import analysis, tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Score-DataCollection")
+
+# Third-party image requests with URLs longer than this are
+# classified as tracking beacons / pixels.  Long query strings
+# typically carry user-identification or event-telemetry data.
+_BEACON_URL_LENGTH_THRESHOLD = 200
+
+# ── Tier tables ─────────────────────────────────────────────
+
+_STORAGE_VOLUME_TIERS: tuple[_tiers.Tier, ...] = (
+    (30, 4, "{n} localStorage items (extensive)"),
+    (15, 3, "{n} localStorage items (extensive data storage)"),
+    (5, 2, None),
+)
+
+_BEACON_TIERS: tuple[_tiers.Tier, ...] = (
+    (30, 6, "{n} tracking beacons/pixels detected (extreme)"),
+    (10, 4, "{n} tracking beacons/pixels detected"),
+    (3, 2, None),
+)
+
+_THIRD_PARTY_POST_TIERS: tuple[_tiers.Tier, ...] = (
+    (5, 3, "{n} data submissions to third parties"),
+    (0, 1, None),
+)
 
 
 def calculate(
@@ -45,7 +70,9 @@ def calculate(
     )
 
     tracking_storage = [item for item in local_storage if any(p.search(item.key) for p in tracker_patterns.TRACKING_STORAGE_PATTERNS)]
-    beacon_requests = [r for r in network_requests if r.resource_type == "image" and r.is_third_party and len(r.url) > 200]
+    beacon_requests = [
+        r for r in network_requests if r.resource_type == "image" and r.is_third_party and len(r.url) > _BEACON_URL_LENGTH_THRESHOLD
+    ]
     third_party_posts = [r for r in network_requests if r.method == "POST" and r.is_third_party]
     analytics_urls = [r for r in network_requests if any(p.search(r.url) for p in tracker_patterns.ANALYTICS_TRACKERS)]
 
@@ -60,14 +87,10 @@ def calculate(
     )
 
     # ── Storage volume ──────────────────────────────────────
-    if len(local_storage) > 30:
-        points += 4
-        issues.append(f"{len(local_storage)} localStorage items (extensive)")
-    elif len(local_storage) > 15:
-        points += 3
-        issues.append(f"{len(local_storage)} localStorage items (extensive data storage)")
-    elif len(local_storage) > 5:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(local_storage), _STORAGE_VOLUME_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Tracking storage ────────────────────────────────────
     if len(tracking_storage) > 0:
@@ -75,21 +98,16 @@ def calculate(
         issues.append(f"{len(tracking_storage)} tracking-related storage items")
 
     # ── Beacons / pixels ────────────────────────────────────
-    if len(beacon_requests) > 30:
-        points += 6
-        issues.append(f"{len(beacon_requests)} tracking beacons/pixels detected (extreme)")
-    elif len(beacon_requests) > 10:
-        points += 4
-        issues.append(f"{len(beacon_requests)} tracking beacons/pixels detected")
-    elif len(beacon_requests) > 3:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(beacon_requests), _BEACON_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Third-party POSTs ───────────────────────────────────
-    if len(third_party_posts) > 5:
-        points += 3
-        issues.append(f"{len(third_party_posts)} data submissions to third parties")
-    elif len(third_party_posts) > 0:
-        points += 1
+    pts, issue = _tiers.score_by_tiers(len(third_party_posts), _THIRD_PARTY_POST_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Analytics ───────────────────────────────────────────
     if len(analytics_urls) > 0:

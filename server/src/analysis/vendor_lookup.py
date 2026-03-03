@@ -16,6 +16,7 @@ databases and Disconnect tracking-protection list.
 
 from __future__ import annotations
 
+import functools
 import re
 from typing import Any, TypedDict
 
@@ -108,23 +109,22 @@ _ENRICHMENT_CATEGORY_MAP: dict[str, str] = {
     "social-trackers.json": "Social Tracker",
 }
 
-_enrichment_index: dict[str, VendorEnrichment] | None = None
-_gvl_id_index: dict[int, VendorEnrichment] | None = None
-_atp_id_index: dict[int, VendorEnrichment] | None = None
+_EnrichmentIndexes = tuple[
+    dict[str, VendorEnrichment],
+    dict[int, VendorEnrichment],
+    dict[int, VendorEnrichment],
+]
 
 
-def _get_enrichment_index() -> dict[str, VendorEnrichment]:
-    """Build (or return cached) enrichment lookup.
+@functools.cache
+def _build_enrichment_indexes() -> _EnrichmentIndexes:
+    """Build all three enrichment indexes (name, GVL-ID, ATP-ID).
 
-    Maps lowercased vendor name / alias → ``VendorEnrichment``.
-    Sources: partner databases and Disconnect services.
-    Also populates ``_gvl_id_index`` and ``_atp_id_index``
-    for O(1) vendor-ID lookups.
+    Called once and cached via ``@functools.cache``.
+
+    Returns:
+        A tuple of ``(name_index, gvl_id_index, atp_id_index)``.
     """
-    global _enrichment_index, _gvl_id_index, _atp_id_index
-    if _enrichment_index is not None:
-        return _enrichment_index
-
     index: dict[str, VendorEnrichment] = {}
     gvl_idx: dict[int, VendorEnrichment] = {}
     atp_idx: dict[int, VendorEnrichment] = {}
@@ -163,24 +163,22 @@ def _get_enrichment_index() -> dict[str, VendorEnrichment]:
             cat_label = str(raw_cat)
         index[company] = VendorEnrichment(category=cat_label)
 
-    _enrichment_index = index
-    _gvl_id_index = gvl_idx
-    _atp_id_index = atp_idx
-    return _enrichment_index
+    return index, gvl_idx, atp_idx
+
+
+def _get_enrichment_index() -> dict[str, VendorEnrichment]:
+    """Return the name → enrichment index."""
+    return _build_enrichment_indexes()[0]
 
 
 def _get_gvl_id_index() -> dict[int, VendorEnrichment]:
-    """Return the GVL-ID → enrichment index, building it if needed."""
-    if _gvl_id_index is None:
-        _get_enrichment_index()
-    return _gvl_id_index or {}
+    """Return the GVL-ID → enrichment index."""
+    return _build_enrichment_indexes()[1]
 
 
 def _get_atp_id_index() -> dict[int, VendorEnrichment]:
-    """Return the ATP-ID → enrichment index, building it if needed."""
-    if _atp_id_index is None:
-        _get_enrichment_index()
-    return _atp_id_index or {}
+    """Return the ATP-ID → enrichment index."""
+    return _build_enrichment_indexes()[2]
 
 
 def _enrich(name: str) -> VendorEnrichment | None:

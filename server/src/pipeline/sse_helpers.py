@@ -7,9 +7,9 @@ in the routes package.
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
+import orjson
 import pydantic
 
 from src.browser import session as browser_session
@@ -53,7 +53,7 @@ def serialize_score_breakdown(
 
 def format_sse_event(event_type: str, data: dict[str, Any]) -> str:
     """Format a Server-Sent Event string."""
-    return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    return f"event: {event_type}\ndata: {orjson.dumps(data).decode()}\n\n"
 
 
 def format_progress_event(step: str, message: str, progress: int) -> str:

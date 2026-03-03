@@ -72,6 +72,7 @@ src/
 │   ├── storage_info_agent.py        # Storage key information lookup agent (LLM fallback)
 │   ├── observability_setup.py       # Azure Monitor / App Insights telemetry setup
 │   ├── gdpr_context.py              # Shared GDPR/TCF reference builder for agent prompts
+│   ├── context_builder.py           # Shared LLM analysis context builder (tracking summary, consent, scoring, GDPR, databases)
 │   ├── prompts/                     # System prompts (one module per agent)
 │   │   ├── consent_detection.py     # Consent detection prompt
 │   │   ├── consent_extraction.py    # Consent extraction prompt
@@ -118,6 +119,7 @@ src/
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
 │   ├── domain_classifier.py         # Three-tier domain classification (Disconnect + partner DBs + keyword heuristics, no LLM)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
+│       ├── _tiers.py                # Shared score_by_tiers() helper and Tier type alias for declarative threshold tables
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
 │       ├── consent.py               # Pre-consent tracking, partner risk, disclosure
@@ -128,21 +130,28 @@ src/
 │       ├── social_media.py          # Social media pixels, SDKs, plugins
 │       └── third_party.py           # 3P domain count, request volume, known services
 ├── pipeline/                        # SSE streaming orchestration
-│   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators); late CMP detection with consent_platform backfill
+│   ├── stream.py                    # Top-level SSE orchestrator (_StreamContext + phase generators); phase 4 helpers: _decode_consent_strings(), _decode_privacy_cookies(), _handle_overlay_failure(); late CMP detection with consent_platform backfill
 │   ├── browser_phases.py            # Phases 1-3: navigate, page load, access check, initial data capture
-│   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture()
+│   ├── overlay_pipeline.py          # Phase 4: run() → _try_cmp_specific_dismiss() → _run_vision_loop() → _click_and_capture(); yields str | BreakSignal
 │   ├── overlay_steps.py             # Sub-step functions for overlay pipeline (screenshot error recovery)
 │   ├── analysis_pipeline.py         # Phase 5: concurrent AI analysis & scoring
 │   └── sse_helpers.py               # SSE formatting, serialization helpers & screenshot capture with error recovery
 ├── models/                          # Pydantic data models
-│   ├── tracking_data.py             # Cookies, scripts, storage, network models
-│   ├── consent.py                   # Consent detection & extraction models
+│   ├── tracking_data.py             # Cookies, scripts, storage, network models + CookieLike/StorageItemLike protocols
+│   ├── consent.py                   # Consent detection & extraction models + ConsentPlatformProfile
 │   ├── analysis.py                  # Analysis results & scoring models
 │   ├── partners.py                  # Partner classification models
-│   ├── report.py                    # Structured report section models
+│   ├── report.py                    # Structured report section models (CamelCaseModel base)
+│   ├── item_info.py                 # ItemInfoResult base model for cookie/storage info responses
 │   └── browser.py                   # Navigation, access denial & device models
 ├── data/                            # Static data and reference databases
-│   ├── loader.py                    # JSON data loader with caching
+│   ├── loader.py                    # Re-export facade — imports all public symbols from sub-modules
+│   ├── _base.py                     # Shared _DATA_DIR, _load_json(), _load_script_patterns() helpers
+│   ├── tracker_loader.py            # Scripts, cookies, storage, domains, CNAME, Disconnect loaders
+│   ├── partner_loader.py            # Partner databases and PARTNER_CATEGORIES config
+│   ├── consent_loader.py            # TCF, GVL, GDPR, ATP, consent platform loaders
+│   ├── media_loader.py              # Media group profiles and LLM context builder
+│   ├── domain_info.py               # Cross-category domain descriptions and storage key hints
 │   ├── consent/                     # Consent and GDPR/TCF reference data
 │   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
 │   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)
@@ -169,6 +178,7 @@ src/
     ├── logger.py                    # Structured logger with colour output (contextvars isolation)
     ├── risk.py                      # Shared risk-scoring helpers (risk_label)
     ├── serialization.py             # Pydantic model serialization helpers
+    ├── text.py                      # Domain and ANSI text utilities (strip_ansi, sanitize_domain)
     ├── url.py                       # URL / domain utilities and SSRF prevention (validate_analysis_url)
     └── usage_tracking.py            # Per-session LLM call count and token usage tracking
 ```
@@ -185,7 +195,7 @@ src/
 | POST | `/api/domain-info` | Looks up domain information |
 | POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
 | POST | `/api/tc-string-decode` | Decodes an IAB TCF v2 TC String (deterministic, no LLM) |
-| POST | `/api/fetch-script` | Fetches remote JavaScript source for the script viewer (512 KB cap, 10 s timeout) |
+| POST | `/api/fetch-script` | Fetches remote JavaScript source for the script viewer (4096 KB cap, 10 s timeout) |
 | GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting

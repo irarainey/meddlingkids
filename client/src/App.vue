@@ -11,7 +11,6 @@ import {
   SummaryTab,
   ConsentTab,
   CookiesTab,
-  DebugLogTab,
   NetworkTab,
   ScriptsTab,
   StorageTab,
@@ -49,7 +48,6 @@ const {
   progressStep,
   progressPercent,
   selectedScreenshot,
-  debugLog,
 
   // Computed
   scriptsByDomain,
@@ -71,9 +69,6 @@ const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
 
 const appVersion = __APP_VERSION__
-
-/** Show the Debug Log tab only when ?debug=true is in the URL. */
-const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true'
 
 /** Back-to-top button — visible once the user scrolls past 300px. */
 const showBackToTop = ref(false)
@@ -229,9 +224,6 @@ function onUrlMouseUp(event: Event): void {
           <button class="tab" :class="{ active: activeTab === 'scripts' }" @click="activeTab = 'scripts'">
             📜 Scripts ({{ scripts.length }})
           </button>
-          <button v-if="debugMode" class="tab" :class="{ active: activeTab === 'debug-log' }" @click="activeTab = 'debug-log'">
-            🪵 Debug Log
-          </button>
         </div>
 
         <!-- Tab Content Panels -->
@@ -285,11 +277,6 @@ function onUrlMouseUp(event: Event): void {
           :scripts-by-domain="scriptsByDomain"
           :script-count="scripts.length"
           :script-groups="scriptGroups"
-        />
-
-        <DebugLogTab
-          v-if="activeTab === 'debug-log'"
-          :log-lines="debugLog"
         />
     </div>
 

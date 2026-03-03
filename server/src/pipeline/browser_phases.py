@@ -63,6 +63,9 @@ _CONSENT_MAX_WAIT_MS = 8000
 # Extra delay after buttons appear to let rendering finish.
 _CONSENT_RENDER_SETTLE_MS = 1500
 
+# Maximum characters for frame URLs in debug log messages.
+_LOG_URL_TRUNCATION_LIMIT = 80
+
 
 async def _wait_for_consent_dialog_ready(
     page: async_api.Page,
@@ -137,7 +140,7 @@ async def _wait_for_consent_dialog_ready(
                     buttons_ready = True
                     break
             except Exception:
-                log.debug("Button enumeration failed in frame", {"frame": frame.url[:80]})
+                log.debug("Button enumeration failed in frame", {"frame": frame.url[:_LOG_URL_TRUNCATION_LIMIT]})
                 continue
         if buttons_ready:
             break
@@ -159,12 +162,12 @@ async def _wait_for_consent_dialog_ready(
                 await frame.wait_for_load_state("load")
             log.debug(
                 "Consent frame reached load state",
-                {"url": frame.url[:80]},
+                {"url": frame.url[:_LOG_URL_TRUNCATION_LIMIT]},
             )
         except Exception:
             log.debug(
                 "Consent frame load state wait failed",
-                {"url": frame.url[:80]},
+                {"url": frame.url[:_LOG_URL_TRUNCATION_LIMIT]},
             )
 
     # Final rendering-settle delay — even after load, the

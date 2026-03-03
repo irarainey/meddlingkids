@@ -32,9 +32,10 @@ from src.utils import url as url_mod
 
 log = logger.create_logger("Analysis")
 
-# Collection caps for the SSE ``complete`` payload — keep it under ~1 MB.
-_MAX_SCRIPTS = 200
-_MAX_SCRIPT_GROUPS = 100
+# Cap for script/group counts inside the ``completeScripts`` event.
+# Even extreme sites rarely exceed 250 unique scripts.
+_MAX_SCRIPTS = 500
+_MAX_SCRIPT_GROUPS = 200
 
 # Human-readable labels for report section progress events.
 _SECTION_LABELS: dict[str, str] = {
@@ -962,23 +963,95 @@ async def _score_and_summarise(
         # Persist domain knowledge for future consistency.
         domain_cache.save_from_report(domain, structured_report)
 
-    # ── Build final payload ─────────────────────────────────
+    # ── Build final payload (multi-part) ────────────────────
+    #
+    # The complete event is split across three SSE events to
+    # keep each one well under browser/proxy size limits:
+    #   1. completeTracking — cookies, requests, storage
+    #   2. completeScripts  — analysed scripts and groups
+    #   3. complete         — score, report, summary (small)
+    #
+    # The client accumulates (1–2) as they arrive; event (3)
+    # triggers the score dialog and closes the EventSource.
 
     log.success("Investigation complete")
     yield sse_helpers.format_progress_event("complete", "Investigation complete!", 100)
+
+    yield _build_tracking_payload(
+        final_cookies=final_cookies,
+        final_requests=final_requests,
+        storage=storage,
+    )
+    yield _build_scripts_payload(script_result)
+
+    log.info(
+        "SSE payload sizes",
+        {
+            "completeTracking": f"{_last_tracking_size:,}B",
+            "completeScripts": f"{_last_scripts_size:,}B",
+        },
+    )
 
     yield _build_complete_payload(
         structured_report,
         summary_findings,
         score_breakdown,
         consent_details,
-        script_result,
         analysis_success=bool(full_text),
-        final_cookies=final_cookies,
-        final_requests=final_requests,
-        storage=storage,
         decoded_cookies=decoded_cookies,
     )
+
+
+# Last emitted payload sizes (bytes) — set by builders, logged by caller.
+_last_tracking_size = 0
+_last_scripts_size = 0
+
+
+def _build_tracking_payload(
+    *,
+    final_cookies: list[tracking_data.TrackedCookie] | None = None,
+    final_requests: list[tracking_data.NetworkRequest] | None = None,
+    storage: tracking_data.CapturedStorage | None = None,
+) -> str:
+    """Build the ``completeTracking`` SSE event.
+
+    Contains the full (uncapped) cookie, network-request, and
+    storage collections — the largest portion of the response.
+    Sent as a separate event so no single SSE data line exceeds
+    browser or proxy size limits.
+    """
+    global _last_tracking_size
+    event = sse_helpers.format_sse_event(
+        "completeTracking",
+        {
+            "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
+            "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
+            "localStorage": [sse_helpers.to_camel_case_dict(i) for i in storage.local_storage] if storage else None,
+            "sessionStorage": [sse_helpers.to_camel_case_dict(i) for i in storage.session_storage] if storage else None,
+        },
+    )
+    _last_tracking_size = len(event)
+    return event
+
+
+def _build_scripts_payload(
+    script_result: scripts.ScriptAnalysisResult,
+) -> str:
+    """Build the ``completeScripts`` SSE event.
+
+    Carries analysed scripts and groups (capped at generous
+    limits that accommodate even extreme ad-tech sites).
+    """
+    global _last_scripts_size
+    event = sse_helpers.format_sse_event(
+        "completeScripts",
+        {
+            "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
+            "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
+        },
+    )
+    _last_scripts_size = len(event)
+    return event
 
 
 def _build_complete_payload(
@@ -986,18 +1059,15 @@ def _build_complete_payload(
     summary_findings: list[analysis.SummaryFinding],
     score_breakdown: analysis.ScoreBreakdown,
     consent_details: consent.ConsentDetails | None,
-    script_result: scripts.ScriptAnalysisResult,
     analysis_success: bool = True,
-    final_cookies: list[tracking_data.TrackedCookie] | None = None,
-    final_requests: list[tracking_data.NetworkRequest] | None = None,
-    storage: tracking_data.CapturedStorage | None = None,
     decoded_cookies: dict[str, object] | None = None,
 ) -> str:
-    """Build the final SSE ``complete`` event payload.
+    """Build the final ``complete`` SSE event.
 
-    Large collections (scripts, groups) are capped to prevent
-    multi-MB SSE events on sites with hundreds of third-party
-    scripts.
+    Contains only the lightweight core results — score, summary,
+    structured report, consent details.  The heavy collections
+    (tracking data, scripts) are sent in preceding
+    ``completeTracking`` and ``completeScripts`` events.
     """
     privacy_score = score_breakdown.total_score
 
@@ -1022,12 +1092,5 @@ def _build_complete_payload(
             "analysisError": (None if analysis_success else "Analysis produced no output"),
             "consentDetails": consent_dict,
             "decodedCookies": decoded_cookies,
-            "cookies": [sse_helpers.to_camel_case_dict(c) for c in final_cookies] if final_cookies is not None else None,
-            "networkRequests": ([sse_helpers.to_camel_case_dict(r) for r in final_requests] if final_requests is not None else None),
-            "localStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.local_storage] if storage else None),
-            "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.session_storage] if storage else None),
-            "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
-            "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
-            "debugLog": logger.get_log_buffer(),
         },
     )

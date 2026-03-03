@@ -18,6 +18,11 @@ import pydantic
 from src.data import loader
 from src.utils import serialization
 
+# Vendor-count mismatch thresholds: flag when relative difference
+# exceeds this ratio *and* the absolute gap exceeds the floor.
+_VENDOR_COUNT_MISMATCH_RATIO = 0.2
+_VENDOR_COUNT_MISMATCH_FLOOR = 10
+
 # ====================================================================
 # Validation result models
 # ====================================================================
@@ -291,8 +296,8 @@ def validate_tc_consent(
     if claimed_partner_count is not None and vendor_consent_count > 0:
         diff = abs(vendor_consent_count - claimed_partner_count)
         ratio = diff / max(claimed_partner_count, 1)
-        # Flag if counts differ by more than 20% and more than 10 vendors
-        if ratio > 0.2 and diff > 10:
+        # Flag if counts differ by more than the threshold
+        if ratio > _VENDOR_COUNT_MISMATCH_RATIO and diff > _VENDOR_COUNT_MISMATCH_FLOOR:
             vendor_count_mismatch = True
             if vendor_consent_count > claimed_partner_count:
                 findings.append(

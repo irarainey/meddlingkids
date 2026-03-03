@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 
 from src.analysis import tracker_patterns
+from src.analysis.scoring import _tiers
 from src.models import analysis, consent
 from src.utils import logger
 
@@ -55,6 +56,19 @@ _PURPOSE_LABELS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"trade.?union|union.?member", re.I), "Trade union membership tracking disclosed"),
     (re.compile(r"legal.?aid|solicitor|lawyer", re.I), "Legal services data tracking disclosed"),
 ]
+
+# ── Tier tables ─────────────────────────────────────────────
+
+_MATCHED_PURPOSE_TIERS: tuple[_tiers.Tier, ...] = (
+    (3, 6, None),
+    (1, 4, None),
+    (0, 2, None),
+)
+
+_PROFILING_SERVICE_TIERS: tuple[_tiers.Tier, ...] = (
+    (2, 6, "{n} content profiling services track which topics you read"),
+    (0, 4, "Content topic profiling active - what you read is categorised and shared"),
+)
 
 
 def _resolve_purpose_label(pattern_source: str) -> str:
@@ -115,12 +129,8 @@ def calculate(
                     matched_purposes += 1
                     issues.append(label)
 
-        if matched_purposes > 3:
-            points += 6
-        elif matched_purposes > 1:
-            points += 4
-        elif matched_purposes > 0:
-            points += 2
+        pts, _ = _tiers.score_by_tiers(matched_purposes, _MATCHED_PURPOSE_TIERS)
+        points += pts
 
         log.debug(
             "Sensitive purposes matched",
@@ -199,12 +209,10 @@ def calculate(
             },
         )
 
-    if len(profiling_services) > 2:
-        points += 6
-        issues.append(f"{len(profiling_services)} content profiling services track which topics you read")
-    elif len(profiling_services) > 0:
-        points += 4
-        issues.append("Content topic profiling active - what you read is categorised and shared")
+    pts, issue = _tiers.score_by_tiers(len(profiling_services), _PROFILING_SERVICE_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     log.info(
         "Sensitive data score",

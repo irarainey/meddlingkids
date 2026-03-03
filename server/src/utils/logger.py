@@ -16,18 +16,18 @@ import io
 import json
 import os
 import pathlib
-import re
 import sys
 import time
 from datetime import UTC, datetime
 from typing import Any
+
+from src.utils import text
 
 # ============================================================================
 # Per-session state (isolated via contextvars)
 # ============================================================================
 
 _timers_var: contextvars.ContextVar[dict[str, tuple[float, str]]] = contextvars.ContextVar("_timers_var")
-_log_buffer_var: contextvars.ContextVar[list[str]] = contextvars.ContextVar("_log_buffer_var")
 _log_file_stream_var: contextvars.ContextVar[io.TextIOWrapper | None] = contextvars.ContextVar("_log_file_stream_var", default=None)
 _log_file_path_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("_log_file_path_var", default=None)
 _analysis_domain_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("_analysis_domain_var", default=None)
@@ -44,29 +44,8 @@ def _get_timers() -> dict[str, tuple[float, str]]:
         return timers
 
 
-# Maximum number of log lines retained in the in-memory buffer.
-# Prevents unbounded growth during verbose analyses.
-_MAX_LOG_BUFFER_LINES = 2000
-
-
-def _get_log_buffer() -> list[str]:
-    """Return the per-context log buffer, creating it on first access."""
-    try:
-        return _log_buffer_var.get()
-    except LookupError:
-        buf: list[str] = []
-        _log_buffer_var.set(buf)
-        return buf
-
-
-def get_log_buffer() -> list[str]:
-    """Return a copy of the accumulated log lines (ANSI-stripped)."""
-    return list(_get_log_buffer())
-
-
-def clear_log_buffer() -> None:
-    """Clear the in-memory log buffer and timers for the next analysis run."""
-    _get_log_buffer().clear()
+def clear_timers() -> None:
+    """Clear per-session timers for the next analysis run."""
     _get_timers().clear()
 
 
@@ -86,8 +65,7 @@ def start_log_file(domain: str) -> None:
 
     end_log_file()
 
-    safe_domain = domain.removeprefix("www.")
-    safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
+    safe_domain = text.sanitize_domain(domain)
 
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
@@ -154,8 +132,7 @@ def save_report_file(
     reports_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_domain = domain.removeprefix("www.")
-    safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
+    safe_domain = text.sanitize_domain(domain)
 
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
@@ -218,7 +195,7 @@ def _write_to_log_file(line: str) -> None:
     if stream is None:
         return
 
-    clean = re.sub(r"\033\[[0-9;]*m", "", line)
+    clean = text.strip_ansi(line)
     stream.write(clean + "\n")
     stream.flush()
 
@@ -324,10 +301,6 @@ class Logger:
 
         print(log_line, file=sys.stderr)
         _write_to_log_file(log_line)
-        # Keep an ANSI-stripped copy for the client debug tab.
-        buf = _get_log_buffer()
-        if len(buf) < _MAX_LOG_BUFFER_LINES:
-            buf.append(re.sub(r"\033\[[0-9;]*m", "", log_line))
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
         """Log an informational message."""
@@ -388,7 +361,6 @@ class Logger:
         for ln in lines:
             print(ln, file=sys.stderr)
             _write_to_log_file(ln)
-            _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", ln))
 
     def subsection(self, title: str) -> None:
         """Print a smaller sub-section header."""
@@ -396,7 +368,6 @@ class Logger:
         output = f"\n{c['cyan']}  ▸ {title}{c['reset']}"
         print(output, file=sys.stderr)
         _write_to_log_file(output)
-        _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", output))
 
 
 def create_logger(context: str) -> Logger:

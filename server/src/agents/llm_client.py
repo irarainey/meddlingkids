@@ -126,7 +126,7 @@ def _create_azure_client(
 
     return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
         api_key=cfg.api_key.get_secret_value(),
-        api_version=cfg.api_version,
+        api_version=api_version,
         endpoint=cfg.endpoint,
         deployment_name=deployment,
     )

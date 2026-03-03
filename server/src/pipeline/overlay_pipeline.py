@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import re
 from collections.abc import AsyncGenerator
 
@@ -25,6 +26,12 @@ from src.pipeline import overlay_steps, sse_helpers
 from src.utils import logger
 
 log = logger.create_logger("Overlays")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class BreakSignal:
+    """Sentinel yielded by ``_click_and_capture`` to stop the overlay loop."""
+
 
 MAX_OVERLAYS = 5
 
@@ -546,17 +553,17 @@ class OverlayPipeline:
 
             # ── Click and capture ───────────────────────────
             should_break = False
-            async for event in self._click_and_capture(
+            async for click_event in self._click_and_capture(
                 detection,
                 found_in_frame,
                 overlay_count,
                 progress_base,
                 sig,
             ):
-                if event == "__BREAK__":
+                if isinstance(click_event, BreakSignal):
                     should_break = True
                 else:
-                    yield event
+                    yield click_event
             if should_break:
                 break
 
@@ -569,10 +576,10 @@ class OverlayPipeline:
         overlay_number: int,
         progress_base: int,
         sig: str,
-    ) -> AsyncGenerator[str]:
+    ) -> AsyncGenerator[str | BreakSignal]:
         """Capture consent content, click the overlay, and handle the outcome.
 
-        Yields SSE event strings.  Yields the sentinel ``"__BREAK__"``
+        Yields SSE event strings.  Yields a :class:`BreakSignal`
         if the caller's detection loop should stop.
 
         Args:
@@ -645,7 +652,7 @@ class OverlayPipeline:
                         f"Failed to click overlay {overlay_number}, continuing analysis",
                         {"type": detection.overlay_type},
                     )
-                yield "__BREAK__"
+                yield BreakSignal()
                 return
 
             # Click succeeded — capture post-click state
@@ -709,7 +716,7 @@ class OverlayPipeline:
                     f"Failed to click overlay {overlay_number}, continuing analysis",
                     {"error": str(click_error)},
                 )
-            yield "__BREAK__"
+            yield BreakSignal()
             return
 
         # ── Consent extraction (first cookie only) ──────
