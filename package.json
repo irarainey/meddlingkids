@@ -12,11 +12,14 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
+    "highlight.js": "^11.11.1",
+    "js-beautify": "^1.15.4",
     "vue": "^3.5.24"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/d3": "^7.4.3",
+    "@types/js-beautify": "^1.14.3",
     "@types/node": "^25.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.8.1",

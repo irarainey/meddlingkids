@@ -433,7 +433,7 @@ App.vue
     ├── StorageTab
     ├── NetworkTab
     ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
-    ├── ScriptsTab
+    ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
     └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```
 
@@ -519,7 +519,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `tc_validation.py` | TC String validation — cross-references decoded TC String data with observed tracking to produce validation findings (e.g. tracking without consent, undisclosed vendors). Deterministic — no LLM calls |
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
-| `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains), (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
+| `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains) with override corrections for known misclassifications, (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |

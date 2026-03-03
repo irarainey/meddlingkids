@@ -43,12 +43,53 @@
   keywords (adserver, analytics, metrics, fingerprint, etc.) that aren't in any
   curated database. Client-side `lookupCategory()` also now checks domain
   keyword patterns before falling back to "other".
+- **First-party node classification in network graph** — domains sharing the
+  same base domain as the analysed URL (including two-part TLDs like `.co.uk`)
+  are now classified as "First Party" and rendered in light green (`#86efac`),
+  distinguishing site-owned resources from third-party trackers.
+- **First-party domain aliases** — configurable alias map
+  (`FIRST_PARTY_ALIASES`) allows related domains to be recognised as first-party
+  (e.g. `theguardian.com` → `guim.co.uk`, `guardianapis.com`;
+  `bbc.co.uk` → `bbci.co.uk`).
+- **CDN / Infrastructure category in network graph** — content delivery and
+  infrastructure domains (~70 patterns including Google CDN, Cloudflare,
+  Akamai, Fastly, AWS, Azure, etc.) are now classified as "CDN /
+  Infrastructure" and rendered in teal (`#14b8a6`), reducing noise in the
+  "other" category.
+- **Subdomain prefix heuristic** — when a domain falls through all
+  classification tiers, the leftmost subdomain label is checked against known
+  CDN prefixes (cdn, static, assets, fonts, etc.), advertising prefixes (ad,
+  ads, pixel, tag, etc.), and analytics prefixes (analytics, tracking, metrics,
+  etc.) before falling back to "other".
+- **Disconnect classification overrides** — `_DISCONNECT_OVERRIDES` map in
+  `domain_classifier.py` corrects known Disconnect misclassifications (e.g.
+  `dotmetrics.net` reclassified from advertising to analytics — it is Ipsos Iris
+  audience measurement).
+- **Script source viewer** — clicking any script URL in the Scripts tab opens
+  a fullscreen dialog showing the script's source code with syntax highlighting
+  (highlight.js) and automatic formatting of minified code (js-beautify). The
+  dialog displays the AI-generated script description, a copy-to-clipboard
+  button, and a link to the original URL. Scripts are fetched via a server-side
+  proxy (`POST /api/fetch-script`) to avoid CORS restrictions.
+- **Script fetch proxy endpoint** — new `POST /api/fetch-script` server
+  endpoint that fetches remote JavaScript content on behalf of the client,
+  capped at 512 KB with a 10-second timeout.
 
 ### Fixed
 
 - **Network graph minimap not updating on zoom/pan** — the minimap viewport
   rectangle now redraws on every zoom and pan event, not only during simulation
   ticks, so it correctly tracks the visible area after the force layout settles.
+- **Network graph not resizing when closing fullscreen notes** — the graph
+  container now uses flex-based layout (`flex: 1 1 0`) instead of a fixed
+  `calc(100vh - 200px)` height, so it properly fills the available space when
+  the notes panel is toggled.
+- **Category filter buttons not working with new categories** — first-party
+  nodes were unconditionally added to the reachable set, bypassing the BFS
+  filter. First-party is now an interactive toggle like all other categories.
+- **Empty category buttons visible in legend** — category buttons in the graph
+  legend are now hidden when no nodes of that type exist in the current graph
+  data.
 
 ### Changed
 

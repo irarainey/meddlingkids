@@ -248,6 +248,53 @@ async def tc_string_decode_endpoint(
     return decoded.model_dump(by_alias=True)
 
 
+# Maximum bytes to fetch for script preview (512 KB).
+_MAX_PREVIEW_BYTES = 512 * 1024
+
+
+@app.post("/api/fetch-script")
+async def fetch_script_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Fetch the source content of a remote JavaScript file.
+
+    Acts as a same-origin proxy so the client can display
+    syntax-highlighted script source without CORS restrictions.
+    Only HTTP(S) URLs are accepted and the response is capped
+    at 512 KB to prevent abuse.
+    """
+    import aiohttp
+
+    body = await request.json()
+    url: str = body.get("url", "").strip()
+
+    if not url:
+        raise fastapi.HTTPException(status_code=400, detail="url is required")
+
+    if not url.startswith(("http://", "https://")):
+        raise fastapi.HTTPException(status_code=400, detail="Only HTTP(S) URLs are accepted")
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
+                max_redirects=3,
+            ) as resp:
+                if resp.status >= 400:
+                    return {"error": f"HTTP {resp.status}", "content": None}
+                raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+                content = raw.decode("utf-8", errors="replace")
+                truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
+                return {"content": content, "truncated": truncated}
+    except TimeoutError:
+        return {"error": "Request timed out", "content": None}
+    except Exception as exc:
+        log.debug("Script fetch proxy error", {"url": url, "error": str(exc)})
+        return {"error": str(exc), "content": None}
+
+
 @app.get("/api/open-browser-stream")
 async def analyze_endpoint(
     url: str = fastapi.Query(..., description="The URL to analyze"),

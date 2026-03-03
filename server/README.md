@@ -185,6 +185,7 @@ src/
 | POST | `/api/domain-info` | Looks up domain information |
 | POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
 | POST | `/api/tc-string-decode` | Decodes an IAB TCF v2 TC String (deterministic, no LLM) |
+| POST | `/api/fetch-script` | Fetches remote JavaScript source for the script viewer (512 KB cap, 10 s timeout) |
 | GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting
