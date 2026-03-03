@@ -144,9 +144,9 @@ class StructuredReportAgent(base.BaseAgent):
         #
         # Wrap each coroutine so the optional progress callback
         # fires as sections finish, giving the client granular
-        # "Generating report: <section> (N/10)..." updates.
+        # "Generating report: <section> (N/9)..." updates.
         _sections_done = 0
-        _total_sections = 10
+        _total_sections = 9
 
         async def _tracked(
             coro: Awaitable[pydantic.BaseModel | None],
