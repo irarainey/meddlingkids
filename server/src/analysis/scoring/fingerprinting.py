@@ -11,10 +11,16 @@ from __future__ import annotations
 import re
 
 from src.analysis import tracker_patterns
+from src.analysis.scoring import _tiers
 from src.models import analysis, tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Score-Fingerprinting")
+
+_OTHER_FINGERPRINT_TIERS: tuple[_tiers.Tier, ...] = (
+    (3, 6, "{n} fingerprinting services identified"),
+    (0, 4, "{n} fingerprinting/tracking services"),
+)
 
 
 def calculate(
@@ -92,12 +98,10 @@ def calculate(
 
     # ── Other fingerprinters ────────────────────────────────
     other_count = len(fingerprint_services) - len(session_replay_services)
-    if other_count > 3:
-        points += 6
-        issues.append(f"{other_count} fingerprinting services identified")
-    elif other_count > 0:
-        points += 4
-        issues.append(f"{other_count} fingerprinting/tracking services")
+    pts, issue = _tiers.score_by_tiers(other_count, _OTHER_FINGERPRINT_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Behavioural / engagement tracking ───────────────────
     behavioural_hits = _detect_behavioural_tracking(all_urls)

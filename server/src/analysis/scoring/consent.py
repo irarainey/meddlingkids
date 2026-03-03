@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 
+from src.analysis.scoring import _tiers
 from src.consent import partner_classification
 from src.data import loader
 from src.models import analysis, consent, tracking_data
@@ -23,6 +24,51 @@ _VAGUE_CONSENT_RE = re.compile(
     r"legitimate interest|necessary|essential"
     r"|basic|functional",
     re.I,
+)
+
+# ── Tier tables ─────────────────────────────────────────────
+
+_TRACKING_SCRIPT_TIERS: tuple[_tiers.Tier, ...] = (
+    (10, 12, "{n} tracking scripts detected on page"),
+    (5, 10, "{n} tracking scripts detected on page"),
+    (2, 7, "{n} tracking scripts detected on page"),
+    (0, 4, "Tracking scripts detected on page"),
+)
+
+_PARTNER_COUNT_TIERS: tuple[_tiers.Tier, ...] = (
+    (1000, 20, "{n} partners share your data (extreme)"),
+    (750, 18, "{n} partners share your data (extreme)"),
+    (500, 15, "{n} partners share your data (extreme)"),
+    (300, 12, "{n} partners share your data (massive)"),
+    (150, 10, "{n} partners share your data (excessive)"),
+    (75, 8, "{n} partners share your data"),
+    (30, 6, "{n} data sharing partners"),
+    (10, 4, "{n} data sharing partners"),
+    (0, 2, None),
+)
+
+_HIGH_RISK_PARTNER_TIERS: tuple[_tiers.Tier, ...] = (
+    (10, 5, "{n} high-risk advertising/tracking partners"),
+    (5, 3, None),
+    (0, 2, None),
+)
+
+_PRE_CONSENT_COOKIE_TIERS: tuple[_tiers.Tier, ...] = (
+    (10, 5, "{n} tracking cookies present on initial page load"),
+    (5, 3, "{n} tracking cookies present on initial page load"),
+    (0, 1, "{n} tracking cookies present on initial page load"),
+)
+
+_PRE_CONSENT_SCRIPT_TIERS: tuple[_tiers.Tier, ...] = (
+    (10, 5, "{n} tracking scripts loaded on initial page load"),
+    (5, 3, "{n} tracking scripts loaded on initial page load"),
+    (0, 1, None),
+)
+
+_PRE_CONSENT_REQUEST_TIERS: tuple[_tiers.Tier, ...] = (
+    (20, 5, "{n} tracker requests observed on initial page load"),
+    (10, 3, "{n} tracker requests observed on initial page load"),
+    (3, 1, None),
 )
 
 
@@ -77,18 +123,10 @@ def calculate(
     # Penalise the total number of known tracking scripts
     # present on the page.  Whether they loaded before or
     # after consent is scored separately via pre_consent_stats.
-    if len(tracking_scripts) > 10:
-        points += 12
-        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
-    elif len(tracking_scripts) > 5:
-        points += 10
-        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
-    elif len(tracking_scripts) > 2:
-        points += 7
-        issues.append(f"{len(tracking_scripts)} tracking scripts detected on page")
-    elif len(tracking_scripts) > 0:
-        points += 4
-        issues.append("Tracking scripts detected on page")
+    pts, issue = _tiers.score_by_tiers(len(tracking_scripts), _TRACKING_SCRIPT_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     if not consent_details:
         has_tracking = len(cookies) > 5 or len(tracking_scripts) > 0
@@ -124,32 +162,10 @@ def calculate(
         },
     )
 
-    if partner_count > 1000:
-        points += 20
-        issues.append(f"{partner_count} partners share your data (extreme)")
-    elif partner_count > 750:
-        points += 18
-        issues.append(f"{partner_count} partners share your data (extreme)")
-    elif partner_count > 500:
-        points += 15
-        issues.append(f"{partner_count} partners share your data (extreme)")
-    elif partner_count > 300:
-        points += 12
-        issues.append(f"{partner_count} partners share your data (massive)")
-    elif partner_count > 150:
-        points += 10
-        issues.append(f"{partner_count} partners share your data (excessive)")
-    elif partner_count > 75:
-        points += 8
-        issues.append(f"{partner_count} partners share your data")
-    elif partner_count > 30:
-        points += 6
-        issues.append(f"{partner_count} data sharing partners")
-    elif partner_count > 10:
-        points += 4
-        issues.append(f"{partner_count} data sharing partners")
-    elif partner_count > 0:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(partner_count, _PARTNER_COUNT_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Partner risk ────────────────────────────────────────
     if partner_count > 0:
@@ -178,13 +194,10 @@ def calculate(
             points += 3
             issues.append(f"Data broker detected: {worst_partners[0]}")
 
-        if high_count > 10:
-            points += 5
-            issues.append(f"{high_count} high-risk advertising/tracking partners")
-        elif high_count > 5:
-            points += 3
-        elif high_count > 0:
-            points += 2
+        pts, issue = _tiers.score_by_tiers(high_count, _HIGH_RISK_PARTNER_TIERS)
+        points += pts
+        if issue:
+            issues.append(issue)
 
     # ── Vague consent language ──────────────────────────────
     vague_purposes = [p for p in consent_details.purposes if _VAGUE_CONSENT_RE.search(p)]
@@ -248,40 +261,27 @@ def _score_pre_consent_volume(
     # Cookies whose names match known tracker patterns
     # (_ga, _fbp, IDE, etc.) present on initial page load
     # before any dialog was dismissed.
-    if stats.tracking_cookies > 10:
-        pts += 5
-        issues.append(f"{stats.tracking_cookies} tracking cookies present on initial page load")
-    elif stats.tracking_cookies > 5:
-        pts += 3
-        issues.append(f"{stats.tracking_cookies} tracking cookies present on initial page load")
-    elif stats.tracking_cookies > 0:
-        pts += 1
-        issues.append(f"{stats.tracking_cookies} tracking cookie{'s' if stats.tracking_cookies > 1 else ''} present on initial page load")
+    tier_pts, tier_issue = _tiers.score_by_tiers(stats.tracking_cookies, _PRE_CONSENT_COOKIE_TIERS)
+    pts += tier_pts
+    if tier_issue:
+        issues.append(tier_issue)
 
     # ── Tracking scripts on page load ───────────────────────
     # Scripts matching known tracker databases (ad scripts,
     # analytics, session replay, etc.).  Non-tracking scripts
     # like UI frameworks are not penalised.
-    if stats.tracking_scripts > 10:
-        pts += 5
-        issues.append(f"{stats.tracking_scripts} tracking scripts loaded on initial page load")
-    elif stats.tracking_scripts > 5:
-        pts += 3
-        issues.append(f"{stats.tracking_scripts} tracking scripts loaded on initial page load")
-    elif stats.tracking_scripts > 0:
-        pts += 1
+    tier_pts, tier_issue = _tiers.score_by_tiers(stats.tracking_scripts, _PRE_CONSENT_SCRIPT_TIERS)
+    pts += tier_pts
+    if tier_issue:
+        issues.append(tier_issue)
 
     # ── Tracker network requests on page load ───────────────
     # Third-party requests to known tracker domains
     # (ad servers, analytics endpoints, pixels, etc.).
-    if stats.tracker_requests > 20:
-        pts += 5
-        issues.append(f"{stats.tracker_requests} tracker requests observed on initial page load")
-    elif stats.tracker_requests > 10:
-        pts += 3
-        issues.append(f"{stats.tracker_requests} tracker requests observed on initial page load")
-    elif stats.tracker_requests > 3:
-        pts += 1
+    tier_pts, tier_issue = _tiers.score_by_tiers(stats.tracker_requests, _PRE_CONSENT_REQUEST_TIERS)
+    pts += tier_pts
+    if tier_issue:
+        issues.append(tier_issue)
 
     log.debug(
         "Pre-consent classified",

@@ -9,11 +9,44 @@ from __future__ import annotations
 
 import re
 
+from src.analysis.scoring import _tiers
 from src.data import loader
 from src.models import analysis, tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Score-ThirdParty")
+
+# ── Tier tables ─────────────────────────────────────────────
+
+_DOMAIN_COUNT_TIERS: tuple[_tiers.Tier, ...] = (
+    (50, 14, "{n} third-party domains contacted (extreme)"),
+    (35, 12, "{n} third-party domains contacted"),
+    (20, 10, "{n} third-party domains contacted"),
+    (10, 7, "{n} third-party domains"),
+    (5, 5, "{n} third-party domains"),
+    (0, 3, None),
+)
+
+_REQUEST_VOLUME_TIERS: tuple[_tiers.Tier, ...] = (
+    (200, 7, "{n} third-party requests"),
+    (100, 5, "{n} third-party requests"),
+    (50, 3, None),
+    (20, 2, None),
+)
+
+_KNOWN_TRACKER_TIERS: tuple[_tiers.Tier, ...] = (
+    (15, 10, "{n} known tracking services identified"),
+    (8, 8, "{n} known tracking services identified"),
+    (4, 6, "{n} known tracking services"),
+    (1, 4, "{n} known trackers"),
+    (0, 2, None),
+)
+
+_CNAME_TIERS: tuple[_tiers.Tier, ...] = (
+    (5, 5, "{n} CNAME-cloaked tracker domains detected"),
+    (2, 3, "{n} CNAME-cloaked tracker domains detected"),
+    (0, 2, "{n} CNAME-cloaked tracker domain detected"),
+)
 
 
 def calculate(
@@ -95,62 +128,28 @@ def calculate(
     )
 
     # ── Domain count ────────────────────────────────────────
-    if len(third_party_domains) > 50:
-        points += 14
-        issues.append(f"{len(third_party_domains)} third-party domains contacted (extreme)")
-    elif len(third_party_domains) > 35:
-        points += 12
-        issues.append(f"{len(third_party_domains)} third-party domains contacted")
-    elif len(third_party_domains) > 20:
-        points += 10
-        issues.append(f"{len(third_party_domains)} third-party domains contacted")
-    elif len(third_party_domains) > 10:
-        points += 7
-        issues.append(f"{len(third_party_domains)} third-party domains")
-    elif len(third_party_domains) > 5:
-        points += 5
-        issues.append(f"{len(third_party_domains)} third-party domains")
-    elif len(third_party_domains) > 0:
-        points += 3
+    pts, issue = _tiers.score_by_tiers(len(third_party_domains), _DOMAIN_COUNT_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Request volume ──────────────────────────────────────
-    if len(third_party_requests) > 200:
-        points += 7
-        issues.append(f"{len(third_party_requests)} third-party requests")
-    elif len(third_party_requests) > 100:
-        points += 5
-        issues.append(f"{len(third_party_requests)} third-party requests")
-    elif len(third_party_requests) > 50:
-        points += 3
-    elif len(third_party_requests) > 20:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(third_party_requests), _REQUEST_VOLUME_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Known trackers ──────────────────────────────────────
-    if len(known_trackers) > 15:
-        points += 10
-        issues.append(f"{len(known_trackers)} known tracking services identified")
-    elif len(known_trackers) > 8:
-        points += 8
-        issues.append(f"{len(known_trackers)} known tracking services identified")
-    elif len(known_trackers) > 4:
-        points += 6
-        issues.append(f"{len(known_trackers)} known tracking services")
-    elif len(known_trackers) > 1:
-        points += 4
-        issues.append(f"{len(known_trackers)} known trackers")
-    elif len(known_trackers) > 0:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(known_trackers), _KNOWN_TRACKER_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── CNAME cloaking penalty ──────────────────────────────
-    if len(cname_cloaked) > 5:
-        points += 5
-        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domains detected")
-    elif len(cname_cloaked) > 2:
-        points += 3
-        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domains detected")
-    elif len(cname_cloaked) > 0:
-        points += 2
-        issues.append(f"{len(cname_cloaked)} CNAME-cloaked tracker domain detected")
+    pts, issue = _tiers.score_by_tiers(len(cname_cloaked), _CNAME_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Disconnect category penalties ───────────────────────
     fingerprinting_domains: set[str] = set()

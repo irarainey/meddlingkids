@@ -3,11 +3,62 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Any, Literal
 
 import pydantic
 
 from src.utils import serialization
+
+# ────────────────────────────────────────────────────────────
+# Consent platform profile (non-Pydantic, shared across modules)
+# ────────────────────────────────────────────────────────────
+
+
+class ConsentPlatformProfile:
+    """In-memory representation of a CMP profile from the data file.
+
+    Loaded from ``data/consent/consent-platforms.json`` and shared
+    between ``data.loader`` and ``consent.platform_detection``.
+    Lives here to avoid a circular import between those two modules.
+    """
+
+    __slots__ = (
+        "accept_button_patterns",
+        "cmp_id",
+        "container_selectors",
+        "cookie_indicators",
+        "description",
+        "iframe_patterns",
+        "js_apis",
+        "key",
+        "manage_button_patterns",
+        "name",
+        "notes",
+        "privacy_url",
+        "reject_button_patterns",
+        "tc_string_sources",
+        "tcf_registered",
+        "vendor",
+    )
+
+    def __init__(self, key: str, data: dict[str, Any]) -> None:
+        self.key = key
+        self.name: str = data.get("name", key)
+        self.vendor: str = data.get("vendor", "")
+        self.privacy_url: str = data.get("privacy_url", "")
+        self.tcf_registered: bool = data.get("tcf_registered", False)
+        self.cmp_id: int | None = data.get("cmp_id")
+        self.description: str = data.get("description", "")
+        self.iframe_patterns: list[str] = data.get("iframe_patterns", [])
+        self.container_selectors: list[str] = data.get("container_selectors", [])
+        self.js_apis: list[str] = data.get("js_apis", [])
+        self.cookie_indicators: list[str] = data.get("cookie_indicators", [])
+        self.accept_button_patterns: list[str] = data.get("accept_button_patterns", [])
+        self.reject_button_patterns: list[str] = data.get("reject_button_patterns", [])
+        self.manage_button_patterns: list[str] = data.get("manage_button_patterns", [])
+        self.tc_string_sources: dict[str, list[str]] = data.get("tc_string_sources", {})
+        self.notes: str = data.get("notes", "")
+
 
 OverlayType = Literal[
     "cookie-consent",

@@ -10,10 +10,38 @@ from __future__ import annotations
 import time
 
 from src.analysis import tracker_patterns
+from src.analysis.scoring import _tiers
 from src.models import analysis, tracking_data
 from src.utils import logger
 
 log = logger.create_logger("Score-Cookies")
+
+# ── Tier tables ─────────────────────────────────────────────
+
+_VOLUME_TIERS: tuple[_tiers.Tier, ...] = (
+    (100, 8, "{n} cookies set (extreme)"),
+    (50, 6, "{n} cookies set (heavy)"),
+    (30, 5, "{n} cookies set (heavy tracking)"),
+    (15, 4, "{n} cookies set"),
+    (5, 2, None),
+)
+
+_THIRD_PARTY_TIERS: tuple[_tiers.Tier, ...] = (
+    (15, 7, "{n} third-party cookies"),
+    (5, 5, "{n} third-party cookies"),
+    (2, 3, "{n} third-party cookies"),
+    (0, 2, None),
+)
+
+_TRACKING_COOKIE_TIERS: tuple[_tiers.Tier, ...] = (
+    (3, 5, "{n} known tracking cookies"),
+    (0, 3, "{n} tracking cookies detected"),
+)
+
+_PERSISTENCE_TIERS: tuple[_tiers.Tier, ...] = (
+    (3, 2, "{n} cookies persist over 1 year"),
+    (0, 1, None),
+)
 
 
 def calculate(
@@ -59,48 +87,28 @@ def calculate(
     )
 
     # ── Volume ──────────────────────────────────────────────
-    if len(cookies) > 100:
-        points += 8
-        issues.append(f"{len(cookies)} cookies set (extreme)")
-    elif len(cookies) > 50:
-        points += 6
-        issues.append(f"{len(cookies)} cookies set (heavy)")
-    elif len(cookies) > 30:
-        points += 5
-        issues.append(f"{len(cookies)} cookies set (heavy tracking)")
-    elif len(cookies) > 15:
-        points += 4
-        issues.append(f"{len(cookies)} cookies set")
-    elif len(cookies) > 5:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(cookies), _VOLUME_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Third-party ─────────────────────────────────────────
-    if len(third_party) > 15:
-        points += 7
-        issues.append(f"{len(third_party)} third-party cookies")
-    elif len(third_party) > 5:
-        points += 5
-        issues.append(f"{len(third_party)} third-party cookies")
-    elif len(third_party) > 2:
-        points += 3
-        issues.append(f"{len(third_party)} third-party cookies")
-    elif len(third_party) > 0:
-        points += 2
+    pts, issue = _tiers.score_by_tiers(len(third_party), _THIRD_PARTY_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Known tracking cookies ──────────────────────────────
-    if len(tracking) > 3:
-        points += 5
-        issues.append(f"{len(tracking)} known tracking cookies")
-    elif len(tracking) > 0:
-        points += 3
-        issues.append(f"{len(tracking)} tracking cookies detected")
+    pts, issue = _tiers.score_by_tiers(len(tracking), _TRACKING_COOKIE_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     # ── Persistence ─────────────────────────────────────────
-    if len(long_lived) > 3:
-        points += 2
-        issues.append(f"{len(long_lived)} cookies persist over 1 year")
-    elif len(long_lived) > 0:
-        points += 1
+    pts, issue = _tiers.score_by_tiers(len(long_lived), _PERSISTENCE_TIERS)
+    points += pts
+    if issue:
+        issues.append(issue)
 
     log.info(
         "Cookie score",
