@@ -5,9 +5,12 @@ Sets up the FastAPI server with CORS, static file serving, and all API routes.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import ipaddress
 import os
 import pathlib
+import urllib.parse
 from collections.abc import AsyncGenerator
 
 import aiohttp
@@ -16,17 +19,13 @@ import fastapi
 from fastapi import staticfiles
 from fastapi.middleware import cors
 from starlette import responses
-import asyncio
-import ipaddress
-import urllib.parse
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
 from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
-from src.utils import cache
-from src.utils.logger import log
+from src.utils import cache, logger
 
 
 def _bootstrap() -> None:
@@ -281,19 +280,13 @@ async def _is_safe_remote_url(url: str) -> bool:
     except OSError:
         return False
 
-    for family, _, _, _, sockaddr in addrinfo:
+    for _family, _, _, _, sockaddr in addrinfo:
         ip_str = sockaddr[0]
         try:
             ip = ipaddress.ip_address(ip_str)
         except ValueError:
             return False
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-        ):
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
             return False
 
     return True
