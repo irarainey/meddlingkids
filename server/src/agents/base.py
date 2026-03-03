@@ -51,6 +51,7 @@ class BaseAgent:
     temperature: float | None = None
     seed: int | None = None
     response_model: type[pydantic.BaseModel] | None = None
+    use_responses_api: bool = False
 
     def __init__(self) -> None:
         """Initialise with a shared LLM chat client."""
@@ -84,6 +85,7 @@ class BaseAgent:
         self._chat_client = llm_client.get_chat_client(
             agent_name=self.agent_name,
             deployment_override=deployment,
+            use_responses_api=self.use_responses_api if deployment else False,
         )
         # When using a deployment override, also prepare a
         # fallback client on the default deployment so the

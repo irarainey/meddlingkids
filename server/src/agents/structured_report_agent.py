@@ -16,9 +16,9 @@ from urllib import parse
 import pydantic
 
 from src.agents import base, gdpr_context
+from src.agents import middleware as middleware_mod
 from src.agents.prompts import structured_report
-from src.analysis import domain_cache
-from src.analysis import vendor_lookup as vlookup
+from src.analysis import domain_cache, domain_classifier, vendor_lookup
 from src.data import loader
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
@@ -90,7 +90,7 @@ class StructuredReportAgent(base.BaseAgent):
 
     agent_name = AGENT_NAME
     instructions = ""  # Overridden per section
-    max_tokens = 2048
+    max_tokens = 4096
     max_retries = 5
     call_timeout = 60  # Large prompts (100K+ chars) need more time than default
     response_model = None  # Set dynamically per section
@@ -124,6 +124,16 @@ class StructuredReportAgent(base.BaseAgent):
             Complete ``StructuredReport``.
         """
         log.start_timer("structured-report")
+
+        # ── Deterministic tracking classification ───────────
+        # Classify domains from local databases (Disconnect,
+        # partner DBs) before any LLM calls.  This provides
+        # instant, deterministic results for known domains
+        # and reduces LLM token usage.
+        det_tracking, _unclassified = domain_classifier.build_deterministic_tracking_section(
+            tracking_summary,
+        )
+
         context = _build_data_context(
             tracking_summary,
             consent_details,
@@ -335,8 +345,12 @@ class StructuredReportAgent(base.BaseAgent):
         # every section that mentions company names.
         url_lookup = _build_url_lookup(consent_details)
 
-        tracking_tech_sec = _enrich_tracker_urls(
+        tracking_tech_sec = domain_classifier.merge_tracking_sections(
+            det_tracking,
             _extract(tracking_tech, report.TrackingTechnologiesSection),
+        )
+        tracking_tech_sec = _enrich_tracker_urls(
+            tracking_tech_sec,
             url_lookup,
         )
         data_collection_sec = _enrich_data_collection_urls(
@@ -402,7 +416,6 @@ class StructuredReportAgent(base.BaseAgent):
             response = await self._complete(
                 data_context,
                 instructions=system_prompt,
-                max_tokens=2048,
                 response_model=response_cls,
             )
 
@@ -426,7 +439,14 @@ class StructuredReportAgent(base.BaseAgent):
                     if isinstance(raw, dict) and "section" in raw:
                         return response_cls.model_validate({"section": raw["section"]})
 
-            log.warn("Section parse failed", {"section": section_name})
+            # Include LLM response metadata so finish_reason and
+            # token counts are visible when parsing fails (e.g.
+            # finish_reason=length means the context was too large).
+            meta = middleware_mod._describe_response(response)
+            log.warn(
+                "Section parse failed",
+                {"section": section_name, "llm": meta, "responsePreview": (response.text or "")[:200]},
+            )
             return None
         except Exception as err:
             log.error(
@@ -606,7 +626,7 @@ def _enrich_vendor_urls(
         # Try partner enrichment first (curated data),
         # then GVL details (automated enrichment).
         if not vendor.category:
-            enrichment = vlookup._enrich(vendor.name)
+            enrichment = vendor_lookup._enrich(vendor.name)
             if enrichment:
                 vendor.category = enrichment.get("category", "")
                 if "concerns" in enrichment and not vendor.concerns:
@@ -770,11 +790,10 @@ def _build_data_context(
         Formatted data context string.
     """
     breakdown = json.dumps(
-        [d.model_dump() for d in tracking_summary.domain_breakdown],
-        indent=2,
+        [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
     )
-    local_json = json.dumps(tracking_summary.local_storage, indent=2)
-    session_json = json.dumps(tracking_summary.session_storage, indent=2)
+    local_json = json.dumps(tracking_summary.local_storage)
+    session_json = json.dumps(tracking_summary.session_storage)
 
     sections = [
         f"URL analysed: {tracking_summary.analyzed_url}",

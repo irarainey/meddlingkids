@@ -186,11 +186,6 @@ def build_tracking_cookie_context() -> str:
     lines = [
         "",
         "## Known Tracking Cookie Reference",
-        "The following is a database of known tracking cookies. "
-        "Use this to accurately classify cookies observed on the page. "
-        "When a cookie matches an entry below, use the stated purpose "
-        "and platform rather than guessing. Cookies not listed here "
-        "should be classified based on your expert knowledge.",
         "",
     ]
 
@@ -441,11 +436,6 @@ def build_disconnect_context(third_party_domains: list[str]) -> str:
     lines = [
         "",
         "## Known Tracker Domain Classifications (Disconnect)",
-        "The following third-party domains are classified in the Disconnect "
-        "tracking protection list. Use this to accurately identify the "
-        "company and tracking category for each domain rather than guessing. "
-        "Domains not listed here should be classified based on your expert "
-        "knowledge.",
         "",
     ]
 
@@ -834,40 +824,19 @@ def build_media_group_context(analyzed_url: str) -> str:
         "",
         "## Publisher / Media Group Context (Prior Research)",
         "",
-        "The following is background information gathered from prior research "
-        "into this publisher's privacy practices. It represents what was "
-        "previously known about this media group BEFORE the current analysis. "
-        "Use it as a reference — not as a definitive or exhaustive list.",
-        "",
         f"This site belongs to **{profile.parent}** (group key: {name}).",
         f"- Privacy policy: {profile.privacy_policy}",
         f"- Consent platform: {profile.consent_platform}",
         f"- Properties ({len(profile.properties)}): {', '.join(profile.properties[:10])}",
         f"- Known domains: {', '.join(profile.domains[:10])}",
         "",
-        "### Key Vendors (previously identified through privacy policy research)",
-        "These vendors were identified in prior reviews of this publisher's privacy policy and consent dialogs:",
+        "### Key Vendors",
     ]
     for vendor in profile.key_vendors:
         lines.append(f"- {vendor}")
     lines.append("")
-    lines.append("### Privacy Characteristics (previously documented)")
+    lines.append("### Privacy Characteristics")
     for char in profile.privacy_characteristics:
         lines.append(f"- {char}")
     lines.append("")
-    lines.append(
-        "### How to use this context\n"
-        "- Cross-reference the trackers and cookies you observe in the "
-        "current scan against the vendors listed above.\n"
-        "- If you detect a vendor from the list, note that it was previously "
-        "known to be used by this publisher — this is expected behaviour.\n"
-        "- If you detect trackers or vendors NOT in the list, highlight them "
-        "as potentially new or undisclosed.\n"
-        "- If a vendor from the list is NOT observed in the current scan, "
-        "do not assume it is absent — it may load conditionally, on other "
-        "pages, or via server-side integration.\n"
-        "- Use the privacy characteristics to provide richer context in "
-        "your analysis (e.g. ownership structure, consent platform, "
-        "known data-sharing arrangements)."
-    )
     return "\n".join(lines)

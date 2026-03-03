@@ -39,9 +39,10 @@ class ScriptAnalysisAgent(base.BaseAgent):
 
     agent_name = config.AGENT_SCRIPT_ANALYSIS
     instructions = script_analysis.INSTRUCTIONS
-    max_tokens = 200
+    max_tokens = 500
     max_retries = 5
     response_model = _ScriptResult
+    use_responses_api = True
 
     async def analyze_one(
         self,
@@ -69,9 +70,22 @@ class ScriptAnalysisAgent(base.BaseAgent):
         try:
             return await self._try_complete(user_message, url)
         except Exception as error:
-            # If the error looks like a model-level rejection
-            # and we have a fallback, switch and retry once.
-            if self.has_fallback and _is_model_error(error):
+            if not _is_model_error(error):
+                log.error(
+                    "Script analysis failed",
+                    {
+                        "url": url,
+                        "error": errors.get_error_message(error),
+                    },
+                )
+                return None
+
+            # The deployment doesn't support this operation.
+            # Switch to fallback if not already active; when
+            # another concurrent call already activated it
+            # we can simply retry — self._chat_client is now
+            # the fallback deployment.
+            if self.has_fallback:
                 log.warn(
                     "Deployment unsupported, falling back",
                     {
@@ -80,31 +94,33 @@ class ScriptAnalysisAgent(base.BaseAgent):
                     },
                 )
                 self.activate_fallback()
-                try:
-                    return await self._try_complete(
-                        user_message,
-                        url,
-                    )
-                except Exception as retry_error:
-                    log.error(
-                        "Script analysis failed after fallback",
-                        {
-                            "url": url,
-                            "error": errors.get_error_message(
-                                retry_error,
-                            ),
-                        },
-                    )
-                    return None
+            elif not self._using_fallback:
+                # No fallback available at all.
+                log.error(
+                    "Script analysis failed",
+                    {
+                        "url": url,
+                        "error": errors.get_error_message(error),
+                    },
+                )
+                return None
 
-            log.error(
-                "Script analysis failed",
-                {
-                    "url": url,
-                    "error": errors.get_error_message(error),
-                },
-            )
-            return None
+            try:
+                return await self._try_complete(
+                    user_message,
+                    url,
+                )
+            except Exception as retry_error:
+                log.error(
+                    "Script analysis failed after fallback",
+                    {
+                        "url": url,
+                        "error": errors.get_error_message(
+                            retry_error,
+                        ),
+                    },
+                )
+                return None
 
     async def _try_complete(
         self,
@@ -136,17 +152,23 @@ class ScriptAnalysisAgent(base.BaseAgent):
 
 
 def _is_model_error(error: BaseException) -> bool:
-    """Check if the error indicates the model is unsupported.
+    """Check if the error indicates a permanent deployment issue.
 
-    Detects Azure ``OperationNotSupported`` (HTTP 400) and
-    similar model-level rejections that will never succeed
-    on retry with the same deployment.
+    Detects Azure ``OperationNotSupported`` (HTTP 400),
+    API-version incompatibilities, and similar rejections
+    that will never succeed on retry with the same
+    deployment configuration.
 
     Args:
         error: The exception to inspect.
 
     Returns:
-        ``True`` when the error is a permanent model issue.
+        ``True`` when the error is a permanent deployment
+        or model issue.
     """
     err_str = str(error).lower()
-    return "operationnotsupported" in err_str or "does not work with the specified model" in err_str
+    return (
+        "operationnotsupported" in err_str
+        or "does not work with the specified model" in err_str
+        or "is enabled only for api-version" in err_str
+    )

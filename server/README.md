@@ -60,11 +60,11 @@ src/
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
 │   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides and cached validation
-│   ├── llm_client.py                # Chat client factory (supports per-agent deployment overrides)
-│   ├── middleware.py                # Timing & retry middleware
+│   ├── llm_client.py                # Chat client factory (supports per-agent deployment overrides and Responses API)
+│   ├── middleware.py                # Timing & retry middleware (token estimation, OutputTruncatedError)
 │   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall); reason field constrained to max 120 chars / 15 words
 │   ├── consent_extraction_agent.py  # Extract consent details agent
-│   ├── script_analysis_agent.py     # Script identification agent
+│   ├── script_analysis_agent.py     # Script identification agent (Responses API for codex deployments)
 │   ├── structured_report_agent.py   # Structured privacy report agent
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
@@ -116,6 +116,7 @@ src/
 │   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
+│   ├── domain_classifier.py         # Deterministic domain classification (Disconnect + partner DBs, no LLM)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
@@ -221,7 +222,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 |-------|-------|--------|-------------|
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
-| `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files |
+| `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files. Uses the Responses API when targeting a codex deployment |
 | `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run(stream=True)` with a 60 s inactivity timeout) |
@@ -232,8 +233,8 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 
 | Module | Purpose |
 |--------|---------|
-| `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, and configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware` |
+| `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, and `use_responses_api` flag for Responses API client selection |
 | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) with per-agent deployment overrides (`get_agent_deployment()`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` |
-| `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` (supports `deployment_override` for per-agent model selection) |
-| `middleware.py` | `TimingChatMiddleware` (logs duration) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 10 in-flight LLM calls) |
+| `llm_client.py` | Chat client factory using `agent_framework.azure` and `agent_framework.openai` — supports `deployment_override` for per-agent model selection and `use_responses_api` for creating `AzureOpenAIResponsesClient` instances (auto-upgrades API version to `2025-03-01-preview` minimum when needed) |
+| `middleware.py` | `TimingChatMiddleware` (logs duration + token estimation before each call) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 10 in-flight LLM calls). Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
