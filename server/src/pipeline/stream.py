@@ -155,7 +155,7 @@ async def analyze_url_stream(
 
     # ── SSRF prevention ─────────────────────────────────────
     try:
-        url_mod.validate_analysis_url(url)
+        await url_mod.validate_analysis_url(url)
     except url_mod.UnsafeURLError as exc:
         log.error("URL rejected by safety check", {"url": url, "reason": str(exc)})
         yield sse_helpers.format_sse_event("error", {"error": str(exc)})

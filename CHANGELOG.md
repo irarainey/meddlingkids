@@ -6,6 +6,13 @@
 ### Fixed
 
 - **Device emulation user agent bug** — Fixed a critical issue where device emulation (mobile/tablet/desktop) did not apply the intended user agent string. All browser sessions now use the correct `user_agent` for the selected device, ensuring accurate content and consent dialog rendering for mobile and tablet analysis.
+- **SSRF redirect bypass in script fetch proxy** — The `POST /api/fetch-script` endpoint now rejects redirects (`max_redirects=0`) instead of following up to 3 hops, preventing an attacker-controlled redirect to internal hosts (e.g. cloud metadata endpoints). Redirect responses return a clear error to the client.
+- **Script fetch truncation detection** — Replaced the unreliable `total_bytes` check with a 1-extra-byte read, so the `truncated` flag is now accurate regardless of `Content-Length` or chunked encoding.
+- **Server environment leaked to browser process** — The Chrome launch environment is now restricted to an explicit allowlist of safe variables (`HOME`, `PATH`, `DISPLAY`, etc.) instead of forwarding the entire server environment, preventing accidental exposure of API keys or secrets.
+- **Blocking DNS resolution in async context** — `validate_analysis_url()` now uses non-blocking `loop.getaddrinfo()` instead of the synchronous `socket.getaddrinfo()`, avoiding event-loop stalls during SSRF validation.
+- **Multicast address bypass in SSRF validation** — Both `validate_analysis_url()` and the fetch-script proxy now reject multicast IP addresses in addition to private, loopback, link-local, and reserved ranges.
+- **Malformed JSON returns 500** — Added a global `JSONDecodeError` exception handler so all POST endpoints return a clean `400 Bad Request` instead of an unhandled 500 when the request body contains invalid JSON.
+- **Debug log sanitisation** — The `debugLog` array sent to the client in the SSE `complete` event is now filtered to remove lines that may contain API keys, tokens, passwords, credentials, or internal file paths.
 
 ## 1.6.2
 

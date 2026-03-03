@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ipaddress
+import json
 import os
 import pathlib
 import urllib.parse
@@ -66,6 +67,19 @@ async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
 
 
 app = fastapi.FastAPI(title="Meddling Kids Python Server", lifespan=lifespan)
+
+
+@app.exception_handler(json.JSONDecodeError)
+async def _json_decode_error_handler(
+    _request: fastapi.Request,
+    _exc: json.JSONDecodeError,
+) -> fastapi.responses.JSONResponse:
+    """Return 400 for malformed JSON request bodies."""
+    return fastapi.responses.JSONResponse(
+        status_code=400,
+        content={"detail": "Invalid JSON in request body"},
+    )
+
 
 # ============================================================================
 # Middleware
@@ -257,9 +271,10 @@ _MAX_PREVIEW_BYTES = 512 * 1024
 
 
 async def _is_safe_remote_url(url: str) -> bool:
-    """
-    Validate that a URL points to a public HTTP(S) host and not to
-    loopback, private, link-local, or otherwise special IP ranges.
+    """Validate that a URL points to a public HTTP(S) host.
+
+    Rejects loopback, private, link-local, multicast, and
+    reserved IP ranges to prevent SSRF.
     """
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in {"http", "https"}:
@@ -268,15 +283,13 @@ async def _is_safe_remote_url(url: str) -> bool:
         return False
 
     host = parsed.hostname
+    loop = asyncio.get_running_loop()
 
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    try:
-        addrinfo = await loop.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+        addrinfo = await loop.getaddrinfo(
+            host,
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+        )
     except OSError:
         return False
 
@@ -323,14 +336,19 @@ async def fetch_script_endpoint(
             session.get(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
-                max_redirects=3,
+                max_redirects=0,
+                allow_redirects=False,
             ) as resp,
         ):
             if resp.status >= 400:
                 return {"error": f"HTTP {resp.status}", "content": None}
+            # Reject redirects — the target could point to an internal host.
+            if resp.status in {301, 302, 303, 307, 308}:
+                return {"error": f"HTTP {resp.status} redirect rejected", "content": None}
             raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+            extra = await resp.content.read(1)
             content = raw.decode("utf-8", errors="replace")
-            truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
+            truncated = len(extra) > 0
             return {"content": content, "truncated": truncated}
     except TimeoutError:
         return {"error": "Request timed out", "content": None}

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
@@ -31,6 +32,15 @@ from src.utils import logger, usage_tracking
 from src.utils import url as url_mod
 
 log = logger.create_logger("Analysis")
+
+# Regex patterns that indicate a log line may contain sensitive data
+# (API keys, tokens, internal file paths, connection strings).
+_SENSITIVE_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:api[_-]?key|secret|token|password|bearer|authorization|credential"
+    r"|connection[_-]?string)"
+    r"|/home/[^\s]+/\.env",
+)
 
 # Collection caps for the SSE ``complete`` payload — keep it under ~1 MB.
 _MAX_SCRIPTS = 200
@@ -981,6 +991,16 @@ async def _score_and_summarise(
     )
 
 
+def _sanitize_log_buffer(lines: list[str]) -> list[str]:
+    """Remove log lines that may contain sensitive information.
+
+    Filters out lines matching patterns for API keys, tokens,
+    passwords, and internal file paths so they are not exposed
+    to the browser debug tab.
+    """
+    return [line for line in lines if not _SENSITIVE_PATTERNS.search(line)]
+
+
 def _build_complete_payload(
     structured_report: report_models.StructuredReport | None,
     summary_findings: list[analysis.SummaryFinding],
@@ -1028,6 +1048,6 @@ def _build_complete_payload(
             "sessionStorage": ([sse_helpers.to_camel_case_dict(i) for i in storage.session_storage] if storage else None),
             "scripts": [sse_helpers.to_camel_case_dict(s) for s in script_result.scripts[:_MAX_SCRIPTS]],
             "scriptGroups": [sse_helpers.to_camel_case_dict(g) for g in script_result.groups[:_MAX_SCRIPT_GROUPS]],
-            "debugLog": logger.get_log_buffer(),
+            "debugLog": _sanitize_log_buffer(logger.get_log_buffer()),
         },
     )

@@ -4,9 +4,9 @@ URL and domain utility functions for tracking analysis.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import re
-import socket
 from urllib import parse
 
 from src.data import loader
@@ -130,11 +130,13 @@ class UnsafeURLError(ValueError):
     """Raised when a URL fails safety validation."""
 
 
-def validate_analysis_url(url: str) -> None:
+async def validate_analysis_url(url: str) -> None:
     """Validate that *url* is safe for server-side navigation.
 
     Rejects non-HTTP(S) schemes, private/loopback/link-local IPs,
-    and known metadata hostnames to prevent SSRF.
+    multicast addresses, and known metadata hostnames to prevent SSRF.
+
+    Uses non-blocking DNS resolution so the event loop is not stalled.
 
     Args:
         url: The user-supplied URL to validate.
@@ -162,11 +164,13 @@ def validate_analysis_url(url: str) -> None:
         # If the hostname is already an IP literal, parse it directly.
         addr = ipaddress.ip_address(hostname)
     except ValueError:
-        # It's a DNS name — resolve it.
+        # It's a DNS name — resolve asynchronously to avoid
+        # blocking the event loop.
+        loop = asyncio.get_running_loop()
         try:
-            infos = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
+            infos = await loop.getaddrinfo(hostname, None)
             addrs = {ipaddress.ip_address(info[4][0]) for info in infos}
-        except socket.gaierror:
+        except OSError:
             # DNS resolution failure is fine — the browser will
             # produce its own "name not resolved" error.
             return
@@ -178,6 +182,6 @@ def validate_analysis_url(url: str) -> None:
 
 
 def _check_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address, hostname: str) -> None:
-    """Raise if *addr* is private, loopback, or link-local."""
-    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+    """Raise if *addr* is private, loopback, link-local, or multicast."""
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved:
         raise UnsafeURLError(f"URL resolves to a non-public address ({addr}) for host {hostname}")
