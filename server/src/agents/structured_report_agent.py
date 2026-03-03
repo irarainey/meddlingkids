@@ -9,18 +9,17 @@ ensure consistent, professional output.
 from __future__ import annotations
 
 import asyncio
-import json
 from collections.abc import Awaitable, Callable
 from urllib import parse
 
 import pydantic
 
-from src.agents import base, gdpr_context, middleware
+from src.agents import base, context_builder, middleware
 from src.agents.prompts import structured_report
 from src.analysis import domain_cache, domain_classifier
 from src.data import loader
 from src.models import analysis, consent, report
-from src.utils import json_parsing, logger, risk
+from src.utils import json_parsing, logger
 
 log = logger.create_logger("StructuredReportAgent")
 
@@ -641,28 +640,6 @@ def _enrich_third_party_urls(
     return third_party_section
 
 
-def _format_context_partner(
-    p: consent.ConsentPartner,
-) -> str:
-    """Format a consent partner with full metadata for LLM context.
-
-    Mirrors the rich formatting used by the tracking analysis
-    agent so both agents receive consistent partner detail.
-
-    Args:
-        p: Consent partner with classification metadata.
-
-    Returns:
-        Formatted line with risk, category, concerns, and URL.
-    """
-    risk = f" [{p.risk_level.upper()} RISK]" if p.risk_level else ""
-    cat = f" ({p.risk_category})" if p.risk_category else ""
-    data = f" | Data: {', '.join(p.data_collected)}" if p.data_collected else ""
-    concerns = f" | Concerns: {', '.join(p.concerns)}" if p.concerns else ""
-    url = f" (URL: {p.url})" if p.url else ""
-    return f"- **{p.name}**{risk}{cat}: {p.purpose}{data}{concerns}{url}"
-
-
 def _build_data_context(
     tracking_summary: analysis.TrackingSummary,
     consent_details: consent.ConsentDetails | None = None,
@@ -671,6 +648,10 @@ def _build_data_context(
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
 ) -> str:
     """Build the data context string sent to each section LLM call.
+
+    Delegates to the shared :func:`context_builder.build_analysis_context`
+    so both this agent and the tracking-analysis agent assemble
+    context from one definition.
 
     Args:
         tracking_summary: Collected tracking data summary.
@@ -684,137 +665,11 @@ def _build_data_context(
     Returns:
         Formatted data context string.
     """
-    breakdown = json.dumps(
-        [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
-    )
-    local_json = json.dumps(tracking_summary.local_storage)
-    session_json = json.dumps(tracking_summary.session_storage)
-
-    sections = [
-        f"URL analysed: {tracking_summary.analyzed_url}",
-        "",
-        "## Data Summary",
-        f"- Total Cookies: {tracking_summary.total_cookies}",
-        f"- Total Scripts: {tracking_summary.total_scripts}",
-        f"- Total Network Requests: {tracking_summary.total_network_requests}",
-        f"- LocalStorage Items: {tracking_summary.local_storage_items}",
-        f"- SessionStorage Items: {tracking_summary.session_storage_items}",
-        f"- Third-Party Domains: {len(tracking_summary.third_party_domains)}",
-    ]
-
-    if pre_consent_stats:
-        sections.extend(
-            [
-                "",
-                "## Activity on Initial Page Load (before any dialogs were dismissed)",
-                "NOTE: This is what was present when the page first loaded.",
-                "We cannot confirm whether these scripts use the cookies listed,",
-                "whether any dialog is a consent dialog, or whether this activity",
-                "falls within the scope of what the user is asked to consent to.",
-                f"- Cookies on load: {pre_consent_stats.total_cookies} ({pre_consent_stats.tracking_cookies} matched tracking patterns)",
-                f"- Scripts on load: {pre_consent_stats.total_scripts} ({pre_consent_stats.tracking_scripts} matched tracking patterns)",
-                f"- Requests on load: {pre_consent_stats.total_requests} ({pre_consent_stats.tracker_requests} matched tracking patterns)",
-            ]
-        )
-
-    sections.extend(
-        [
-            "",
-            "## Third-Party Domains",
-            "\n".join(tracking_summary.third_party_domains),
-            "",
-            "## Domain Breakdown (cookies, scripts, requests per domain)",
-            breakdown,
-            "",
-            f"## LocalStorage Data\n{local_json}",
-            "",
-            f"## SessionStorage Data\n{session_json}",
-        ]
-    )
-
-    if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count):
-        cats = (
-            "\n".join(f"- {c.name} ({'Required' if c.required else 'Optional'}): {c.description}" for c in consent_details.categories)
-            or "None disclosed"
-        )
-
-        partners = "\n".join(_format_context_partner(p) for p in consent_details.partners[:50]) or "None listed"
-
-        claimed_count = consent_details.claimed_partner_count
-        claimed_line = f"\n### Claimed Partner Count: {claimed_count}" if claimed_count else ""
-
-        sections.extend(
-            [
-                "",
-                "## Consent Dialog Information",
-                f"### Categories Disclosed ({len(consent_details.categories)})",
-                cats,
-                f"### Partners Listed ({len(consent_details.partners)})",
-                partners,
-                claimed_line,
-                "### Stated Purposes",
-                "\n".join(f"- {p}" for p in consent_details.purposes) or "None",
-            ]
-        )
-
-    if score_breakdown:
-        risk_label = risk.risk_label(score_breakdown.total_score)
-        top = ", ".join(score_breakdown.factors[:5]) or "none"
-        cat_lines = "\n".join(
-            f"- {name}: {cat.points}/{cat.max_points}" for name, cat in score_breakdown.categories.items() if cat.points > 0
-        )
-        sections.extend(
-            [
-                "",
-                "## Deterministic Privacy Score",
-                f"Score: {score_breakdown.total_score}/100 ({risk_label})",
-                f"Top factors: {top}",
-                "",
-                "Category breakdown:",
-                cat_lines,
-                "",
-                "Your risk assessments MUST be consistent with this score.",
-            ]
-        )
-
-    # Append prior-run classifications for consistency.
-    if domain_knowledge:
-        sections.append(domain_cache.build_context_hint(domain_knowledge))
-
-    # Append GDPR/TCF reference data for informed analysis.
-    sections.append(_build_gdpr_context())
-
-    # Append known tracking cookie reference data.
-    cookie_ctx = loader.build_tracking_cookie_context()
-    if cookie_ctx:
-        sections.append(cookie_ctx)
-
-    # Append Disconnect tracker classifications for observed domains.
-    disconnect_ctx = loader.build_disconnect_context(
-        tracking_summary.third_party_domains,
-    )
-    if disconnect_ctx:
-        sections.append(disconnect_ctx)
-
-    # Append media group context when the domain is recognised.
-    media_ctx = loader.build_media_group_context(tracking_summary.analyzed_url)
-    if media_ctx:
-        sections.append(media_ctx)
-
-    return "\n".join(sections)
-
-
-def _build_gdpr_context() -> str:
-    """Build a concise GDPR/TCF reference section for LLM context.
-
-    Delegates to the shared ``gdpr_context`` module so both
-    this agent and the tracking-analysis agent use identical
-    reference data.
-
-    Returns:
-        Formatted reference section string.
-    """
-
-    return "\n" + gdpr_context.build_gdpr_reference(
-        heading="## GDPR / TCF Reference Data",
+    return context_builder.build_analysis_context(
+        tracking_summary,
+        consent_details=consent_details,
+        pre_consent_stats=pre_consent_stats,
+        score_breakdown=score_breakdown,
+        domain_knowledge=domain_knowledge,
+        include_partner_urls=True,
     )

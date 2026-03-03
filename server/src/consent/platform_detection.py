@@ -307,37 +307,43 @@ async def detect_platform_from_page(
 
 
 # ────────────────────────────────────────────────────────────
-# CMP-specific accept button helpers
+# CMP-specific button helpers
 # ────────────────────────────────────────────────────────────
 
 
-async def find_accept_button(
+async def _find_button_by_patterns(
     page: async_api.Page,
     profile: ConsentPlatformProfile,
+    patterns: list[str],
+    label: str,
 ) -> tuple[async_api.Locator, async_api.Frame, str] | None:
-    """Try to find an accept button using CMP-specific selectors.
+    """Search for a visible button matching *patterns*.
 
-    Checks each selector from the profile's
-    ``accept_button_patterns`` in the main frame and, if the
-    CMP uses iframes, in all matching consent iframes.
+    Checks each CSS selector in the main frame first, then
+    in consent iframes when the CMP profile declares
+    ``iframe_patterns``.
 
     Args:
         page: The Playwright page to search.
         profile: The detected CMP profile.
+        patterns: CSS selectors to probe (e.g.
+            ``profile.accept_button_patterns``).
+        label: Human-readable button kind for log messages
+            (e.g. ``"Accept"`` or ``"Reject"``).
 
     Returns:
         A tuple of ``(locator, frame, selector)`` if found,
         or ``None``.
     """
     # Try main frame first
-    for selector in profile.accept_button_patterns:
+    for selector in patterns:
         try:
             locator = page.locator(selector).first
             if await locator.is_visible(timeout=300):
                 return locator, page.main_frame, selector
         except Exception:
             log.debug(
-                "Accept button selector probe failed",
+                f"{label} button selector probe failed",
                 {"platform": profile.name, "selector": selector},
             )
             continue
@@ -350,14 +356,14 @@ async def find_accept_button(
             frame_url = frame.url or ""
             if not any(pat in frame_url for pat in profile.iframe_patterns):
                 continue
-            for selector in profile.accept_button_patterns:
+            for selector in patterns:
                 try:
                     locator = frame.locator(selector).first
                     if await locator.is_visible(timeout=300):
                         return locator, frame, selector
                 except Exception:
                     log.debug(
-                        "Accept button iframe selector probe failed",
+                        f"{label} button iframe selector probe failed",
                         {"platform": profile.name, "selector": selector},
                     )
                     continue
@@ -365,14 +371,11 @@ async def find_accept_button(
     return None
 
 
-async def find_reject_button(
+async def find_accept_button(
     page: async_api.Page,
     profile: ConsentPlatformProfile,
 ) -> tuple[async_api.Locator, async_api.Frame, str] | None:
-    """Try to find a reject button using CMP-specific selectors.
-
-    Same approach as :func:`find_accept_button` but using
-    ``reject_button_patterns``.
+    """Try to find an accept button using CMP-specific selectors.
 
     Args:
         page: The Playwright page to search.
@@ -382,35 +385,31 @@ async def find_reject_button(
         A tuple of ``(locator, frame, selector)`` if found,
         or ``None``.
     """
-    for selector in profile.reject_button_patterns:
-        try:
-            locator = page.locator(selector).first
-            if await locator.is_visible(timeout=300):
-                return locator, page.main_frame, selector
-        except Exception:
-            log.debug(
-                "Reject button selector probe failed",
-                {"platform": profile.name, "selector": selector},
-            )
-            continue
+    return await _find_button_by_patterns(
+        page,
+        profile,
+        profile.accept_button_patterns,
+        "Accept",
+    )
 
-    if profile.iframe_patterns:
-        for frame in page.frames:
-            if frame == page.main_frame:
-                continue
-            frame_url = frame.url or ""
-            if not any(pat in frame_url for pat in profile.iframe_patterns):
-                continue
-            for selector in profile.reject_button_patterns:
-                try:
-                    locator = frame.locator(selector).first
-                    if await locator.is_visible(timeout=300):
-                        return locator, frame, selector
-                except Exception:
-                    log.debug(
-                        "Reject button iframe selector probe failed",
-                        {"platform": profile.name, "selector": selector},
-                    )
-                    continue
 
-    return None
+async def find_reject_button(
+    page: async_api.Page,
+    profile: ConsentPlatformProfile,
+) -> tuple[async_api.Locator, async_api.Frame, str] | None:
+    """Try to find a reject button using CMP-specific selectors.
+
+    Args:
+        page: The Playwright page to search.
+        profile: The detected CMP profile.
+
+    Returns:
+        A tuple of ``(locator, frame, selector)`` if found,
+        or ``None``.
+    """
+    return await _find_button_by_patterns(
+        page,
+        profile,
+        profile.reject_button_patterns,
+        "Reject",
+    )

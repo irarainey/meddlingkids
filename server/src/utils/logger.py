@@ -16,11 +16,12 @@ import io
 import json
 import os
 import pathlib
-import re
 import sys
 import time
 from datetime import UTC, datetime
 from typing import Any
+
+from src.utils import text
 
 # ============================================================================
 # Per-session state (isolated via contextvars)
@@ -86,8 +87,7 @@ def start_log_file(domain: str) -> None:
 
     end_log_file()
 
-    safe_domain = domain.removeprefix("www.")
-    safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
+    safe_domain = text.sanitize_domain(domain)
 
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
@@ -154,8 +154,7 @@ def save_report_file(
     reports_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".output" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_domain = domain.removeprefix("www.")
-    safe_domain = "".join(c if c.isalnum() or c in ".-" else "_" for c in safe_domain)[:50]
+    safe_domain = text.sanitize_domain(domain)
 
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
@@ -218,7 +217,7 @@ def _write_to_log_file(line: str) -> None:
     if stream is None:
         return
 
-    clean = re.sub(r"\033\[[0-9;]*m", "", line)
+    clean = text.strip_ansi(line)
     stream.write(clean + "\n")
     stream.flush()
 
@@ -327,7 +326,7 @@ class Logger:
         # Keep an ANSI-stripped copy for the client debug tab.
         buf = _get_log_buffer()
         if len(buf) < _MAX_LOG_BUFFER_LINES:
-            buf.append(re.sub(r"\033\[[0-9;]*m", "", log_line))
+            buf.append(text.strip_ansi(log_line))
 
     def info(self, message: str, data: dict[str, object] | None = None) -> None:
         """Log an informational message."""
@@ -388,7 +387,7 @@ class Logger:
         for ln in lines:
             print(ln, file=sys.stderr)
             _write_to_log_file(ln)
-            _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", ln))
+            _get_log_buffer().append(text.strip_ansi(ln))
 
     def subsection(self, title: str) -> None:
         """Print a smaller sub-section header."""
@@ -396,7 +395,7 @@ class Logger:
         output = f"\n{c['cyan']}  ▸ {title}{c['reset']}"
         print(output, file=sys.stderr)
         _write_to_log_file(output)
-        _get_log_buffer().append(re.sub(r"\033\[[0-9;]*m", "", output))
+        _get_log_buffer().append(text.strip_ansi(output))
 
 
 def create_logger(context: str) -> Logger:

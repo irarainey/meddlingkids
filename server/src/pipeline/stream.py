@@ -19,8 +19,8 @@ import dataclasses
 import os
 import pathlib
 import tomllib
-from collections.abc import AsyncGenerator
-from typing import cast
+from collections.abc import AsyncGenerator, Callable
+from typing import Any, cast
 from urllib import parse
 
 from src.agents import config
@@ -48,6 +48,99 @@ def _read_version() -> str:
 
 
 _SERVER_VERSION = _read_version()
+
+
+# ── Consent-string discovery helpers ─────────────────────────
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _ConsentStringTiers:
+    """Callables for each tier of a consent-string discovery cascade."""
+
+    cookie_label: str
+    find_in_cookies: Callable[..., Any]
+    find_in_storage: Callable[..., Any]
+    find_by_profile: Callable[..., Any]
+    find_in_json_storage: Callable[..., Any]
+    scan: Callable[..., Any]
+    scan_json: Callable[..., Any]
+
+
+def _discover_consent_string(
+    tiers: _ConsentStringTiers,
+    tracked_cookies: list[Any],
+    local_storage: list[Any],
+    tc_sources: dict[str, Any],
+) -> tuple[str, str] | None:
+    """Run the 5-tier consent-string discovery cascade.
+
+    Both TC and AC strings are located using an identical
+    progression from deterministic lookups to heuristic scans.
+    This function centralises that logic so callers differ only
+    in the tier callables they provide.
+
+    Args:
+        tiers: Tier callables and the cookie-source label.
+        tracked_cookies: Captured cookies from the session.
+        local_storage: Captured ``localStorage`` entries.
+        tc_sources: CMP-specific source hints (may be empty).
+
+    Returns:
+        A ``(source_label, raw_value)`` pair, or ``None``.
+    """
+    # Tier 1 — named lookups
+    raw = tiers.find_in_cookies(tracked_cookies)
+    if raw:
+        return (tiers.cookie_label, raw)
+    storage = tiers.find_in_storage(local_storage)
+    if storage:
+        return (f"localStorage[{storage[0]}]", storage[1])
+
+    # Tier 2 — CMP-aware lookups
+    if tc_sources:
+        result: tuple[str, str] | None = tiers.find_by_profile(
+            tracked_cookies,
+            local_storage,
+            tc_sources,
+        )
+        if result:
+            return result
+
+    # Tier 3 — JSON-wrapped storage values
+    json_result: tuple[str, str] | None = tiers.find_in_json_storage(local_storage)
+    if json_result:
+        return json_result
+
+    # Tier 4 — heuristic scan
+    scan_result: tuple[str, str] | None = tiers.scan(tracked_cookies, local_storage)
+    if scan_result:
+        return scan_result
+
+    # Tier 5 — JSON heuristic scan
+    final: tuple[str, str] | None = tiers.scan_json(local_storage)
+    return final
+
+
+_AC_TIERS = _ConsentStringTiers(
+    cookie_label="addtl_consent cookie",
+    find_in_cookies=tc_string.find_ac_string_in_cookies,
+    find_in_storage=tc_string.find_ac_string_in_storage,
+    find_by_profile=tc_string.find_ac_string_by_profile,
+    find_in_json_storage=tc_string.find_ac_string_in_json_storage,
+    scan=tc_string.scan_for_ac_string,
+    scan_json=tc_string.scan_json_for_ac_string,
+)
+
+_TC_TIERS = _ConsentStringTiers(
+    cookie_label="euconsent-v2 cookie",
+    find_in_cookies=tc_string.find_tc_string_in_cookies,
+    find_in_storage=tc_string.find_tc_string_in_storage,
+    find_by_profile=tc_string.find_tc_string_by_profile,
+    find_in_json_storage=tc_string.find_tc_string_in_json_storage,
+    scan=tc_string.scan_for_tc_string,
+    scan_json=tc_string.scan_json_for_tc_string,
+)
+
 
 # Maximum wall-clock time (seconds) for a single analysis run.
 # Prevents runaway sessions from holding browser resources
@@ -520,43 +613,13 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
             # through a Google-certified CMP.  Decode first so
             # the vendor count is available for TC validation.
             ac_vendor_count: int | None = None
-            ac_result_pair: tuple[str, str] | None = None
 
-            # Tier 1 — named lookups
-            ac_raw = tc_string.find_ac_string_in_cookies(tracked_cookies)
-            if ac_raw:
-                ac_result_pair = ("addtl_consent cookie", ac_raw)
-            if not ac_result_pair:
-                ac_storage = tc_string.find_ac_string_in_storage(local_storage)
-                if ac_storage:
-                    ac_result_pair = (f"localStorage[{ac_storage[0]}]", ac_storage[1])
-
-            # Tier 2 — CMP-aware lookups
-            if not ac_result_pair and tc_sources:
-                ac_result_pair = tc_string.find_ac_string_by_profile(
-                    tracked_cookies,
-                    local_storage,
-                    tc_sources,
-                )
-
-            # Tier 3 — JSON-wrapped storage values
-            if not ac_result_pair:
-                ac_json = tc_string.find_ac_string_in_json_storage(local_storage)
-                if ac_json:
-                    ac_result_pair = ac_json
-
-            # Tier 4 — heuristic scan
-            if not ac_result_pair:
-                ac_result_pair = tc_string.scan_for_ac_string(
-                    tracked_cookies,
-                    local_storage,
-                )
-
-            # Tier 5 — JSON heuristic scan
-            if not ac_result_pair:
-                ac_result_pair = tc_string.scan_json_for_ac_string(
-                    local_storage,
-                )
+            ac_result_pair = _discover_consent_string(
+                _AC_TIERS,
+                tracked_cookies,
+                local_storage,
+                tc_sources,
+            )
 
             if ac_result_pair:
                 ac_source, ac_raw_value = ac_result_pair
@@ -582,43 +645,13 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                     )
 
             # ── TC String decoding ───────────────────────
-            tc_result_pair: tuple[str, str] | None = None
 
-            # Tier 1 — named lookups
-            tc_raw = tc_string.find_tc_string_in_cookies(tracked_cookies)
-            if tc_raw:
-                tc_result_pair = ("euconsent-v2 cookie", tc_raw)
-            if not tc_result_pair:
-                tc_storage = tc_string.find_tc_string_in_storage(local_storage)
-                if tc_storage:
-                    tc_result_pair = (f"localStorage[{tc_storage[0]}]", tc_storage[1])
-
-            # Tier 2 — CMP-aware lookups
-            if not tc_result_pair and tc_sources:
-                tc_result_pair = tc_string.find_tc_string_by_profile(
-                    tracked_cookies,
-                    local_storage,
-                    tc_sources,
-                )
-
-            # Tier 3 — JSON-wrapped storage values
-            if not tc_result_pair:
-                tc_json = tc_string.find_tc_string_in_json_storage(local_storage)
-                if tc_json:
-                    tc_result_pair = tc_json
-
-            # Tier 4 — heuristic scan
-            if not tc_result_pair:
-                tc_result_pair = tc_string.scan_for_tc_string(
-                    tracked_cookies,
-                    local_storage,
-                )
-
-            # Tier 5 — JSON heuristic scan
-            if not tc_result_pair:
-                tc_result_pair = tc_string.scan_json_for_tc_string(
-                    local_storage,
-                )
+            tc_result_pair = _discover_consent_string(
+                _TC_TIERS,
+                tracked_cookies,
+                local_storage,
+                tc_sources,
+            )
             if tc_result_pair:
                 tc_source, tc_raw = tc_result_pair
                 decoded = tc_string.decode_tc_string(tc_raw)

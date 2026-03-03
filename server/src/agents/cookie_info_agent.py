@@ -8,10 +8,9 @@ known consent-cookie or tracker-pattern databases.
 
 from __future__ import annotations
 
-import pydantic
-
 from src.agents import base, config
 from src.agents.prompts import cookie_info
+from src.models import item_info
 from src.utils import json_parsing, logger
 
 log = logger.create_logger("CookieInfoAgent")
@@ -20,43 +19,8 @@ log = logger.create_logger("CookieInfoAgent")
 # ── Structured output model ─────────────────────────────────────
 
 
-class CookieInfoResult(pydantic.BaseModel):
+class CookieInfoResult(item_info.ItemInfoResult):
     """LLM response describing a single cookie."""
-
-    description: str
-    set_by: str = pydantic.Field(alias="setBy", serialization_alias="setBy")
-    purpose: str
-    risk_level: str = pydantic.Field(alias="riskLevel", serialization_alias="riskLevel")
-    privacy_note: str = pydantic.Field(alias="privacyNote", serialization_alias="privacyNote")
-
-    # Optional vendor enrichment (populated from cross-reference data).
-    vendor_category: str | None = pydantic.Field(
-        default=None,
-        alias="vendorCategory",
-        serialization_alias="vendorCategory",
-    )
-    vendor_url: str | None = pydantic.Field(
-        default=None,
-        alias="vendorUrl",
-        serialization_alias="vendorUrl",
-    )
-    vendor_concerns: list[str] | None = pydantic.Field(
-        default=None,
-        alias="vendorConcerns",
-        serialization_alias="vendorConcerns",
-    )
-    vendor_gvl_ids: list[int] | None = pydantic.Field(
-        default=None,
-        alias="vendorGvlIds",
-        serialization_alias="vendorGvlIds",
-    )
-    vendor_atp_ids: list[int] | None = pydantic.Field(
-        default=None,
-        alias="vendorAtpIds",
-        serialization_alias="vendorAtpIds",
-    )
-
-    model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
 # ── Agent class ─────────────────────────────────────────────────

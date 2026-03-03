@@ -10,28 +10,15 @@ from __future__ import annotations
 from src.agents import cookie_info_agent
 from src.analysis import tracker_patterns
 from src.data import loader
+from src.models import item_info
 from src.utils import logger
 
 log = logger.create_logger("CookieLookup")
 
 
 def _attach_vendor_metadata(result: cookie_info_agent.CookieInfoResult) -> cookie_info_agent.CookieInfoResult:
-    """Enrich a cookie result with vendor cross-reference data.
-
-    Looks up the ``set_by`` value in the tracking-cookie vendor
-    index and populates vendor metadata fields when a match is
-    found.
-    """
-    vendor_index = loader.get_tracking_cookie_vendor_index()
-    vendor = vendor_index.get(result.set_by)
-    if not vendor:
-        return result
-    result.vendor_category = vendor.get("category")
-    result.vendor_url = vendor.get("url")
-    result.vendor_concerns = vendor.get("concerns")
-    result.vendor_gvl_ids = vendor.get("gvl_ids")
-    result.vendor_atp_ids = vendor.get("atp_ids")
-    return result
+    """Enrich a cookie result with vendor cross-reference data."""
+    return item_info.attach_vendor_metadata(result, loader.get_tracking_cookie_vendor_index())
 
 
 def _check_known_consent_cookie(name: str) -> cookie_info_agent.CookieInfoResult | None:

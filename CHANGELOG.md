@@ -29,6 +29,16 @@
 - **Truncation notice directs user to original script** — The truncation warning in the script viewer dialog now reads "Click the link above to view the full script" instead of the generic "The full file may be larger".
 - **Dead code removed** — Removed the unused `llm_failures` counter and its `nonlocal` declaration from `_analyze_unknowns()`, the redundant `ConnectionResetError` entry from `_is_retryable()` (already covered by its parent `ConnectionError`), and an unused `import re` from `url.py`.
 
+### Refactored
+
+- **Shared LLM context builder** — Extracted `build_analysis_context()` into a new `context_builder` module. Both `TrackingAnalysisAgent` and `StructuredReportAgent` now delegate prompt assembly to this single function, eliminating ~150 lines of duplicated summary-stats, consent, score, GDPR-reference, and tracking-database sections.
+- **`ItemInfoResult` base model** — Cookie and storage info agent response models (`CookieInfoResult`, `StorageInfoResult`) now inherit from a shared `ItemInfoResult` base in `models/item_info.py`, removing duplicated field definitions and `model_config`.
+- **`CamelCaseModel` base class** — All 18 Pydantic models in `models/report.py` now inherit from a single `CamelCaseModel` base that carries the shared `model_config`, replacing 19 identical `model_config = ConfigDict(...)` declarations.
+- **Consent-string discovery cascade** — The identical 5-tier TC and AC string discovery cascades in `stream.py` are consolidated into a generic `_discover_consent_string()` function parameterised by a `_ConsentStringTiers` dataclass, reducing ~70 lines of copy-pasted tier logic to two one-line calls.
+- **`_find_button_by_patterns()` helper** — The structurally identical `find_accept_button()` and `find_reject_button()` functions in `platform_detection.py` now delegate to a shared `_find_button_by_patterns()` helper, differing only in the pattern list and log label.
+- **Shared `attach_vendor_metadata()` helper** — Cookie and storage lookup modules now call a generic `attach_vendor_metadata()` function in `models/item_info.py` instead of maintaining separate but identical vendor-enrichment loops.
+- **Domain and ANSI text utilities** — Extracted `strip_ansi()` and `sanitize_domain()` into a new `utils/text.py` module, replacing six inline `re.sub()` calls and two duplicated domain-truncation blocks in `logger.py`.
+
 ## 1.6.2
 
 ### Added
