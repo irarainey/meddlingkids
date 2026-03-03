@@ -2,8 +2,15 @@
 
 Classifies third-party domains into tracker categories
 (analytics, advertising, social_media, identity_resolution,
-other) using the Disconnect tracking-protection list and
-partner databases — no LLM call required.
+other) using a three-tier pipeline — no LLM call required:
+
+1. **Disconnect tracking-protection list** — broadest coverage
+   (4 000+ domains with category labels).
+2. **Partner databases** — curated company-level databases for
+   ad-networks, analytics, social trackers, etc.
+3. **Domain keyword heuristics** — regex patterns matched
+   against the domain name itself to catch services that
+   slip through tiers 1 and 2.
 
 The structured report agent uses this as a first pass so that
 known domains are classified instantly and deterministically,
@@ -12,6 +19,7 @@ reducing LLM token usage and improving resilience.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from src.data import loader
@@ -41,8 +49,10 @@ _DISCONNECT_MAP: dict[str, TrackerCategory] = {
     "FingerprintingInvasive": "identity_resolution",
     "Cryptomining": "other",
     "Content": "other",
-    "Email": "other",
-    "EmailAggressive": "other",
+    # Email marketing services track opens, clicks, and
+    # conversions — they are advertising/marketing tools.
+    "Email": "advertising",
+    "EmailAggressive": "advertising",
     "Anti-fraud": "other",
     "ConsentManagers": "other",
 }
@@ -67,13 +77,113 @@ _PARTNER_MAP: dict[str, TrackerCategory] = {
 # multiple labels.  Lower index = higher priority.  Purpose-
 # oriented labels (Social, Advertising, Analytics) are
 # preferred over technique labels (Fingerprinting*).
+# Email/EmailAggressive rank below the explicit purpose labels
+# since a domain categorised as both "Analytics" and "Email"
+# should be classified by its primary service purpose, not by
+# its email-marketing side-channel.
 _DISCONNECT_PRIORITY: list[str] = [
     "Social",
     "Advertising",
     "Analytics",
+    "Email",
+    "EmailAggressive",
     "FingerprintingInvasive",
     "FingerprintingGeneral",
 ]
+
+
+# ── Disconnect category overrides ─────────────────────────
+# A handful of domains are miscategorised in the Disconnect
+# list.  This map corrects them before the normal pipeline
+# runs.  Key = base domain, Value = correct TrackerCategory.
+_DISCONNECT_OVERRIDES: dict[str, TrackerCategory] = {
+    # DotMetrics is an audience-measurement / analytics service
+    # (part of Ipsos Iris), not an advertising network.
+    "dotmetrics.net": "analytics",
+}
+
+
+# ── Domain keyword heuristic (tier 3) ─────────────────────
+# Compiled regex patterns matched against the domain name to
+# classify services that aren't in Disconnect or the partner
+# databases.  Checked in order; the first match wins.
+#
+# Patterns use word-boundary-like anchors (start of string,
+# dot, or hyphen) to avoid false positives in unrelated
+# domain names (e.g. "badminton.com" should not match "ad").
+
+_DOMAIN_KEYWORD_CLASSIFIERS: list[tuple[re.Pattern[str], TrackerCategory]] = [
+    # ── Advertising ──
+    (re.compile(
+        r"(?:^|[.\-])"
+        r"(?:adserv|adserver|adtech|adnetwork|adexchange"
+        r"|adsystem|adservice|adclick|adform|admarvel|adgrx"
+        r"|adnexus|adnxs|advert|admanag"
+        r"|doubleclick|syndication|clicktrack|smartad|bidswitch"
+        r"|pubmatic|criteo|outbrain|taboola|rubiconproject"
+        r"|magnite|openx|sharethrough|prebid|bidder|programmatic"
+        r"|demand.?side|supply.?side|dsp|ssp|rtb"
+        r"|retarget|remarket|pixel\.)"
+        r"(?:[.\-]|$)",
+        re.I,
+    ), "advertising"),
+
+    # ── Analytics ──
+    (re.compile(
+        r"(?:^|[.\-])"
+        r"(?:analytics|metric[s]?|telemetry|chartbeat|parse\.ly"
+        r"|amplitude|mixpanel|segment\.|matomo|piwik"
+        r"|newrelic|datadog|plausible|etracker|leadinfo"
+        r"|rudderstack|rudderlabs|heap\.io|heapanalytics"
+        r"|sentry|bugsnag|trackjs|errortrack"
+        r"|gtm\.|tagmanager|tag\.)"
+        r"(?:[.\-]|$)",
+        re.I,
+    ), "analytics"),
+
+    # ── Social media ──
+    (re.compile(
+        r"(?:^|[.\-])"
+        r"(?:facebook|fbcdn|fb\.com|twitter|x\.com"
+        r"|linkedin|pinterest|tiktok|instagram"
+        r"|snapchat|reddit|addthis|sharethis|addtoany)"
+        r"(?:[.\-]|$)",
+        re.I,
+    ), "social_media"),
+
+    # ── Identity resolution ──
+    (re.compile(
+        r"(?:^|[.\-])"
+        r"(?:liveramp|tapad|drawbridge|lotame|zeotap"
+        r"|id5|thetradedesk|adsrvr|unified.?id|uidapi"
+        r"|devicegraph|identity.?resolution|crossdevice"
+        r"|fingerprint|fpjs|fingerprintjs"
+        r"|acxiom|experian|neustar)"
+        r"(?:[.\-]|$)",
+        re.I,
+    ), "identity_resolution"),
+]
+
+
+def _classify_by_domain_keywords(domain: str) -> TrackerCategory:
+    """Classify a domain by matching keyword patterns in its name.
+
+    This is the third classification tier, used only when
+    Disconnect and partner databases have no match.  It
+    catches services whose domain names contain obvious
+    category-revealing keywords.
+
+    Args:
+        domain: The domain name to inspect.
+
+    Returns:
+        A ``TrackerCategory``.  Defaults to ``"other"`` when
+        no pattern matches.
+    """
+    for pattern, category in _DOMAIN_KEYWORD_CLASSIFIERS:
+        if pattern.search(domain):
+            return category
+    return "other"
 
 
 def _best_disconnect_category(raw_cats: list[str]) -> TrackerCategory:
@@ -108,9 +218,15 @@ def _best_disconnect_category(raw_cats: list[str]) -> TrackerCategory:
 def classify_domain(domain: str) -> tuple[TrackerCategory, str | None]:
     """Classify a single domain using local databases.
 
-    Checks Disconnect services first (broadest coverage),
-    then falls back to partner databases when Disconnect
-    has no match or only maps to ``"other"``.
+    Uses a three-tier pipeline:
+
+    1. **Disconnect services** — broadest coverage (4 000+
+       domains with category labels).
+    2. **Partner databases** — curated company-level databases
+       for ad-networks, analytics, social trackers, etc.
+    3. **Domain keyword heuristics** — regex patterns matched
+       against the domain name to catch services that slip
+       through tiers 1 and 2.
 
     Disconnect is the primary source because it provides
     domain-level classification (exactly what we need for
@@ -157,6 +273,11 @@ def classify_domain(domain: str) -> tuple[TrackerCategory, str | None]:
     # trust it and return immediately.  This prevents partner
     # databases from overriding domain-level classifications
     # with less appropriate company-level ones.
+    # Apply manual overrides for known Disconnect misclassifications.
+    override_base = url_mod.get_base_domain(domain)
+    override = _DISCONNECT_OVERRIDES.get(override_base)
+    if override is not None:
+        category = override
     if category != "other":
         return category, company
 
@@ -175,6 +296,14 @@ def classify_domain(domain: str) -> tuple[TrackerCategory, str | None]:
 
     if company:
         return category, company
+
+    # 3. Domain keyword heuristics — inspect the domain name
+    #    itself for category-revealing keywords.  This catches
+    #    services that are not in any curated database but have
+    #    obvious purposes encoded in their domain names.
+    keyword_cat = _classify_by_domain_keywords(domain)
+    if keyword_cat != "other":
+        return keyword_cat, None
 
     return category, None
 

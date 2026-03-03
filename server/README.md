@@ -116,7 +116,7 @@ src/
 │   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
-│   ├── domain_classifier.py         # Deterministic domain classification (Disconnect + partner DBs, no LLM)
+│   ├── domain_classifier.py         # Three-tier domain classification (Disconnect + partner DBs + keyword heuristics, no LLM)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure

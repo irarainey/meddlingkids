@@ -35,6 +35,14 @@
   path chain back to the origin (e.g. clicking "Social" reveals
   origin → advertising → social chains). Click again or press "Show all" to
   reset. The origin node is always visible and cannot be toggled off.
+- **Enhanced domain classification to reduce "other" nodes** — three-tier
+  server-side pipeline (Disconnect list → partner databases → domain keyword
+  heuristics) replaces the previous two-tier approach. Disconnect
+  Email/EmailAggressive categories are now classified as advertising instead of
+  "other", and a new regex-based keyword heuristic catches domains with obvious
+  keywords (adserver, analytics, metrics, fingerprint, etc.) that aren't in any
+  curated database. Client-side `lookupCategory()` also now checks domain
+  keyword patterns before falling back to "other".
 
 ### Fixed
 

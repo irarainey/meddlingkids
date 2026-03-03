@@ -34,7 +34,7 @@ import type { NetworkRequest, StructuredReport } from '../../types'
 // ============================================================================
 
 /** Category label used to colour-code graph nodes. */
-type TrackerCategory = 'origin' | 'analytics' | 'advertising' | 'social' | 'identity' | 'replay' | 'consent' | 'other'
+type TrackerCategory = 'origin' | 'first-party' | 'analytics' | 'advertising' | 'social' | 'identity' | 'replay' | 'consent' | 'cdn' | 'other'
 
 /** Available graph view modes. */
 type ViewMode = 'all' | 'third-party' | 'pre-consent'
@@ -75,23 +75,27 @@ const props = defineProps<{
 
 const CATEGORY_COLOURS: Record<TrackerCategory, string> = {
   origin: '#22c55e',
+  'first-party': '#86efac',
   analytics: '#3b82f6',
   advertising: '#ef4444',
   social: '#a855f7',
   identity: '#f59e0b',
   replay: '#ec4899',
   consent: '#06b6d4',
+  cdn: '#14b8a6',
   other: '#6b7280',
 }
 
 const CATEGORY_LABELS: Record<TrackerCategory, string> = {
   origin: 'Origin Site',
+  'first-party': 'First Party',
   analytics: 'Analytics',
   advertising: 'Advertising',
   social: 'Social Media',
   identity: 'Identity Resolution',
   replay: 'Session Replay',
   consent: 'Consent Management',
+  cdn: 'CDN / Infrastructure',
   other: 'Other',
 }
 
@@ -153,6 +157,150 @@ const CMP_DOMAIN_FRAGMENTS: ReadonlyArray<string> = [
   'cdn.trustcommander.net',
 ]
 
+/**
+ * Known CDN, content delivery, and infrastructure domain fragments.
+ * These are classified as "Content" by Disconnect (→ "other") but are
+ * infrastructure services, not trackers.  Giving them their own colour
+ * keeps the graph informative without misrepresenting them as unknown.
+ */
+const CDN_DOMAIN_FRAGMENTS: ReadonlyArray<string> = [
+  // Google infrastructure (NOT analytics/ads — those are in Disconnect as Advertising/Analytics)
+  'googleapis.com', 'gstatic.com', 'googleusercontent.com',
+  'googlevideo.com', 'ggpht.com', 'google.com', 'google.co.uk',
+  // YouTube (video hosting)
+  'youtube.com', 'ytimg.com', 'youtube-nocookie.com', 'youtu.be',
+  // Microsoft infrastructure (NOT clarity.ms — that's session replay)
+  'microsoft.com', 'msn.com', 'azure.com', 'azurefd.net',
+  'msecnd.net', 'aspnetcdn.com', 'live.com', 'office.com',
+  // Amazon / AWS
+  'cloudfront.net', 'amazonaws.com', 'amazon.com', 'media-amazon.com',
+  // Cloudflare
+  'cloudflare.com', 'cloudflarestream.com', 'cdnjs.cloudflare.com',
+  // Akamai
+  'akamaihd.net', 'akamaized.net', 'akstat.io',
+  'akamai.com', 'akamai.net', 'edgekey.net', 'edgesuite.net',
+  // Fastly
+  'fastly.net', 'fastlylb.net', 'fastly.com',
+  // Other CDNs
+  'jsdelivr.net', 'unpkg.com', 'cdnjs.com', 'bootstrapcdn.com',
+  'stackpathcdn.com', 'stackpathdns.com', 'bunny.net', 'bunnycdn.b-cdn.net',
+  'imgix.net', 'cloudinary.com',
+  // Fonts / design assets
+  'typekit.net', 'typekit.com', 'fontawesome.com',
+  'fonts.googleapis.com', 'fonts.gstatic.com',
+  // WordPress / Automattic
+  'wp.com', 'gravatar.com', 'wordpress.com',
+  // Shopify
+  'cdn.shopify.com', 'shopifyapps.com', 'shopifysvc.com', 'shopify.com',
+  // Payment / commerce (functional, not tracking)
+  'stripe.com', 'paypal.com', 'paypalobjects.com', 'klarna.com',
+  'klarnaservices.com', 'checkout.com', 'afterpay.com',
+  // Security / anti-fraud / captcha
+  'recaptcha.net', 'hcaptcha.com', 'arkoselabs.com',
+  'datadome.co', 'captcha-delivery.com', 'geocomply.com',
+  // Video platforms
+  'vimeo.com', 'vimeocdn.com', 'jwplayer.com', 'jwplatform.com',
+  'jwpcdn.com', 'jwpsrv.com', 'brightcove.com', 'brightcove.net',
+  'bitmovin.com', 'mux.com', 'wistia.com', 'video-cdn.net',
+  // Yahoo / AOL
+  'yahoo.com', 'yahooapis.com', 'yimg.com', 'aolcdn.com',
+  // Zendesk / support widgets
+  'zendesk.com', 'zdassets.com',
+  // Salesforce
+  'salesforce.com', 'salesforceliveagent.com',
+  // Apple
+  'apple.com', 'mzstatic.com', 'icloud.com',
+  // Other infrastructure
+  'scene7.com', 'kaltura.com',
+]
+
+/**
+ * Cross-domain first-party aliases.
+ *
+ * Some publishers use separate registrable domains for asset
+ * delivery, APIs, or regional sites that are functionally
+ * first-party but have a different base domain.  This map
+ * lets the graph recognise them when the origin matches.
+ *
+ * Key   = base domain of the origin site.
+ * Value = additional base domains that should be treated as
+ *         first-party for that origin.
+ */
+const FIRST_PARTY_ALIASES: Readonly<Record<string, ReadonlyArray<string>>> = {
+  'bbc.co.uk': ['bbci.co.uk'],
+  'theguardian.com': ['guim.co.uk', 'guardianapis.com'],
+}
+
+/**
+ * Domain keyword fragments for client-side classification fallback.
+ * Used when a domain isn't in the structured report and doesn't match
+ * the replay or CMP fragment lists.  Checked before falling back to 'other'.
+ *
+ * Each entry is a tuple of [keyword-fragments-array, TrackerCategory].
+ * A domain matches if any fragment appears as a whole dot-separated segment
+ * or is contained within a segment.
+ */
+const ADVERTISING_DOMAIN_KEYWORDS: ReadonlyArray<string> = [
+  'adsystem', 'adserver', 'adservice', 'adtech', 'adnetwork', 'adexchange',
+  'adclick', 'adform', 'admarvel', 'adroll', 'adnxs', 'adnexus',
+  'doubleclick', 'googlesyndication', 'googleadservices',
+  'criteo', 'pubmatic', 'openx', 'outbrain', 'taboola', 'bidswitch',
+  'rubiconproject', 'magnite', 'sharethrough', 'prebid',
+  'amazon-adsystem', 'casalemedia', 'indexexchange',
+  'media.net', '33across', 'appnexus',
+  'retarget', 'remarket',
+]
+
+const ANALYTICS_DOMAIN_KEYWORDS: ReadonlyArray<string> = [
+  'google-analytics', 'googletagmanager', 'analytics.google',
+  'segment.com', 'segment.io', 'amplitude', 'mixpanel',
+  'heap.io', 'heapanalytics', 'matomo', 'piwik',
+  'chartbeat', 'parsely', 'parse.ly', 'newrelic', 'datadog',
+  'sentry.io', 'etracker', 'rudderstack', 'rudderlabs',
+  'plausible.io', 'leadinfo', 'bugsnag',
+]
+
+const SOCIAL_DOMAIN_KEYWORDS: ReadonlyArray<string> = [
+  'facebook.com', 'facebook.net', 'fbcdn',
+  'twitter.com', 'x.com',
+  'linkedin.com', 'licdn.com',
+  'pinterest.com', 'pinimg.com',
+  'tiktok.com', 'tiktokcdn.com',
+  'instagram.com', 'cdninstagram.com',
+  'snapchat.com', 'sc-static.net',
+  'reddit.com', 'redditmedia.com',
+  'addthis.com', 'sharethis.com', 'addtoany.com',
+]
+
+const IDENTITY_DOMAIN_KEYWORDS: ReadonlyArray<string> = [
+  'liveramp', 'tapad', 'drawbridge', 'lotame', 'zeotap',
+  'id5-sync', 'thetradedesk', 'adsrvr.org',
+  'acxiom', 'experian', 'neustar',
+  'fingerprintjs', 'fpjs.io',
+]
+
+/**
+ * Subdomain prefix sets for last-resort classification.
+ * When the base domain is unknown, the leading subdomain label
+ * frequently reveals purpose (e.g. `cdn.example.com`, `pixel.example.com`).
+ */
+const CDN_SUBDOMAIN_PREFIXES: ReadonlySet<string> = new Set([
+  'cdn', 'static', 'assets', 'media', 'img', 'images',
+  'fonts', 'js', 'css', 'files', 'dl', 'download',
+  'content', 'resources', 'res', 'pub', 'dist',
+  'video', 'vod', 'stream',
+])
+
+const AD_SUBDOMAIN_PREFIXES: ReadonlySet<string> = new Set([
+  'ad', 'ads', 'adserver', 'pixel', 'tag', 'tags',
+  'beacon', 'serving', 'bid', 'rtb',
+])
+
+const ANALYTICS_SUBDOMAIN_PREFIXES: ReadonlySet<string> = new Set([
+  'analytics', 'tracking', 'tracker', 'telemetry',
+  'metrics', 'stats', 'log', 'logs', 'collect',
+])
+
 // ============================================================================
 // Refs
 // ============================================================================
@@ -187,7 +335,7 @@ const VIEW_MODE_LABELS: Record<ViewMode, string> = {
 }
 
 const VIEW_MODE_DESCRIPTIONS: Record<ViewMode, string> = {
-  all: 'Every domain contacted during the analysis, including first-party resources.',
+  all: 'Network connections observed during the page capture, including first-party resources. This may not represent all traffic from the site.',
   'third-party': 'Only third-party domains — hides first-party requests to highlight the external tracker ecosystem.',
   'pre-consent': 'Only connections that occurred before consent was granted — these may violate GDPR requirements.',
 }
@@ -288,6 +436,45 @@ const originDomain = computed(() => {
 })
 
 /**
+ * Derive the base (registrable) domain from a hostname.
+ * Strips leading subdomains, keeping the last two segments
+ * (or three for known two-part TLDs like `.co.uk`).
+ */
+function getBaseDomain(hostname: string): string {
+  const parts = hostname.split('.')
+  // Handle two-part TLDs like co.uk, com.au, org.uk, etc.
+  const twoPartTlds = ['co.uk', 'com.au', 'org.uk', 'co.nz', 'co.za', 'com.br', 'co.jp', 'co.kr', 'co.in']
+  if (parts.length >= 3) {
+    const lastTwo = parts.slice(-2).join('.')
+    if (twoPartTlds.includes(lastTwo)) {
+      return parts.slice(-3).join('.')
+    }
+  }
+  return parts.slice(-2).join('.')
+}
+
+/**
+ * The base (registrable) domain of the origin, used to
+ * detect first-party subdomains that share the same base.
+ */
+const originBaseDomain = computed(() => getBaseDomain(originDomain.value))
+
+/**
+ * Set of base domains that should be treated as first-party
+ * for the current origin, including the origin itself and any
+ * aliases declared in FIRST_PARTY_ALIASES.
+ */
+const firstPartyBases = computed(() => {
+  const base = originBaseDomain.value
+  const set = new Set<string>([base])
+  const aliases = FIRST_PARTY_ALIASES[base]
+  if (aliases) {
+    for (const a of aliases) set.add(a)
+  }
+  return set
+})
+
+/**
  * Derive the node and edge lists from the raw network requests.
  */
 const graphData = computed(() => {
@@ -297,6 +484,7 @@ const graphData = computed(() => {
 
   // Ensure origin node always exists
   const origin = originDomain.value
+  const fpBases = firstPartyBases.value
 
   nodeMap.set(origin, {
     id: origin,
@@ -317,23 +505,27 @@ const graphData = computed(() => {
 
     // Ensure source node exists
     if (!nodeMap.has(source)) {
+      const isOrigin = source === origin
+      const isFirstParty = !isOrigin && fpBases.has(getBaseDomain(source))
       nodeMap.set(source, {
         id: source,
         label: source,
-        category: source === origin ? 'origin' : lookupCategory(source),
+        category: isOrigin ? 'origin' : isFirstParty ? 'first-party' : lookupCategory(source),
         requestCount: 0,
-        isThirdParty: source !== origin,
+        isThirdParty: isOrigin || isFirstParty ? false : source !== origin,
       })
     }
 
     // Ensure target node exists and bump its request count
     if (!nodeMap.has(target)) {
+      const isOrigin = target === origin
+      const isFirstParty = !isOrigin && fpBases.has(getBaseDomain(target))
       nodeMap.set(target, {
         id: target,
         label: target,
-        category: target === origin ? 'origin' : lookupCategory(target),
+        category: isOrigin ? 'origin' : isFirstParty ? 'first-party' : lookupCategory(target),
         requestCount: 0,
-        isThirdParty: req.isThirdParty,
+        isThirdParty: isOrigin || isFirstParty ? false : req.isThirdParty,
       })
     }
     nodeMap.get(target)!.requestCount++
@@ -368,6 +560,14 @@ const graphData = computed(() => {
     return fragments.some(f => domain === f || domain.endsWith(`.${f}`))
   }
 
+  /**
+   * Check if a domain contains any keyword from a list.
+   * Matches if the keyword appears anywhere in the domain string.
+   */
+  function matchesDomainKeywords(domain: string, keywords: ReadonlyArray<string>): boolean {
+    return keywords.some(kw => domain.includes(kw))
+  }
+
   function lookupCategory(domain: string): TrackerCategory {
     // Session-replay services take priority — they are often
     // classified as "analytics" by Disconnect but warrant a
@@ -377,14 +577,39 @@ const graphData = computed(() => {
     if (matchesDomainList(domain, CMP_DOMAIN_FRAGMENTS)) return 'consent'
     // Exact match from structured report categories.
     const direct = domainCategoryMap.value.get(domain)
-    if (direct) return direct
+    if (direct && direct !== 'other') return direct
     // Try matching the parent domain (e.g. "pixel.facebook.com" → "facebook.com")
     const parts = domain.split('.')
     if (parts.length > 2) {
       const parent = parts.slice(-2).join('.')
       const parentMatch = domainCategoryMap.value.get(parent)
-      if (parentMatch) return parentMatch
+      if (parentMatch && parentMatch !== 'other') return parentMatch
     }
+
+    // CDN / infrastructure domains (Disconnect "Content" → "other",
+    // but these are well-known services, not unknown trackers).
+    if (matchesDomainList(domain, CDN_DOMAIN_FRAGMENTS)) return 'cdn'
+
+    // Domain keyword heuristic — inspect the domain name for
+    // category-revealing keywords to reduce "other" classifications.
+    if (matchesDomainKeywords(domain, ADVERTISING_DOMAIN_KEYWORDS)) return 'advertising'
+    if (matchesDomainKeywords(domain, SOCIAL_DOMAIN_KEYWORDS)) return 'social'
+    if (matchesDomainKeywords(domain, ANALYTICS_DOMAIN_KEYWORDS)) return 'analytics'
+    if (matchesDomainKeywords(domain, IDENTITY_DOMAIN_KEYWORDS)) return 'identity'
+
+    // Subdomain prefix heuristic — the leading label of a hostname
+    // often reveals purpose even when the base domain is unknown.
+    if (parts.length > 2) {
+      const prefix = parts[0]!
+      if (CDN_SUBDOMAIN_PREFIXES.has(prefix)) return 'cdn'
+      if (AD_SUBDOMAIN_PREFIXES.has(prefix)) return 'advertising'
+      if (ANALYTICS_SUBDOMAIN_PREFIXES.has(prefix)) return 'analytics'
+    }
+
+    // Fall back to server classification even if "other" (better
+    // than no classification at all — it still has a company name).
+    if (direct) return direct
+
     return 'other'
   }
 })
@@ -395,6 +620,13 @@ const stats = computed(() => {
   const thirdParty = nodes.filter(n => n.isThirdParty).length
   const preConsentEdges = edges.filter(e => e.preConsent).length
   return { totalNodes: nodes.length, thirdParty, totalEdges: edges.length, preConsentEdges }
+})
+
+/** Categories that have at least one node in the full (unfiltered) graph. */
+const presentCategories = computed(() => {
+  const cats = new Set<TrackerCategory>()
+  for (const n of graphData.value.nodes) cats.add(n.category)
+  return cats
 })
 
 /**
@@ -1008,6 +1240,7 @@ const selectedResourceBreakdown = computed(() => {
       <div class="graph-legend">
         <button
           v-for="(colour, cat) in CATEGORY_COLOURS"
+          v-show="presentCategories.has(cat as TrackerCategory)"
           :key="cat"
           class="legend-btn"
           :class="{
@@ -1126,11 +1359,16 @@ const selectedResourceBreakdown = computed(() => {
   border-radius: 0;
   margin: 0;
   padding: 1rem;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+.tracker-graph-tab.fullscreen .graph-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .tracker-graph-tab.fullscreen .graph-svg {
-  height: calc(100vh - 200px);
+  height: 100%;
 }
 
 /* Explanation */
@@ -1258,27 +1496,28 @@ const selectedResourceBreakdown = computed(() => {
 .graph-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  font-size: 0.8rem;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.7rem;
   color: #9ca3af;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
+  font-size: 0.7rem;
 }
 
 .legend-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0.1rem 0.35rem;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 3px;
   background: none;
   color: #9ca3af;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -1325,8 +1564,8 @@ const selectedResourceBreakdown = computed(() => {
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
