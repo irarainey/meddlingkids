@@ -592,25 +592,6 @@ export interface ConsentAnalysisSection {
   consentPlatformUrl?: string | null
 }
 
-/** A key vendor/partner with privacy implications. */
-export interface VendorEntry {
-  name: string
-  role: string
-  privacyImpact: string
-  url: string
-  /** Classification category (e.g. "Ad Network", "Analytics") */
-  category?: string
-  /** Privacy concerns from partner databases */
-  concerns?: string[]
-  /** Privacy policy URL from partner databases or GVL */
-  policyUrl?: string
-}
-
-/** Key vendors and their privacy implications. */
-export interface VendorSection {
-  vendors: VendorEntry[]
-}
-
 /** A group of recommendations. */
 export interface RecommendationGroup {
   category: string
@@ -647,7 +628,6 @@ export interface StructuredReport {
   storageAnalysis: StorageAnalysisSection
   consentAnalysis: ConsentAnalysisSection
   socialMediaImplications: SocialMediaImplicationsSection
-  keyVendors: VendorSection
   recommendations: RecommendationsSection
 }
 

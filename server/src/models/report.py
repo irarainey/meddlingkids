@@ -310,35 +310,7 @@ class SocialMediaImplicationsSection(pydantic.BaseModel):
     summary: str = ""
 
 
-# ── Section 9: Key Vendors ──────────────────────────────────────
-
-
-class VendorEntry(pydantic.BaseModel):
-    """A key vendor/partner with privacy implications."""
-
-    model_config = pydantic.ConfigDict(
-        alias_generator=serialization.snake_to_camel,
-        populate_by_name=True,
-    )
-
-    name: str
-    role: str
-    privacy_impact: str
-    url: str = ""
-    category: str = ""
-    concerns: list[str] = pydantic.Field(default_factory=list)
-    policy_url: str = ""
-
-
-class VendorSection(pydantic.BaseModel):
-    """Key vendors and their privacy implications."""
-
-    model_config = pydantic.ConfigDict(alias_generator=serialization.snake_to_camel, populate_by_name=True)
-
-    vendors: list[VendorEntry] = pydantic.Field(default_factory=list)
-
-
-# ── Section 10: Recommendations ─────────────────────────────────
+# ── Section 9: Recommendations ──────────────────────────────────
 
 
 class RecommendationGroup(pydantic.BaseModel):
@@ -380,5 +352,4 @@ class StructuredReport(pydantic.BaseModel):
     social_media_implications: SocialMediaImplicationsSection = pydantic.Field(
         default_factory=SocialMediaImplicationsSection,
     )
-    key_vendors: VendorSection = pydantic.Field(default_factory=VendorSection)
     recommendations: RecommendationsSection = pydantic.Field(default_factory=RecommendationsSection)

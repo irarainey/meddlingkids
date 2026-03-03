@@ -438,37 +438,6 @@ or exaggerate risks.
 Write all text as plain text only. Do NOT use markdown formatting \
 such as **bold**, *italic*, `code`, or [links](url)."""
 
-VENDOR = """\
-You are a privacy expert. Identify the most significant vendors/partners \
-from a privacy perspective.
-
-List exactly 32 vendors/partners with the highest privacy impact. \
-Always return 32 entries unless fewer than 32 distinct vendors exist in the data.
-- name: Company name. Use the SHORT canonical company name only — \
-do NOT add parenthetical aliases, qualifiers, product sub-names, \
-or role descriptions. For example use "Comscore" not \
-"Scorecard Research (Comscore)". Use "BBC" not \
-"BBC Account & Identity Services". If two entries refer to the \
-same company, merge them into one entry.
-- role: Their role (e.g. "Analytics", "Retargeting", "Identity resolution")
-- privacy_impact: One-sentence privacy impact description
-- url: The vendor's own website URL (base domain only, e.g. \
-"https://www.google.com"). Do NOT use privacy policy pages, \
-cookie policy pages, or publisher privacy URLs. Leave empty \
-if you are not certain of the vendor's base website URL.
-
-Be specific and factual. Do not fabricate vendors not evidenced by the data. \
-Focus on those involved in cross-site tracking, identity resolution, \
-data brokerage, retargeting, and extensive data collection.
-
-Focus on vendors involved in cross-site tracking, identity resolution, \
-data brokerage, retargeting, and extensive data collection. You MUST \
-return 32 vendors. Only return fewer if the data genuinely contains \
-fewer than 32 distinct vendors.
-
-Write all text as plain text only. Do NOT use markdown formatting \
-such as **bold**, *italic*, `code`, or [links](url)."""
-
 RECOMMENDATIONS = """\
 You are a privacy expert. Based on the tracking analysis, provide \
 practical recommendations for users visiting this page.

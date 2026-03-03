@@ -29,6 +29,7 @@ src/
 │   ├── ProgressBanner.vue       # Loading progress indicator
 │   ├── ScoreDialog.vue          # Privacy score results dialog
 │   ├── ScreenshotGallery.vue    # Screenshot thumbnails + modal
+│   ├── ScriptViewerDialog.vue   # Fullscreen script source viewer with syntax highlighting
 │   ├── TrackerCategorySection.vue # Reusable tracker category block (used ×5 in SummaryTab)
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
@@ -100,6 +101,19 @@ Shows captured screenshots with:
 - Click-to-expand modal
 - Teleported overlay for fullscreen view
 
+### ScriptViewerDialog
+
+Fullscreen dialog for viewing JavaScript source code:
+- Fetches script content via the server proxy (`POST /api/fetch-script`) to avoid CORS restrictions
+- Beautifies minified code with js-beautify (2-space indent, preserved newlines)
+- Applies syntax highlighting with highlight.js (One Dark-inspired colour theme)
+- Displays the AI-generated script description from the Scripts tab
+- Copy-to-clipboard button for the formatted source
+- Link to the original script URL
+- Truncation warning when scripts exceed 512 KB
+- Loading spinner and error states
+- Closes on Escape key or clicking the backdrop
+
 ### Tab Components
 
 Each tab is a self-contained component with its own template and scoped styles:
@@ -111,9 +125,9 @@ Each tab is a self-contained component with its own template and scoped styles:
 | `CookiesTab` | Cookies grouped by domain with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
 | `DebugLogTab` | Server debug log output (visible in debug mode only) |
 | `NetworkTab` | Network requests with third-party filter and filter explanation note |
-| `ScriptsTab` | JavaScript files grouped by domain |
+| `ScriptsTab` | JavaScript files grouped by domain with click-to-view source dialog (syntax highlighted, auto-formatted) |
 | `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
-| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Includes view modes (all domains, third-party only, pre-consent only), subgraph highlighting, minimap navigation, and resource-type breakdown |
+| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Colour-coded by category (analytics, advertising, social, identity, session replay, consent management, CDN, first-party). Includes view modes (all domains, third-party only, pre-consent only), clickable category legend for single-category path filtering, first-party domain alias recognition, subdomain prefix heuristics, Disconnect override corrections, subgraph highlighting, minimap navigation, resource-type breakdown, and domain keyword heuristic to reduce "other" classifications |
 
 ### useTrackingAnalysis Composable
 
@@ -217,8 +231,6 @@ Located in `types/tracking.ts`:
 | `StorageAnalysisSection` | Storage analysis details |
 | `ConsentDiscrepancy` | Discrepancy between consent claims and observed tracking |
 | `ConsentAnalysisSection` | Consent analysis with discrepancies and summary |
-| `VendorEntry` | Vendor with name, category, and tracking details |
-| `VendorSection` | Collection of vendor entries with total count |
 | `RecommendationGroup` | Group of recommendations by priority |
 | `RecommendationsSection` | Collection of recommendation groups |
 | `SocialMediaRisk` | Per-platform social media privacy risk with severity |
@@ -266,8 +278,8 @@ Located in `utils/formatters.ts`:
 | **Cookies** | All cookies grouped by domain — click any cookie for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Storage** | localStorage and sessionStorage items — click any key for instant identification (description, who sets it, purpose, risk level, privacy note) |
 | **Network** | HTTP requests with third-party filter |
-| **Graph** | Interactive tracker relationship graph showing domain connections, with view modes for all domains, third-party only, and pre-consent only |
-| **Scripts** | JavaScript files grouped by domain |
+| **Graph** | Interactive tracker relationship graph showing domain connections, colour-coded by category with first-party and CDN classification, view modes for all domains, third-party only, and pre-consent only |
+| **Scripts** | JavaScript files grouped by domain — click any URL to view syntax-highlighted source in a fullscreen dialog |
 | **Debug Log** | Server debug log output (debug mode only, enabled via `?debug=true`) |
 
 ### Visual Indicators

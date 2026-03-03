@@ -14,6 +14,7 @@ import pathlib
 import re
 from typing import Any
 
+from src.consent import platform_detection
 from src.models import partners
 from src.utils import logger
 from src.utils import url as url_mod
@@ -301,7 +302,6 @@ def is_known_tracker_domain(domain: str) -> bool:
     if domain in tracker_domains:
         return True
     # Try base domain for subdomain matching
-    from src.utils import url as url_mod
 
     base = url_mod.get_base_domain(domain)
     return base in tracker_domains
@@ -380,7 +380,6 @@ def get_disconnect_category(domain: str) -> str | list[str] | None:
     if info:
         return info.get("category")
     # Try base domain
-    from src.utils import url as url_mod
 
     base = url_mod.get_base_domain(domain)
     info = services.get(base)
@@ -407,8 +406,6 @@ def build_disconnect_context(third_party_domains: list[str]) -> str:
     services = get_disconnect_services()
     if not services or not third_party_domains:
         return ""
-
-    from src.utils import url as url_mod
 
     # Look up each domain, dedup by (domain, category, company).
     matches: dict[str, list[tuple[str, str]]] = {}
@@ -480,7 +477,6 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
     ``company``, ``description``, and ``url`` keys (any may be
     ``None``).
     """
-    from src.utils import url as url_mod
 
     # Normalise: cookie domains often have a leading dot (e.g. ".google.com").
     domain = domain.lstrip(".")
@@ -785,11 +781,10 @@ def load_consent_platforms() -> dict[str, Any]:
     this function returns the raw dict-based intermediate
     representation to avoid circular imports.
     """
-    from src.consent.platform_detection import ConsentPlatformProfile
 
     raw: dict[str, Any] = _load_json("consent/consent-platforms.json")
     platforms: dict[str, Any] = raw.get("platforms", {})
-    result = {key: ConsentPlatformProfile(key, data) for key, data in platforms.items()}
+    result = {key: platform_detection.ConsentPlatformProfile(key, data) for key, data in platforms.items()}
     log.info("Consent platforms loaded", {"count": len(result)})
     return result
 

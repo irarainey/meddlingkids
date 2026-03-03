@@ -8,7 +8,8 @@ variables, preferring Azure when fully configured.
 
 from __future__ import annotations
 
-from agent_framework import SupportsChatGetResponse, azure, openai
+import agent_framework
+from agent_framework import azure, openai
 
 from src.agents import config
 from src.utils import logger
@@ -24,7 +25,7 @@ def get_chat_client(
     *,
     deployment_override: str | None = None,
     use_responses_api: bool = False,
-) -> SupportsChatGetResponse | None:
+) -> agent_framework.SupportsChatGetResponse | None:
     """Create and return a chat client for the configured LLM backend.
 
     Prefers Azure OpenAI when its environment variables are set.
@@ -69,7 +70,7 @@ def _create_azure_client(
     agent_name: str | None,
     deployment_override: str | None = None,
     use_responses_api: bool = False,
-) -> SupportsChatGetResponse:
+) -> agent_framework.SupportsChatGetResponse:
     """Instantiate an Azure OpenAI client.
 
     When *use_responses_api* is ``True``, an
@@ -134,7 +135,7 @@ def _create_azure_client(
 def _create_openai_client(
     cfg: config.OpenAIConfig,
     agent_name: str | None,
-) -> SupportsChatGetResponse:
+) -> agent_framework.SupportsChatGetResponse:
     """Instantiate a standard OpenAI chat client.
 
     Args:

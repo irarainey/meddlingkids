@@ -20,7 +20,7 @@ def get_safe_client_message(error: BaseException) -> str:
     maps to a generic message.
     """
     # Import here to avoid circular deps at module level.
-    from src.utils.url import UnsafeURLError
+    from src.utils.url import UnsafeURLError  # noqa: important[import-modules-not-symbols, misplaced-import]
 
     # Allow purpose-built user-facing error messages through.
     if isinstance(error, (UnsafeURLError, TimeoutError)):

@@ -5,11 +5,15 @@ Sets up the FastAPI server with CORS, static file serving, and all API routes.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import ipaddress
 import os
 import pathlib
+import urllib.parse
 from collections.abc import AsyncGenerator
 
+import aiohttp
 import dotenv
 import fastapi
 from fastapi import staticfiles
@@ -246,6 +250,93 @@ async def tc_string_decode_endpoint(
         return {"error": "Failed to decode TC string"}
 
     return decoded.model_dump(by_alias=True)
+
+
+# Maximum bytes to fetch for script preview (512 KB).
+_MAX_PREVIEW_BYTES = 512 * 1024
+
+
+async def _is_safe_remote_url(url: str) -> bool:
+    """
+    Validate that a URL points to a public HTTP(S) host and not to
+    loopback, private, link-local, or otherwise special IP ranges.
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if not parsed.hostname:
+        return False
+
+    host = parsed.hostname
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    try:
+        addrinfo = await loop.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except OSError:
+        return False
+
+    for _family, _, _, _, sockaddr in addrinfo:
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+            return False
+
+    return True
+
+
+@app.post("/api/fetch-script")
+async def fetch_script_endpoint(
+    request: fastapi.Request,
+) -> dict[str, object]:
+    """Fetch the source content of a remote JavaScript file.
+
+    Acts as a same-origin proxy so the client can display
+    syntax-highlighted script source without CORS restrictions.
+    Only HTTP(S) URLs are accepted and the response is capped
+    at 512 KB to prevent abuse.
+    """
+
+    body = await request.json()
+    url: str = body.get("url", "").strip()
+
+    if not url:
+        raise fastapi.HTTPException(status_code=400, detail="url is required")
+
+    if not url.startswith(("http://", "https://")):
+        raise fastapi.HTTPException(status_code=400, detail="Only HTTP(S) URLs are accepted")
+
+    if not await _is_safe_remote_url(url):
+        raise fastapi.HTTPException(status_code=400, detail="URL points to a disallowed host")
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as session,
+            session.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
+                max_redirects=3,
+            ) as resp,
+        ):
+            if resp.status >= 400:
+                return {"error": f"HTTP {resp.status}", "content": None}
+            raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+            content = raw.decode("utf-8", errors="replace")
+            truncated = resp.content.total_bytes is not None and resp.content.total_bytes > _MAX_PREVIEW_BYTES
+            return {"content": content, "truncated": truncated}
+    except TimeoutError:
+        return {"error": "Request timed out", "content": None}
+    except Exception as exc:
+        log.debug("Script fetch proxy error", {"url": url, "error": str(exc)})
+        return {"error": "Unexpected error fetching script", "content": None}
 
 
 @app.get("/api/open-browser-stream")

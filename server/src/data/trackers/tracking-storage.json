@@ -682,6 +682,12 @@
       "setBy": "Amazon Ads",
       "purpose": "advertising"
     },
+    "aps:": {
+      "pattern": "^aps:",
+      "description": "Amazon Publisher Services (APS) header bidding — stores vendor enablement, bid signals, and auction configuration for the Transparent Ad Marketplace (TAM).",
+      "setBy": "Amazon Publisher Services",
+      "purpose": "advertising"
+    },
     "_comment_consent_generic": "--- Generic Consent Patterns ---",
     "__tcfapi": {
       "pattern": "__tcfapi|tcData",

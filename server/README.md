@@ -112,11 +112,11 @@ src/
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   ├── tcf_lookup.py                # TCF purpose matching (purpose strings → IAB TCF v2.2 taxonomy)
-│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL, dynamic timestamp validation)
+│   ├── tc_string.py                 # TC/AC String decoder & 5-tier discovery (cookies → CMP profile → JSON storage → heuristic → JSON heuristic)
 │   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
-│   ├── domain_classifier.py         # Deterministic domain classification (Disconnect + partner DBs, no LLM)
+│   ├── domain_classifier.py         # Three-tier domain classification (Disconnect + partner DBs + keyword heuristics, no LLM)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
 │       ├── advertising.py           # Ad networks, retargeting, RTB infrastructure
@@ -185,6 +185,7 @@ src/
 | POST | `/api/domain-info` | Looks up domain information |
 | POST | `/api/tcf-purposes` | Maps consent purpose strings to IAB TCF v2.2 taxonomy |
 | POST | `/api/tc-string-decode` | Decodes an IAB TCF v2 TC String (deterministic, no LLM) |
+| POST | `/api/fetch-script` | Fetches remote JavaScript source for the script viewer (512 KB cap, 10 s timeout) |
 | GET | `/{full_path:path}` | SPA catch-all — serves the built client UI (when `SHOW_UI=true`) |
 
 ## Linting and Formatting
@@ -223,7 +224,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files. Uses the Responses API when targeting a codex deployment |
-| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
+| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run(stream=True)` with a 60 s inactivity timeout) |
 | `CookieInfoAgent` | Cookie name + domain + value | `CookieInfoResult` | Explains individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not found in known databases |

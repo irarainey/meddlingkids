@@ -21,6 +21,7 @@ from src.analysis import script_cache, script_grouping
 from src.data import loader
 from src.models import tracking_data
 from src.utils import logger
+from src.utils import url as url_mod
 
 log = logger.create_logger("Script-Analysis")
 
@@ -67,8 +68,6 @@ def _identify_tracker_domain(domain: str) -> str | None:
         services = loader.get_disconnect_services()
         info = services.get(domain)
         if not info:
-            from src.utils import url as url_mod
-
             base = url_mod.get_base_domain(domain)
             info = services.get(base)
         company = info.get("company") if info else None

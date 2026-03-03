@@ -15,10 +15,9 @@ from urllib import parse
 
 import pydantic
 
-from src.agents import base, gdpr_context
-from src.agents import middleware as middleware_mod
+from src.agents import base, gdpr_context, middleware
 from src.agents.prompts import structured_report
-from src.analysis import domain_cache, domain_classifier, vendor_lookup
+from src.analysis import domain_cache, domain_classifier
 from src.data import loader
 from src.models import analysis, consent, report
 from src.utils import json_parsing, logger, risk
@@ -63,10 +62,6 @@ class _StorageAnalysisResponse(pydantic.BaseModel):
 
 class _ConsentAnalysisResponse(pydantic.BaseModel):
     section: report.ConsentAnalysisSection
-
-
-class _VendorResponse(pydantic.BaseModel):
-    section: report.VendorSection
 
 
 class _SocialMediaImplicationsResponse(pydantic.BaseModel):
@@ -149,9 +144,9 @@ class StructuredReportAgent(base.BaseAgent):
         #
         # Wrap each coroutine so the optional progress callback
         # fires as sections finish, giving the client granular
-        # "Generating report: <section> (N/10)..." updates.
+        # "Generating report: <section> (N/9)..." updates.
         _sections_done = 0
-        _total_sections = 10
+        _total_sections = 9
 
         async def _tracked(
             coro: Awaitable[pydantic.BaseModel | None],
@@ -183,7 +178,6 @@ class StructuredReportAgent(base.BaseAgent):
             cookie_analysis,
             storage_analysis,
             privacy_risk,
-            vendors,
             consent_analysis,
             social_media_implications,
             recommendations,
@@ -241,15 +235,6 @@ class StructuredReportAgent(base.BaseAgent):
                     "privacy-risk",
                 ),
                 "privacy-risk",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.VENDOR,
-                    context,
-                    _VendorResponse,
-                    "key-vendors",
-                ),
-                "key-vendors",
             ),
             _tracked(
                 consent_section_coro,
@@ -377,13 +362,6 @@ class StructuredReportAgent(base.BaseAgent):
                 social_media_implications,
                 report.SocialMediaImplicationsSection,
             ),
-            key_vendors=_enrich_vendor_urls(
-                _extract(
-                    vendors,
-                    report.VendorSection,
-                ),
-                url_lookup,
-            ),
             recommendations=_extract(
                 recommendations,
                 report.RecommendationsSection,
@@ -442,7 +420,7 @@ class StructuredReportAgent(base.BaseAgent):
             # Include LLM response metadata so finish_reason and
             # token counts are visible when parsing fails (e.g.
             # finish_reason=length means the context was too large).
-            meta = middleware_mod._describe_response(response)
+            meta = middleware._describe_response(response)
             log.warn(
                 "Section parse failed",
                 {"section": section_name, "llm": meta, "responsePreview": (response.text or "")[:200]},
@@ -582,89 +560,6 @@ def _find_url(name: str, url_lookup: dict[str, str]) -> str:
             return url
 
     return ""
-
-
-def _enrich_vendor_urls(
-    vendor_section: report.VendorSection,
-    url_lookup: dict[str, str],
-) -> report.VendorSection:
-    """Populate vendor URLs, categories, concerns, and
-    policy URLs from the partner databases and GVL data.
-
-    Authoritative URLs from the partner database always take
-    precedence over LLM-provided URLs (which may be
-    hallucinated or use privacy-policy pages instead of base
-    URLs).  Categories and concerns come from the partner
-    enrichment index; policy URLs from GVL vendor details.
-
-    Args:
-        vendor_section: Vendor section from LLM output.
-        url_lookup: Pre-built name→URL mapping.
-
-    Returns:
-        Updated vendor section with metadata populated.
-    """
-    # Build a name→meta index from GVL vendor details so we
-    # can attach category, concerns, and policy_url to report
-    # vendors by name.  Partner enrichment (via vendor_lookup)
-    # takes priority where available.
-
-    gvl_details = loader.get_gvl_vendor_details()
-    gvl_name_index: dict[str, dict] = {}
-    for detail in gvl_details.values():
-        if isinstance(detail, dict) and "name" in detail:
-            gvl_name_index[detail["name"].lower().strip()] = detail
-
-    for vendor in vendor_section.vendors:
-        authoritative_url = _find_url(
-            vendor.name,
-            url_lookup,
-        )
-        if authoritative_url:
-            vendor.url = authoritative_url
-
-        # Try partner enrichment first (curated data),
-        # then GVL details (automated enrichment).
-        if not vendor.category:
-            enrichment = vendor_lookup._enrich(vendor.name)
-            if enrichment:
-                vendor.category = enrichment.get("category", "")
-                if "concerns" in enrichment and not vendor.concerns:
-                    vendor.concerns = enrichment["concerns"]
-                if "url" in enrichment and not vendor.url:
-                    vendor.url = enrichment["url"]
-
-        # GVL name-based fallback for category and
-        # policy_url.
-        name_lower = vendor.name.lower().strip()
-        gvl_entry = gvl_name_index.get(name_lower)
-        if not gvl_entry:
-            # Try fuzzy: check if vendor name is
-            # a substring of a GVL name or vice versa.
-            for gvl_name, entry in gvl_name_index.items():
-                if gvl_name in name_lower or name_lower in gvl_name:
-                    gvl_entry = entry
-                    break
-
-        if gvl_entry:
-            if not vendor.category:
-                cat = gvl_entry.get("category", "")
-                if cat:
-                    vendor.category = cat
-            if not vendor.concerns:
-                concerns = gvl_entry.get("concerns")
-                if concerns:
-                    vendor.concerns = concerns
-            if not vendor.policy_url:
-                policy = gvl_entry.get("policyUrl", "")
-                if policy:
-                    vendor.policy_url = policy
-            if not vendor.url:
-                url = gvl_entry.get("url", "")
-                if url:
-                    vendor.url = url
-
-    return vendor_section
 
 
 def _enrich_tracker_urls(

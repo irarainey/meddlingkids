@@ -24,7 +24,7 @@ log = logger.create_logger("TrackingAnalysisAgent")
 # the parsed result to the public ``TrackingAnalysisResult``
 # model in ``models.analysis`` before returning.
 
-import pydantic  # noqa: E402 (grouped after local imports)
+import pydantic  # noqa: E402 (grouped after local imports)  # noqa: important[wrong-import-order]
 
 
 class _TrackingAnalysisResponse(pydantic.BaseModel):

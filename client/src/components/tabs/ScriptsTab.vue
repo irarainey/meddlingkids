@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { TrackedScript, ScriptGroup } from '../../types'
+import ScriptViewerDialog from '../ScriptViewerDialog.vue'
 
 /** Return the URL without query string or fragment for display purposes. */
 function baseUrl(url: string): string {
@@ -25,6 +27,20 @@ defineProps<{
   /** Groups of similar scripts */
   scriptGroups?: ScriptGroup[]
 }>()
+
+/** Whether the script viewer dialog is open. */
+const viewerOpen = ref(false)
+/** URL of the script currently being viewed. */
+const viewerUrl = ref('')
+/** Description of the script currently being viewed. */
+const viewerDescription = ref('')
+
+/** Open the fullscreen script viewer for the given URL. */
+function openViewer(url: string, description?: string): void {
+  viewerUrl.value = url
+  viewerDescription.value = description ?? ''
+  viewerOpen.value = true
+}
 </script>
 
 <template>
@@ -76,7 +92,7 @@ defineProps<{
       <section class="scripts-analysis-section">
         <h2 class="section-title">🔎 Analysis</h2>
         <p class="section-subtitle">
-          All individual scripts grouped by domain. Click on any URL to view it in a new tab.
+          All individual scripts grouped by domain. Click any URL to view its source.
         </p>
         <div class="domain-groups">
         <div v-for="(domainScripts, domain) in scriptsByDomain" :key="domain" class="domain-group">
@@ -84,7 +100,7 @@ defineProps<{
             <h3 class="domain-header">{{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})</h3>
             <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
               <div class="script-main">
-                <a :href="script.url" target="_blank" class="script-url" :title="script.url">{{ baseUrl(script.url) }}</a>
+                <button class="script-url" :title="script.url" @click="openViewer(script.url, script.description)">{{ baseUrl(script.url) }}</button>
                 <span v-if="script.description" class="script-description">{{ script.description }}</span>
               </div>
             </div>
@@ -93,6 +109,13 @@ defineProps<{
         </div>
       </section>
     </div>
+
+    <ScriptViewerDialog
+      :is-open="viewerOpen"
+      :script-url="viewerUrl"
+      :script-description="viewerDescription"
+      @close="viewerOpen = false"
+    />
   </div>
 </template>
 
@@ -233,6 +256,13 @@ defineProps<{
   color: var(--link-color);
   word-break: break-all;
   text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
 .script-url:hover {

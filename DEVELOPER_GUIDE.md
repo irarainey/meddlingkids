@@ -273,9 +273,8 @@ All data captured
    │   │  build_structured_report(tracking_summary, consent)   │
    │   │   ├── 10 concurrent section LLM calls                 │
    │   │   ├── GDPR/TCF reference data                         │
-   │   │   ├── Deterministic overrides (partner count,         │
-   │   │   │   domain count, cookie count, storage counts)     │
-   │   │   └── Vendor URL enrichment from partner databases    │
+   │   │   └── Deterministic overrides (partner count,         │
+   │   │       domain count, cookie count, storage counts)     │
    │   │                                                       │
    │   └───────────────────────────────────────────────────────┘
    │
@@ -432,8 +431,8 @@ App.vue
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
-    ├── TrackerGraphTab (D3.js force-directed network graph)
-    ├── ScriptsTab
+    ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
+    ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
     └── DebugLogTab (debug mode only, enabled via ?debug=true in the URL)
 ```
 
@@ -460,7 +459,7 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model. Uses the Responses API when targeting a codex deployment |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves), deterministic overrides, and vendor URL enrichment. Uses a 60 s per-call timeout (large prompts on complex sites) |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Uses `run(stream=True)` with a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
@@ -511,15 +510,15 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `script_grouping.py` | Group similar scripts (chunks, vendor bundles) to reduce noise |
 | `tracker_patterns.py` | Regex pattern data for tracker classification (with pre-compiled combined alternation) |
 | `tracking_summary.py` | Summary builder for LLM input and pre-consent stats |
-| `domain_cache.py` | Domain-level knowledge cache — persists LLM classifications (tracker categories, cookie groupings, vendor roles, severity levels) for consistency across repeat analyses of the same domain. Uses merge-on-save with scan-count-based staleness pruning |
+| `domain_cache.py` | Domain-level knowledge cache — persists LLM classifications (tracker categories, cookie groupings, severity levels) for consistency across repeat analyses of the same domain. Uses merge-on-save with scan-count-based staleness pruning |
 | `cookie_lookup.py` | Cookie information lookup service — checks consent cookie database and tracking cookie patterns first, falls back to `CookieInfoAgent` LLM for unrecognised cookies. Main function: `get_cookie_info()` |
 | `storage_lookup.py` | Storage key information lookup service — checks tracking storage patterns first, falls back to `StorageInfoAgent` LLM for unrecognised keys. Main function: `get_storage_info()` |
 | `tcf_lookup.py` | TCF purpose matching service — maps consent purpose strings to the IAB TCF v2.2 taxonomy. Fuzzy-matches purposes, special purposes, features, and special features. Deterministic — no LLM calls. Main function: `lookup_purposes()` |
-| `tc_string.py` | TC String decoder — decodes IAB TCF v2 consent strings (Base64url → bitfield) to extract CMP metadata, purpose consents, vendor consents, and legitimate interest signals. Resolves vendor IDs to names via the GVL. Timestamp validation uses a dynamic window (`current_year + 35`) to tolerate known CMP bugs (e.g. decisecond vs millisecond confusion). Deterministic — no LLM calls |
+| `tc_string.py` | TC/AC String decoder and 5-tier discovery — decodes IAB TCF v2 consent strings (Base64url → bitfield) to extract CMP metadata, purpose consents, vendor consents, and legitimate interest signals. Resolves vendor IDs to names via the GVL. Timestamp validation uses a dynamic window (`current_year + 35`) to tolerate known CMP bugs (e.g. decisecond vs millisecond confusion). Discovery cascade: (1) named cookie/storage keys, (2) CMP profile `storage_key_patterns` with regex matching and JSON-path extraction (e.g. Sourcepoint `_sp_user_consent_{id}` → `gdpr.euconsent`), (3) pattern-based JSON storage scan, (4) heuristic raw-value scan, (5) heuristic JSON-field scan. Deterministic — no LLM calls |
 | `tc_validation.py` | TC String validation — cross-references decoded TC String data with observed tracking to produce validation findings (e.g. tracking without consent, undisclosed vendors). Deterministic — no LLM calls |
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
-| `domain_classifier.py` | Deterministic domain classification using Disconnect services and partner databases — classifies domains into tracker categories (`Social`, `Advertising`, `Analytics`, `Fingerprinting`) without LLM calls. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
+| `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains) with override corrections for known misclassifications, (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
@@ -840,7 +839,7 @@ Overall:  ~14% faster (111.8s → 95.9s)
 Caches LLM-generated classifications so subsequent analyses of
 the same domain produce consistent labels.
 
-- **Stored:** Tracker categories, cookie groupings, vendor roles,
+- **Stored:** Tracker categories, cookie groupings,
   data collection categories, severity levels.
 - **Anchoring:** Cached knowledge is formatted as a context block
   and injected into the LLM prompt. The model is instructed to
@@ -1162,7 +1161,7 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads
 - Overlay cache stores successful dismiss strategies per domain (Playwright locator strategy, button text, frame type, consent platform), skipping LLM vision detection on repeat visits
 - CMP platform detection identifies 19 known consent platforms by cookies, media group profile, or DOM selectors; when matched, the pipeline attempts a deterministic button click before falling back to LLM vision
-- Domain knowledge cache stores LLM-generated classifications (tracker categories, cookie groupings, vendor roles) per domain, anchoring subsequent analyses to established labels for consistency. New findings are **merged** with the existing cache rather than overwriting it; items not seen for 3 consecutive scans are automatically pruned
+- Domain knowledge cache stores LLM-generated classifications (tracker categories, cookie groupings) per domain, anchoring subsequent analyses to established labels for consistency. New findings are **merged** with the existing cache rather than overwriting it; items not seen for 3 consecutive scans are automatically pruned
 - Consent extraction runs concurrently with the next detection call via `asyncio.create_task`
 - Cookie capture uses O(1) dict index for upserts instead of linear scan
 - `blob:` URLs are filtered from script tracking (unfetchable browser-internal scripts)

@@ -1,8 +1,9 @@
 """Tests for src.analysis.domain_classifier.
 
 Covers deterministic domain classification using Disconnect
-and partner databases, multi-category prioritisation, the
-tracking-section builder, and the merge helper.
+and partner databases, multi-category prioritisation, domain
+keyword heuristics, the tracking-section builder, and the
+merge helper.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from unittest import mock
 
 from src.analysis.domain_classifier import (
     _best_disconnect_category,
+    _classify_by_domain_keywords,
     build_deterministic_tracking_section,
     classify_domain,
     merge_tracking_sections,
@@ -51,9 +53,21 @@ class TestBestDisconnectCategory:
     def test_all_other_categories(self) -> None:
         """When all categories map to 'other', return 'other'."""
         result = _best_disconnect_category(
-            ["Content", "Email"],
+            ["Content", "Cryptomining"],
         )
         assert result == "other"
+
+    def test_email_maps_to_advertising(self) -> None:
+        """Email categories are treated as advertising."""
+        assert _best_disconnect_category(["Email"]) == "advertising"
+        assert _best_disconnect_category(["EmailAggressive"]) == "advertising"
+
+    def test_email_loses_to_social(self) -> None:
+        """Social is preferred over Email."""
+        result = _best_disconnect_category(
+            ["Email", "Social"],
+        )
+        assert result == "social_media"
 
     def test_empty_list(self) -> None:
         """Empty list returns 'other'."""
@@ -373,3 +387,154 @@ class TestMergeTrackingSections:
         result = merge_tracking_sections(det, llm)
         assert result.analytics == []
         assert result.advertising == []
+
+
+# ── _classify_by_domain_keywords ───────────────────────────────
+
+
+class TestClassifyByDomainKeywords:
+    """Domain keyword heuristic (tier 3 classification)."""
+
+    # ── Advertising ──
+
+    def test_adserver_domain(self) -> None:
+        """Domain containing 'adserver' is advertising."""
+        assert _classify_by_domain_keywords("my-adserver.example.com") == "advertising"
+
+    def test_adtech_domain(self) -> None:
+        """Domain containing 'adtech' is advertising."""
+        assert _classify_by_domain_keywords("cdn.adtech.io") == "advertising"
+
+    def test_doubleclick_domain(self) -> None:
+        """Domain containing 'doubleclick' is advertising."""
+        assert _classify_by_domain_keywords("stats.doubleclick.example.net") == "advertising"
+
+    def test_prebid_domain(self) -> None:
+        """Domain containing 'prebid' is advertising."""
+        assert _classify_by_domain_keywords("hb.prebid-server.com") == "advertising"
+
+    def test_retarget_domain(self) -> None:
+        """Domain containing 'retarget' is advertising."""
+        assert _classify_by_domain_keywords("api.retarget.example.com") == "advertising"
+
+    def test_bidswitch_domain(self) -> None:
+        """Domain containing 'bidswitch' is advertising."""
+        assert _classify_by_domain_keywords("x.bidswitch.net") == "advertising"
+
+    def test_dsp_domain(self) -> None:
+        """Domain containing 'dsp' as a segment is advertising."""
+        assert _classify_by_domain_keywords("my.dsp.example.com") == "advertising"
+
+    # ── Analytics ──
+
+    def test_analytics_domain(self) -> None:
+        """Domain containing 'analytics' is analytics."""
+        assert _classify_by_domain_keywords("cdn.analytics.example.com") == "analytics"
+
+    def test_metrics_domain(self) -> None:
+        """Domain containing 'metrics' is analytics."""
+        assert _classify_by_domain_keywords("app.metrics.example.io") == "analytics"
+
+    def test_telemetry_domain(self) -> None:
+        """Domain containing 'telemetry' is analytics."""
+        assert _classify_by_domain_keywords("telemetry.example.com") == "analytics"
+
+    def test_tagmanager_domain(self) -> None:
+        """Domain containing 'tagmanager' is analytics."""
+        assert _classify_by_domain_keywords("cdn.tagmanager.example.com") == "analytics"
+
+    def test_sentry_domain(self) -> None:
+        """Domain containing 'sentry' is analytics."""
+        assert _classify_by_domain_keywords("app.sentry.example.io") == "analytics"
+
+    # ── Social media ──
+
+    def test_facebook_keyword(self) -> None:
+        """Domain containing 'facebook' is social_media."""
+        assert _classify_by_domain_keywords("pixel.facebook.example.com") == "social_media"
+
+    def test_fbcdn_keyword(self) -> None:
+        """Domain containing 'fbcdn' is social_media."""
+        assert _classify_by_domain_keywords("static.fbcdn.example.net") == "social_media"
+
+    def test_linkedin_keyword(self) -> None:
+        """Domain containing 'linkedin' is social_media."""
+        assert _classify_by_domain_keywords("api.linkedin.example.com") == "social_media"
+
+    # ── Identity resolution ──
+
+    def test_liveramp_keyword(self) -> None:
+        """Domain containing 'liveramp' is identity_resolution."""
+        assert _classify_by_domain_keywords("api.liveramp.example.com") == "identity_resolution"
+
+    def test_fingerprint_keyword(self) -> None:
+        """Domain containing 'fingerprint' is identity_resolution."""
+        assert _classify_by_domain_keywords("cdn.fingerprint.example.io") == "identity_resolution"
+
+    def test_thetradedesk_keyword(self) -> None:
+        """Domain containing 'thetradedesk' is identity_resolution."""
+        assert _classify_by_domain_keywords("id.thetradedesk.example.com") == "identity_resolution"
+
+    # ── No match ──
+
+    def test_no_match_returns_other(self) -> None:
+        """Domain without category keywords returns 'other'."""
+        assert _classify_by_domain_keywords("cdn.example.com") == "other"
+
+    def test_no_false_positive_badminton(self) -> None:
+        """'badminton' should not falsely match 'ad' patterns."""
+        assert _classify_by_domain_keywords("badminton-club.org") == "other"
+
+    def test_no_false_positive_reading(self) -> None:
+        """'reading' should not falsely match patterns."""
+        assert _classify_by_domain_keywords("reading-list.example.com") == "other"
+
+
+# ── classify_domain with keyword fallback ──────────────────────
+
+
+class TestClassifyDomainKeywordFallback:
+    """Keyword heuristic is used as tier 3 when DB lookups fail."""
+
+    def test_keyword_catches_unknown_adserver(self) -> None:
+        """An unknown adserver domain is classified by keywords."""
+        cat, company = classify_domain("pixel.adserver-unknown.test")
+        assert cat == "advertising"
+        # No company from keyword classification.
+        assert company is None
+
+    def test_keyword_catches_unknown_analytics(self) -> None:
+        """An unknown analytics domain is classified by keywords."""
+        cat, company = classify_domain("cdn.analytics-unknown.test")
+        assert cat == "analytics"
+        assert company is None
+
+    def test_db_classification_takes_priority(self) -> None:
+        """Disconnect and partner DBs take priority over keywords."""
+        # google-analytics.com is in Disconnect — should get
+        # company name and proper classification, not keyword match.
+        cat, company = classify_domain("google-analytics.com")
+        assert cat == "analytics"
+        assert company == "Google"
+
+    def test_keyword_does_not_match_plain_domain(self) -> None:
+        """A domain with no keywords returns other/None."""
+        cat, company = classify_domain("totally-unknown-xyz.test")
+        assert cat == "other"
+        assert company is None
+
+
+class TestDisconnectOverrides:
+    """Verify manual overrides correct known Disconnect misclassifications."""
+
+    def test_dotmetrics_overridden_to_analytics(self) -> None:
+        """DotMetrics is audience measurement, not advertising."""
+        cat, company = classify_domain("dotmetrics.net")
+        assert cat == "analytics"
+        assert company == "DotMetrics"
+
+    def test_dotmetrics_subdomain_overridden(self) -> None:
+        """Subdomain of dotmetrics.net should also be analytics."""
+        cat, company = classify_domain("uk-script.dotmetrics.net")
+        assert cat == "analytics"
+        assert company == "DotMetrics"

@@ -160,15 +160,6 @@ class TestBuildContextHint:
         assert "GA" in hint
         assert "analytics" in hint
 
-    def test_includes_vendors(self) -> None:
-        knowledge = domain_cache.DomainKnowledge(
-            domain="example.com",
-            vendors=[domain_cache.CachedVendor(name="Google", role="Ad network")],
-        )
-        hint = domain_cache.build_context_hint(knowledge)
-        assert "Google" in hint
-        assert "Ad network" in hint
-
 
 # ── Load / Save round-trip ──────────────────────────────────────
 
@@ -193,11 +184,6 @@ class TestDomainCacheIO:
                     total=5,
                     groups=[
                         report.CookieGroup(category="Analytics", cookies=["_ga", "_gid"], concern_level="medium"),
-                    ],
-                ),
-                key_vendors=report.VendorSection(
-                    vendors=[
-                        report.VendorEntry(name="Google", role="Analytics provider", privacy_impact="Medium"),
                     ],
                 ),
                 data_collection=report.DataCollectionSection(

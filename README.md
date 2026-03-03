@@ -19,9 +19,9 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)
-- 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles
+- 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles. Click any script URL to view its source code in a fullscreen dialog with syntax highlighting and automatic formatting of minified code
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering and initiator domain tracking
-- 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), minimap navigation, and resource-type breakdown
+- 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), clickable category filters (analytics, advertising, social, identity, session replay, consent management, CDN, first-party), first-party domain alias recognition, subdomain prefix heuristics, Disconnect override corrections, minimap navigation, and resource-type breakdown
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🎯 **TCF Purpose Breakdown** — Maps consent purposes to the IAB TCF v2.2 taxonomy with risk levels, lawful bases, and human-readable explanations
 - 🔓 **TC String Decoding** — Decodes IAB TCF v2 consent strings (euconsent-v2) to reveal purpose consents, vendor consents, legitimate interest signals, and CMP metadata
@@ -102,7 +102,7 @@ And if you want an even deeper dive, we provide a detailed visualization and int
 meddlingkids/
 ├── client/                    # Vue.js 3 frontend
 │   ├── src/
-│   │   ├── components/        # UI components (tabs, gallery, progress)
+│   │   ├── components/        # UI components (tabs, gallery, progress, script viewer)
 │   │   ├── composables/       # State management (useTrackingAnalysis)
 │   │   ├── types/             # TypeScript interfaces
 │   │   └── utils/             # Formatting utilities

@@ -1,7 +1,7 @@
 """Domain-level knowledge cache for analysis consistency.
 
 Stores LLM-generated classifications (tracker categories,
-cookie groupings, vendor roles, severity assignments) from
+cookie groupings, severity assignments) from
 a previous analysis of the same domain.  When a subsequent
 scan runs against the same domain, these prior findings are
 injected into the LLM context as anchoring guidance so that
@@ -62,15 +62,6 @@ class CachedCookieGroup(pydantic.BaseModel):
     last_seen_scan: int = 0
 
 
-class CachedVendor(pydantic.BaseModel):
-    """A previously classified vendor."""
-
-    name: str
-    role: str
-    category: str = ""
-    last_seen_scan: int = 0
-
-
 class CachedDataCategory(pydantic.BaseModel):
     """A previously used data collection category."""
 
@@ -90,11 +81,12 @@ class DomainKnowledge(pydantic.BaseModel):
     without being seen again.
     """
 
+    model_config = pydantic.ConfigDict(extra="ignore")
+
     domain: str
     scan_count: int = 0
     trackers: list[CachedTracker] = pydantic.Field(default_factory=list)
     cookie_groups: list[CachedCookieGroup] = pydantic.Field(default_factory=list)
-    vendors: list[CachedVendor] = pydantic.Field(default_factory=list)
     data_categories: list[CachedDataCategory] = pydantic.Field(default_factory=list)
 
 
@@ -137,7 +129,6 @@ def load(domain: str) -> DomainKnowledge | None:
                 "domain": domain,
                 "trackers": len(entry.trackers),
                 "cookieGroups": len(entry.cookie_groups),
-                "vendors": len(entry.vendors),
             },
         )
         return entry
@@ -181,7 +172,6 @@ def save_from_report(
 
     new_trackers = _extract_trackers(structured_report.tracking_technologies, scan_count)
     new_cookie_groups = _extract_cookie_groups(structured_report.cookie_analysis, scan_count)
-    new_vendors = _extract_vendors(structured_report.key_vendors, scan_count)
     new_data_categories = _extract_data_categories(structured_report.data_collection, scan_count)
 
     merged_trackers = _merge_by_name(
@@ -194,11 +184,6 @@ def save_from_report(
         new=new_cookie_groups,
         key=lambda g: g.category.lower(),
     )
-    merged_vendors = _merge_by_name(
-        old=existing.vendors if existing else [],
-        new=new_vendors,
-        name_attr="name",
-    )
     merged_data_categories = _merge_by_key(
         old=existing.data_categories if existing else [],
         new=new_data_categories,
@@ -210,7 +195,6 @@ def save_from_report(
         scan_count=scan_count,
         trackers=_prune_stale(merged_trackers, scan_count),
         cookie_groups=_prune_stale(merged_cookie_groups, scan_count),
-        vendors=_prune_stale(merged_vendors, scan_count),
         data_categories=_prune_stale(merged_data_categories, scan_count),
     )
 
@@ -225,7 +209,6 @@ def save_from_report(
                 "scanCount": scan_count,
                 "trackers": len(entry.trackers),
                 "cookieGroups": len(entry.cookie_groups),
-                "vendors": len(entry.vendors),
                 "path": str(path.name),
             },
         )
@@ -248,12 +231,12 @@ def build_context_hint(knowledge: DomainKnowledge) -> str:
         "## Previous Analysis Context (use for consistency)",
         "The following classifications were established in a "
         "prior analysis of this domain. Reuse the SAME category "
-        "names, severity levels, and vendor roles unless the "
+        "names, severity levels, and category labels unless the "
         "underlying data has materially changed.",
         "",
         "**Naming rule:** Use the SHORT canonical company name "
         "listed below. Do NOT add parenthetical aliases, alternate "
-        "product names, or role qualifiers to tracker or vendor "
+        "product names, or role qualifiers to tracker "
         "names. If the same company appears under multiple names "
         "in the data, use the single name shown here.",
         "",
@@ -278,19 +261,12 @@ def build_context_hint(knowledge: DomainKnowledge) -> str:
             lines.append(f"- {d.category} ({d.risk}){sens}")
         lines.append("")
 
-    if knowledge.vendors:
-        lines.append("### Known Vendors")
-        for v in knowledge.vendors:
-            cat = f" [{v.category}]" if v.category else ""
-            lines.append(f"- {v.name}{cat}: {v.role}")
-        lines.append("")
-
     return "\n".join(lines)
 
 
 # ── Merge & prune helpers ───────────────────────────────────────
 
-type _T = CachedTracker | CachedCookieGroup | CachedVendor | CachedDataCategory
+type _T = CachedTracker | CachedCookieGroup | CachedDataCategory
 
 # Parenthetical qualifiers the LLM adds inconsistently,
 # e.g. "Scorecard Research (Comscore)" vs "Comscore (Scorecard Research)".
@@ -392,7 +368,7 @@ def _merge_by_key[T: _T](
     return result
 
 
-def _merge_by_name[T: (CachedTracker, CachedVendor)](
+def _merge_by_name[T: CachedTracker](
     old: list[T],
     new: list[T],
     name_attr: str = "name",
@@ -500,32 +476,6 @@ def _extract_cookie_groups(
         )
         for g in cookies.groups
     ]
-
-
-def _extract_vendors(
-    vendors: report.VendorSection,
-    scan_count: int,
-) -> list[CachedVendor]:
-    """Pull vendor names and roles from the report.
-
-    Deduplicates by normalized name within a single report.
-    """
-    seen: set[str] = set()
-    result: list[CachedVendor] = []
-    for v in vendors.vendors:
-        key = _normalize_name(v.name)
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(
-            CachedVendor(
-                name=v.name,
-                role=v.role,
-                category=v.category,
-                last_seen_scan=scan_count,
-            )
-        )
-    return result
 
 
 def _extract_data_categories(

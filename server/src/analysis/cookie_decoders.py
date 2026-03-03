@@ -29,7 +29,7 @@ import json
 import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from urllib.parse import unquote
+from urllib import parse
 
 from src.utils import logger
 
@@ -454,7 +454,7 @@ def decode_optanon_consent(raw: str) -> dict[str, object] | None:
     if not raw:
         return None
 
-    decoded = unquote(raw)
+    decoded = parse.unquote(raw)
     parts: dict[str, str] = {}
     for pair in decoded.split("&"):
         if "=" in pair:
@@ -516,7 +516,7 @@ def decode_cookiebot_consent(raw: str) -> dict[str, object] | None:
     if not raw:
         return None
 
-    decoded = unquote(raw)
+    decoded = parse.unquote(raw)
 
     # Try JSON parse first (some implementations use JSON).
     try:
