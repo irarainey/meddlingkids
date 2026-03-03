@@ -472,6 +472,7 @@ Key framework types used:
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking + token estimation before each call) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint. Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
+| `Context Builder` | `context_builder.py` | Shared LLM analysis context builder — `build_analysis_context()` assembles tracking summary, consent, scoring, GDPR reference, and database sections for `TrackingAnalysisAgent` and `StructuredReportAgent` |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
 
 ### Domain Packages
@@ -497,7 +498,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `constants.py` | Shared consent-manager host keywords, exclusion lists, container selectors, reject-button regex, and `is_consent_frame()` utility |
 | `overlay_cache.py` | Domain-level cache for overlay dismissal strategies — stores Playwright locator strategy, button text, frame type, and consent platform per overlay (JSON). Includes `backfill_consent_platform()` for late CMP detection (when CMP cookies only appear after consent dismissal) |
 | `partner_classification.py` | Classify consent partners by risk level and enrich partner URLs from partner databases |
-| `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms |
+| `platform_detection.py` | CMP detection via cookies, media group profiles, and page DOM; provides deterministic accept/reject button selectors for 19 known consent platforms. Re-exports `ConsentPlatformProfile` from `models/consent.py` for backward compatibility |
 | `text_parser.py` | Local regex-based consent text parser — extracts cookie categories (7 patterns), IAB TCF purposes (15 patterns including special purposes and features), manage-options indicators, partner names, claimed partner counts, and consent platform (10 known CMPs) from DOM text without any LLM call |
 
 **`analysis/`** — Tracking analysis and scoring
@@ -520,6 +521,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
 | `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains) with override corrections for known misclassifications, (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
+| `scoring/_tiers.py` | Shared `score_by_tiers()` helper and `Tier` type alias — declarative `(threshold, points, issue_template)` tuples checked in descending order, replacing 20 if/elif threshold chains across category scorers |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
 | `scoring/advertising.py` | Ad networks, retargeting cookies, RTB infrastructure |
 | `scoring/consent.py` | Pre-consent tracking, partner counts/risk, disclosure quality |
@@ -534,18 +536,26 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass. Phase 4 includes late CMP detection via cookies (after consent dismissal) with `consent_platform` backfill into both `consent_details` and the overlay cache |
+| `stream.py` | Top-level SSE endpoint orchestrator — `analyze_url_stream()` delegates to `_run_phases_1_to_3()`, `_run_phase_4_overlays()`, and `_run_phase_5_analysis()` async generators that share a `_StreamContext` dataclass. Phase 4 logic is further decomposed into `_decode_consent_strings()` (TC/AC string discovery, decoding, vendor resolution, validation), `_decode_privacy_cookies()` (USP/GPP/GA/OneTrust/Cookiebot signal decoding), and `_handle_overlay_failure()` (overlay failure check with abort). Phase 4 includes late CMP detection via cookies (after consent dismissal) with `consent_platform` backfill into both `consent_details` and the overlay cache |
 | `browser_phases.py` | Phases 1-3: navigate, page load, access check, initial data capture (browser session creation is handled by `PlaywrightManager` at a higher level) |
-| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture). When prior strategies have already dismissed the consent dialog, the vision loop correctly reports `found=false` (expected — no additional overlays remain) |
+| `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture). The async generator yields `str | BreakSignal` — `BreakSignal` is a frozen dataclass that replaces the former `"__BREAK__"` magic string sentinel, enabling type-safe `isinstance()` checks in consumer code. When prior strategies have already dismissed the consent dialog, the vision loop correctly reports `found=false` (expected — no additional overlays remain) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `detect_overlay()` speculatively crops the viewport screenshot to the consent dialog bounding box (via `get_consent_bounds.js`) before sending to the LLM, preventing content-filter rejections from background imagery. `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
 | `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
 | `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
 
 ### Data Layer
 
+The data package is split into feature-specific sub-modules. `loader.py` is a thin re-export facade — all existing `from src.data import loader` call-sites work unchanged.
+
 | Module | Content |
 |--------|--------|
-| `data/loader.py` | JSON data loader with caching (`functools.cache`) |
+| `data/loader.py` | Re-export facade — imports and re-exports all public symbols from the sub-modules below so existing callers are unaffected |
+| `data/_base.py` | Shared `_DATA_DIR`, `_load_json()`, and `_load_script_patterns()` helpers used by all sub-modules |
+| `data/tracker_loader.py` | Scripts, cookies, storage keys, tracker domains, CNAME cloaking, and Disconnect services (with `@functools.cache`) |
+| `data/partner_loader.py` | Partner databases (`get_partner_database()`) and `PARTNER_CATEGORIES` config (8 risk categories) |
+| `data/consent_loader.py` | TCF purposes, consent cookies, GDPR reference, GVL vendors, Google ATP providers, and consent platforms |
+| `data/media_loader.py` | Media group profiles (`get_media_groups()`, `find_media_group_by_domain()`) and LLM context builder |
+| `data/domain_info.py` | Cross-category domain descriptions (`get_domain_description()`) and storage key hints (`get_storage_key_hint()`) — combines tracker, partner, and Disconnect databases |
 | `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 52 patterns for safe libraries |
 | `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
@@ -574,6 +584,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `logger.py` | Structured logger with colour output (`contextvars` isolation) |
 | `risk.py` | Shared risk-scoring helpers (`risk_label`) |
 | `serialization.py` | Pydantic model serialization helpers |
+| `text.py` | Domain and ANSI text utilities — `strip_ansi()` and `sanitize_domain()` extracted from inline `re.sub()` calls |
 | `url.py` | URL and domain utilities, SSRF prevention (`validate_analysis_url()`) |
 
 ---
