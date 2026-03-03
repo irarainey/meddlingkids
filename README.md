@@ -271,7 +271,15 @@ uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 
 ## Docker Deployment
 
-The application is available as a pre-built Docker image from GitHub Container Registry.
+The application is available as a pre-built Docker image from GitHub Container Registry. Images are tagged with both `latest` and the release version number (e.g., `1.6.0`):
+
+```bash
+# Pull the latest version
+docker pull ghcr.io/irarainey/meddlingkids:latest
+
+# Pull a specific version
+docker pull ghcr.io/irarainey/meddlingkids:1.6.0
+```
 
 ### Quick Start (Recommended)
 
@@ -363,7 +371,6 @@ docker run -p 3001:3001 --env-file .env meddlingkids
 |---------|-------------|
 | `npm run dev` | Start the Vite client dev server |
 | `npm run build` | Build the client for production |
-| `npm run preview` | Preview the production build |
 | `npm run lint` | Check for TypeScript/Vue lint errors |
 | `npm run lint:fix` | Auto-fix TypeScript/Vue lint errors |
 
