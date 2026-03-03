@@ -45,12 +45,32 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Delete old untagged versions
-        uses: actions/delete-package-versions@v5
         continue-on-error: true
-        with:
-          owner: ${{ github.repository_owner }}
-          package-name: meddlingkids
-          package-type: container
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-versions-to-keep: 0
-          delete-only-untagged-versions: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE="meddlingkids"
+          OWNER="${{ github.repository_owner }}"
+
+          # Fetch all untagged version IDs (metadata.container.tags is empty)
+          VERSION_IDS=$(gh api \
+            --paginate \
+            "/users/${OWNER}/packages/container/${PACKAGE}/versions" \
+            --jq '.[] | select(.metadata.container.tags | length == 0) | .id')
+
+          if [ -z "$VERSION_IDS" ]; then
+            echo "No untagged versions found"
+            exit 0
+          fi
+
+          COUNT=$(echo "$VERSION_IDS" | wc -l)
+          echo "Found $COUNT untagged version(s) to delete"
+
+          for ID in $VERSION_IDS; do
+            echo "Deleting version $ID..."
+            gh api --method DELETE \
+              "/users/${OWNER}/packages/container/${PACKAGE}/versions/${ID}" \
+              || echo "Failed to delete version $ID"
+          done
+
+          echo "Cleanup complete"
