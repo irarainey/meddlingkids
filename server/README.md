@@ -112,7 +112,7 @@ src/
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
 │   ├── tcf_lookup.py                # TCF purpose matching (purpose strings → IAB TCF v2.2 taxonomy)
-│   ├── tc_string.py                 # TC String decoder (IAB TCF v2 Base64url → bitfield, vendor resolution via GVL, dynamic timestamp validation)
+│   ├── tc_string.py                 # TC/AC String decoder & 5-tier discovery (cookies → CMP profile → JSON storage → heuristic → JSON heuristic)
 │   ├── tc_validation.py             # TC String validation (cross-references consent signals with observed tracking)
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)

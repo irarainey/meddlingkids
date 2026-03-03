@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.6.2
+
+### Added
+
+- **JSON-wrapped TC/AC String extraction** — new 5-tier consent string discovery
+  cascade. Tier 3 uses regex-based patterns to extract TC/AC strings from
+  JSON-structured localStorage values (e.g. Sourcepoint
+  `_sp_user_consent_{propertyId}` → `gdpr.euconsent`). Tier 5 adds a heuristic
+  JSON scanner that searches all JSON storage values for well-known field names
+  (`euconsent`, `tcString`, `addtlConsent`, etc.) up to 3 levels deep.
+- **CMP profile `storage_key_patterns`** — Sourcepoint profile now includes
+  regex+JSON-path patterns for TC String extraction from localStorage, enabling
+  TC/AC decoding on all Sourcepoint-powered sites (Guardian, Reach, FT, JPI
+  Media, etc.) where the consent string is stored in JSON rather than a cookie.
+- **Amazon Publisher Services (APS) storage pattern** — `aps:` prefixed
+  localStorage keys are now recognised as APS header bidding vendor enablement
+  data in the tracking storage database.
+- **Standard consent keys in localStorage** — `euconsent-v2` and
+  `addtl_consent` added to the tier 1 named localStorage lookup, covering CMPs
+  (e.g. Didomi) that mirror the standard cookie names to localStorage.
+
+### Changed
+
+- **TC/AC discovery cascade expanded from 3 tiers to 5** — the existing named
+  lookup → CMP-aware → heuristic pipeline now includes JSON-wrapped storage
+  (tier 3) and JSON heuristic scan (tier 5) stages, ensuring consent strings
+  embedded inside JSON localStorage values are found.
+
 ## 1.6.1
 
 ### Added

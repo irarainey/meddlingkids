@@ -30,8 +30,11 @@ Publisher TC segments are present in multi-segment strings
 from __future__ import annotations
 
 import base64
-from collections.abc import Sequence
+import json
+import re
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
+from typing import Any
 
 import pydantic
 
@@ -334,8 +337,11 @@ _TC_STRING_COOKIE_NAMES: frozenset[str] = frozenset(
 # CMPs such as DMG Media Privacy (used by Daily Mail, Metro)
 # and Google Funding Choices persist the TC String in
 # localStorage rather than (or in addition to) cookies.
+# Didomi (and others) can mirror the standard cookie name
+# to localStorage when configured for localStorage-only mode.
 _TC_STRING_STORAGE_KEYS: frozenset[str] = frozenset(
     {
+        "euconsent-v2",
         "mol.ads.cmp.tcf.tcstring",
         "au/consent_tcf",
     }
@@ -344,7 +350,49 @@ _TC_STRING_STORAGE_KEYS: frozenset[str] = frozenset(
 # ── Well-known localStorage keys for AC strings ─────────
 _AC_STRING_STORAGE_KEYS: frozenset[str] = frozenset(
     {
+        "addtl_consent",
         "mol.ads.cmp.tcf.addtl",
+    }
+)
+
+
+# ── JSON-wrapped consent patterns ───────────────────────
+# Some CMPs store consent data in localStorage as JSON
+# objects with the TC/AC String embedded in a nested field
+# rather than as raw values.  Each entry maps a key-name
+# regex to the dot-separated JSON path(s) for TC and/or
+# AC strings.
+#
+# Format: (compiled_regex, tc_json_path, ac_json_path)
+#
+# Known patterns:
+#   - Sourcepoint: _sp_user_consent_{propertyId}
+#     JSON: { "gdpr": { "euconsent": "<TC String>", ... } }
+_JSON_CONSENT_PATTERNS: list[tuple[re.Pattern[str], str | None, str | None]] = [
+    (re.compile(r"^_sp_user_consent_\d+$"), "gdpr.euconsent", None),
+]
+
+# Well-known JSON field names that may contain TC Strings
+# anywhere in the object tree (used by the heuristic JSON
+# scanner).  Normalised: lowercased, hyphens and underscores
+# stripped (matching the normalisation in _search_json_for_field).
+_TC_STRING_JSON_FIELDS: frozenset[str] = frozenset(
+    {
+        "euconsent",
+        "euconsentv2",
+        "tcstring",
+        "tcdata",
+        "consentstring",
+    }
+)
+
+# Well-known JSON field names that may contain AC Strings.
+# Same normalisation rules.
+_AC_STRING_JSON_FIELDS: frozenset[str] = frozenset(
+    {
+        "addtlconsent",
+        "acstring",
+        "googleadditionalconsent",
     }
 )
 
@@ -357,6 +405,239 @@ def _looks_like_tc_string(value: str) -> bool:
 def _looks_like_ac_string(value: str) -> bool:
     """Quick heuristic: an AC String matches ``{version}~...``."""
     return "~" in value and len(value) >= 3
+
+
+# ── JSON value extraction helpers ───────────────────────
+
+# Type alias for value validator callbacks.
+_FieldValidator = Callable[[str], bool]
+
+
+def _extract_json_path(data: Mapping[str, object], path: str) -> str | None:
+    """Extract a string value from a nested dict using a dot path.
+
+    Args:
+        data: Parsed JSON object.
+        path: Dot-separated key path (e.g. ``"gdpr.euconsent"``).
+
+    Returns:
+        The string value at the path, or ``None`` if missing
+        or not a string.
+    """
+    current: object = data
+    for key in path.split("."):
+        if not isinstance(current, Mapping):
+            return None
+        current = current.get(key)
+    return current if isinstance(current, str) else None
+
+
+def _search_json_for_field(
+    data: Mapping[str, object],
+    field_names: frozenset[str],
+    validator: _FieldValidator,
+    max_depth: int = 3,
+) -> str | None:
+    """Recursively search a JSON object for a field whose
+    normalised name is in *field_names* and whose value
+    passes *validator*.
+
+    Normalisation lowercases the key and strips ``-`` and ``_``.
+
+    Args:
+        data: Parsed JSON object.
+        field_names: Normalised target field names.
+        validator: Callable that returns ``True`` for valid
+            string values.
+        max_depth: Maximum recursion depth.
+
+    Returns:
+        The first matching string value, or ``None``.
+    """
+    for key, value in data.items():
+        normalised = key.lower().replace("-", "").replace("_", "")
+        if isinstance(value, str) and normalised in field_names:
+            if validator(value):
+                return value
+        elif isinstance(value, dict) and max_depth > 0:
+            result = _search_json_for_field(
+                value,
+                field_names,
+                validator,
+                max_depth - 1,
+            )
+            if result:
+                return result
+    return None
+
+
+def find_tc_string_in_json_storage(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Find a TC String embedded in a JSON localStorage value.
+
+    Uses regex patterns from ``_JSON_CONSENT_PATTERNS`` to
+    match key names and extract TC strings from known JSON
+    paths.  This handles CMPs that store consent data as
+    JSON objects with the TC String in a nested field
+    (e.g. Sourcepoint ``_sp_user_consent_{propertyId}``).
+
+    Args:
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, tc_string)`` tuple, or ``None``.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not value.startswith("{"):
+            continue
+        for pattern, tc_path, _ac_path in _JSON_CONSENT_PATTERNS:
+            if not pattern.search(name):
+                continue
+            if not tc_path:
+                continue
+            try:
+                data = json.loads(value)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            tc_value = _extract_json_path(data, tc_path)
+            if tc_value and _looks_like_tc_string(tc_value):
+                log.info(
+                    "TC String extracted from JSON storage",
+                    {"key": name, "path": tc_path, "length": len(tc_value)},
+                )
+                return f"localStorage[{name}].{tc_path}", tc_value
+    return None
+
+
+def find_ac_string_in_json_storage(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Find an AC String embedded in a JSON localStorage value.
+
+    Uses regex patterns from ``_JSON_CONSENT_PATTERNS`` to
+    match key names and extract AC strings from known JSON
+    paths.
+
+    Args:
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, ac_string)`` tuple, or ``None``.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not value.startswith("{"):
+            continue
+        for pattern, _tc_path, ac_path in _JSON_CONSENT_PATTERNS:
+            if not pattern.search(name):
+                continue
+            if not ac_path:
+                continue
+            try:
+                data = json.loads(value)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            ac_value = _extract_json_path(data, ac_path)
+            if ac_value and _looks_like_ac_string(ac_value):
+                log.info(
+                    "AC String extracted from JSON storage",
+                    {"key": name, "path": ac_path, "length": len(ac_value)},
+                )
+                return f"localStorage[{name}].{ac_path}", ac_value
+    return None
+
+
+def scan_json_for_tc_string(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Heuristic scan of JSON localStorage values for TC Strings.
+
+    Parses each JSON value and searches for well-known field
+    names (e.g. ``euconsent``, ``tcString``) up to 3 levels
+    deep.  Applies plausibility checks on the decoded result
+    to reject false positives.
+
+    Args:
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, tc_string)`` tuple, or ``None``.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not value.startswith("{"):
+            continue
+        try:
+            data = json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        candidate = _search_json_for_field(
+            data,
+            _TC_STRING_JSON_FIELDS,
+            _looks_like_tc_string,
+        )
+        if not candidate:
+            continue
+        decoded = decode_tc_string(candidate)
+        if decoded is None:
+            continue
+        if not _is_plausible_tc_decode(decoded):
+            log.debug(
+                "JSON heuristic rejected implausible TC decode",
+                {"key": name, "cmpId": decoded.cmp_id},
+            )
+            continue
+        log.info(
+            "TC String found by JSON heuristic scan",
+            {"key": name, "length": len(candidate)},
+        )
+        return f"localStorage[{name}] JSON (scanned)", candidate
+    return None
+
+
+def scan_json_for_ac_string(
+    storage_items: Sequence[object],
+) -> tuple[str, str] | None:
+    """Heuristic scan of JSON localStorage values for AC Strings.
+
+    Parses each JSON value and searches for well-known field
+    names (e.g. ``addtlConsent``, ``acString``) up to 3 levels
+    deep.
+
+    Args:
+        storage_items: localStorage items.
+
+    Returns:
+        A ``(source_label, ac_string)`` tuple, or ``None``.
+    """
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value or not value.startswith("{"):
+            continue
+        try:
+            data = json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        candidate = _search_json_for_field(
+            data,
+            _AC_STRING_JSON_FIELDS,
+            _looks_like_ac_string,
+        )
+        if not candidate:
+            continue
+        if decode_ac_string(candidate) is not None:
+            log.info(
+                "AC String found by JSON heuristic scan",
+                {"key": name, "length": len(candidate)},
+            )
+            return f"localStorage[{name}] JSON (scanned)", candidate
+    return None
 
 
 # ── Heuristic plausibility checks ───────────────────────
@@ -675,7 +956,7 @@ def find_ac_string_in_storage(
 
 
 # ====================================================================
-# Three-tier TC/AC String discovery
+# Five-tier TC/AC String discovery
 # ====================================================================
 # The discovery cascade is:
 #   1. **Named lookup** — check hardcoded well-known cookie names
@@ -683,22 +964,29 @@ def find_ac_string_in_storage(
 #   2. **CMP-aware lookup** — if a consent platform profile was
 #      detected, check its ``tc_string_sources`` for CMP-specific
 #      cookie names and localStorage keys.
-#   3. **Heuristic scan** — brute-force scan of *all* cookie values
-#      and localStorage values, attempting to decode each as a
-#      TC String or AC String.  Only used when the first two tiers
-#      return nothing.
+#   3. **JSON-wrapped storage** — pattern-based extraction of
+#      TC/AC strings from known JSON-structured localStorage
+#      values (e.g. Sourcepoint ``_sp_user_consent_{id}``).
+#   4. **Heuristic scan** — brute-force scan of *all* cookie
+#      values and raw localStorage values, attempting to decode
+#      each as a TC String or AC String.
+#   5. **JSON heuristic scan** — brute-force parse of JSON
+#      localStorage values, searching for well-known field
+#      names (``euconsent``, ``tcString``, etc.).
 # ====================================================================
 
 
 def find_tc_string_by_profile(
     cookies: Sequence[object],
     storage_items: Sequence[object],
-    tc_sources: dict[str, list[str]],
+    tc_sources: dict[str, Any],
 ) -> tuple[str, str] | None:
     """Find TC String using CMP-specific source locations.
 
-    Checks cookie names from ``tc_sources["cookies"]`` and
-    localStorage keys from ``tc_sources["storage_keys"]``.
+    Checks cookie names from ``tc_sources["cookies"]``,
+    localStorage keys from ``tc_sources["storage_keys"]``,
+    and regex-based ``storage_key_patterns`` with JSON path
+    extraction.
 
     Args:
         cookies: Browser cookies.
@@ -717,7 +1005,7 @@ def find_tc_string_by_profile(
             if name in cookie_names and value and _looks_like_tc_string(value):
                 return f"{name} cookie", value
 
-    # Check CMP-specific localStorage keys
+    # Check CMP-specific localStorage keys (exact match)
     storage_keys = set(tc_sources.get("storage_keys", []))
     if storage_keys:
         for item in storage_items:
@@ -725,18 +1013,87 @@ def find_tc_string_by_profile(
             if name in storage_keys and value and _looks_like_tc_string(value):
                 return f"localStorage[{name}]", value
 
+    # Check CMP-specific storage key patterns (regex + JSON path)
+    patterns = tc_sources.get("storage_key_patterns", [])
+    if patterns:
+        result = _match_storage_key_patterns(
+            storage_items,
+            patterns,  # type: ignore[arg-type]
+            _looks_like_tc_string,
+        )
+        if result:
+            return result
+
+    return None
+
+
+def _match_storage_key_patterns(
+    storage_items: Sequence[object],
+    patterns: list[dict[str, str]],
+    validator: _FieldValidator,
+    *,
+    path_key: str = "tc_path",
+) -> tuple[str, str] | None:
+    """Match storage items against regex patterns with JSON path extraction.
+
+    Each pattern dict must contain ``"pattern"`` (regex) and
+    the JSON dot-path key (``tc_path`` or ``ac_path``) to
+    extract the consent string from the parsed JSON value.
+
+    Args:
+        storage_items: localStorage items.
+        patterns: List of pattern dicts from the CMP profile.
+        validator: Callable to validate the extracted string.
+        path_key: Dict key for the JSON path (default ``"tc_path"``).
+
+    Returns:
+        A ``(source_label, value)`` tuple, or ``None``.
+    """
+    compiled = [(re.compile(p["pattern"]), p.get(path_key)) for p in patterns if "pattern" in p and p.get(path_key)]
+    if not compiled:
+        return None
+    for item in storage_items:
+        name, value = _extract_name_value(item)
+        if not value:
+            continue
+        for regex, json_path in compiled:
+            if not regex.search(name):
+                continue
+            assert json_path is not None  # guaranteed by filter above
+            if value.startswith("{"):
+                # JSON-wrapped value — extract via path
+                try:
+                    data = json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                extracted = _extract_json_path(data, json_path)
+                if extracted and validator(extracted):
+                    log.info(
+                        "Consent string extracted from CMP storage pattern",
+                        {"key": name, "path": json_path, "length": len(extracted)},
+                    )
+                    return f"localStorage[{name}].{json_path}", extracted
+            elif validator(value):
+                # Raw value stored under a pattern-matched key
+                log.info(
+                    "Consent string found via CMP storage pattern",
+                    {"key": name, "length": len(value)},
+                )
+                return f"localStorage[{name}]", value
     return None
 
 
 def find_ac_string_by_profile(
     cookies: Sequence[object],
     storage_items: Sequence[object],
-    tc_sources: dict[str, list[str]],
+    tc_sources: dict[str, Any],
 ) -> tuple[str, str] | None:
     """Find AC String using CMP-specific source locations.
 
-    Checks cookie names from ``tc_sources["ac_cookies"]`` and
-    localStorage keys from ``tc_sources["ac_storage_keys"]``.
+    Checks cookie names from ``tc_sources["ac_cookies"]``,
+    localStorage keys from ``tc_sources["ac_storage_keys"]``,
+    and regex-based ``ac_storage_key_patterns`` with JSON path
+    extraction.
 
     Args:
         cookies: Browser cookies.
@@ -760,6 +1117,18 @@ def find_ac_string_by_profile(
             name, value = _extract_name_value(item)
             if name in storage_keys and value and _looks_like_ac_string(value):
                 return f"localStorage[{name}]", value
+
+    # Check AC-specific storage key patterns (regex + JSON path)
+    patterns = tc_sources.get("ac_storage_key_patterns", [])
+    if patterns:
+        result = _match_storage_key_patterns(
+            storage_items,
+            patterns,  # type: ignore[arg-type]
+            _looks_like_ac_string,
+            path_key="ac_path",
+        )
+        if result:
+            return result
 
     return None
 

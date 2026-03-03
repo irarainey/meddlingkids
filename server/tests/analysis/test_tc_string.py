@@ -785,3 +785,326 @@ class TestHeuristicScanSkipList:
         """Skip-list should match case-insensitively."""
         cookies = [{"name": "PID", "value": _TC_MINIMAL}]
         assert tc_string.scan_for_tc_string(cookies, []) is None
+
+
+# ====================================================================
+# JSON value extraction helpers
+# ====================================================================
+
+
+class TestExtractJsonPath:
+    """Tests for _extract_json_path helper."""
+
+    def test_single_level(self) -> None:
+        data = {"euconsent": "ABC123"}
+        assert tc_string._extract_json_path(data, "euconsent") == "ABC123"
+
+    def test_nested_path(self) -> None:
+        data = {"gdpr": {"euconsent": "TC_STRING_VALUE"}}
+        assert tc_string._extract_json_path(data, "gdpr.euconsent") == "TC_STRING_VALUE"
+
+    def test_missing_key_returns_none(self) -> None:
+        data = {"gdpr": {"other": "val"}}
+        assert tc_string._extract_json_path(data, "gdpr.euconsent") is None
+
+    def test_non_string_value_returns_none(self) -> None:
+        data = {"gdpr": {"euconsent": 12345}}
+        assert tc_string._extract_json_path(data, "gdpr.euconsent") is None
+
+    def test_intermediate_non_dict_returns_none(self) -> None:
+        data = {"gdpr": "not_a_dict"}
+        assert tc_string._extract_json_path(data, "gdpr.euconsent") is None
+
+    def test_deeply_nested(self) -> None:
+        data = {"a": {"b": {"c": "deep_value"}}}
+        assert tc_string._extract_json_path(data, "a.b.c") == "deep_value"
+
+
+# ====================================================================
+# JSON field search
+# ====================================================================
+
+
+class TestSearchJsonForField:
+    """Tests for _search_json_for_field helper."""
+
+    def test_finds_top_level_field(self) -> None:
+        data = {"euconsent": _TC_MINIMAL}
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+        )
+        assert result == _TC_MINIMAL
+
+    def test_finds_nested_field(self) -> None:
+        data = {"gdpr": {"euconsent": _TC_MINIMAL}}
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+        )
+        assert result == _TC_MINIMAL
+
+    def test_returns_none_for_no_match(self) -> None:
+        data = {"other_field": "some_value"}
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+        )
+        assert result is None
+
+    def test_respects_max_depth(self) -> None:
+        data = {"a": {"b": {"c": {"euconsent": _TC_MINIMAL}}}}
+        # depth=1 should not reach level 3
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+            max_depth=1,
+        )
+        assert result is None
+
+    def test_normalises_field_names(self) -> None:
+        """Field matching should normalise hyphens and underscores."""
+        data = {"euconsent-v2": _TC_MINIMAL}
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+        )
+        assert result == _TC_MINIMAL
+
+    def test_rejects_value_failing_validator(self) -> None:
+        data = {"euconsent": "short"}
+        result = tc_string._search_json_for_field(
+            data,
+            tc_string._TC_STRING_JSON_FIELDS,
+            tc_string._looks_like_tc_string,
+        )
+        assert result is None
+
+
+# ====================================================================
+# JSON-wrapped TC String extraction (pattern-based, tier 3)
+# ====================================================================
+
+# Sourcepoint-style JSON consent value with an embedded TC string.
+_SP_CONSENT_JSON = (
+    '{"gdpr":{"authId":null,"uuid":"test-uuid","applies":true,"euconsent":"' + _TC_MINIMAL + '","grants":{"vendor1":{"vendorGrant":true}}}}'
+)
+
+
+class TestFindTcStringInJsonStorage:
+    """Tests for pattern-based JSON TC string extraction."""
+
+    def test_extracts_tc_from_sourcepoint_consent(self) -> None:
+        """Should extract TC string from _sp_user_consent_NNNN JSON."""
+        items = [{"key": "_sp_user_consent_7417", "value": _SP_CONSENT_JSON}]
+        result = tc_string.find_tc_string_in_json_storage(items)
+        assert result is not None
+        source, value = result
+        assert value == _TC_MINIMAL
+        assert "gdpr.euconsent" in source
+        assert "_sp_user_consent_7417" in source
+
+    def test_handles_different_property_ids(self) -> None:
+        """Property ID varies per site — should match any digits."""
+        items = [{"key": "_sp_user_consent_999", "value": _SP_CONSENT_JSON}]
+        result = tc_string.find_tc_string_in_json_storage(items)
+        assert result is not None
+
+    def test_ignores_non_matching_keys(self) -> None:
+        """Keys that don't match the pattern should be skipped."""
+        items = [{"key": "some_other_key", "value": _SP_CONSENT_JSON}]
+        assert tc_string.find_tc_string_in_json_storage(items) is None
+
+    def test_ignores_non_json_values(self) -> None:
+        """Raw string values should be skipped."""
+        items = [{"key": "_sp_user_consent_7417", "value": _TC_MINIMAL}]
+        assert tc_string.find_tc_string_in_json_storage(items) is None
+
+    def test_ignores_invalid_json(self) -> None:
+        """Malformed JSON should be skipped gracefully."""
+        items = [{"key": "_sp_user_consent_7417", "value": "{invalid json"}]
+        assert tc_string.find_tc_string_in_json_storage(items) is None
+
+    def test_ignores_json_without_tc_string(self) -> None:
+        """JSON without the expected TC string field should return None."""
+        items = [{"key": "_sp_user_consent_7417", "value": '{"gdpr": {"other": "val"}}'}]
+        assert tc_string.find_tc_string_in_json_storage(items) is None
+
+    def test_empty_storage(self) -> None:
+        assert tc_string.find_tc_string_in_json_storage([]) is None
+
+    def test_ignores_key_without_numeric_suffix(self) -> None:
+        """_sp_user_consent_ without digits should not match."""
+        items = [{"key": "_sp_user_consent_abc", "value": _SP_CONSENT_JSON}]
+        assert tc_string.find_tc_string_in_json_storage(items) is None
+
+
+class TestFindAcStringInJsonStorage:
+    """Tests for pattern-based JSON AC string extraction."""
+
+    def test_returns_none_when_no_ac_patterns(self) -> None:
+        """Current patterns have no AC paths — should return None."""
+        items = [{"key": "_sp_user_consent_7417", "value": _SP_CONSENT_JSON}]
+        assert tc_string.find_ac_string_in_json_storage(items) is None
+
+    def test_empty_storage(self) -> None:
+        assert tc_string.find_ac_string_in_json_storage([]) is None
+
+
+# ====================================================================
+# CMP profile with storage_key_patterns (tier 2 extension)
+# ====================================================================
+
+
+class TestProfileStorageKeyPatterns:
+    """Tests for CMP profile regex+JSON path patterns in tier 2."""
+
+    def test_finds_tc_via_storage_key_pattern(self) -> None:
+        """Profile with storage_key_patterns should extract TC from JSON."""
+        items = [{"key": "_sp_user_consent_7417", "value": _SP_CONSENT_JSON}]
+        tc_sources = {
+            "cookies": ["euconsent-v2"],
+            "storage_key_patterns": [
+                {
+                    "pattern": r"^_sp_user_consent_\d+$",
+                    "tc_path": "gdpr.euconsent",
+                }
+            ],
+        }
+        result = tc_string.find_tc_string_by_profile([], items, tc_sources)
+        assert result is not None
+        assert result[1] == _TC_MINIMAL
+        assert "gdpr.euconsent" in result[0]
+
+    def test_cookie_takes_priority_over_pattern(self) -> None:
+        """Cookie match should be preferred over storage_key_patterns."""
+        cookies = [{"name": "euconsent-v2", "value": _TC_BROAD}]
+        items = [{"key": "_sp_user_consent_7417", "value": _SP_CONSENT_JSON}]
+        tc_sources = {
+            "cookies": ["euconsent-v2"],
+            "storage_key_patterns": [
+                {
+                    "pattern": r"^_sp_user_consent_\d+$",
+                    "tc_path": "gdpr.euconsent",
+                }
+            ],
+        }
+        result = tc_string.find_tc_string_by_profile(cookies, items, tc_sources)
+        assert result is not None
+        assert result[0] == "euconsent-v2 cookie"
+        assert result[1] == _TC_BROAD
+
+    def test_no_match_when_pattern_doesnt_match(self) -> None:
+        """Should return None when key doesn't match the regex."""
+        items = [{"key": "other_key", "value": _SP_CONSENT_JSON}]
+        tc_sources = {
+            "storage_key_patterns": [
+                {
+                    "pattern": r"^_sp_user_consent_\d+$",
+                    "tc_path": "gdpr.euconsent",
+                }
+            ],
+        }
+        assert tc_string.find_tc_string_by_profile([], items, tc_sources) is None
+
+    def test_ac_storage_key_patterns(self) -> None:
+        """AC patterns should work the same way as TC patterns."""
+        ac_json = '{"gdpr": {"addtlConsent": "' + _AC_SIMPLE + '"}}'
+        items = [{"key": "_sp_user_consent_7417", "value": ac_json}]
+        tc_sources = {
+            "ac_storage_key_patterns": [
+                {
+                    "pattern": r"^_sp_user_consent_\d+$",
+                    "ac_path": "gdpr.addtlConsent",
+                }
+            ],
+        }
+        result = tc_string.find_ac_string_by_profile([], items, tc_sources)
+        assert result is not None
+        assert result[1] == _AC_SIMPLE
+
+
+# ====================================================================
+# JSON heuristic scan (tier 5)
+# ====================================================================
+
+
+class TestScanJsonForTcString:
+    """Tests for the JSON heuristic TC string scanner."""
+
+    def test_finds_tc_in_nested_json(self) -> None:
+        """Should find a TC string inside a JSON value."""
+        items = [
+            {"key": "unknown_consent_data", "value": '{"euconsent": "' + _TC_MINIMAL + '"}'},
+        ]
+        result = tc_string.scan_json_for_tc_string(items)
+        assert result is not None
+        assert result[1] == _TC_MINIMAL
+        assert "unknown_consent_data" in result[0]
+
+    def test_finds_tc_deeply_nested(self) -> None:
+        """Should find TC string nested 2 levels deep."""
+        items = [
+            {
+                "key": "consent",
+                "value": '{"data": {"tcString": "' + _TC_MINIMAL + '"}}',
+            },
+        ]
+        result = tc_string.scan_json_for_tc_string(items)
+        assert result is not None
+        assert result[1] == _TC_MINIMAL
+
+    def test_skips_non_json_values(self) -> None:
+        """Raw string values should be ignored."""
+        items = [{"key": "consent", "value": _TC_MINIMAL}]
+        assert tc_string.scan_json_for_tc_string(items) is None
+
+    def test_rejects_implausible_decode(self) -> None:
+        """Values that parse as TC String but are implausible should be rejected."""
+        # Use a very short dummy value that won't decode validly
+        items = [
+            {"key": "data", "value": '{"euconsent": "AAAAAAAAAA"}'},
+        ]
+        result = tc_string.scan_json_for_tc_string(items)
+        assert result is None
+
+    def test_empty_storage(self) -> None:
+        assert tc_string.scan_json_for_tc_string([]) is None
+
+    def test_invalid_json_skipped(self) -> None:
+        items = [{"key": "data", "value": "{not json at all"}]
+        assert tc_string.scan_json_for_tc_string(items) is None
+
+
+class TestScanJsonForAcString:
+    """Tests for the JSON heuristic AC string scanner."""
+
+    def test_finds_ac_in_json(self) -> None:
+        items = [
+            {"key": "consent", "value": '{"addtlConsent": "' + _AC_SIMPLE + '"}'},
+        ]
+        result = tc_string.scan_json_for_ac_string(items)
+        assert result is not None
+        assert result[1] == _AC_SIMPLE
+
+    def test_finds_ac_nested(self) -> None:
+        items = [
+            {
+                "key": "consent",
+                "value": '{"data": {"addtl_consent": "' + _AC_SIMPLE + '"}}',
+            },
+        ]
+        result = tc_string.scan_json_for_ac_string(items)
+        assert result is not None
+
+    def test_empty_storage(self) -> None:
+        assert tc_string.scan_json_for_ac_string([]) is None
+
+    def test_skips_non_json(self) -> None:
+        items = [{"key": "data", "value": _AC_SIMPLE}]
+        assert tc_string.scan_json_for_ac_string(items) is None

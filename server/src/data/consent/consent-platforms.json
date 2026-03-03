@@ -60,6 +60,13 @@
         "cookies": [
           "euconsent-v2"
         ],
+        "storage_key_patterns": [
+          {
+            "pattern": "^_sp_user_consent_\\d+$",
+            "tc_path": "gdpr.euconsent",
+            "description": "Sourcepoint user consent JSON — contains TC String at gdpr.euconsent and per-vendor/purpose grants at gdpr.grants. The numeric suffix is the Sourcepoint property ID."
+          }
+        ],
         "ac_cookies": [
           "addtl_consent"
         ]

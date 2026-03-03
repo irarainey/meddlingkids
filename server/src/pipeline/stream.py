@@ -476,13 +476,17 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
         # the structured data to the consent details so the
         # client has exact purpose/vendor consent signals.
         #
-        # Discovery uses a 3-tier cascade:
+        # Discovery uses a 5-tier cascade:
         #   1. Named lookups — standard cookie/storage names
         #      (euconsent-v2, addtl_consent, etc.)
         #   2. CMP-aware lookups — keys from the detected CMP
         #      profile in consent-platforms.json
-        #   3. Heuristic scan — brute-force decode of every
+        #   3. JSON-wrapped storage — pattern-based extraction
+        #      from JSON localStorage values (e.g. Sourcepoint)
+        #   4. Heuristic scan — brute-force decode of every
         #      cookie/storage value to catch unknown names
+        #   5. JSON heuristic scan — search JSON storage values
+        #      for well-known field names
         if ctx.consent_details is not None:
             tracked_cookies = session.get_tracked_cookies()
             local_storage = ctx.storage.local_storage if ctx.storage else []
@@ -535,10 +539,22 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                     tc_sources,
                 )
 
-            # Tier 3 — heuristic scan
+            # Tier 3 — JSON-wrapped storage values
+            if not ac_result_pair:
+                ac_json = tc_string.find_ac_string_in_json_storage(local_storage)
+                if ac_json:
+                    ac_result_pair = ac_json
+
+            # Tier 4 — heuristic scan
             if not ac_result_pair:
                 ac_result_pair = tc_string.scan_for_ac_string(
                     tracked_cookies,
+                    local_storage,
+                )
+
+            # Tier 5 — JSON heuristic scan
+            if not ac_result_pair:
+                ac_result_pair = tc_string.scan_json_for_ac_string(
                     local_storage,
                 )
 
@@ -585,10 +601,22 @@ async def _run_phase_4_overlays(ctx: _StreamContext) -> AsyncGenerator[str]:
                     tc_sources,
                 )
 
-            # Tier 3 — heuristic scan
+            # Tier 3 — JSON-wrapped storage values
+            if not tc_result_pair:
+                tc_json = tc_string.find_tc_string_in_json_storage(local_storage)
+                if tc_json:
+                    tc_result_pair = tc_json
+
+            # Tier 4 — heuristic scan
             if not tc_result_pair:
                 tc_result_pair = tc_string.scan_for_tc_string(
                     tracked_cookies,
+                    local_storage,
+                )
+
+            # Tier 5 — JSON heuristic scan
+            if not tc_result_pair:
+                tc_result_pair = tc_string.scan_json_for_tc_string(
                     local_storage,
                 )
             if tc_result_pair:
