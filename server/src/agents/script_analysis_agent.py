@@ -52,9 +52,9 @@ class ScriptAnalysisAgent(base.BaseAgent):
         """Analyse a single script.
 
         If the configured deployment returns a non-retryable
-        error (e.g. ``OperationNotSupported``), the agent
-        switches to the fallback (default) deployment and
-        retries the request once.
+        error (e.g. ``OperationNotSupported``), or repeatedly
+        returns empty responses, the agent switches to the
+        fallback (default) deployment and retries.
 
         Args:
             url: Script URL.
@@ -68,7 +68,11 @@ class ScriptAnalysisAgent(base.BaseAgent):
         log.debug("Analysing script", {"url": url})
 
         try:
-            return await self._try_complete(user_message, url)
+            result = await self._try_complete(user_message, url)
+            if result is not None:
+                return result
+            # Empty/unparseable response — fall through to
+            # fallback attempt below.
         except Exception as error:
             if not _is_model_error(error):
                 log.error(
@@ -80,47 +84,34 @@ class ScriptAnalysisAgent(base.BaseAgent):
                 )
                 return None
 
-            # The deployment doesn't support this operation.
-            # Switch to fallback if not already active; when
-            # another concurrent call already activated it
-            # we can simply retry — self._chat_client is now
-            # the fallback deployment.
-            if self.has_fallback:
-                log.warn(
-                    "Deployment unsupported, falling back",
-                    {
-                        "url": url,
-                        "error": errors.get_error_message(error),
-                    },
-                )
-                self.activate_fallback()
-            elif not self._using_fallback:
-                # No fallback available at all.
-                log.error(
-                    "Script analysis failed",
-                    {
-                        "url": url,
-                        "error": errors.get_error_message(error),
-                    },
-                )
-                return None
+        # The primary deployment either returned an empty
+        # response or a permanent model error.  Try the
+        # fallback (default) deployment if available.
+        if self.has_fallback:
+            log.warn(
+                "Primary deployment failed, falling back to default model",
+                {"url": url},
+            )
+            self.activate_fallback()
+        elif self._using_fallback:
+            # Already on fallback — nothing more to try.
+            return None
+        else:
+            # No fallback available at all.
+            log.error("Script analysis failed, no fallback available", {"url": url})
+            return None
 
-            try:
-                return await self._try_complete(
-                    user_message,
-                    url,
-                )
-            except Exception as retry_error:
-                log.error(
-                    "Script analysis failed after fallback",
-                    {
-                        "url": url,
-                        "error": errors.get_error_message(
-                            retry_error,
-                        ),
-                    },
-                )
-                return None
+        try:
+            return await self._try_complete(user_message, url)
+        except Exception as retry_error:
+            log.error(
+                "Script analysis failed after fallback",
+                {
+                    "url": url,
+                    "error": errors.get_error_message(retry_error),
+                },
+            )
+            return None
 
     async def _try_complete(
         self,
