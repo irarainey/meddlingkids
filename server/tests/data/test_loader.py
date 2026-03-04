@@ -401,7 +401,7 @@ class TestDisconnectServices:
         ctx = loader.build_disconnect_context(["doubleclick.net"])
         assert "## Known Tracker Domain Classifications (Disconnect)" in ctx
         assert "doubleclick.net" in ctx
-        assert "→" in ctx
+        assert "Google" in ctx
 
     def test_build_disconnect_context_groups_by_category(self) -> None:
         ctx = loader.build_disconnect_context(

@@ -11,12 +11,13 @@ each section receives only the context it actually needs, via
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import json
 from typing import TYPE_CHECKING
 
 from src.agents import gdpr_context
-from src.analysis import domain_cache
+from src.analysis import domain_cache, domain_classifier
 from src.data import loader
 from src.models import analysis, consent
 from src.utils import risk
@@ -315,20 +316,17 @@ def build_section_context(
         sections.extend(
             [
                 "",
-                "## Third-Party Domains",
-                "\n".join(tracking_summary.third_party_domains),
+                "## Third-Party Domains (grouped by organization)",
+                _group_domains_by_org(tracking_summary.third_party_domains),
             ]
         )
 
     if needs.domain_breakdown:
-        breakdown = json.dumps(
-            [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
-        )
         sections.extend(
             [
                 "",
-                "## Domain Breakdown (cookies, scripts, requests per domain)",
-                breakdown,
+                "## Domain Breakdown (grouped by organization)",
+                _group_domain_breakdown_by_org(tracking_summary.domain_breakdown),
             ]
         )
 
@@ -387,6 +385,113 @@ def build_section_context(
             sections.append(media_ctx)
 
     return "\n".join(sections)
+
+
+# ── Domain compression helpers ──────────────────────────────────
+#
+# Group raw per-domain data by parent organization using the
+# Disconnect + partner DBs.  This compresses Bristol Post's
+# 353 domains → ~144 groups, saving ~40% of context chars.
+
+
+def _group_domains_by_org(
+    domains: list[str],
+) -> str:
+    """Group third-party domains by parent organization.
+
+    Uses :func:`domain_classifier.classify_domain` (Disconnect
+    + partner DBs + heuristics) to resolve each domain to its
+    parent company.  Unknown domains are listed individually
+    under an ``Unclassified`` heading.
+
+    Returns:
+        Multi-line markdown text with org-grouped domains.
+    """
+    orgs: dict[str, list[str]] = collections.defaultdict(list)
+    unclassified: list[str] = []
+
+    for domain in domains:
+        _category, company = domain_classifier.classify_domain(domain)
+        if company:
+            orgs[company].append(domain)
+        else:
+            unclassified.append(domain)
+
+    lines: list[str] = []
+    for company in sorted(orgs):
+        dom_list = sorted(orgs[company])
+        if len(dom_list) <= 3:
+            lines.append(f"- **{company}**: {', '.join(dom_list)}")
+        else:
+            lines.append(f"- **{company}** ({len(dom_list)} domains): {', '.join(dom_list[:3])}, ...")
+
+    if unclassified:
+        lines.append(f"- _Unclassified_ ({len(unclassified)}): {', '.join(sorted(unclassified)[:10])}")
+        if len(unclassified) > 10:
+            lines.append(f"  ... and {len(unclassified) - 10} more")
+
+    return "\n".join(lines)
+
+
+def _group_domain_breakdown_by_org(
+    breakdown: list[analysis.DomainBreakdown],
+) -> str:
+    """Collapse per-domain breakdown entries by parent organization.
+
+    Sums cookie, script, and request counts across sibling
+    domains belonging to the same company.  Merges cookie
+    names and request types into union sets.
+
+    Returns:
+        JSON string of organization-level breakdown objects.
+    """
+
+    @dataclasses.dataclass
+    class _OrgBucket:
+        organization: str
+        domains: list[str] = dataclasses.field(default_factory=list)
+        cookie_count: int = 0
+        cookie_names: set[str] = dataclasses.field(default_factory=set)
+        script_count: int = 0
+        request_count: int = 0
+        request_types: set[str] = dataclasses.field(default_factory=set)
+
+    org_data: dict[str, _OrgBucket] = {}
+    unclassified: list[dict[str, object]] = []
+
+    for entry in breakdown:
+        _category, company = domain_classifier.classify_domain(entry.domain)
+        if company:
+            key = company.lower()
+            if key not in org_data:
+                org_data[key] = _OrgBucket(organization=company)
+            bucket = org_data[key]
+            bucket.domains.append(entry.domain)
+            bucket.cookie_count += entry.cookie_count
+            bucket.cookie_names |= set(entry.cookie_names)
+            bucket.script_count += entry.script_count
+            bucket.request_count += entry.request_count
+            bucket.request_types |= set(entry.request_types)
+        else:
+            unclassified.append(entry.model_dump(exclude_defaults=True))
+
+    # Serialize to JSON-friendly dicts.
+    result: list[dict[str, object]] = []
+    for bucket in sorted(org_data.values(), key=lambda b: b.organization):
+        result.append(
+            {
+                "organization": bucket.organization,
+                "domain_count": len(bucket.domains),
+                "cookie_count": bucket.cookie_count,
+                "cookie_names": sorted(bucket.cookie_names),
+                "script_count": bucket.script_count,
+                "request_count": bucket.request_count,
+                "request_types": sorted(bucket.request_types),
+            }
+        )
+
+    result.extend(unclassified)
+    return json.dumps(result)
 
 
 # ── Private section helpers ─────────────────────────────────────

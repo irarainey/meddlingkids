@@ -367,10 +367,16 @@ def build_disconnect_context(third_party_domains: list[str]) -> str:
 
     for cat in sorted(matches):
         lines.append(f"### {cat}")
-        # Deduplicate and sort entries within each category.
-        unique = sorted(set(matches[cat]))
-        for domain, company in unique:
-            lines.append(f"- {domain} → {company}")
+        # Group domains by company within each category.
+        company_domains: dict[str, list[str]] = {}
+        for domain, company in sorted(set(matches[cat])):
+            company_domains.setdefault(company, []).append(domain)
+        for company in sorted(company_domains):
+            domains = company_domains[company]
+            if len(domains) <= 3:
+                lines.append(f"- **{company}**: {', '.join(domains)}")
+            else:
+                lines.append(f"- **{company}** ({len(domains)} domains): {', '.join(domains[:3])}, ...")
         lines.append("")
 
     return "\n".join(lines)
