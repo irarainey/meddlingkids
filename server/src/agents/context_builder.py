@@ -1,21 +1,133 @@
 """Shared context builder for LLM analysis prompts.
 
 Both the tracking-analysis agent and the structured-report agent
-require the same core data sections (summary stats, consent block,
-score block, GDPR reference, domain-knowledge hint, etc.). This
-module centralises that context assembly so the overlapping sections
-are defined in one place.
+require data context for their LLM calls.  The tracking-analysis
+agent gets the *full* context (it covers all topics in one call).
+The structured-report agent calls the LLM once per section and
+each section receives only the context it actually needs, via
+:func:`build_section_context` and the per-section configs in
+:data:`SECTION_CONFIGS`.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
+from typing import TYPE_CHECKING
 
 from src.agents import gdpr_context
 from src.analysis import domain_cache
 from src.data import loader
 from src.models import analysis, consent
 from src.utils import risk
+
+if TYPE_CHECKING:
+    pass
+
+
+# ====================================================================
+# Section content flags
+# ====================================================================
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class SectionNeeds:
+    """Declares which context blocks a report section requires.
+
+    Each flag corresponds to a data block in
+    :func:`build_analysis_context`.  Blocks marked ``False``
+    are omitted from the context string for that section,
+    saving tokens.
+    """
+
+    url: bool = True
+    data_summary: bool = True
+    pre_consent_stats: bool = False
+    third_party_domains: bool = False
+    domain_breakdown: bool = False
+    local_storage: bool = False
+    session_storage: bool = False
+    consent_info: bool = False
+    privacy_score: bool = False
+    domain_knowledge: bool = False
+    gdpr_reference: bool = False
+    tracking_cookie_db: bool = False
+    disconnect_db: bool = False
+    media_group: bool = False
+    include_partner_urls: bool = False
+
+
+# Per-section configs derived from the needs-matrix audit.
+# Each entry maps a report section name to the minimal set
+# of context blocks it requires.
+
+SECTION_CONFIGS: dict[str, SectionNeeds] = {
+    "tracking-technologies": SectionNeeds(
+        third_party_domains=True,
+        domain_breakdown=True,
+        local_storage=True,
+        session_storage=True,
+        domain_knowledge=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+        media_group=True,
+    ),
+    "data-collection": SectionNeeds(
+        third_party_domains=True,
+        domain_breakdown=True,
+        local_storage=True,
+        session_storage=True,
+        domain_knowledge=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+    ),
+    "third-party-services": SectionNeeds(
+        third_party_domains=True,
+        domain_knowledge=True,
+        disconnect_db=True,
+        media_group=True,
+    ),
+    "privacy-risk": SectionNeeds(
+        pre_consent_stats=True,
+        third_party_domains=True,
+        domain_breakdown=True,
+        privacy_score=True,
+        domain_knowledge=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+    ),
+    "cookie-analysis": SectionNeeds(
+        domain_breakdown=True,
+        domain_knowledge=True,
+        gdpr_reference=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+    ),
+    "storage-analysis": SectionNeeds(
+        local_storage=True,
+        session_storage=True,
+    ),
+    "consent-analysis": SectionNeeds(
+        third_party_domains=True,
+        consent_info=True,
+        domain_knowledge=True,
+        gdpr_reference=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+        include_partner_urls=True,
+    ),
+    "social-media-implications": SectionNeeds(
+        third_party_domains=True,
+        domain_breakdown=True,
+        domain_knowledge=True,
+        tracking_cookie_db=True,
+        disconnect_db=True,
+    ),
+    "recommendations": SectionNeeds(
+        pre_consent_stats=True,
+        privacy_score=True,
+    ),
+}
 
 # ── Public API ──────────────────────────────────────────────────
 
@@ -129,6 +241,150 @@ def build_analysis_context(
     )
     if media_ctx:
         sections.append(media_ctx)
+
+    return "\n".join(sections)
+
+
+def build_section_context(
+    section_name: str,
+    tracking_summary: analysis.TrackingSummary,
+    *,
+    consent_details: consent.ConsentDetails | None = None,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
+    score_breakdown: analysis.ScoreBreakdown | None = None,
+    domain_knowledge: domain_cache.DomainKnowledge | None = None,
+) -> str:
+    """Build a tailored context string for a single report section.
+
+    Uses the :data:`SECTION_CONFIGS` needs-matrix to include
+    only the data blocks relevant to *section_name*, reducing
+    token usage by 30–90 % compared to the full context.
+
+    Falls back to the full context if *section_name* is not
+    found in :data:`SECTION_CONFIGS`.
+
+    Args:
+        section_name: Report section identifier (e.g.
+            ``"cookie-analysis"``).
+        tracking_summary: Collected tracking data summary.
+        consent_details: Optional consent dialog info.
+        pre_consent_stats: Optional pre-consent statistics.
+        score_breakdown: Deterministic privacy score.
+        domain_knowledge: Optional cached domain classifications.
+
+    Returns:
+        Multi-section markdown context string.
+    """
+    needs = SECTION_CONFIGS.get(section_name)
+    if needs is None:
+        # Unknown section — send everything to be safe.
+        return build_analysis_context(
+            tracking_summary,
+            consent_details=consent_details,
+            pre_consent_stats=pre_consent_stats,
+            score_breakdown=score_breakdown,
+            domain_knowledge=domain_knowledge,
+            include_partner_urls=True,
+        )
+
+    sections: list[str] = []
+
+    # ── Always-included header ──────────────────────────────
+    if needs.url:
+        sections.append(f"URL analysed: {tracking_summary.analyzed_url}")
+
+    if needs.data_summary:
+        sections.extend(
+            [
+                "",
+                "## Data Summary",
+                f"- Total Cookies: {tracking_summary.total_cookies}",
+                f"- Total Scripts: {tracking_summary.total_scripts}",
+                f"- Total Network Requests: {tracking_summary.total_network_requests}",
+                f"- LocalStorage Items: {tracking_summary.local_storage_items}",
+                f"- SessionStorage Items: {tracking_summary.session_storage_items}",
+                f"- Third-Party Domains: {len(tracking_summary.third_party_domains)}",
+            ]
+        )
+
+    # ── Optional blocks ─────────────────────────────────────
+    if needs.pre_consent_stats and pre_consent_stats:
+        sections.extend(_build_pre_consent_lines(pre_consent_stats))
+
+    if needs.third_party_domains:
+        sections.extend(
+            [
+                "",
+                "## Third-Party Domains",
+                "\n".join(tracking_summary.third_party_domains),
+            ]
+        )
+
+    if needs.domain_breakdown:
+        breakdown = json.dumps(
+            [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
+        )
+        sections.extend(
+            [
+                "",
+                "## Domain Breakdown (cookies, scripts, requests per domain)",
+                breakdown,
+            ]
+        )
+
+    if needs.local_storage:
+        local_json = json.dumps(tracking_summary.local_storage)
+        sections.extend(["", f"## LocalStorage Data\n{local_json}"])
+
+    if needs.session_storage:
+        session_json = json.dumps(tracking_summary.session_storage)
+        sections.extend(["", f"## SessionStorage Data\n{session_json}"])
+
+    if (
+        needs.consent_info
+        and consent_details
+        and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
+    ):
+        sections.extend(
+            _build_consent_lines(
+                consent_details,
+                include_raw_text=False,
+                include_partner_urls=needs.include_partner_urls,
+            )
+        )
+
+    if needs.privacy_score and score_breakdown:
+        sections.extend(_build_score_lines(score_breakdown))
+
+    if needs.domain_knowledge and domain_knowledge:
+        sections.append(domain_cache.build_context_hint(domain_knowledge))
+
+    if needs.gdpr_reference:
+        sections.append(
+            "\n"
+            + gdpr_context.build_gdpr_reference(
+                heading="## GDPR / TCF Reference Data",
+            ),
+        )
+
+    if needs.tracking_cookie_db:
+        cookie_ctx = loader.build_tracking_cookie_context()
+        if cookie_ctx:
+            sections.append(cookie_ctx)
+
+    if needs.disconnect_db:
+        disconnect_ctx = loader.build_disconnect_context(
+            tracking_summary.third_party_domains,
+        )
+        if disconnect_ctx:
+            sections.append(disconnect_ctx)
+
+    if needs.media_group:
+        media_ctx = loader.build_media_group_context(
+            tracking_summary.analyzed_url,
+        )
+        if media_ctx:
+            sections.append(media_ctx)
 
     return "\n".join(sections)
 
