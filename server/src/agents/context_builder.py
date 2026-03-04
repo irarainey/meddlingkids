@@ -56,6 +56,7 @@ class SectionNeeds:
     disconnect_db: bool = False
     media_group: bool = False
     include_partner_urls: bool = False
+    storage_summary_only: bool = False
 
 
 # Per-section configs derived from the needs-matrix audit.
@@ -68,6 +69,7 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
         domain_breakdown=True,
         local_storage=True,
         session_storage=True,
+        storage_summary_only=True,
         domain_knowledge=True,
         tracking_cookie_db=True,
         disconnect_db=True,
@@ -78,6 +80,7 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
         domain_breakdown=True,
         local_storage=True,
         session_storage=True,
+        storage_summary_only=True,
         domain_knowledge=True,
         tracking_cookie_db=True,
         disconnect_db=True,
@@ -169,9 +172,6 @@ def build_analysis_context(
     Returns:
         Multi-section markdown context string.
     """
-    breakdown = json.dumps(
-        [d.model_dump(exclude_defaults=True) for d in tracking_summary.domain_breakdown],
-    )
     local_json = json.dumps(tracking_summary.local_storage)
     session_json = json.dumps(tracking_summary.session_storage)
 
@@ -193,11 +193,11 @@ def build_analysis_context(
     sections.extend(
         [
             "",
-            "## Third-Party Domains",
-            "\n".join(tracking_summary.third_party_domains),
+            "## Third-Party Domains (grouped by organization)",
+            _group_domains_by_org(tracking_summary.third_party_domains),
             "",
-            "## Domain Breakdown (cookies, scripts, requests per domain)",
-            breakdown,
+            "## Domain Breakdown (grouped by organization)",
+            _group_domain_breakdown_by_org(tracking_summary.domain_breakdown),
             "",
             f"## LocalStorage Data\n{local_json}",
             "",
@@ -331,12 +331,26 @@ def build_section_context(
         )
 
     if needs.local_storage:
-        local_json = json.dumps(tracking_summary.local_storage)
-        sections.extend(["", f"## LocalStorage Data\n{local_json}"])
+        if needs.storage_summary_only:
+            summary = _build_storage_summary(
+                tracking_summary.local_storage,
+                "localStorage",
+            )
+            sections.extend(["", summary])
+        else:
+            local_json = json.dumps(tracking_summary.local_storage)
+            sections.extend(["", f"## LocalStorage Data\n{local_json}"])
 
     if needs.session_storage:
-        session_json = json.dumps(tracking_summary.session_storage)
-        sections.extend(["", f"## SessionStorage Data\n{session_json}"])
+        if needs.storage_summary_only:
+            summary = _build_storage_summary(
+                tracking_summary.session_storage,
+                "sessionStorage",
+            )
+            sections.extend(["", summary])
+        else:
+            session_json = json.dumps(tracking_summary.session_storage)
+            sections.extend(["", f"## SessionStorage Data\n{session_json}"])
 
     if (
         needs.consent_info
@@ -492,6 +506,67 @@ def _group_domain_breakdown_by_org(
 
     result.extend(unclassified)
     return json.dumps(result)
+
+
+def _build_storage_summary(
+    items: list[dict[str, str]],
+    storage_type: str,
+) -> str:
+    """Build a compact statistical summary of browser storage items.
+
+    Classifies each key against the tracking-storage pattern
+    database and groups by purpose (analytics, advertising,
+    identity, functional, etc.).  Sections that need the full
+    key-value list (Storage Analysis) bypass this and get the
+    raw JSON instead.
+
+    Args:
+        items: Storage items as ``{"key": ..., "valuePreview": ...}``.
+        storage_type: Display label (``"localStorage"`` or
+            ``"sessionStorage"``).
+
+    Returns:
+        Compact markdown summary string.
+    """
+    if not items:
+        return f"## {storage_type} Summary\nNo items."
+
+    patterns = loader.get_tracking_storage_patterns()
+
+    tracking: dict[str, list[str]] = collections.defaultdict(list)
+    functional: list[str] = []
+
+    for item in items:
+        key = item.get("key", "")
+        matched = False
+        for pattern, _desc, set_by, purpose in patterns:
+            if pattern.search(key):
+                label = f"{set_by} ({purpose})" if set_by else purpose
+                tracking[label].append(key)
+                matched = True
+                break
+        if not matched:
+            functional.append(key)
+
+    lines = [
+        f"## {storage_type} Summary ({len(items)} items)",
+    ]
+
+    if tracking:
+        lines.append(f"- **Tracking-related** ({sum(len(v) for v in tracking.values())} items):")
+        for label in sorted(tracking):
+            keys = tracking[label]
+            if len(keys) <= 3:
+                lines.append(f"  - {label}: {', '.join(keys)}")
+            else:
+                lines.append(f"  - {label} ({len(keys)} keys): {', '.join(keys[:3])}, ...")
+
+    if functional:
+        lines.append(f"- **Other/functional** ({len(functional)} items): {', '.join(functional[:8])}")
+        if len(functional) > 8:
+            lines[-1] += f", ... (+{len(functional) - 8} more)"
+
+    return "\n".join(lines)
 
 
 # ── Private section helpers ─────────────────────────────────────
