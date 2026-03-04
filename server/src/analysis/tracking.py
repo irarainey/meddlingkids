@@ -28,6 +28,7 @@ async def run_tracking_analysis(
     tracking_summary: analysis.TrackingSummary | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> analysis.TrackingAnalysisResult:
     """Run the main tracking analysis and return structured output.
 
@@ -91,6 +92,7 @@ async def run_tracking_analysis(
         pre_consent_stats,
         score_breakdown,
         domain_knowledge,
+        decoded_cookies=decoded_cookies,
     )
     log.info(
         "Tracking analysis complete",

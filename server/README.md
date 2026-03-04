@@ -72,7 +72,7 @@ src/
 │   ├── storage_info_agent.py        # Storage key information lookup agent (LLM fallback)
 │   ├── observability_setup.py       # Azure Monitor / App Insights telemetry setup
 │   ├── gdpr_context.py              # Shared GDPR/TCF reference builder for agent prompts
-│   ├── context_builder.py           # Shared LLM analysis context builder (tracking summary, consent, scoring, GDPR, databases)
+│   ├── context_builder.py           # Shared LLM context builder with per-section tailoring (SectionNeeds configs, org-grouped domains, storage summaries)
 │   ├── prompts/                     # System prompts (one module per agent)
 │   │   ├── consent_detection.py     # Consent detection prompt
 │   │   ├── consent_extraction.py    # Consent extraction prompt

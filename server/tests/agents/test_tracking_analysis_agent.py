@@ -192,7 +192,7 @@ class TestDefaultTimeoutValues:
         assert structured_report_agent.StructuredReportAgent.call_timeout == 60
 
     def test_tracking_analysis_timeout(self) -> None:
-        assert tracking_analysis_agent.TrackingAnalysisAgent.call_timeout == 60
+        assert tracking_analysis_agent.TrackingAnalysisAgent.call_timeout == 90
 
     def test_tracking_analysis_uses_structured_output(self) -> None:
         """TrackingAnalysisAgent has a response_model set."""

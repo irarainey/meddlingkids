@@ -18,6 +18,15 @@ from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("SummaryFindingsAgent")
 
+# Severity sort order — critical first, positive last.
+_FINDING_ORDER: dict[str, int] = {
+    "critical": 0,
+    "high": 1,
+    "moderate": 2,
+    "info": 3,
+    "positive": 4,
+}
+
 
 # ── Structured output models ───────────────────────────────────
 
@@ -47,7 +56,7 @@ class SummaryFindingsAgent(base.BaseAgent):
 
     agent_name = config.AGENT_SUMMARY_FINDINGS
     instructions = summary_findings.INSTRUCTIONS
-    max_tokens = 500
+    max_tokens = 1024
     max_retries = 5
     response_model = _SummaryFindingsResponse
 
@@ -103,7 +112,11 @@ class SummaryFindingsAgent(base.BaseAgent):
 
         consent_ctx = ""
         if consent_details:
-            consent_ctx = _build_consent_facts(consent_details)
+            consent_ctx = _build_consent_facts(
+                consent_details,
+                tracking_summary,
+                pre_consent_stats,
+            )
 
         metrics_ctx = ""
         if tracking_summary:
@@ -121,6 +134,7 @@ class SummaryFindingsAgent(base.BaseAgent):
             parsed = self._parse_response(response, _SummaryFindingsResponse)
             if parsed:
                 findings = [analysis.SummaryFinding(type=f.type, text=f.text) for f in parsed.findings]
+                findings.sort(key=lambda f: _FINDING_ORDER.get(f.type, 9))
                 log.success(
                     "Summary findings parsed",
                     {"count": len(findings)},
@@ -166,6 +180,7 @@ def _parse_text_fallback(
             for f in items
             if isinstance(f, dict)
         ]
+        findings.sort(key=lambda f: _FINDING_ORDER.get(f.type, 9))
         log.success(
             "Summary findings parsed (fallback)",
             {"count": len(findings)},
@@ -181,6 +196,8 @@ def _parse_text_fallback(
 
 def _build_consent_facts(
     cd: consent.ConsentDetails,
+    tracking_summary: analysis.TrackingSummary | None = None,
+    pre_consent_stats: analysis.PreConsentStats | None = None,
 ) -> str:
     """Build deterministic consent facts for the summary prompt.
 
@@ -190,6 +207,10 @@ def _build_consent_facts(
 
     Args:
         cd: Consent details captured from the dialog.
+        tracking_summary: Optional tracking summary for
+            computing the consent delta.
+        pre_consent_stats: Optional pre-consent snapshot
+            for computing what changed after consent.
 
     Returns:
         Formatted context string.
@@ -199,12 +220,25 @@ def _build_consent_facts(
         "",
         "DETERMINISTIC CONSENT FACTS (use these numbers, do not guess):",
     ]
+    if cd.consent_platform:
+        lines.append(f"- Consent platform: {cd.consent_platform}")
     if cd.claimed_partner_count:
         lines.append(f"- Claimed partner count (from dialog text): {cd.claimed_partner_count}")
     if cd.partners:
         lines.append(f"- Individually listed partners extracted: {len(cd.partners)}")
     elif cd.claimed_partner_count:
         lines.append("- Individually listed partners extracted: 0 (dialog states a count but does not list them individually)")
+
+    # Consent delta — what changed after dialog dismissal.
+    if pre_consent_stats and tracking_summary:
+        new_cookies = tracking_summary.total_cookies - pre_consent_stats.total_cookies
+        new_scripts = tracking_summary.total_scripts - pre_consent_stats.total_scripts
+        new_requests = tracking_summary.total_network_requests - pre_consent_stats.total_requests
+        if new_cookies > 0 or new_scripts > 0 or new_requests > 0:
+            lines.append(f"- New cookies after consent: {new_cookies}")
+            lines.append(f"- New scripts after consent: {new_scripts}")
+            lines.append(f"- New requests after consent: {new_requests}")
+
     return "\n".join(lines)
 
 

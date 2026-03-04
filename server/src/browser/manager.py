@@ -49,6 +49,14 @@ _MAX_START_ATTEMPTS = 2
 # Delay between restart attempts (seconds).
 _RESTART_DELAY_SECONDS = 2
 
+# Timeout (seconds) for the health-check probe that verifies
+# the browser can still create contexts after a suspected hang.
+_HEALTH_CHECK_TIMEOUT_SECONDS = 10
+
+# Timeout (seconds) for the full create_session operation so a
+# truly hung browser can never block the server indefinitely.
+_CREATE_SESSION_TIMEOUT_SECONDS = 30
+
 # ── Anti-bot-detection init script ──────────────────────────
 # Injected into every BrowserContext so all frames mask
 # automation signals before any site scripts run.
@@ -137,6 +145,7 @@ class PlaywrightManager:
         self._browser_pid: int | None = None
         self._lock = asyncio.Lock()
         self._started = False
+        self._health_suspect = False
 
     # ── Singleton access ────────────────────────────────────
 
@@ -268,20 +277,77 @@ class PlaywrightManager:
         except Exception:
             self._browser_pid = None
 
+    def mark_health_suspect(self) -> None:
+        """Flag the shared browser as potentially unhealthy.
+
+        Called by ``BrowserSession.close()`` when a context close
+        times out, which suggests the browser process may be hung.
+        The next call to ``_ensure_browser()`` will run a health
+        probe before returning the existing instance.
+        """
+        if not self._health_suspect:
+            self._health_suspect = True
+            log.warn("Browser marked as health-suspect — will probe before next session")
+
     async def _ensure_browser(self) -> async_api.Browser:
         """Return the shared browser, restarting if it has crashed.
 
         Called by ``create_session`` before creating a new context.
         Thread-safe via ``_lock``.
+
+        When ``_health_suspect`` is set (e.g. after a context close
+        timed out), runs a lightweight probe that opens and closes
+        a throwaway context within a timeout.  If the probe hangs
+        or fails, the browser is torn down and restarted.
         """
         async with self._lock:
-            if self._browser is not None and self._browser.is_connected():
-                return self._browser
-            log.warn("Shared browser disconnected — restarting")
-            await self._stop_internal()
-            await self._start_browser()
+            needs_restart = False
+
+            if self._browser is None or not self._browser.is_connected():
+                log.warn("Shared browser disconnected — restarting")
+                needs_restart = True
+            elif self._health_suspect:
+                log.info("Running browser health probe")
+                if not await self._probe_browser_health():
+                    log.warn("Browser health probe failed — restarting")
+                    needs_restart = True
+                else:
+                    log.info("Browser health probe passed")
+                self._health_suspect = False
+
+            if needs_restart:
+                self._health_suspect = False
+                await self._stop_internal()
+                await self._start_browser()
+
             assert self._browser is not None
             return self._browser
+
+    async def _probe_browser_health(self) -> bool:
+        """Open and close a throwaway context to verify responsiveness.
+
+        Returns ``True`` when the browser responds within the
+        timeout, ``False`` when it is hung or broken.
+        Caller must hold ``_lock``.
+        """
+        if self._browser is None:
+            return False
+        try:
+            ctx = await asyncio.wait_for(
+                self._browser.new_context(),
+                timeout=_HEALTH_CHECK_TIMEOUT_SECONDS,
+            )
+            await asyncio.wait_for(
+                ctx.close(),
+                timeout=_HEALTH_CHECK_TIMEOUT_SECONDS,
+            )
+            return True
+        except Exception as exc:
+            log.warn(
+                "Health probe error",
+                {"error": str(exc)[:200]},
+            )
+            return False
 
     # ── Session factory ─────────────────────────────────────
 
@@ -296,13 +362,41 @@ class PlaywrightManager:
         init scripts.  Creating a context is fast (~50 ms)
         compared to launching a full browser (~4–9 s).
 
+        The entire operation is wrapped in a hard timeout so a
+        hung browser can never block the server indefinitely.
+        If the timeout fires, the browser is marked as
+        health-suspect and the error propagates to the caller
+        for retry.
+
         Args:
             device_type: Device profile for viewport, scaling,
                 and touch emulation.
 
         Returns:
             A ready-to-use ``BrowserSession`` with an active page.
+
+        Raises:
+            TimeoutError: If session creation takes longer than
+                ``_CREATE_SESSION_TIMEOUT_SECONDS``.
         """
+        try:
+            return await asyncio.wait_for(
+                self._create_session_internal(device_type),
+                timeout=_CREATE_SESSION_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            log.error(
+                "Session creation timed out — browser is likely unresponsive",
+                {"timeoutSeconds": _CREATE_SESSION_TIMEOUT_SECONDS},
+            )
+            self.mark_health_suspect()
+            raise
+
+    async def _create_session_internal(
+        self,
+        device_type: browser.DeviceType,
+    ) -> session_mod.BrowserSession:
+        """Actual session creation logic (no outer timeout)."""
         if device_type not in device_configs.DEVICE_CONFIGS:
             raise ValueError(f"Unknown device type {device_type!r}. Valid types: {', '.join(device_configs.DEVICE_CONFIGS)}")
         device_config = device_configs.DEVICE_CONFIGS[device_type]
@@ -325,7 +419,7 @@ class PlaywrightManager:
 
         page = await context.new_page()
 
-        session = session_mod.BrowserSession()
+        session = session_mod.BrowserSession(manager=self)
         session.bind_context(context, page)
 
         log.debug(

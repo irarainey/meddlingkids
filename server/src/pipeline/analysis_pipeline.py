@@ -164,6 +164,7 @@ async def run_ai_analysis(
         tracking_summary=tracking_summary,
         score_breakdown=score_breakdown,
         domain_knowledge=domain_knowledge,
+        decoded_cookies=decoded_cookies,
     )
 
     # Start the structured report concurrently with script
@@ -264,6 +265,7 @@ def _launch_concurrent_tasks(
     tracking_summary: analysis.TrackingSummary | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> tuple[asyncio.Task[scripts.ScriptAnalysisResult], asyncio.Task[analysis.TrackingAnalysisResult]]:
     """Create and launch the concurrent script + tracking tasks.
 
@@ -351,6 +353,7 @@ def _launch_concurrent_tasks(
                 tracking_summary=tracking_summary,
                 score_breakdown=score_breakdown,
                 domain_knowledge=domain_knowledge,
+                decoded_cookies=decoded_cookies,
             )
         finally:
             progress_queue.put_nowait(None)

@@ -45,9 +45,9 @@ class TrackingAnalysisAgent(base.BaseAgent):
 
     agent_name = config.AGENT_TRACKING_ANALYSIS
     instructions = tracking_analysis.INSTRUCTIONS
-    max_tokens = 4096
+    max_tokens = 2048
     max_retries = 5
-    call_timeout = 60  # Large prompts need more time
+    call_timeout = 90  # Large prompts (30K–50K chars) need more time
     response_model = _TrackingAnalysisResponse
 
     async def analyze(
@@ -57,6 +57,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
         pre_consent_stats: analysis.PreConsentStats | None = None,
         score_breakdown: analysis.ScoreBreakdown | None = None,
         domain_knowledge: domain_cache.DomainKnowledge | None = None,
+        decoded_cookies: dict[str, object] | None = None,
     ) -> analysis.TrackingAnalysisResult:
         """Run the tracking analysis and return structured output.
 
@@ -68,6 +69,8 @@ class TrackingAnalysisAgent(base.BaseAgent):
                 LLM can calibrate its risk assessment.
             domain_knowledge: Prior-run classifications for
                 consistency anchoring.
+            decoded_cookies: Decoded privacy cookie signals
+                (USP, GPP, GA, Facebook, OneTrust, etc.).
 
         Returns:
             Structured ``TrackingAnalysisResult``.
@@ -82,6 +85,7 @@ class TrackingAnalysisAgent(base.BaseAgent):
             pre_consent_stats,
             score_breakdown,
             domain_knowledge,
+            decoded_cookies=decoded_cookies,
         )
         log.info(
             "Starting tracking analysis",
@@ -173,6 +177,8 @@ def _build_user_prompt(
     pre_consent_stats: analysis.PreConsentStats | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    *,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Build the user prompt from tracking data.
 
@@ -197,17 +203,6 @@ def _build_user_prompt(
         score_breakdown=score_breakdown,
         domain_knowledge=domain_knowledge,
         include_raw_consent_text=True,
+        decoded_cookies=decoded_cookies,
     )
-    return (
-        "Analyze the following tracking data collected"
-        f" from: {tracking_summary.analyzed_url}\n\n"
-        f"{data_context}\n\n"
-        "Please provide a comprehensive privacy analysis"
-        " of this tracking data. If consent dialog"
-        " information is provided, compare what was"
-        " disclosed to users vs what is actually happening,"
-        " and highlight any concerning discrepancies."
-        " If publisher/media group context is provided,"
-        " cross-reference observed activity against"
-        " known vendors and privacy characteristics."
-    )
+    return f"Analyze the following tracking data collected from: {tracking_summary.analyzed_url}\n\n{data_context}"
