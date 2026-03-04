@@ -720,12 +720,14 @@ class TestCreateSessionTimeout:
         mgr._started = True
 
         # Reduce the timeout for the test
-        with mock.patch.object(
-            manager_mod,
-            "_CREATE_SESSION_TIMEOUT_SECONDS",
-            2,
+        with (
+            mock.patch.object(
+                manager_mod,
+                "_CREATE_SESSION_TIMEOUT_SECONDS",
+                2,
+            ),
+            pytest.raises(TimeoutError),
         ):
-            with pytest.raises(TimeoutError):
-                await mgr.create_session("ipad")
+            await mgr.create_session("ipad")
 
         assert mgr._health_suspect is True
