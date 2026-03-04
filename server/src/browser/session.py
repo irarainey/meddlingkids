@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from playwright import async_api
 
@@ -21,6 +21,9 @@ from src.browser import access_detection
 from src.models import browser, tracking_data
 from src.utils import image, logger
 from src.utils import url as url_mod
+
+if TYPE_CHECKING:
+    from src.browser import manager as manager_mod
 
 log = logger.create_logger("BrowserSession")
 
@@ -91,8 +94,17 @@ class BrowserSession:
     attach a context and page after construction.
     """
 
-    def __init__(self) -> None:
-        """Initialise a new browser session with empty state."""
+    def __init__(self, manager: manager_mod.PlaywrightManager | None = None) -> None:
+        """Initialise a new browser session with empty state.
+
+        Args:
+            manager: Optional back-reference to the shared
+                :class:`PlaywrightManager`.  When provided,
+                the session will notify the manager if a
+                context close times out so the shared browser
+                can be health-checked before the next request.
+        """
+        self._manager = manager
         self._context: async_api.BrowserContext | None = None
         self._page: async_api.Page | None = None
         self._current_page_url: str = ""
@@ -597,6 +609,12 @@ class BrowserSession:
                     "Context close timed out",
                     {"timeoutSeconds": _CLOSE_TIMEOUT_SECONDS},
                 )
+                # A timed-out context close suggests the browser
+                # may be hung.  Notify the manager so the next
+                # session creation triggers a health probe and
+                # restarts the browser if necessary.
+                if self._manager is not None:
+                    self._manager.mark_health_suspect()
             except (asyncio.CancelledError, Exception):
                 # Starlette cancel-scopes and task teardown can
                 # interrupt the close — non-fatal because the

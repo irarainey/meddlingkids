@@ -552,3 +552,180 @@ class TestCloseTimeoutConstant:
     def test_start_timeout_is_positive(self) -> None:
         """Playwright start timeout must be positive."""
         assert manager_mod._START_TIMEOUT_SECONDS > 0
+
+    def test_health_check_timeout_is_positive(self) -> None:
+        """Health-check probe timeout must be positive."""
+        assert manager_mod._HEALTH_CHECK_TIMEOUT_SECONDS > 0
+
+    def test_create_session_timeout_is_positive(self) -> None:
+        """Session creation timeout must be positive."""
+        assert manager_mod._CREATE_SESSION_TIMEOUT_SECONDS > 0
+
+
+# ====================================================================
+# Health-suspect and browser recovery tests
+# ====================================================================
+
+
+class TestHealthSuspect:
+    """Validates mark_health_suspect and health-probe logic."""
+
+    def test_mark_sets_flag(self) -> None:
+        """mark_health_suspect must set the _health_suspect flag."""
+        mgr = manager_mod.PlaywrightManager()
+        assert mgr._health_suspect is False
+        mgr.mark_health_suspect()
+        assert mgr._health_suspect is True
+
+    def test_mark_is_idempotent(self) -> None:
+        """Calling mark_health_suspect twice is safe."""
+        mgr = manager_mod.PlaywrightManager()
+        mgr.mark_health_suspect()
+        mgr.mark_health_suspect()
+        assert mgr._health_suspect is True
+
+    @pytest.mark.asyncio()
+    async def test_healthy_browser_passes_probe(self) -> None:
+        """A responsive browser passes the health probe and is kept."""
+        mgr = manager_mod.PlaywrightManager()
+        br = mock.AsyncMock()
+        br.is_connected = mock.Mock(return_value=True)
+        ctx = mock.AsyncMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
+        # First new_context call is the health probe (returns + close)
+        # Second new_context call is the real session creation
+        br.new_context.return_value = ctx
+        ctx.new_page.return_value = page
+        mgr._browser = br
+        mgr._started = True
+        mgr._health_suspect = True
+
+        session = await mgr.create_session("ipad")
+
+        # Health probe opens and closes a context, then the real
+        # session creation opens another context + page.
+        assert br.new_context.call_count >= 2
+        assert session._context is ctx
+        assert mgr._health_suspect is False
+
+    @pytest.mark.asyncio()
+    async def test_hung_browser_triggers_restart(self) -> None:
+        """A browser that fails the health probe is restarted."""
+        mgr = manager_mod.PlaywrightManager()
+
+        # Original browser: connected but hangs on new_context
+        br_old = mock.AsyncMock()
+        br_old.is_connected = mock.Mock(return_value=True)
+
+        async def hang_new_context(**kwargs: object) -> mock.AsyncMock:
+            await asyncio.sleep(3600)
+            return mock.AsyncMock()
+
+        br_old.new_context = hang_new_context
+        mgr._browser = br_old
+        mgr._started = True
+        mgr._health_suspect = True
+
+        # Replacement browser after restart
+        br_new = mock.AsyncMock()
+        br_new.is_connected = mock.Mock(return_value=True)
+        ctx = mock.AsyncMock()
+        page = mock.MagicMock()
+        page.on = mock.Mock()
+        br_new.new_context.return_value = ctx
+        ctx.new_page.return_value = page
+
+        async def do_restart() -> None:
+            mgr._browser = br_new
+
+        with (
+            mock.patch.object(
+                mgr,
+                "_stop_internal",
+                new_callable=mock.AsyncMock,
+            ) as mock_stop,
+            mock.patch.object(
+                mgr,
+                "_start_browser",
+                new_callable=mock.AsyncMock,
+                side_effect=do_restart,
+            ) as mock_start,
+        ):
+            session = await mgr.create_session("ipad")
+
+            mock_stop.assert_awaited_once()
+            mock_start.assert_awaited_once()
+            assert session._context is ctx
+            assert mgr._health_suspect is False
+
+    @pytest.mark.asyncio()
+    async def test_close_timeout_marks_manager_health_suspect(self) -> None:
+        """BrowserSession.close() must flag the manager on context close timeout."""
+        mgr = manager_mod.PlaywrightManager()
+        session = session_mod.BrowserSession(manager=mgr)
+
+        async def hang_forever() -> None:
+            await asyncio.sleep(3600)
+
+        ctx = mock.AsyncMock()
+        ctx.close = hang_forever
+        session._context = ctx
+
+        assert mgr._health_suspect is False
+
+        await asyncio.wait_for(
+            session.close(),
+            timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
+        )
+
+        assert session._context is None
+        assert mgr._health_suspect is True
+
+    @pytest.mark.asyncio()
+    async def test_close_timeout_without_manager_is_safe(self) -> None:
+        """Context close timeout without a manager reference must not raise."""
+        session = session_mod.BrowserSession()  # no manager
+
+        async def hang_forever() -> None:
+            await asyncio.sleep(3600)
+
+        ctx = mock.AsyncMock()
+        ctx.close = hang_forever
+        session._context = ctx
+
+        await asyncio.wait_for(
+            session.close(),
+            timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
+        )
+        assert session._context is None
+
+
+class TestCreateSessionTimeout:
+    """Validates the outer timeout on create_session."""
+
+    @pytest.mark.asyncio()
+    async def test_timeout_marks_health_suspect(self) -> None:
+        """create_session must flag health-suspect and raise on timeout."""
+        mgr = manager_mod.PlaywrightManager()
+        br = mock.AsyncMock()
+        br.is_connected = mock.Mock(return_value=True)
+
+        async def hang_new_context(**kwargs: object) -> mock.AsyncMock:
+            await asyncio.sleep(3600)
+            return mock.AsyncMock()
+
+        br.new_context = hang_new_context
+        mgr._browser = br
+        mgr._started = True
+
+        # Reduce the timeout for the test
+        with mock.patch.object(
+            manager_mod,
+            "_CREATE_SESSION_TIMEOUT_SECONDS",
+            2,
+        ):
+            with pytest.raises(TimeoutError):
+                await mgr.create_session("ipad")
+
+        assert mgr._health_suspect is True
