@@ -152,6 +152,7 @@ def build_analysis_context(
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
     include_raw_consent_text: bool = False,
     include_partner_urls: bool = False,
+    decoded_cookies: dict[str, object] | None = None,
 ) -> str:
     """Build a comprehensive analysis-context string.
 
@@ -200,9 +201,6 @@ def build_analysis_context(
     sections.extend(
         [
             "",
-            "## Third-Party Domains (grouped by organization)",
-            _group_domains_by_org(tracking_summary.third_party_domains),
-            "",
             "## Domain Breakdown (grouped by organization)",
             _group_domain_breakdown_by_org(tracking_summary.domain_breakdown),
             "",
@@ -249,6 +247,18 @@ def build_analysis_context(
     )
     if media_ctx:
         sections.append(media_ctx)
+
+    # ── Data available but historically not included ─────────
+    if pre_consent_stats:
+        sections.extend(_build_consent_delta_lines(pre_consent_stats, tracking_summary))
+
+    if consent_details:
+        tc_lines = _build_tc_string_lines(consent_details)
+        if tc_lines:
+            sections.extend(tc_lines)
+
+    if decoded_cookies:
+        sections.extend(_build_decoded_cookies_lines(decoded_cookies))
 
     return "\n".join(sections)
 
@@ -714,6 +724,41 @@ def _build_social_platforms_lines(
         domains = ", ".join(t.domains[:5])
         cookies = ", ".join(t.cookies[:5]) if t.cookies else "none"
         lines.append(f"- **{t.name}**: domains=[{domains}], cookies=[{cookies}], purpose={t.purpose}")
+    return lines
+
+
+def _build_decoded_cookies_lines(
+    decoded: dict[str, object],
+) -> list[str]:
+    """Build a compact summary of decoded privacy cookie signals.
+
+    Includes USP/GPP strings, Google Analytics client IDs,
+    Facebook pixel data, OneTrust/Cookiebot consent categories,
+    Google Ads click IDs, and Google SOCS consent mode.
+
+    Args:
+        decoded: Dict of decoded cookie signal groups from
+            ``cookie_decoders.decode_all_privacy_cookies()``.
+
+    Returns:
+        List of markdown lines.
+    """
+    if not decoded:
+        return []
+
+    lines = [
+        "",
+        "## Decoded Privacy Cookie Signals",
+    ]
+    for signal_name, data in decoded.items():
+        if isinstance(data, dict):
+            # Compact single-line summary for each signal.
+            summary_parts = [f"{k}={v}" for k, v in list(data.items())[:6]]
+            lines.append(f"- **{signal_name}**: {', '.join(summary_parts)}")
+        elif isinstance(data, list):
+            lines.append(f"- **{signal_name}**: {len(data)} items")
+        else:
+            lines.append(f"- **{signal_name}**: {data}")
     return lines
 
 
