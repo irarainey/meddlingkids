@@ -455,9 +455,9 @@ Key framework types used:
 | `ConsentDetectionAgent` | `consent_detection_agent.py` | Vision-only detection of blocking overlays and locate dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model. Uses the Responses API when targeting a codex deployment |
-| `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Uses a 60 s per-call timeout (large prompts on complex sites) |
-| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Full privacy analysis report (streaming markdown) with GDPR/TCF context. Uses `run(stream=True)` with a 60 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 60 s (covers both time-to-first-token and mid-stream stalls) |
+| `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring. Receives consent delta (post-consent changes) and consent platform data for richer findings. Results sorted by severity (critical first, positive last) |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Results sorted by severity within each section. Uses a 60 s per-call timeout |
+| `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Overall privacy risk narrative (streaming markdown) — scope narrowed to 3 sections (Tracking Technologies, Privacy Risk Assessment, Consent Dialog Analysis). Receives decoded privacy cookies and decoded consent signals. Uses `run(stream=True)` with a 90 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 90 s |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
 
@@ -469,7 +469,7 @@ Key framework types used:
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking + token estimation before each call) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint. Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
-| `Context Builder` | `context_builder.py` | Shared LLM analysis context builder — `build_analysis_context()` assembles tracking summary, consent, scoring, GDPR reference, and database sections for `TrackingAnalysisAgent` and `StructuredReportAgent` |
+| `Context Builder` | `context_builder.py` | Shared LLM analysis context builder. `build_analysis_context()` assembles the full context for `TrackingAnalysisAgent` (excluding heavy reference databases). `build_section_context()` builds tailored per-section context for `StructuredReportAgent` using `SectionNeeds` configs that declare which data blocks each section needs. Includes domain breakdown grouped by organization, storage summaries, consent delta, TC/AC string data, and social media tracker classifications |
 | `Prompts` | `prompts/` | System prompts for each agent, one module per agent |
 
 ### Domain Packages
@@ -480,8 +480,8 @@ Domain packages orchestrate browser automation and data processing. They call ag
 
 | Module | Responsibility |
 |--------|---------------|
-| `manager.py` | `PlaywrightManager` singleton — starts a single Playwright + Chrome instance at app startup (via FastAPI lifespan) and reuses it for all requests. `create_session()` creates an isolated `BrowserContext` per request (~50 ms). Auto-recovers when Chrome crashes (`_ensure_browser()` checks `browser.is_connected()` and restarts). Retries startup up to 2 times. Graceful shutdown with per-step timeouts (8 s each for browser close and Playwright stop) and `SIGKILL` fallback |
-| `session.py` | Per-request `BrowserSession` wrapping an isolated `BrowserContext`. Created by `PlaywrightManager.create_session()`. `close()` tears down only the context (8 s timeout) — the shared browser remains running. Captures `initiator_domain` from requesting frames and `redirected_from_url` from redirect chains. `take_screenshot()` accepts a configurable `timeout` (default 15 s) and `optimize_screenshot_bytes()` gracefully handles empty input |
+| `manager.py` | `PlaywrightManager` singleton — starts a single Playwright + Chrome instance at app startup (via FastAPI lifespan) and reuses it for all requests. `create_session()` creates an isolated `BrowserContext` per request (~50 ms) with a 30 s hard timeout. Auto-recovers when Chrome crashes (`_ensure_browser()` checks `browser.is_connected()` and restarts) and when the browser becomes unresponsive (`_probe_browser_health()` opens/closes a throwaway context within 10 s after a session reports trouble). `mark_health_suspect()` is called by sessions on context close timeout. Retries startup up to 2 times. Graceful shutdown with per-step timeouts (8 s each for browser close and Playwright stop) and `SIGKILL` fallback |
+| `session.py` | Per-request `BrowserSession` wrapping an isolated `BrowserContext`. Created by `PlaywrightManager.create_session()` with a back-reference to the manager. `close()` tears down only the context (8 s timeout) — the shared browser remains running. On context close timeout, notifies the manager via `mark_health_suspect()` so the next session creation triggers a health probe. Captures `initiator_domain` from requesting frames and `redirected_from_url` from redirect chains. `take_screenshot()` accepts a configurable `timeout` (default 15 s) and `optimize_screenshot_bytes()` gracefully handles empty input |
 | `device_configs.py` | Device emulation profiles (iPhone, iPad, Android, etc.) |
 | `access_detection.py` | Bot blocking and access denial detection patterns |
 
@@ -927,7 +927,9 @@ The browser lifecycle includes several safeguards to handle crashes, hangs, and 
 The `PlaywrightManager` singleton manages the shared Chrome browser lifecycle:
 
 - **Shared instance:** A single Chrome browser is started at app startup (via FastAPI `lifespan`). All requests share this instance.
-- **Auto-recovery:** Before creating each session, `_ensure_browser()` checks `browser.is_connected()` and restarts Chrome if it has crashed.
+- **Auto-recovery (disconnected):** Before creating each session, `_ensure_browser()` checks `browser.is_connected()` and restarts Chrome if it has crashed.
+- **Auto-recovery (unresponsive):** When a session's context close times out, it calls `mark_health_suspect()` on the manager. The next `_ensure_browser()` call runs `_probe_browser_health()` — a lightweight test that opens and closes a throwaway context within 10 seconds. If the probe hangs or fails, the browser is fully torn down and restarted.
+- **Session creation timeout:** `create_session()` is wrapped in a 30-second hard timeout (`_CREATE_SESSION_TIMEOUT_SECONDS`). If the browser is so hung it cannot create a context, the timeout fires, the health-suspect flag is set, and `TimeoutError` propagates. The next request triggers a restart.
 - **Startup retry:** Browser startup retries up to 2 times with cleanup between attempts (`_stop_internal()` + 2 s delay).
 - **Startup timeout:** `async_playwright().start()` is wrapped in a 15-second timeout to prevent indefinite hangs when Playwright or Xvfb is unresponsive.
 - **Browser PID tracking:** The browser PID is captured after launch for `SIGKILL` fallback during shutdown.
@@ -956,8 +958,9 @@ PlaywrightManager.start() — called once at app startup
 
 1. **Remove event listeners** — prevents callbacks from firing during teardown
 2. **Close browser context** — 8-second timeout (`_CLOSE_TIMEOUT_SECONDS`)
-3. **CancelledError / Exception** — silently caught (Starlette cancel-scopes can interrupt the close; non-fatal because the shared browser remains and the context will be garbage-collected)
-4. **Clear tracking data** — arrays are reset regardless of errors
+3. **On timeout** — calls `manager.mark_health_suspect()` so the next session creation triggers a health probe
+4. **CancelledError / Exception** — silently caught (Starlette cancel-scopes can interrupt the close; non-fatal because the shared browser remains and the context will be garbage-collected)
+5. **Clear tracking data** — arrays are reset regardless of errors
 
 ### Shared Browser Shutdown
 
@@ -1166,6 +1169,8 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Script analysis results are cached per **script domain** (not per site) by base URL (query strings stripped) + MD5 content hash; a script analysed on one site is an immediate cache hit on any other site that loads it. Within a single scan, scripts sharing the same base URL are deduplicated (fetched and analysed once)
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
+- Structured report sections receive **per-section context** via `SectionNeeds` configs — each section gets only the data blocks it needs, reducing token usage by 30–90% compared to sending the full context to every section
+- Domain breakdowns and third-party domain lists are **grouped by parent organization** in the LLM context, compressing ~40% of context characters
 - Screenshots are captured once as JPEG (quality 72) by Playwright — no format conversion needed
 - Vision API calls (detection, extraction) downscale JPEG to max 1280px wide
 - Overlay detection uses viewport-only screenshots (not full page) for faster capture and smaller payloads

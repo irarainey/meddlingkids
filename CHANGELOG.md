@@ -1,6 +1,37 @@
 
 # Changelog
 
+## 1.7.0
+
+### Fixed
+
+- **Unresponsive browser detection and automatic recovery** — When a browser context close times out, the session now signals the shared `PlaywrightManager` via `mark_health_suspect()`. Before the next session is created, a health probe opens and closes a throwaway context within 10 seconds. If the probe fails, the browser is automatically torn down and restarted. This prevents the server from becoming stuck after scanning ad-heavy sites.
+- **Session creation timeout** — `create_session()` is now wrapped in a 30-second hard timeout so a completely hung browser can never block the server indefinitely. On timeout, the browser is marked as health-suspect and `TimeoutError` propagates, allowing the next request to start with a fresh browser.
+- **ScriptAnalysisAgent fallback on empty responses** — The agent now falls back to the default model when the primary deployment returns an empty or unparseable response, not just on exceptions.
+- **Deterministic severity sorting in structured reports** — Privacy risk factors, cookie groups, consent discrepancies, social media risks, and data collection items are now sorted by severity (critical → positive) after LLM generation, so the UI always shows the most important issues first regardless of LLM output order.
+- **Summary findings sorted by severity** — Both the structured parse path and the text-fallback path now sort findings by severity (critical first, positive last).
+
+### Changed
+
+- **Per-section LLM context** — The structured report agent now builds tailored context for each of its 9 report sections using a `SectionNeeds` configuration matrix, including only the data blocks each section actually requires. This reduces token usage by 30–90% per section compared to sending the full context every time.
+- **Domain breakdown grouped by organization** — Third-party domains and domain breakdowns in the LLM context are now grouped by parent organization (e.g. Google, Meta, Amazon) using the domain classifier, compressing ~40% of context characters.
+- **Heavy reference databases removed from tracking analysis context** — The GDPR/TCF reference (~4.5K chars), tracking cookie database (~13K chars), and Disconnect database (~11K chars) are no longer included in the full-context tracking analysis prompt. They are now injected only into the specific report sections that need them.
+- **Decoded privacy cookies in analysis context** — Decoded consent signals (USP, GPP, Google Analytics, Facebook, OneTrust, Cookiebot, etc.) are now passed through the pipeline and included in the tracking analysis context.
+- **Consent delta in context** — Post-consent changes (new cookies, scripts, and requests that appeared after dismissing the consent dialog) are now computed and included for the privacy-risk and consent-analysis report sections.
+- **TC/AC string data in consent analysis** — Decoded TC string details (purpose consents, vendor counts, CMP identity, legitimate interest signals, resolved vendor names, and validation findings) are now included in the consent-analysis section context.
+- **Social media tracker classifications in context** — Pre-classified social media trackers from the deterministic pipeline are now passed directly to the social-media-implications report section.
+- **Storage summary mode** — Sections that don't need full key-value storage data (tracking-technologies, data-collection) receive a compact grouped summary of storage keys classified by tracking pattern, instead of the full JSON.
+- **TrackingAnalysisAgent timeout increased to 90 seconds** — Raised from 60 seconds to accommodate larger prompts on complex sites.
+- **TrackingAnalysisAgent max_tokens reduced to 2048** — Halved from 4096 since the agent now produces only the overall risk narrative; detailed per-topic analysis is handled by the structured report agent.
+- **SummaryFindingsAgent max_tokens increased to 1024** — Doubled from 500 to accommodate richer findings with consent delta data.
+- **Disconnect context grouped by company** — `build_disconnect_context()` now groups domains by company name (with truncation at 3 domains per company) instead of listing each domain–company pair individually.
+
+### Refactored
+
+- **All LLM system prompts condensed** — Consent detection (−69%), structured report (−51%), summary findings (−68%), and tracking analysis (−65%) prompts rewritten for clarity and reduced token usage. Common directives (plain-text formatting, page-load caveat, partner caveat, factual constraint) extracted into shared constants.
+- **Tracking analysis prompt scope narrowed** — The tracking analysis system prompt was reduced from 9 required sections to 3 (Tracking Technologies, Privacy Risk Assessment, Consent Dialog Analysis), each limited to 3–5 sentences. Detailed per-topic analysis is now handled exclusively by the structured report agent.
+- **ScriptAnalysisAgent fallback logic flattened** — The nested try/except fallback structure simplified to a linear flow with primary attempt followed by fallback attempt.
+
 ## 1.6.3
 
 ### Fixed
