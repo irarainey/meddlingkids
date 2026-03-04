@@ -140,6 +140,7 @@ class StructuredReportAgent(base.BaseAgent):
                 pre_consent_stats=pre_consent_stats,
                 score_breakdown=score_breakdown,
                 domain_knowledge=domain_knowledge,
+                social_media_trackers=det_tracking.social_media,
             )
 
         # All sections are independent — they share the same

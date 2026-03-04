@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from src.agents import gdpr_context
 from src.analysis import domain_cache, domain_classifier
 from src.data import loader
-from src.models import analysis, consent
+from src.models import analysis, consent, report
 from src.utils import risk
 
 if TYPE_CHECKING:
@@ -57,6 +57,9 @@ class SectionNeeds:
     media_group: bool = False
     include_partner_urls: bool = False
     storage_summary_only: bool = False
+    consent_delta: bool = False
+    tc_string_data: bool = False
+    social_platforms: bool = False
 
 
 # Per-section configs derived from the needs-matrix audit.
@@ -93,6 +96,7 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
     ),
     "privacy-risk": SectionNeeds(
         pre_consent_stats=True,
+        consent_delta=True,
         third_party_domains=True,
         domain_breakdown=True,
         privacy_score=True,
@@ -114,6 +118,8 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
     "consent-analysis": SectionNeeds(
         third_party_domains=True,
         consent_info=True,
+        consent_delta=True,
+        tc_string_data=True,
         domain_knowledge=True,
         gdpr_reference=True,
         tracking_cookie_db=True,
@@ -126,6 +132,7 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
         domain_knowledge=True,
         tracking_cookie_db=True,
         disconnect_db=True,
+        social_platforms=True,
     ),
     "recommendations": SectionNeeds(
         pre_consent_stats=True,
@@ -254,6 +261,7 @@ def build_section_context(
     pre_consent_stats: analysis.PreConsentStats | None = None,
     score_breakdown: analysis.ScoreBreakdown | None = None,
     domain_knowledge: domain_cache.DomainKnowledge | None = None,
+    social_media_trackers: list[report.TrackerEntry] | None = None,
 ) -> str:
     """Build a tailored context string for a single report section.
 
@@ -272,6 +280,8 @@ def build_section_context(
         pre_consent_stats: Optional pre-consent statistics.
         score_breakdown: Deterministic privacy score.
         domain_knowledge: Optional cached domain classifications.
+        social_media_trackers: Pre-classified social media
+            tracker entries from deterministic classification.
 
     Returns:
         Multi-section markdown context string.
@@ -397,6 +407,24 @@ def build_section_context(
         )
         if media_ctx:
             sections.append(media_ctx)
+
+    # ── Gap fills ───────────────────────────────────────────
+
+    if needs.consent_delta and pre_consent_stats:
+        sections.extend(
+            _build_consent_delta_lines(
+                pre_consent_stats,
+                tracking_summary,
+            )
+        )
+
+    if needs.tc_string_data and consent_details:
+        tc_lines = _build_tc_string_lines(consent_details)
+        if tc_lines:
+            sections.extend(tc_lines)
+
+    if needs.social_platforms and social_media_trackers:
+        sections.extend(_build_social_platforms_lines(social_media_trackers))
 
     return "\n".join(sections)
 
@@ -567,6 +595,126 @@ def _build_storage_summary(
             lines[-1] += f", ... (+{len(functional) - 8} more)"
 
     return "\n".join(lines)
+
+
+# ── Gap-fill context helpers ────────────────────────────────────
+
+
+def _build_consent_delta_lines(
+    pre: analysis.PreConsentStats,
+    tracking_summary: analysis.TrackingSummary,
+) -> list[str]:
+    """Build a consent-delta section showing what changed after consent.
+
+    Computes the difference between pre-consent counts and
+    final totals to show how many cookies, scripts, and
+    requests appeared after the consent dialog was dismissed.
+    """
+    new_cookies = tracking_summary.total_cookies - pre.total_cookies
+    new_scripts = tracking_summary.total_scripts - pre.total_scripts
+    new_requests = tracking_summary.total_network_requests - pre.total_requests
+
+    if new_cookies <= 0 and new_scripts <= 0 and new_requests <= 0:
+        return []
+
+    return [
+        "",
+        "## Post-Consent Changes (what appeared after dialog dismissal)",
+        f"- New cookies after consent: {new_cookies} (was {pre.total_cookies}, now {tracking_summary.total_cookies})",
+        f"- New scripts after consent: {new_scripts} (was {pre.total_scripts}, now {tracking_summary.total_scripts})",
+        f"- New requests after consent: {new_requests} (was {pre.total_requests}, now {tracking_summary.total_network_requests})",
+    ]
+
+
+def _build_tc_string_lines(
+    cd: consent.ConsentDetails,
+) -> list[str]:
+    """Build a compact TC/AC string summary for the consent section.
+
+    Extracts purpose consents, vendor counts, LI signals,
+    CMP identity, and validation findings from the decoded
+    TC string data stored on ``ConsentDetails``.
+    """
+    lines: list[str] = []
+
+    tc = cd.tc_string_data
+    if tc:
+        lines.extend(
+            [
+                "",
+                "## Decoded TC String (IAB TCF v2.2)",
+                f"- CMP ID: {tc.get('cmpId', 'unknown')} v{tc.get('cmpVersion', '?')}",
+                f"- Policy version: {tc.get('tcfPolicyVersion', '?')}",
+                f"- Purposes consented: {tc.get('purposeConsents', [])}",
+                f"- Purposes with legitimate interest: {tc.get('purposeLegitimateInterests', [])}",
+                f"- Special features opted in: {tc.get('specialFeatureOptIns', [])}",
+                f"- Vendors consented: {tc.get('vendorConsentCount', 0)}",
+                f"- Vendors with legitimate interest: {tc.get('vendorLiCount', 0)}",
+            ]
+        )
+        # Resolved vendor names (if available).
+        resolved = tc.get("resolvedVendorConsents")
+        if resolved and isinstance(resolved, list):
+            names = [v.get("name", "") for v in resolved[:20] if isinstance(v, dict)]
+            if names:
+                lines.append(f"- Top consented vendors: {', '.join(names)}")
+            unresolved = tc.get("unresolvedVendorConsentCount", 0)
+            if unresolved:
+                lines.append(f"- Unresolved vendor IDs: {unresolved}")
+
+    ac = cd.ac_string_data
+    if ac:
+        lines.extend(
+            [
+                "",
+                "## Decoded AC String (Google Additional Consent)",
+                f"- Provider count: {ac.get('vendorCount', 0)}",
+            ]
+        )
+        resolved_ac = ac.get("resolvedProviders")
+        if resolved_ac and isinstance(resolved_ac, list):
+            names = [p.get("name", "") for p in resolved_ac[:15] if isinstance(p, dict)]
+            if names:
+                lines.append(f"- Top providers: {', '.join(names)}")
+
+    tc_val = cd.tc_validation
+    if tc_val:
+        findings = tc_val.get("findings", [])
+        if findings and isinstance(findings, list):
+            lines.extend(
+                [
+                    "",
+                    "## TC String Validation Findings",
+                ]
+            )
+            for f in findings[:5]:
+                if isinstance(f, dict):
+                    lines.append(f"- [{f.get('severity', 'info')}] {f.get('message', '')}")
+
+    return lines
+
+
+def _build_social_platforms_lines(
+    trackers: list[report.TrackerEntry],
+) -> list[str]:
+    """Build a pre-classified social media platforms section.
+
+    Passes deterministic social-media tracker classifications
+    to the LLM so it doesn't have to re-derive platform
+    identities from raw domain lists.
+    """
+    if not trackers:
+        return []
+
+    lines = [
+        "",
+        "## Detected Social Media Platforms (deterministic classification)",
+    ]
+    for t in trackers:
+        domains = ", ".join(t.domains[:5])
+        cookies = ", ".join(t.cookies[:5]) if t.cookies else "none"
+        lines.append(f"- **{t.name}**: domains=[{domains}], cookies=[{cookies}], purpose={t.purpose}")
+    return lines
 
 
 # ── Private section helpers ─────────────────────────────────────
