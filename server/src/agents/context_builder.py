@@ -225,16 +225,14 @@ def build_analysis_context(
     if domain_knowledge:
         sections.append(domain_cache.build_context_hint(domain_knowledge))
 
-    sections.append(
-        "\n"
-        + gdpr_context.build_gdpr_reference(
-            heading="## GDPR / TCF Reference Data",
-        ),
-    )
-
-    cookie_ctx = loader.build_tracking_cookie_context()
-    if cookie_ctx:
-        sections.append(cookie_ctx)
+    # Note: GDPR/TCF reference (~4.5K), tracking cookie DB (~13K),
+    # and Disconnect DB (~11K) are omitted from the full context
+    # to keep the TrackingAnalysisAgent prompt under LLM timeout
+    # thresholds.  These static reference databases are included
+    # in section-specific contexts via build_section_context()
+    # where they're actually needed (cookie-analysis, consent-
+    # analysis).  The TrackingAnalysisAgent's model already has
+    # strong knowledge of common tracking cookies and TCF purposes.
 
     disconnect_ctx = loader.build_disconnect_context(
         tracking_summary.third_party_domains,

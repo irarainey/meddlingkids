@@ -18,6 +18,15 @@ from src.utils import json_parsing, logger, risk
 
 log = logger.create_logger("SummaryFindingsAgent")
 
+# Severity sort order — critical first, positive last.
+_FINDING_ORDER: dict[str, int] = {
+    "critical": 0,
+    "high": 1,
+    "moderate": 2,
+    "info": 3,
+    "positive": 4,
+}
+
 
 # ── Structured output models ───────────────────────────────────
 
@@ -125,6 +134,7 @@ class SummaryFindingsAgent(base.BaseAgent):
             parsed = self._parse_response(response, _SummaryFindingsResponse)
             if parsed:
                 findings = [analysis.SummaryFinding(type=f.type, text=f.text) for f in parsed.findings]
+                findings.sort(key=lambda f: _FINDING_ORDER.get(f.type, 9))
                 log.success(
                     "Summary findings parsed",
                     {"count": len(findings)},
@@ -170,6 +180,7 @@ def _parse_text_fallback(
             for f in items
             if isinstance(f, dict)
         ]
+        findings.sort(key=lambda f: _FINDING_ORDER.get(f.type, 9))
         log.success(
             "Summary findings parsed (fallback)",
             {"count": len(findings)},

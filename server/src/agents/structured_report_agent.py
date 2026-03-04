@@ -28,6 +28,16 @@ log = logger.create_logger("StructuredReportAgent")
 
 AGENT_NAME = "StructuredReportAgent"
 
+# Severity sort order — critical first, least severe last.
+_SEVERITY_ORDER: dict[str, int] = {
+    "critical": 0,
+    "very-high": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 4,
+    "none": 5,
+}
+
 
 # ── Per-section response wrappers ───────────────────────────────
 # Each wrapper is a simple Pydantic model that the LLM fills
@@ -372,6 +382,26 @@ class StructuredReportAgent(base.BaseAgent):
                 recommendations,
                 report.RecommendationsSection,
             ),
+        )
+
+        # ── Deterministic severity sorting ──────────────────
+        # Sort all ranked lists from most severe to least so
+        # the UI always shows critical issues first, regardless
+        # of the order the LLM returned them.
+        result.privacy_risk.factors.sort(
+            key=lambda f: _SEVERITY_ORDER.get(f.severity, 9),
+        )
+        result.cookie_analysis.groups.sort(
+            key=lambda g: _SEVERITY_ORDER.get(g.concern_level, 9),
+        )
+        result.consent_analysis.discrepancies.sort(
+            key=lambda d: _SEVERITY_ORDER.get(d.severity, 9),
+        )
+        result.social_media_implications.risks.sort(
+            key=lambda r: _SEVERITY_ORDER.get(r.severity, 9),
+        )
+        result.data_collection.items.sort(
+            key=lambda i: _SEVERITY_ORDER.get(i.risk, 9),
         )
 
         log.end_timer("structured-report", "Structured report complete")
