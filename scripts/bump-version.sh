@@ -14,14 +14,14 @@ readonly PYPROJECT_TOML="$ROOT_DIR/server/pyproject.toml"
 
 usage() {
     echo "Usage: $(basename "$0") <version>"
-    echo "  e.g. $(basename "$0") 1.7.0"
+    echo "  e.g. $(basename "$0") 1.7.2"
     exit 1
 }
 
 validate_version() {
     local version="$1"
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "Error: version must be in semver format (e.g. 1.7.0)" >&2
+        echo "Error: version must be in semver format (e.g. 1.7.2)" >&2
         exit 1
     fi
 }
