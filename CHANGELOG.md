@@ -15,6 +15,11 @@
 - **Data loader switched from stdlib `json` to `orjson`** — The shared `_load_json()` helper now uses `orjson` (C extension, already a project dependency) for parsing all data files, reducing JSON deserialization time by ~1.4x across 8 MB of reference data.
 - **URL input widened by 25%** — The URL entry field increased from 400px to 500px for easier editing of long URLs.
 - **Tagline rendered on a single line** — Removed the `max-width` constraint on the intro paragraph so it no longer wraps onto two lines on wide screens.
+- **Combined regex fast-paths in cookie lookup** — Cookie consent, tracking, and fingerprint pattern checks in `cookie_lookup.py` now use pre-compiled combined alternation regexes instead of iterating individual patterns sequentially, reducing per-cookie regex tests by ~70%.
+- **Script classification short-circuit** — `build_pre_consent_stats()` now tests the fast combined URL tracker regex before iterating 499 individual script patterns, short-circuiting immediately for known trackers.
+- **Partner database URL normalization cached** — The 5-step string manipulation chain for partner entry URLs is now cached via `@functools.lru_cache`, running at most once per unique URL instead of once per domain per entry per request.
+- **Domain keyword classifier fast-fail** — Added a combined alternation regex for the 5 domain keyword classifiers. Domains that match no keyword (the majority) now fail in one regex test instead of five.
+- **Script grouping fast-fail** — Added a combined alternation regex for the 8 groupable script patterns. Non-matching URLs now exit in one test instead of eight.
 
 ## 1.7.2
 

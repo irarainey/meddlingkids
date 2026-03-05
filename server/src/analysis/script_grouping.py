@@ -196,7 +196,15 @@ def group_similar_scripts(scripts: list[tracking_data.TrackedScript]) -> Grouped
 # ---------------------------------------------------------------------------
 
 
+_GROUPABLE_COMBINED: re.Pattern[str] = re.compile(
+    "|".join(f"(?:{gp.pattern.pattern})" for gp in GROUPABLE_PATTERNS),
+    re.IGNORECASE,
+)
+
+
 def _get_groupable_pattern(url: str) -> GroupPattern | None:
+    if not _GROUPABLE_COMBINED.search(url):
+        return None
     for gp in GROUPABLE_PATTERNS:
         if gp.pattern.search(url):
             return gp

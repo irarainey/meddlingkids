@@ -350,6 +350,8 @@ def _combine(patterns: list[re.Pattern[str]]) -> re.Pattern[str]:
 
 TRACKING_COOKIE_COMBINED: re.Pattern[str] = _combine(TRACKING_COOKIE_PATTERNS)
 
+FINGERPRINT_COOKIE_COMBINED: re.Pattern[str] = _combine(FINGERPRINT_COOKIE_PATTERNS)
+
 CONSENT_STATE_COOKIE_COMBINED: re.Pattern[str] = _combine(CONSENT_STATE_COOKIE_PATTERNS)
 
 ALL_URL_TRACKERS_COMBINED: re.Pattern[str] = _combine(

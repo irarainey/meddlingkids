@@ -19,6 +19,7 @@ reducing LLM token usage and improving resilience.
 
 from __future__ import annotations
 
+import functools
 import re
 from typing import Literal
 
@@ -71,6 +72,43 @@ _PARTNER_MAP: dict[str, TrackerCategory] = {
     "personalization": "other",
     "measurement": "analytics",
 }
+
+
+@functools.cache
+def _get_partner_domain_index() -> dict[str, tuple[str, TrackerCategory]]:
+    """Pre-build a {domain → (company, category)} index from all partner databases.
+
+    Normalises partner entry URLs once at load time so that
+    ``classify_domain()`` can do O(1) dict lookups instead of
+    iterating every entry on every call.
+    """
+    index: dict[str, tuple[str, TrackerCategory]] = {}
+    for cfg in loader.PARTNER_CATEGORIES:
+        mapped = _PARTNER_MAP.get(cfg.category, "other")
+        db = loader.get_partner_database(cfg.file)
+        for name, entry in db.items():
+            domain = _get_partner_entry_domain(entry.url)
+            if domain and domain not in index:
+                index[domain] = (name.title(), mapped)
+    return index
+
+
+@functools.lru_cache(maxsize=4096)
+def _get_partner_entry_domain(url: str | None) -> str:
+    """Extract and normalise the domain from a partner entry URL.
+
+    Cached so the string manipulation is done at most once per
+    unique URL across the partner databases.
+    """
+    if not url:
+        return ""
+    return (
+        url.replace("https://", "")
+        .replace("http://", "")
+        .rstrip("/")
+        .split("/")[0]
+        .removeprefix("www.")
+    )
 
 
 # Priority order for Disconnect categories when a domain has
@@ -174,6 +212,12 @@ _DOMAIN_KEYWORD_CLASSIFIERS: list[tuple[re.Pattern[str], TrackerCategory]] = [
 ]
 
 
+_DOMAIN_KEYWORD_COMBINED: re.Pattern[str] = re.compile(
+    "|".join(f"(?:{p.pattern})" for p, _ in _DOMAIN_KEYWORD_CLASSIFIERS),
+    re.IGNORECASE,
+)
+
+
 def _classify_by_domain_keywords(domain: str) -> TrackerCategory:
     """Classify a domain by matching keyword patterns in its name.
 
@@ -189,6 +233,8 @@ def _classify_by_domain_keywords(domain: str) -> TrackerCategory:
         A ``TrackerCategory``.  Defaults to ``"other"`` when
         no pattern matches.
     """
+    if not _DOMAIN_KEYWORD_COMBINED.search(domain):
+        return "other"
     for pattern, category in _DOMAIN_KEYWORD_CLASSIFIERS:
         if pattern.search(domain):
             return category
@@ -294,11 +340,11 @@ def classify_domain(domain: str) -> tuple[TrackerCategory, str | None]:
     #    match or mapped to "other".
     base = url_mod.get_base_domain(domain)
     for cfg in loader.PARTNER_CATEGORIES:
+        mapped = _PARTNER_MAP.get(cfg.category, "other")
         db = loader.get_partner_database(cfg.file)
         for name, entry in db.items():
-            entry_domain = (entry.url or "").replace("https://", "").replace("http://", "").rstrip("/").split("/")[0].removeprefix("www.")
+            entry_domain = _get_partner_entry_domain(entry.url)
             if entry_domain and (entry_domain in (domain, base) or domain.endswith(f".{entry_domain}")):
-                mapped = _PARTNER_MAP.get(cfg.category, "other")
                 category = mapped
                 company = name.title()
                 return category, company
