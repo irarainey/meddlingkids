@@ -18,6 +18,7 @@ import {
   scaleLinear,
   scaleSqrt,
   zoomIdentity,
+
 } from 'd3'
 import type {
   Simulation,
@@ -801,20 +802,35 @@ function renderGraphInner() {
     .attr('d', 'M0,-5L10,0L0,5')
     .attr('fill', '#f59e0b')
 
+  // Glow filter for node hover effect
+  const glowFilter = svgSel.select('defs').append('filter')
+    .attr('id', 'node-glow')
+    .attr('x', '-50%').attr('y', '-50%')
+    .attr('width', '200%').attr('height', '200%')
+  glowFilter.append('feGaussianBlur')
+    .attr('in', 'SourceGraphic')
+    .attr('stdDeviation', '4')
+    .attr('result', 'blur')
+  glowFilter.append('feComposite')
+    .attr('in', 'SourceGraphic')
+    .attr('in2', 'blur')
+    .attr('operator', 'over')
+
   // Edge scale for stroke width
   const maxWeight = max(edges, e => e.weight) ?? 1
   const strokeScale = scaleLinear().domain([1, maxWeight]).range([1, 4])
 
-  // Draw edges
+  // Draw edges as curved paths
   const linkGroup = container.append('g').attr('class', 'links')
-  const linkSel = linkGroup.selectAll<SVGLineElement, GraphEdge>('line')
+  const linkSel = linkGroup.selectAll<SVGPathElement, GraphEdge>('path')
     .data(edges)
-    .join('line')
+    .join('path')
+    .attr('fill', 'none')
     .attr('stroke', d => d.preConsent ? '#f59e0b' : '#4b5563')
     .attr('stroke-width', d => strokeScale(d.weight))
     .attr('stroke-dasharray', d => d.preConsent ? '5,3' : 'none')
     .attr('marker-end', d => d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
-    .attr('opacity', 0.6)
+    .attr('opacity', 0)
 
   // Node radius scale
   const maxReq = max(nodes, n => n.requestCount) ?? 1
@@ -829,18 +845,32 @@ function renderGraphInner() {
   const nodeSel = nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
     .data(nodes, d => d.id)
     .join('circle')
-    .attr('r', d => d.category === 'origin' ? 16 : radiusScale(d.requestCount))
+    .attr('r', 0)
     .attr('fill', d => CATEGORY_COLOURS[d.category])
     .attr('stroke', '#1e2235')
     .attr('stroke-width', 1.5)
     .attr('cursor', 'pointer')
     .on('mouseover', (_event, d) => {
       hoveredNode.value = d
+      // Apply glow filter on hover
+      nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
+        .filter(n => n.id === d.id)
+        .attr('filter', 'url(#node-glow)')
+        .transition().duration(200)
+        .attr('stroke', CATEGORY_COLOURS[d.category])
+        .attr('stroke-width', 3)
       // Show label on hover for nodes that lack a persistent label
       labelSel.filter(n => n.id === d.id).attr('opacity', 1)
     })
     .on('mouseout', (_event, d) => {
       hoveredNode.value = null
+      // Remove glow filter
+      nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
+        .filter(n => n.id === d.id)
+        .attr('filter', null)
+        .transition().duration(300)
+        .attr('stroke', '#1e2235')
+        .attr('stroke-width', 1.5)
       // Restore original opacity
       labelSel.filter(n => n.id === d.id)
         .attr('opacity', n => showLabel(n) ? 1 : 0)
@@ -865,6 +895,25 @@ function renderGraphInner() {
     .attr('text-anchor', 'middle')
     .attr('dy', d => -(d.category === 'origin' ? 20 : radiusScale(d.requestCount) + 6))
     .attr('pointer-events', 'none')
+    .attr('opacity', 0)
+
+  // ── Entrance animations ──
+  // Staggered node scale-up
+  nodeSel.transition()
+    .delay((_d, i) => i * 6)
+    .duration(250)
+    .attr('r', d => d.category === 'origin' ? 16 : radiusScale(d.requestCount))
+
+  // Fade in edges after nodes settle
+  linkSel.transition()
+    .delay(150)
+    .duration(300)
+    .attr('opacity', 0.6)
+
+  // Fade in labels
+  labelSel.transition()
+    .delay(250)
+    .duration(250)
     .attr('opacity', d => showLabel(d) ? 1 : 0)
 
   // Store a reference to the currently rendered data so the
@@ -885,11 +934,21 @@ function renderGraphInner() {
       tickScheduled = true
       requestAnimationFrame(() => {
         tickScheduled = false
-        linkSel
-          .attr('x1', d => (d.source as GraphNode).x ?? 0)
-          .attr('y1', d => (d.source as GraphNode).y ?? 0)
-          .attr('x2', d => (d.target as GraphNode).x ?? 0)
-          .attr('y2', d => (d.target as GraphNode).y ?? 0)
+
+        // Curved links with quadratic Bézier offset
+        linkSel.attr('d', (d: GraphEdge) => {
+          const src = d.source as GraphNode
+          const tgt = d.target as GraphNode
+          const sx = src.x ?? 0, sy = src.y ?? 0
+          const tx = tgt.x ?? 0, ty = tgt.y ?? 0
+          const dx = tx - sx, dy = ty - sy
+          // Perpendicular offset for curve (proportional to distance, capped)
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          const offset = Math.min(dist * 0.15, 40)
+          const mx = (sx + tx) / 2 - (dy / dist) * offset
+          const my = (sy + ty) / 2 + (dx / dist) * offset
+          return `M${sx},${sy}Q${mx},${my} ${tx},${ty}`
+        })
 
         nodeSel
           .attr('cx', d => d.x ?? 0)
@@ -948,16 +1007,26 @@ function applyHighlight(): void {
 
   const svgSel = select(svg)
   const circlesSel = svgSel.selectAll<SVGCircleElement, GraphNode>('.nodes circle')
-  const linesSel = svgSel.selectAll<SVGLineElement, GraphEdge>('.links line')
+  const pathsSel = svgSel.selectAll<SVGPathElement, GraphEdge>('.links path')
   const textsSel = svgSel.selectAll<SVGTextElement, GraphNode>('.labels text')
 
   const sel = selectedNode.value
   if (!sel) {
     // Restore defaults
-    circlesSel.attr('opacity', 1)
-    linesSel.attr('opacity', 0.6)
+    circlesSel
+      .attr('opacity', 1)
+      .attr('filter', null)
+      .attr('stroke', '#1e2235')
+      .attr('stroke-width', 1.5)
+    pathsSel.attr('opacity', 0.6).attr('stroke-width', d => {
+      const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
+      const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
+      return s(d.weight)
+    })
     textsSel.attr('opacity', (d: GraphNode) =>
       d.category === 'origin' || d.requestCount >= currentLabelThreshold ? 1 : 0)
+    // Remove any path trace highlights
+    svgSel.selectAll('.path-trace').remove()
     return
   }
 
@@ -969,10 +1038,85 @@ function applyHighlight(): void {
     if (e.targetId === sel.id) connectedIds.add(e.sourceId)
   }
 
-  circlesSel.attr('opacity', (d: GraphNode) => connectedIds.has(d.id) ? 1 : 0.12)
-  linesSel.attr('opacity', (d: GraphEdge) =>
-    d.sourceId === sel.id || d.targetId === sel.id ? 0.85 : 0.04)
-  textsSel.attr('opacity', (d: GraphNode) => connectedIds.has(d.id) ? 1 : 0.04)
+  // Path tracing: find all paths from origin to selected node via BFS
+  const traceIds = tracePathToOrigin(sel.id, edges, originDomain.value)
+
+  // Combine connected + traced nodes
+  const highlightIds = new Set([...connectedIds, ...traceIds])
+
+  circlesSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.12)
+  pathsSel.attr('opacity', (d: GraphEdge) => {
+    if (d.sourceId === sel.id || d.targetId === sel.id) return 0.85
+    // Highlight edges on the traced path
+    if (traceIds.has(d.sourceId) && traceIds.has(d.targetId)) return 0.6
+    return 0.04
+  })
+  textsSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.04)
+
+  // Glow the selected node
+  circlesSel
+    .filter((d: GraphNode) => d.id === sel.id)
+    .attr('filter', 'url(#node-glow)')
+    .attr('stroke', CATEGORY_COLOURS[sel.category])
+    .attr('stroke-width', 3)
+}
+
+// ============================================================================
+// Path Tracing
+// ============================================================================
+
+/**
+ * Trace all nodes on any path from origin to the target node.
+ * Uses reverse BFS from the target back to origin, collecting
+ * every node along the way.
+ */
+function tracePathToOrigin(targetId: string, edges: GraphEdge[], origin: string): Set<string> {
+  if (targetId === origin) return new Set([origin])
+
+  // Build forward adjacency: source → [targets]
+  const adj = new Map<string, string[]>()
+  for (const e of edges) {
+    let targets = adj.get(e.sourceId)
+    if (!targets) { targets = []; adj.set(e.sourceId, targets) }
+    targets.push(e.targetId)
+  }
+
+  // BFS from origin, recording parent pointers
+  const parents = new Map<string, string[]>()
+  const visited = new Set<string>([origin])
+  const queue = [origin]
+  let found = false
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (current === targetId) { found = true; continue }
+    const neighbors = adj.get(current) ?? []
+    for (const next of neighbors) {
+      if (!parents.has(next)) parents.set(next, [])
+      parents.get(next)!.push(current)
+      if (!visited.has(next)) {
+        visited.add(next)
+        queue.push(next)
+      }
+    }
+  }
+
+  if (!found) return new Set([targetId])
+
+  // Walk backwards from target to origin to collect all nodes on paths
+  const onPath = new Set<string>([targetId])
+  const backQueue = [targetId]
+  while (backQueue.length > 0) {
+    const current = backQueue.shift()!
+    const preds = parents.get(current) ?? []
+    for (const p of preds) {
+      if (!onPath.has(p)) {
+        onPath.add(p)
+        backQueue.push(p)
+      }
+    }
+  }
+  return onPath
 }
 
 // ============================================================================
@@ -1186,6 +1330,24 @@ const selectedResourceBreakdown = computed(() => {
     })
     .sort((a, b) => b.count - a.count)
 })
+
+/** Category breakdown for the stats overlay. */
+const graphStatsOverlay = computed(() => {
+  const { nodes } = filteredGraphData.value
+  const counts = new Map<TrackerCategory, number>()
+  for (const n of nodes) {
+    counts.set(n.category, (counts.get(n.category) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([cat, count]) => ({
+      category: cat,
+      label: CATEGORY_LABELS[cat],
+      colour: CATEGORY_COLOURS[cat],
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
 </script>
 
 <template>
@@ -1299,6 +1461,20 @@ const selectedResourceBreakdown = computed(() => {
             {{ CATEGORY_LABELS[hoveredNode.category] }}
           </span>
           <span>{{ hoveredNode.requestCount }} request{{ hoveredNode.requestCount !== 1 ? 's' : '' }}</span>
+        </div>
+
+        <!-- Graph statistics overlay -->
+        <div class="graph-stats-overlay">
+          <div class="stats-overlay-row" v-for="cat in graphStatsOverlay" :key="cat.category">
+            <span class="stats-overlay-dot" :style="{ background: cat.colour }"></span>
+            <span class="stats-overlay-label">{{ cat.label }}</span>
+            <span class="stats-overlay-count">{{ cat.count }}</span>
+          </div>
+          <div class="stats-overlay-divider"></div>
+          <div class="stats-overlay-row">
+            <span class="stats-overlay-label stats-overlay-total">Connections</span>
+            <span class="stats-overlay-count">{{ filteredGraphData.edges.length }}</span>
+          </div>
         </div>
       </div>
 
@@ -1802,5 +1978,59 @@ const selectedResourceBreakdown = computed(() => {
   color: var(--muted-color);
   text-align: center;
   margin: 0;
+}
+
+/* Graph statistics overlay */
+.graph-stats-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(21, 24, 37, 0.88);
+  border: 1px solid var(--border-separator);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  backdrop-filter: blur(4px);
+  min-width: 130px;
+}
+
+.stats-overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stats-overlay-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-overlay-label {
+  flex: 1;
+  color: #9ca3af;
+}
+
+.stats-overlay-total {
+  color: #c7d2fe;
+  font-weight: 500;
+}
+
+.stats-overlay-count {
+  font-weight: 600;
+  color: #e0e7ff;
+  text-align: right;
+}
+
+.stats-overlay-divider {
+  height: 1px;
+  background: var(--border-separator);
+  margin: 0.15rem 0;
 }
 </style>
