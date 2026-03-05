@@ -13,6 +13,8 @@ import pathlib
 import re
 from typing import Any
 
+import orjson
+
 from src.models import partners
 from src.utils import logger
 
@@ -35,20 +37,20 @@ def _load_json(relative_path: str) -> Any:
         raise ValueError(f"Path escapes data directory: {relative_path}")
     if not full_path.exists():
         raise FileNotFoundError(f"Data file not found: {relative_path}")
-    with open(full_path, encoding="utf-8") as f:
+    with open(full_path, "rb") as f:
         try:
-            data = json.load(f)
+            data = orjson.loads(f.read())
             log.debug("Loaded data file", {"file": relative_path})
             return data
-        except json.JSONDecodeError as exc:
+        except orjson.JSONDecodeError as exc:
             log.error(
                 "Invalid JSON in data file",
-                {"file": relative_path, "error": exc.msg},
+                {"file": relative_path, "error": str(exc)},
             )
             raise json.JSONDecodeError(
-                f"Invalid JSON in {relative_path}: {exc.msg}",
-                exc.doc,
-                exc.pos,
+                f"Invalid JSON in {relative_path}: {exc}",
+                "",
+                0,
             ) from exc
 
 

@@ -12,6 +12,7 @@
 - **17 new vendor profiles in cookie database** — Added vendor metadata (category, URL, privacy concerns) for Pendo, VWO, Inspectlet, Tealium, Branch.io, Quantcast, LogRocket, Akamai, Leadfeeder, Evidon/Crownpeak, Intercom, Adjust, Piano, WalkMe, Exponea/Bloomreach, Baremetrics, and Insider.
 - **11 new vendor profiles in storage database** — Added vendor metadata for Pendo, VWO, Inspectlet, ContentSquare, Branch.io, Qualtrics, WalkMe, Tealium, Exponea/Bloomreach, Adjust, and Quantcast.
 - **Screenshot gallery auto-scrolls to latest screenshot** — On small screens (e.g. phone in portrait mode), the screenshot thumbnail row now smoothly scrolls to the rightmost thumbnail when a new screenshot is added, ensuring the latest capture is always visible.
+- **Data loader switched from stdlib `json` to `orjson`** — The shared `_load_json()` helper now uses `orjson` (C extension, already a project dependency) for parsing all data files, reducing JSON deserialization time by ~1.4x across 8 MB of reference data.
 
 ## 1.7.2
 
