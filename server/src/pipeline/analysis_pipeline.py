@@ -1087,7 +1087,7 @@ def _build_complete_payload(
     return sse_helpers.format_sse_event(
         "complete",
         {
-            "message": "Investigation complete!",
+            "message": "Investigation complete",
             "structuredReport": (structured_report.model_dump(by_alias=True) if analysis_success and structured_report else None),
             "summaryFindings": ([{"type": f.type, "text": f.text} for f in summary_findings] if analysis_success else None),
             "privacyScore": (privacy_score if analysis_success else None),

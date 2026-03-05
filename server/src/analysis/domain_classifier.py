@@ -102,13 +102,7 @@ def _get_partner_entry_domain(url: str | None) -> str:
     """
     if not url:
         return ""
-    return (
-        url.replace("https://", "")
-        .replace("http://", "")
-        .rstrip("/")
-        .split("/")[0]
-        .removeprefix("www.")
-    )
+    return url.replace("https://", "").replace("http://", "").rstrip("/").split("/")[0].removeprefix("www.")
 
 
 # Priority order for Disconnect categories when a domain has

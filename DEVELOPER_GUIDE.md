@@ -288,7 +288,7 @@ All data captured
 Analysis complete
    │
    └── send_event('complete', {
-         message,           // "Investigation complete!"
+         message,           // "Investigation complete"
          structuredReport,  // Per-section structured report
          summaryFindings,   // Structured findings array
          privacyScore,      // 0-100

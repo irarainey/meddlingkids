@@ -25,6 +25,10 @@
 - **Selected-node detail panel shown as overlay** — The detail panel is now positioned as an overlay inside the graph container instead of below it, so selecting a node no longer resizes the graph.
 - **Click background to deselect node** — Clicking on the graph background now clears the selected node and restores the default view.
 - **Filter changes dismiss selected node** — Changing the view mode or category filter now automatically deselects any selected node and resets the highlight.
+- **Network graph performance optimizations** — Third-party filter uses a pre-built Set for O(1) lookups instead of O(n) `find()` per edge. Hover handlers operate directly on the hovered element via `select(this)` instead of re-querying all circles. Force simulation parameters adapt to graph size (weaker charge, shorter links, faster decay for 100+ nodes). Minimap rendering throttled to every 3rd tick for large graphs, with node drawing batched by colour to reduce canvas state changes. Highlight restore computes the stroke scale once outside the per-edge callback.
+- **Pan to selected node when off-screen** — Clicking a node that is outside the visible viewport now smoothly pans the graph to centre it on screen.
+- **Domain links use company URLs from local database** — Domain names in the Network tab are now clickable links to the company's website (from partner databases) instead of the tracking endpoint URL. Disconnect entries no longer fabricate URLs from the tracker domain.
+- **Post data sanitization** — Network request payloads now strip non-printable control characters that can appear from binary payloads or chunked transfer encoding artifacts captured by Playwright.
 
 ### Fixed
 

@@ -83,7 +83,15 @@ watch(
         <h3 class="domain-header">
           <div class="domain-header-line">
             <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
-            {{ domain }} ({{ domainRequests.length }})
+            <a
+              v-if="domainInfo[String(domain)]?.url"
+              :href="domainInfo[String(domain)]!.url!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="domain-name-link"
+            >{{ domain }}</a>
+            <span v-else>{{ domain }}</span>
+            ({{ domainRequests.length }})
           </div>
           <div v-if="domainInfo[String(domain)]?.company || domainInfo[String(domain)]?.description" class="domain-org-info">
             <span class="org-caption">Vendor:</span>
@@ -292,6 +300,16 @@ watch(
 }
 
 .org-name-link:hover {
+  text-decoration: underline;
+  color: var(--link-hover);
+}
+
+.domain-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.domain-name-link:hover {
   text-decoration: underline;
   color: var(--link-hover);
 }

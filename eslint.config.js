@@ -50,6 +50,7 @@ export default tseslint.config(
         AbortController: 'readonly',
         SVGSVGElement: 'readonly',
         SVGCircleElement: 'readonly',
+        SVGPathElement: 'readonly',
         SVGLineElement: 'readonly',
         SVGTextElement: 'readonly',
         HTMLCanvasElement: 'readonly',

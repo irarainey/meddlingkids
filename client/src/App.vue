@@ -124,8 +124,7 @@ function onUrlMouseUp(event: Event): void {
   <header class="header">
       <img :src="logo" alt="Meddling Kids" class="logo" />
       <p class="tagline">
-        Feed any URL to these meddling kids and watch them unmask sneaky trackers, 
-        cookies, scripts, and shady consent dialogs lurking underneath!
+        Feed the meddling kids a URL to unmask hidden trackers, cookies, scripts, and shady consent dialogs.
       </p>
     </header>
 

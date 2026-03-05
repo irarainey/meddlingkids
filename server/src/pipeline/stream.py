@@ -366,7 +366,7 @@ async def _run_analysis(
             # ── Phase 6: Complete ───────────────────────────────
             total_time = log.end_timer("total-analysis", "Analysis complete")
             log.success(
-                "Investigation complete!",
+                "Investigation complete",
                 {
                     "totalTime": f"{(total_time / 1000):.2f}s",
                     "overlaysDismissed": ctx.overlay_count,

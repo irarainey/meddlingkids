@@ -216,7 +216,15 @@ class BrowserSession:
             post_data: str | None = None
             if request.method.upper() == "POST":
                 try:
-                    post_data = request.post_data
+                    raw = request.post_data
+                    if raw:
+                        # Playwright can return binary payloads as strings
+                        # containing non-printable control characters or
+                        # chunked transfer encoding artifacts.  Strip
+                        # control chars (except \t and \n) and collapse
+                        # any resulting leading whitespace.
+                        cleaned = "".join(c for c in raw if c >= " " or c in "\t\n").strip()
+                        post_data = cleaned or None
                 except Exception:
                     post_data = None
             # Derive the initiating domain from the request's
