@@ -1,6 +1,6 @@
 [project]
 name = "server"
-version = "1.7.0"
+version = "1.7.2"
 description = "Python server for Meddling Kids"
 readme = "README.md"
 requires-python = ">=3.13"

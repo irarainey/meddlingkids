@@ -49,7 +49,7 @@ export DISPLAY=:99
 echo "Starting server..."
 
 if [[ "${SHOW_UI,,}" == "true" ]]; then
-    echo "Open the client UI at: http://localhost:${UI_PORT:-3002}"
+    echo "UI listening at: http://${UVICORN_HOST:-localhost}:${UI_PORT:-3002}"
 fi
 
 cd /app/server

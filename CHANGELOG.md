@@ -1,6 +1,17 @@
 
 # Changelog
 
+## 1.7.2
+
+### Fixed
+- **Container UI message** - Updated container UI listening message to reflect the correct host.
+- **Version number** - Corrected version number to match release version.
+
+## 1.7.1
+
+### Fixed
+- **GitHub Actions workflow** - Set provenance: false on the build-push step to prevent untagged attestation manifests being created, and Removed attestations: write and id-token: write permissions, which were only required for provenance signing.
+
 ## 1.7.0
 
 ### Fixed
