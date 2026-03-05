@@ -645,11 +645,8 @@ const filteredGraphData = computed(() => {
 
   if (mode !== 'all') {
     if (mode === 'third-party') {
-      modeEdges = edges.filter(e => {
-        const src = nodes.find(n => n.id === e.sourceId)
-        const tgt = nodes.find(n => n.id === e.targetId)
-        return (src?.isThirdParty || tgt?.isThirdParty)
-      })
+      const thirdPartyIds = new Set(nodes.filter(n => n.isThirdParty).map(n => n.id))
+      modeEdges = edges.filter(e => thirdPartyIds.has(e.sourceId) || thirdPartyIds.has(e.targetId))
     } else {
       // pre-consent
       modeEdges = edges.filter(e => e.preConsent)
@@ -857,11 +854,10 @@ function renderGraphInner() {
     .attr('stroke', '#1e2235')
     .attr('stroke-width', 1.5)
     .attr('cursor', 'pointer')
-    .on('mouseover', (_event, d) => {
+    .on('mouseover', function (_event, d) {
       hoveredNode.value = d
-      // Apply glow filter on hover
-      nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
-        .filter(n => n.id === d.id)
+      // Apply glow filter on hover — operate on `this` element directly
+      select(this)
         .attr('filter', 'url(#node-glow)')
         .transition().duration(200)
         .attr('stroke', CATEGORY_COLOURS[d.category])
@@ -869,11 +865,10 @@ function renderGraphInner() {
       // Show label on hover for nodes that lack a persistent label
       labelSel.filter(n => n.id === d.id).attr('opacity', 1)
     })
-    .on('mouseout', (_event, d) => {
+    .on('mouseout', function (_event, d) {
       hoveredNode.value = null
-      // Remove glow filter
-      nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
-        .filter(n => n.id === d.id)
+      // Remove glow filter — operate on `this` element directly
+      select(this)
         .attr('filter', null)
         .transition().duration(300)
         .attr('stroke', '#1e2235')
@@ -924,18 +919,29 @@ function renderGraphInner() {
     .duration(150)
     .attr('opacity', d => showLabel(d) ? 1 : 0)
 
+  // Tune parameters based on graph size
+  const nodeCount = nodes.length
+
+  // Throttle minimap to avoid re-drawing every frame for large graphs
+  let minimapTickCount = 0
+  const minimapInterval = nodeCount > 100 ? 3 : 1
+
   // Store a reference to the currently rendered data so the
   // zoom handler can redraw the minimap after simulation stops.
   renderedNodes = nodes
   renderedEdges = edges
 
-  // Force simulation — increased alphaDecay for faster convergence
+  // Force simulation — adaptive parameters for large graphs
+  const chargeStrength = nodeCount > 150 ? -180 : nodeCount > 80 ? -250 : -320
+  const linkDistance = nodeCount > 150 ? 100 : nodeCount > 80 ? 120 : 140
+  const alphaDecay = nodeCount > 100 ? 0.08 : 0.05
+
   simulation = forceSimulation<GraphNode, GraphEdge>(nodes)
-    .alphaDecay(0.05)
-    .force('link', forceLink<GraphNode, GraphEdge>(edges).id(d => d.id).distance(100))
-    .force('charge', forceManyBody().strength(-200))
+    .alphaDecay(alphaDecay)
+    .force('link', forceLink<GraphNode, GraphEdge>(edges).id(d => d.id).distance(linkDistance))
+    .force('charge', forceManyBody().strength(chargeStrength).distanceMax(nodeCount > 100 ? 400 : 600))
     .force('center', forceCenter(width / 2, height / 2))
-    .force('collision', forceCollide<GraphNode>().radius(d => radiusScale(d.requestCount) + 8))
+    .force('collision', forceCollide<GraphNode>().radius(d => radiusScale(d.requestCount) + 12))
     .on('tick', () => {
       // Throttle DOM updates to one per animation frame
       if (tickScheduled) return
@@ -966,7 +972,10 @@ function renderGraphInner() {
           .attr('x', d => d.x ?? 0)
           .attr('y', d => d.y ?? 0)
 
-        renderMinimap(nodes, edges)
+        minimapTickCount++
+        if (minimapTickCount % minimapInterval === 0) {
+          renderMinimap(nodes, edges)
+        }
       })
     })
 
@@ -1026,15 +1035,13 @@ function applyHighlight(): void {
       .attr('filter', null)
       .attr('stroke', '#1e2235')
       .attr('stroke-width', 1.5)
+    const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
+    const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
     pathsSel
       .attr('opacity', 0.6)
       .attr('stroke-opacity', null)
       .attr('marker-end', (d: GraphEdge) => d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
-      .attr('stroke-width', d => {
-        const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
-        const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
-        return s(d.weight)
-      })
+      .attr('stroke-width', d => s(d.weight))
     textsSel.attr('opacity', (d: GraphNode) =>
       d.category === 'origin' || d.requestCount >= currentLabelThreshold ? 1 : 0)
     // Remove any path trace highlights
@@ -1185,7 +1192,7 @@ function renderMinimap(nodes: GraphNode[], edges: GraphEdge[]): void {
   ctx.fillStyle = 'rgba(21, 24, 37, 0.9)'
   ctx.fillRect(0, 0, mw, mh)
 
-  // Edges
+  // Edges — batch into a single path for large graphs
   ctx.strokeStyle = 'rgba(75, 85, 99, 0.35)'
   ctx.lineWidth = 0.5
   ctx.beginPath()
@@ -1197,12 +1204,34 @@ function renderMinimap(nodes: GraphNode[], edges: GraphEdge[]): void {
   }
   ctx.stroke()
 
-  // Nodes
+  // Nodes — batch by colour to minimise fillStyle changes
+  const byColour = new Map<string, GraphNode[]>()
   for (const n of nodes) {
-    ctx.fillStyle = CATEGORY_COLOURS[n.category]
-    ctx.globalAlpha = n.category === 'origin' ? 1 : 0.8
+    const colour = CATEGORY_COLOURS[n.category]
+    let group = byColour.get(colour)
+    if (!group) { group = []; byColour.set(colour, group) }
+    group.push(n)
+  }
+  for (const [colour, group] of byColour) {
+    ctx.fillStyle = colour
+    ctx.globalAlpha = 0.8
     ctx.beginPath()
-    ctx.arc(toMx(n.x ?? 0), toMy(n.y ?? 0), n.category === 'origin' ? 3 : 2, 0, Math.PI * 2)
+    for (const n of group) {
+      const mx = toMx(n.x ?? 0)
+      const my = toMy(n.y ?? 0)
+      const r = n.category === 'origin' ? 3 : 2
+      ctx.moveTo(mx + r, my)
+      ctx.arc(mx, my, r, 0, Math.PI * 2)
+    }
+    ctx.fill()
+  }
+  // Re-draw origin on top at full opacity
+  const originNode = nodes.find(n => n.category === 'origin')
+  if (originNode) {
+    ctx.fillStyle = CATEGORY_COLOURS.origin
+    ctx.globalAlpha = 1
+    ctx.beginPath()
+    ctx.arc(toMx(originNode.x ?? 0), toMy(originNode.y ?? 0), 3, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.globalAlpha = 1
