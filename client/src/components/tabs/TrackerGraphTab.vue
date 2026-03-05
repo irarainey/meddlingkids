@@ -776,6 +776,13 @@ function renderGraphInner() {
     })
   svgSel.call(zoomRef)
 
+  // Click on background (not a node) to deselect
+  svgSel.on('click', (event) => {
+    if (event.target === svg || event.target.tagName === 'rect') {
+      selectedNode.value = null
+    }
+  })
+
   // Arrow marker for directed edges
   svgSel.append('defs').append('marker')
     .attr('id', 'arrowhead')
@@ -875,7 +882,8 @@ function renderGraphInner() {
       labelSel.filter(n => n.id === d.id)
         .attr('opacity', n => showLabel(n) ? 1 : 0)
     })
-    .on('click', (_event, d) => {
+    .on('click', (event, d) => {
+      event.stopPropagation()
       selectedNode.value = selectedNode.value?.id === d.id ? null : d
     })
 
@@ -900,20 +908,20 @@ function renderGraphInner() {
   // ── Entrance animations ──
   // Staggered node scale-up
   nodeSel.transition()
-    .delay((_d, i) => i * 6)
-    .duration(250)
+    .delay((_d, i) => i * 3)
+    .duration(150)
     .attr('r', d => d.category === 'origin' ? 16 : radiusScale(d.requestCount))
 
   // Fade in edges after nodes settle
   linkSel.transition()
-    .delay(150)
-    .duration(300)
+    .delay(80)
+    .duration(150)
     .attr('opacity', 0.6)
 
   // Fade in labels
   labelSel.transition()
-    .delay(250)
-    .duration(250)
+    .delay(120)
+    .duration(150)
     .attr('opacity', d => showLabel(d) ? 1 : 0)
 
   // Store a reference to the currently rendered data so the
@@ -1018,11 +1026,15 @@ function applyHighlight(): void {
       .attr('filter', null)
       .attr('stroke', '#1e2235')
       .attr('stroke-width', 1.5)
-    pathsSel.attr('opacity', 0.6).attr('stroke-width', d => {
-      const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
-      const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
-      return s(d.weight)
-    })
+    pathsSel
+      .attr('opacity', 0.6)
+      .attr('stroke-opacity', null)
+      .attr('marker-end', (d: GraphEdge) => d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
+      .attr('stroke-width', d => {
+        const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
+        const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
+        return s(d.weight)
+      })
     textsSel.attr('opacity', (d: GraphNode) =>
       d.category === 'origin' || d.requestCount >= currentLabelThreshold ? 1 : 0)
     // Remove any path trace highlights
@@ -1045,11 +1057,17 @@ function applyHighlight(): void {
   const highlightIds = new Set([...connectedIds, ...traceIds])
 
   circlesSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.12)
-  pathsSel.attr('opacity', (d: GraphEdge) => {
-    if (d.sourceId === sel.id || d.targetId === sel.id) return 0.85
-    // Highlight edges on the traced path
-    if (traceIds.has(d.sourceId) && traceIds.has(d.targetId)) return 0.6
-    return 0.04
+  pathsSel.each(function (this: SVGPathElement, d: GraphEdge) {
+    const isDirectlyConnected = d.sourceId === sel!.id || d.targetId === sel!.id
+    const isOnTracedPath = traceIds.has(d.sourceId) && traceIds.has(d.targetId)
+    const highlighted = isDirectlyConnected || isOnTracedPath
+
+    const pathEl = select(this)
+    pathEl.attr('opacity', isDirectlyConnected ? 0.85 : isOnTracedPath ? 0.6 : 0.04)
+    pathEl.attr('stroke-opacity', highlighted ? null : 0.04)
+    pathEl.attr('marker-end', highlighted
+      ? (d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
+      : 'none')
   })
   textsSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.04)
 
@@ -1240,6 +1258,45 @@ function truncateLabel(domain: string): string {
   return domain.length > 28 ? domain.slice(0, 25) + '…' : domain
 }
 
+/**
+ * Smoothly pan the graph so the given node is visible if it's
+ * currently outside the viewport, centering it on screen.
+ */
+function panToNodeIfNeeded(node: GraphNode): void {
+  const svg = svgRef.value
+  if (!svg || !zoomRef) return
+
+  const nx = node.x ?? 0
+  const ny = node.y ?? 0
+  const k = currentTransform.k
+  const tx = currentTransform.x
+  const ty = currentTransform.y
+
+  // Node position in screen (SVG pixel) coordinates
+  const screenX = nx * k + tx
+  const screenY = ny * k + ty
+
+  const svgW = svg.clientWidth || 900
+  const svgH = svg.clientHeight || 500
+
+  // Margin from edges before we consider the node "out of view"
+  const margin = 60
+
+  if (screenX >= margin && screenX <= svgW - margin &&
+      screenY >= margin && screenY <= svgH - margin) {
+    return // already in view
+  }
+
+  const newTransform = zoomIdentity
+    .translate(svgW / 2 - nx * k, svgH / 2 - ny * k)
+    .scale(k)
+
+  select<SVGSVGElement, unknown>(svg)
+    .transition()
+    .duration(300)
+    .call(zoomRef.transform, newTransform)
+}
+
 // ============================================================================
 // Lifecycle & Reactivity
 // ============================================================================
@@ -1268,13 +1325,15 @@ onUnmounted(() => {
 
 watch(filteredGraphData, () => {
   // Data changed — reset dimension cache so renderGraph performs a full rebuild
+  selectedNode.value = null
   lastWidth = 0
   lastHeight = 0
   renderGraph()
 }, { flush: 'post' })
 
-watch(selectedNode, () => {
+watch(selectedNode, (node) => {
   applyHighlight()
+  if (node) panToNodeIfNeeded(node)
 })
 
 /** Connected domains for the selected node (shown in detail panel). */
@@ -1476,36 +1535,36 @@ const graphStatsOverlay = computed(() => {
             <span class="stats-overlay-count">{{ filteredGraphData.edges.length }}</span>
           </div>
         </div>
-      </div>
 
-      <!-- Selected-node detail panel -->
-      <div v-if="selectedNode" class="detail-panel">
-        <div class="detail-header">
-          <span class="detail-dot" :style="{ background: CATEGORY_COLOURS[selectedNode.category] }"></span>
-          <strong>{{ selectedNode.label }}</strong>
-          <span class="detail-cat">{{ CATEGORY_LABELS[selectedNode.category] }}</span>
-          <button class="detail-close" @click="selectedNode = null">&times;</button>
-        </div>
-        <div class="detail-stats">
-          <span>{{ selectedNode.requestCount }} request{{ selectedNode.requestCount !== 1 ? 's' : '' }}</span>
-          <span v-if="selectedNode.isThirdParty" class="third-party-badge">3rd Party</span>
-        </div>
-        <div v-if="selectedConnections.length > 0" class="detail-connections">
-          <h4>Connections</h4>
-          <div v-for="conn in selectedConnections" :key="conn.domain + conn.direction" class="conn-item">
-            <span class="conn-dir">{{ conn.direction === 'outbound' ? '→' : '←' }}</span>
-            <span class="conn-domain">{{ conn.domain }}</span>
-            <span class="conn-weight">×{{ conn.weight }}</span>
-            <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
+        <!-- Selected-node detail panel (overlay) -->
+        <div v-if="selectedNode" class="detail-panel">
+          <div class="detail-header">
+            <span class="detail-dot" :style="{ background: CATEGORY_COLOURS[selectedNode.category] }"></span>
+            <strong>{{ selectedNode.label }}</strong>
+            <span class="detail-cat">{{ CATEGORY_LABELS[selectedNode.category] }}</span>
+            <button class="detail-close" @click="selectedNode = null">&times;</button>
           </div>
-        </div>
-        <div v-if="selectedResourceBreakdown.length > 0" class="detail-resources">
-          <h4>Resource Types</h4>
-          <div class="resource-grid">
-            <div v-for="res in selectedResourceBreakdown" :key="res.type" class="resource-item">
-              <span class="resource-icon">{{ res.icon }}</span>
-              <span class="resource-label">{{ res.label }}</span>
-              <span class="resource-count">{{ res.count }}</span>
+          <div class="detail-stats">
+            <span>{{ selectedNode.requestCount }} request{{ selectedNode.requestCount !== 1 ? 's' : '' }}</span>
+            <span v-if="selectedNode.isThirdParty" class="third-party-badge">3rd Party</span>
+          </div>
+          <div v-if="selectedConnections.length > 0" class="detail-connections">
+            <h4>Connections</h4>
+            <div v-for="conn in selectedConnections" :key="conn.domain + conn.direction" class="conn-item">
+              <span class="conn-dir">{{ conn.direction === 'outbound' ? '→' : '←' }}</span>
+              <span class="conn-domain">{{ conn.domain }}</span>
+              <span class="conn-weight">×{{ conn.weight }}</span>
+              <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
+            </div>
+          </div>
+          <div v-if="selectedResourceBreakdown.length > 0" class="detail-resources">
+            <h4>Resource Types</h4>
+            <div class="resource-grid">
+              <div v-for="res in selectedResourceBreakdown" :key="res.type" class="resource-item">
+                <span class="resource-icon">{{ res.icon }}</span>
+                <span class="resource-label">{{ res.label }}</span>
+                <span class="resource-count">{{ res.count }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1782,7 +1841,7 @@ const graphStatsOverlay = computed(() => {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: var(--surface-panel);
+  background: rgba(21, 24, 37, 0.1);
   border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
@@ -1793,6 +1852,7 @@ const graphStatsOverlay = computed(() => {
   pointer-events: none;
   z-index: 10;
   color: var(--section-title-color);
+  backdrop-filter: blur(4px);
 }
 
 .tooltip-cat {
@@ -1802,10 +1862,16 @@ const graphStatsOverlay = computed(() => {
 
 /* Detail panel */
 .detail-panel {
-  background: var(--surface-panel);
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: 360px;
+  background: rgba(21, 24, 37, 0.1);
   border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.75rem 1rem;
+  z-index: 10;
+  backdrop-filter: blur(4px);
 }
 
 .detail-header {
@@ -1985,7 +2051,7 @@ const graphStatsOverlay = computed(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(21, 24, 37, 0.88);
+  background: rgba(21, 24, 37, 0.1);
   border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.5rem 0.65rem;

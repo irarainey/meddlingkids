@@ -20,6 +20,15 @@
 - **Partner database URL normalization cached** — The 5-step string manipulation chain for partner entry URLs is now cached via `@functools.lru_cache`, running at most once per unique URL instead of once per domain per entry per request.
 - **Domain keyword classifier fast-fail** — Added a combined alternation regex for the 5 domain keyword classifiers. Domains that match no keyword (the majority) now fail in one regex test instead of five.
 - **Script grouping fast-fail** — Added a combined alternation regex for the 8 groupable script patterns. Non-matching URLs now exit in one test instead of eight.
+- **Network graph entrance animations faster** — Node stagger delay reduced to 3ms per node (150ms duration), edges fade in after 80ms (150ms), and labels after 120ms (150ms) for a snappier initial render.
+- **Network graph overlays made transparent** — The statistics overlay, hover tooltip, and selected-node detail panel all use 90% transparent backgrounds with backdrop blur, reducing visual obstruction of the graph.
+- **Selected-node detail panel shown as overlay** — The detail panel is now positioned as an overlay inside the graph container instead of below it, so selecting a node no longer resizes the graph.
+- **Click background to deselect node** — Clicking on the graph background now clears the selected node and restores the default view.
+- **Filter changes dismiss selected node** — Changing the view mode or category filter now automatically deselects any selected node and resets the highlight.
+
+### Fixed
+
+- **Pre-consent edges not fading on node selection** — Dotted pre-consent lines now fade correctly when a node is selected, using `stroke-opacity` and hiding arrow markers on dimmed edges.
 
 ## 1.7.2
 
