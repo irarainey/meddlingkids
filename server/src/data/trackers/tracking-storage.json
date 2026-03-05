@@ -328,8 +328,8 @@
     },
     "_comment_quantcast": "--- Quantcast ---",
     "__qca": {
-      "pattern": "^__qca$",
-      "description": "Quantcast audience measurement ID stored in localStorage.",
+      "pattern": "^__qca",
+      "description": "Quantcast audience data in localStorage — demographic segment and measurement identifiers.",
       "setBy": "Quantcast",
       "purpose": "analytics"
     },
@@ -836,7 +836,114 @@
       "description": "Consent management platform event state — consent dialog interactions and choices.",
       "setBy": "CMP",
       "purpose": "consent"
-    }
+    },
+    "_comment_pendo": "--- Pendo ---",
+    "pendo_visitorId": {
+      "pattern": "pendo.*visitor",
+      "description": "Pendo visitor ID in localStorage — persists the unique visitor identifier for product analytics across sessions.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "pendo_accountId": {
+      "pattern": "pendo.*account",
+      "description": "Pendo account ID — links the visitor to their B2B company/account for account-level analytics.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "pendo_guidesState": {
+      "pattern": "pendo.*guide",
+      "description": "Pendo guide state — tracks which in-app guides have been seen, dismissed, or completed.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "_comment_vwo_storage": "--- VWO ---",
+    "_vwo_uuid_v2": {
+      "pattern": "^_vwo_uuid",
+      "description": "VWO visitor UUID stored in localStorage — persists A/B test participant identity.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vis_opt_exp": {
+      "pattern": "^_vis_opt_exp",
+      "description": "VWO experiment data — stores test variation assignments and goal tracking in localStorage.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vwo_ds": {
+      "pattern": "^_vwo_ds",
+      "description": "VWO data store in localStorage — cached experiment configuration and visitor segments.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_comment_inspectlet_storage": "--- Inspectlet ---",
+    "__insp_identity": {
+      "pattern": "^__insp",
+      "description": "Inspectlet identity and session data in localStorage — persists visitor identity and session replay state.",
+      "setBy": "Inspectlet",
+      "purpose": "analytics"
+    },
+    "_comment_contentsquare_storage": "--- ContentSquare ---",
+    "_cs_id": {
+      "pattern": "^_cs_",
+      "description": "ContentSquare analytics data in localStorage — visitor identity, session state, and interaction metrics.",
+      "setBy": "ContentSquare",
+      "purpose": "analytics"
+    },
+    "_comment_branch_storage": "--- Branch.io ---",
+    "branch_session": {
+      "pattern": "^branch_session",
+      "description": "Branch.io session data — deep link attribution context and session parameters.",
+      "setBy": "Branch.io",
+      "purpose": "identity-resolution"
+    },
+    "branch_session_first": {
+      "pattern": "^branch_session_first",
+      "description": "Branch.io first session — records initial attribution data from the user's first visit.",
+      "setBy": "Branch.io",
+      "purpose": "identity-resolution"
+    },
+    "_comment_qualtrics_storage": "--- Qualtrics ---",
+    "QSI_": {
+      "pattern": "^QSI_",
+      "description": "Qualtrics Site Intercept — survey targeting state, display frequency, and respondent tracking.",
+      "setBy": "Qualtrics",
+      "purpose": "analytics"
+    },
+    "_comment_walkme_storage": "--- WalkMe ---",
+    "walkme_": {
+      "pattern": "^walkme_",
+      "description": "WalkMe adoption data in localStorage — user progress state, guide completion, and interaction metrics.",
+      "setBy": "WalkMe",
+      "purpose": "analytics"
+    },
+    "walkme_player": {
+      "pattern": "walkme.*player",
+      "description": "WalkMe player state — cached overlay configuration and user segment assignment.",
+      "setBy": "WalkMe",
+      "purpose": "analytics"
+    },
+    "_comment_tealium_storage": "--- Tealium ---",
+    "tealium_timing": {
+      "pattern": "tealium",
+      "description": "Tealium tag management data in localStorage — visitor profile, consent state, and tag firing metadata.",
+      "setBy": "Tealium",
+      "purpose": "analytics"
+    },
+    "_comment_exponea_storage": "--- Exponea (Bloomreach) ---",
+    "exponea_cookie": {
+      "pattern": "^exponea",
+      "description": "Exponea (Bloomreach) data in localStorage — session context, user identity, and consent state for the CDP.",
+      "setBy": "Exponea (Bloomreach)",
+      "purpose": "analytics"
+    },
+    "_comment_adjust_storage": "--- Adjust ---",
+    "adjust_": {
+      "pattern": "^adjust_",
+      "description": "Adjust attribution data in localStorage — device ID, attribution parameters, and SDK state.",
+      "setBy": "Adjust",
+      "purpose": "identity-resolution"
+    },
+    "_comment_quantcast_storage": "--- Quantcast ---"
   },
   "risk_levels": {
     "analytics": "medium",
@@ -1458,6 +1565,105 @@
         "Consent management",
         "Policy generation",
         "Cookie solution"
+      ]
+    },
+    "Pendo": {
+      "category": "Product Analytics",
+      "url": "https://www.pendo.io",
+      "concerns": [
+        "In-app user tracking",
+        "Feature usage analytics",
+        "Behavioural profiling"
+      ]
+    },
+    "VWO": {
+      "category": "A/B Testing",
+      "url": "https://vwo.com",
+      "concerns": [
+        "A/B test visitor tracking",
+        "Session recording",
+        "Heatmaps"
+      ]
+    },
+    "Inspectlet": {
+      "category": "Session Replay",
+      "url": "https://www.inspectlet.com",
+      "concerns": [
+        "Session recording",
+        "Mouse tracking",
+        "Form interaction capture"
+      ]
+    },
+    "ContentSquare": {
+      "category": "Experience Analytics",
+      "url": "https://contentsquare.com",
+      "concerns": [
+        "Zone-based heatmaps",
+        "Session replay",
+        "Conversion analytics"
+      ]
+    },
+    "Branch.io": {
+      "category": "Attribution",
+      "url": "https://www.branch.io",
+      "concerns": [
+        "Cross-platform attribution",
+        "Deep linking identity",
+        "Web-to-app tracking"
+      ]
+    },
+    "Qualtrics": {
+      "category": "Survey / Analytics",
+      "url": "https://www.qualtrics.com",
+      "concerns": [
+        "Survey targeting",
+        "Site intercept tracking",
+        "Experience analytics"
+      ]
+    },
+    "WalkMe": {
+      "category": "Digital Adoption",
+      "url": "https://www.walkme.com",
+      "concerns": [
+        "User workflow tracking",
+        "Feature adoption analytics",
+        "Interaction recording"
+      ]
+    },
+    "Tealium": {
+      "category": "Tag Management",
+      "url": "https://tealium.com",
+      "concerns": [
+        "Server-side tag management",
+        "Customer data orchestration",
+        "Cross-vendor routing"
+      ]
+    },
+    "Exponea (Bloomreach)": {
+      "category": "Customer Data Platform",
+      "url": "https://www.bloomreach.com",
+      "concerns": [
+        "Cross-channel tracking",
+        "Behavioural prediction",
+        "Identity resolution"
+      ]
+    },
+    "Adjust": {
+      "category": "Mobile Attribution",
+      "url": "https://www.adjust.com",
+      "concerns": [
+        "Mobile attribution",
+        "Cross-device tracking",
+        "Device fingerprinting"
+      ]
+    },
+    "Quantcast": {
+      "category": "Audience Measurement",
+      "url": "https://www.quantcast.com",
+      "concerns": [
+        "Demographic profiling",
+        "Cross-site measurement",
+        "Audience segmentation"
       ]
     }
   }

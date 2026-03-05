@@ -3,7 +3,10 @@
   "_sources": [
     "Open Cookie Database (https://github.com/jkwakman/Open-Cookie-Database) — Apache-2.0",
     "Vendor documentation",
-    "Cookiepedia (https://cookiepedia.co.uk)"
+    "Cookiepedia (https://cookiepedia.co.uk)",
+    "Peter Lowe's Ad Servers List (https://pgl.yoyo.org/adservers/) — Used with permission",
+    "EasyPrivacy (https://v.firebog.net/hosts/Easyprivacy.txt) — CC BY-SA 3.0",
+    "Vendor official documentation (cookie references verified against published SDK docs)"
   ],
   "cookies": {
     "_comment_google_analytics": "--- Google Analytics ---",
@@ -677,6 +680,267 @@
       "description": "Marketo (Salesforce) tracking cookie — tracks visitor behaviour for lead scoring and marketing automation.",
       "setBy": "Marketo (Salesforce)",
       "purpose": "advertising"
+    },
+    "_comment_pendo": "--- Pendo ---",
+    "_pendo_visitorId": {
+      "pattern": "^_pendo_visitorId",
+      "description": "Pendo visitor identifier — persistent ID for tracking individual users across sessions in product analytics.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "_pendo_accountId": {
+      "pattern": "^_pendo_accountId",
+      "description": "Pendo account identifier — links users to their company/account for B2B product analytics.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "_pendo_meta": {
+      "pattern": "^_pendo_meta",
+      "description": "Pendo metadata — session metadata and guide interaction state.",
+      "setBy": "Pendo",
+      "purpose": "analytics"
+    },
+    "_comment_vwo": "--- VWO (Visual Website Optimizer) ---",
+    "_vwo_uuid": {
+      "pattern": "^_vwo_uuid",
+      "description": "VWO visitor UUID — persistent unique identifier for A/B test participant tracking.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vwo_uuid_v2": {
+      "pattern": "^_vwo_uuid_v2",
+      "description": "VWO visitor UUID v2 — updated unique identifier format for A/B testing.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vwo_ds": {
+      "pattern": "^_vwo_ds",
+      "description": "VWO data store — serialised experiment assignment and variation data.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vwo_sn": {
+      "pattern": "^_vwo_sn",
+      "description": "VWO session number — tracks the number of sessions for a visitor.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vis_opt_exp": {
+      "pattern": "^_vis_opt_exp",
+      "description": "VWO experiment cookie — stores which A/B test variation was served to the visitor.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vis_opt_s": {
+      "pattern": "^_vis_opt_s",
+      "description": "VWO session cookie — tracks active session state for experiment participation.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_vis_opt_test_cookie": {
+      "pattern": "^_vis_opt_test_cookie",
+      "description": "VWO test cookie — checks whether cookies are enabled in the browser.",
+      "setBy": "VWO",
+      "purpose": "analytics"
+    },
+    "_comment_inspectlet": "--- Inspectlet ---",
+    "__insp_uid": {
+      "pattern": "^__insp_uid",
+      "description": "Inspectlet user identifier — persistent ID for session replay and heatmap analytics.",
+      "setBy": "Inspectlet",
+      "purpose": "analytics"
+    },
+    "__insp_nv": {
+      "pattern": "^__insp_nv",
+      "description": "Inspectlet new visitor flag — distinguishes first-time visitors from returning users.",
+      "setBy": "Inspectlet",
+      "purpose": "analytics"
+    },
+    "__insp_sid": {
+      "pattern": "^__insp_sid",
+      "description": "Inspectlet session ID — unique identifier for the current session replay recording.",
+      "setBy": "Inspectlet",
+      "purpose": "analytics"
+    },
+    "__insp_slim": {
+      "pattern": "^__insp_slim",
+      "description": "Inspectlet slim data — compressed session metadata for replay.",
+      "setBy": "Inspectlet",
+      "purpose": "analytics"
+    },
+    "_comment_tealium": "--- Tealium ---",
+    "utag_main": {
+      "pattern": "^utag_main",
+      "description": "Tealium main cookie — stores visitor ID, session count, and last visit timestamp for tag management.",
+      "setBy": "Tealium",
+      "purpose": "analytics"
+    },
+    "utag_main__ss": {
+      "pattern": "^utag_main__ss",
+      "description": "Tealium session start timestamp.",
+      "setBy": "Tealium",
+      "purpose": "analytics"
+    },
+    "TEALIUM_TIMING": {
+      "pattern": "^TEALIUM_TIMING",
+      "description": "Tealium page timing data — captures performance metrics for tag loading.",
+      "setBy": "Tealium",
+      "purpose": "analytics"
+    },
+    "_comment_branch": "--- Branch.io ---",
+    "_branch_match_id": {
+      "pattern": "^_branch_match_id",
+      "description": "Branch.io match ID — cross-platform attribution identifier linking web visits to mobile app installs.",
+      "setBy": "Branch.io",
+      "purpose": "identity-resolution"
+    },
+    "__qca": {
+      "pattern": "^__qca",
+      "description": "Quantcast audience measurement — persistent identifier for demographic profiling and audience segmentation.",
+      "setBy": "Quantcast",
+      "purpose": "analytics"
+    },
+    "_comment_logrocket": "--- LogRocket ---",
+    "_lr_tabs_": {
+      "pattern": "^_lr_tabs_",
+      "description": "LogRocket tab tracking — coordinates session replay recording across browser tabs.",
+      "setBy": "LogRocket",
+      "purpose": "analytics"
+    },
+    "_lr_uf_": {
+      "pattern": "^_lr_uf_",
+      "description": "LogRocket user flags — stores feature flags and user metadata for session replay context.",
+      "setBy": "LogRocket",
+      "purpose": "analytics"
+    },
+    "_lr_hb_": {
+      "pattern": "^_lr_hb_",
+      "description": "LogRocket heartbeat — session keepalive and recording state.",
+      "setBy": "LogRocket",
+      "purpose": "analytics"
+    },
+    "_lr_env_": {
+      "pattern": "^_lr_env_",
+      "description": "LogRocket environment — stores deployment environment context for session replay.",
+      "setBy": "LogRocket",
+      "purpose": "analytics"
+    },
+    "_comment_akamai": "--- Akamai Bot Manager ---",
+    "_abck": {
+      "pattern": "^_abck$",
+      "description": "Akamai Bot Manager cookie — stores bot detection signals including browser fingerprinting, behavioural analysis, and device characteristics.",
+      "setBy": "Akamai",
+      "purpose": "fingerprinting"
+    },
+    "bm_sz": {
+      "pattern": "^bm_sz$",
+      "description": "Akamai Bot Manager size cookie — captures viewport and screen dimensions for bot detection fingerprinting.",
+      "setBy": "Akamai",
+      "purpose": "fingerprinting"
+    },
+    "ak_bmsc": {
+      "pattern": "^ak_bmsc$",
+      "description": "Akamai Bot Manager session cookie — session-scoped bot signal collection.",
+      "setBy": "Akamai",
+      "purpose": "fingerprinting"
+    },
+    "_comment_leadfeeder": "--- Leadfeeder ---",
+    "_lfa": {
+      "pattern": "^_lfa",
+      "description": "Leadfeeder analytics — B2B website visitor identification linking IP addresses and browsing behaviour to company profiles.",
+      "setBy": "Leadfeeder",
+      "purpose": "analytics"
+    },
+    "_lfa_test_cookie_stored": {
+      "pattern": "^_lfa_test_cookie",
+      "description": "Leadfeeder cookie test — checks cookie storage capability.",
+      "setBy": "Leadfeeder",
+      "purpose": "analytics"
+    },
+    "_comment_evidon": "--- Evidon (Crownpeak) ---",
+    "_evidon_consent_cookie": {
+      "pattern": "^_evidon",
+      "description": "Evidon (Crownpeak) consent tracking — records consent state and cookie category preferences.",
+      "setBy": "Evidon (Crownpeak)",
+      "purpose": "consent"
+    },
+    "_comment_intercom": "--- Intercom ---",
+    "intercom-id-": {
+      "pattern": "^intercom-id-",
+      "description": "Intercom messenger identity — persistent visitor ID for personalised messaging and chat history.",
+      "setBy": "Intercom",
+      "purpose": "analytics"
+    },
+    "intercom-session-": {
+      "pattern": "^intercom-session-",
+      "description": "Intercom session cookie — session state for the Intercom messenger widget.",
+      "setBy": "Intercom",
+      "purpose": "analytics"
+    },
+    "intercom-device-id-": {
+      "pattern": "^intercom-device-id-",
+      "description": "Intercom device identifier — cross-session device tracking for the messaging platform.",
+      "setBy": "Intercom",
+      "purpose": "identity-resolution"
+    },
+    "_comment_mixpanel_cookie": "--- Mixpanel (cookie variant) ---",
+    "mp_mixpanel": {
+      "pattern": "^mp_.*mixpanel",
+      "description": "Mixpanel analytics cookie — stores distinct ID, device ID, and tracking configuration. Property-ID-specific cookie.",
+      "setBy": "Mixpanel",
+      "purpose": "analytics"
+    },
+    "_comment_adjust": "--- Adjust ---",
+    "adjust_device_id": {
+      "pattern": "adjust.*device.*id|^adj_",
+      "description": "Adjust device identifier — cross-session device tracking for mobile attribution.",
+      "setBy": "Adjust",
+      "purpose": "identity-resolution"
+    },
+    "_comment_piano": "--- Piano ---",
+    "__pc": {
+      "pattern": "^__pc$",
+      "description": "Piano composer — stores user access state and metered paywall counter.",
+      "setBy": "Piano",
+      "purpose": "analytics"
+    },
+    "__pnahc": {
+      "pattern": "^__pnahc$",
+      "description": "Piano analytics — hashed content identifier for engagement tracking.",
+      "setBy": "Piano",
+      "purpose": "analytics"
+    },
+    "__tbc": {
+      "pattern": "^__tbc$",
+      "description": "Piano (formerly Tinypass) browser cookie — persistent visitor identity for subscription and paywall tracking.",
+      "setBy": "Piano",
+      "purpose": "analytics"
+    },
+    "_comment_walkme": "--- WalkMe ---",
+    "walkme_": {
+      "pattern": "^walkme_",
+      "description": "WalkMe digital adoption tracking — stores user interaction state, guide progress, and workflow analytics.",
+      "setBy": "WalkMe",
+      "purpose": "analytics"
+    },
+    "_comment_exponea": "--- Exponea (Bloomreach) ---",
+    "xnpe_": {
+      "pattern": "^xnpe_",
+      "description": "Exponea (Bloomreach) persistent cookie — tracks user identity and consent state for the customer data platform.",
+      "setBy": "Exponea (Bloomreach)",
+      "purpose": "analytics"
+    },
+    "__exponea_etc__": {
+      "pattern": "^__exponea_etc__",
+      "description": "Exponea cross-domain tracking — maintains user identity across multiple websites.",
+      "setBy": "Exponea (Bloomreach)",
+      "purpose": "identity-resolution"
+    },
+    "__exponea_time2__": {
+      "pattern": "^__exponea_time2__",
+      "description": "Exponea session timing — tracks session start and engagement duration.",
+      "setBy": "Exponea (Bloomreach)",
+      "purpose": "analytics"
     }
   },
   "risk_levels": {
@@ -1037,6 +1301,177 @@
         "Yahoo tracking",
         "AOL data",
         "Cross-property profiling"
+      ]
+    },
+    "Pendo": {
+      "category": "Product Analytics",
+      "url": "https://www.pendo.io",
+      "concerns": [
+        "In-app user tracking",
+        "Feature usage analytics",
+        "Behavioural profiling",
+        "B2B account-level tracking"
+      ]
+    },
+    "VWO": {
+      "category": "A/B Testing",
+      "url": "https://vwo.com",
+      "concerns": [
+        "A/B test variation tracking",
+        "Session recording",
+        "Heatmaps",
+        "Visitor segmentation"
+      ]
+    },
+    "Inspectlet": {
+      "category": "Session Replay",
+      "url": "https://www.inspectlet.com",
+      "concerns": [
+        "Full session recording",
+        "Mouse movement tracking",
+        "Form field interaction capture",
+        "Keystroke logging"
+      ]
+    },
+    "Tealium": {
+      "category": "Tag Management",
+      "url": "https://tealium.com",
+      "concerns": [
+        "Server-side tag management",
+        "Customer data orchestration",
+        "Cross-vendor data routing",
+        "Real-time audience segmentation"
+      ]
+    },
+    "Branch.io": {
+      "category": "Attribution",
+      "url": "https://www.branch.io",
+      "concerns": [
+        "Cross-platform attribution",
+        "Deep linking identity resolution",
+        "Device fingerprinting for mobile",
+        "Web-to-app user tracking"
+      ]
+    },
+    "Quantcast": {
+      "category": "Audience Measurement",
+      "url": "https://www.quantcast.com",
+      "gvl_ids": [
+        11
+      ],
+      "concerns": [
+        "Demographic profiling",
+        "AI-driven audience segmentation",
+        "Cross-site measurement",
+        "Real-time bidding integration"
+      ]
+    },
+    "LogRocket": {
+      "category": "Session Replay",
+      "url": "https://logrocket.com",
+      "concerns": [
+        "Full session recording",
+        "DOM snapshots",
+        "Network request logging",
+        "Error tracking with user context"
+      ]
+    },
+    "Akamai": {
+      "category": "Bot Detection / Fingerprinting",
+      "url": "https://www.akamai.com",
+      "concerns": [
+        "Browser fingerprinting",
+        "Behavioural biometrics",
+        "Device signal collection",
+        "Bot scoring models"
+      ]
+    },
+    "Leadfeeder": {
+      "category": "B2B Analytics",
+      "url": "https://www.leadfeeder.com",
+      "concerns": [
+        "IP-to-company resolution",
+        "B2B visitor identification",
+        "Browsing behaviour tracking",
+        "CRM integration of web visits"
+      ]
+    },
+    "Evidon (Crownpeak)": {
+      "category": "Consent Management",
+      "url": "https://www.crownpeak.com",
+      "concerns": [
+        "Consent state tracking",
+        "Cookie audit scanning",
+        "Tag governance"
+      ]
+    },
+    "Intercom": {
+      "category": "Customer Messaging",
+      "url": "https://www.intercom.com",
+      "concerns": [
+        "Persistent visitor identification",
+        "Behavioural event tracking",
+        "Cross-session messaging history",
+        "User profile enrichment"
+      ]
+    },
+    "Adjust": {
+      "category": "Mobile Attribution",
+      "url": "https://www.adjust.com",
+      "concerns": [
+        "Mobile install attribution",
+        "Cross-device tracking",
+        "In-app event tracking",
+        "Device fingerprinting"
+      ]
+    },
+    "Piano": {
+      "category": "Analytics / Paywall",
+      "url": "https://piano.io",
+      "concerns": [
+        "Content engagement tracking",
+        "Metered paywall tracking",
+        "Subscription funnel analytics",
+        "User segmentation"
+      ]
+    },
+    "WalkMe": {
+      "category": "Digital Adoption",
+      "url": "https://www.walkme.com",
+      "concerns": [
+        "User workflow tracking",
+        "Feature adoption analytics",
+        "In-app interaction recording",
+        "Onboarding behaviour profiling"
+      ]
+    },
+    "Exponea (Bloomreach)": {
+      "category": "Customer Data Platform",
+      "url": "https://www.bloomreach.com",
+      "concerns": [
+        "Cross-channel user tracking",
+        "Behavioural prediction models",
+        "Real-time personalisation",
+        "Identity resolution across domains"
+      ]
+    },
+    "Baremetrics": {
+      "category": "SaaS Analytics",
+      "url": "https://baremetrics.com",
+      "concerns": [
+        "Revenue tracking",
+        "Subscription analytics",
+        "Customer lifetime value modelling"
+      ]
+    },
+    "Insider": {
+      "category": "Personalisation",
+      "url": "https://useinsider.com",
+      "concerns": [
+        "AI-powered user profiling",
+        "Predictive audience segmentation",
+        "Cross-channel tracking",
+        "Behavioural targeting"
       ]
     }
   }

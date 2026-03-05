@@ -1132,10 +1132,6 @@
     "description": "AppsFlyer: Mobile attribution tracking installs, events, and ad spend."
   },
   {
-    "pattern": "adjust\\.com",
-    "description": "Adjust: Mobile attribution tracking installs and in-app events."
-  },
-  {
     "pattern": "kochava\\.com",
     "description": "Kochava: Mobile attribution and fraud prevention tracking installs."
   },
@@ -1288,8 +1284,8 @@
     "description": "AppsFlyer: Mobile attribution tracking installs, events, and ad spend."
   },
   {
-    "pattern": "adjust\\.com|adjust\\.io",
-    "description": "Adjust: Mobile attribution tracking installs and in-app events."
+    "pattern": "adjust\\.com|adjust\\.io|cdn\\.adjust\\.com|app\\.adjust\\.com",
+    "description": "Adjust: Mobile measurement and attribution platform. Tracks app installs, in-app events, cross-device attribution, and fraud prevention."
   },
   {
     "pattern": "tune\\.com|hasoffers",
@@ -1966,6 +1962,34 @@
   {
     "pattern": "microad\\.jp|microad\\.co\\.jp",
     "description": "MicroAd: Japanese programmatic advertising SSP/DSP platform."
+  },
+  {
+    "pattern": "cdn\\.pendo\\.io|pendo\\.io\\/agent",
+    "description": "Pendo: Product analytics and in-app guidance platform. Tracks feature usage, page views, click paths, and user behaviour within web applications. Collects metadata about user interactions for product decisions."
+  },
+  {
+    "pattern": "cdn\\.piano\\.io|piano\\.io\\/xbuilder|t\\.piano\\.io",
+    "description": "Piano (formerly Cxense/AT Internet): Analytics, personalisation, and paywall platform. Tracks content engagement, subscription funnels, and user segmentation. Widely used by publishers."
+  },
+  {
+    "pattern": "cdn\\.exponea\\.com|exponea\\.com|cdn\\.bloomreach\\.com\\/discovery",
+    "description": "Exponea (Bloomreach): Customer data and experience platform. Tracks browsing behaviour, product interactions, and purchase events for personalisation and marketing automation."
+  },
+  {
+    "pattern": "cdn\\.walkme\\.com|walkme\\.com\\/player",
+    "description": "WalkMe: Digital adoption platform that overlays guidance on web applications. Tracks user interactions, workflow completion, task analytics, and feature adoption patterns."
+  },
+  {
+    "pattern": "baremetrics\\.com\\/js|baremetrics\\.com\\/open",
+    "description": "Baremetrics: SaaS analytics and revenue metrics. Embeds tracking for subscription analytics, trial conversion, and revenue dashboards."
+  },
+  {
+    "pattern": "useinsider\\.com|insr\\.us|insider-cdn\\.com",
+    "description": "Insider: AI-driven personalisation and cross-channel marketing platform. Tracks user behaviour, predicts intent, and delivers targeted content overlays and notifications."
+  },
+  {
+    "pattern": "cdn\\.branch\\.io|branch\\.io\\/sdk|app\\.link",
+    "description": "Branch.io: Deep linking and mobile attribution platform. Tracks cross-platform user journeys, app installs from web, and deferred deep links."
   },
   {
     "pattern": "analytics|tracking|beacon|telemetry|metrics",

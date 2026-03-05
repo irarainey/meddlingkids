@@ -1,6 +1,17 @@
 
 # Changelog
 
+## 1.7.3
+
+### Changed
+
+- **Tracker domain database expanded from 4,644 to 19,099 domains** — Integrated 14,455 new domains from Peter Lowe's Ad Servers List (curated since 2003) and EasyPrivacy (Firebog-curated subset of EasyList/EasyPrivacy). All new entries classified as `block`. Source attribution added to `_sources` metadata.
+- **8 new tracking script patterns** — Added detection patterns for Pendo (product analytics), Piano (publisher analytics/paywall), Exponea/Bloomreach (CDP), WalkMe (digital adoption), Baremetrics (SaaS analytics), Insider (personalisation), and Branch.io (deep linking/attribution). Consolidated duplicate Adjust patterns into a single comprehensive entry.
+- **48 new tracking cookie definitions** — Added cookie patterns for Pendo, VWO (Visual Website Optimizer), Inspectlet, Tealium, Branch.io, Quantcast, LogRocket, Akamai Bot Manager, Leadfeeder, Evidon/Crownpeak, Intercom, Mixpanel, Adjust, Piano, WalkMe, and Exponea/Bloomreach with descriptions, set-by information, and purpose categories.
+- **20 new tracking storage key definitions** — Added localStorage patterns for Pendo, VWO, Inspectlet, ContentSquare, Branch.io, Qualtrics, WalkMe, Tealium, Exponea/Bloomreach, Adjust, and Quantcast.
+- **17 new vendor profiles in cookie database** — Added vendor metadata (category, URL, privacy concerns) for Pendo, VWO, Inspectlet, Tealium, Branch.io, Quantcast, LogRocket, Akamai, Leadfeeder, Evidon/Crownpeak, Intercom, Adjust, Piano, WalkMe, Exponea/Bloomreach, Baremetrics, and Insider.
+- **11 new vendor profiles in storage database** — Added vendor metadata for Pendo, VWO, Inspectlet, ContentSquare, Branch.io, Qualtrics, WalkMe, Tealium, Exponea/Bloomreach, Adjust, and Quantcast.
+
 ## 1.7.2
 
 ### Fixed
