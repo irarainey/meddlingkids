@@ -1,6 +1,40 @@
 
 # Changelog
 
+## 1.7.3
+
+### Changed
+
+- **Tracker domain database expanded from 4,644 to 19,099 domains** — Integrated 14,455 new domains from Peter Lowe's Ad Servers List (curated since 2003) and EasyPrivacy (Firebog-curated subset of EasyList/EasyPrivacy). All new entries classified as `block`. Source attribution added to `_sources` metadata.
+- **8 new tracking script patterns** — Added detection patterns for Pendo (product analytics), Piano (publisher analytics/paywall), Exponea/Bloomreach (CDP), WalkMe (digital adoption), Baremetrics (SaaS analytics), Insider (personalisation), and Branch.io (deep linking/attribution). Consolidated duplicate Adjust patterns into a single comprehensive entry.
+- **48 new tracking cookie definitions** — Added cookie patterns for Pendo, VWO (Visual Website Optimizer), Inspectlet, Tealium, Branch.io, Quantcast, LogRocket, Akamai Bot Manager, Leadfeeder, Evidon/Crownpeak, Intercom, Mixpanel, Adjust, Piano, WalkMe, and Exponea/Bloomreach with descriptions, set-by information, and purpose categories.
+- **20 new tracking storage key definitions** — Added localStorage patterns for Pendo, VWO, Inspectlet, ContentSquare, Branch.io, Qualtrics, WalkMe, Tealium, Exponea/Bloomreach, Adjust, and Quantcast.
+- **17 new vendor profiles in cookie database** — Added vendor metadata (category, URL, privacy concerns) for Pendo, VWO, Inspectlet, Tealium, Branch.io, Quantcast, LogRocket, Akamai, Leadfeeder, Evidon/Crownpeak, Intercom, Adjust, Piano, WalkMe, Exponea/Bloomreach, Baremetrics, and Insider.
+- **11 new vendor profiles in storage database** — Added vendor metadata for Pendo, VWO, Inspectlet, ContentSquare, Branch.io, Qualtrics, WalkMe, Tealium, Exponea/Bloomreach, Adjust, and Quantcast.
+- **Screenshot gallery auto-scrolls to latest screenshot** — On small screens (e.g. phone in portrait mode), the screenshot thumbnail row now smoothly scrolls to the rightmost thumbnail when a new screenshot is added, ensuring the latest capture is always visible.
+- **Data loader switched from stdlib `json` to `orjson`** — The shared `_load_json()` helper now uses `orjson` (C extension, already a project dependency) for parsing all data files, reducing JSON deserialization time by ~1.4x across 8 MB of reference data.
+- **URL input widened by 25%** — The URL entry field increased from 400px to 500px for easier editing of long URLs.
+- **Tagline rendered on a single line** — Removed the `max-width` constraint on the intro paragraph so it no longer wraps onto two lines on wide screens.
+- **Combined regex fast-paths in cookie lookup** — Cookie consent, tracking, and fingerprint pattern checks in `cookie_lookup.py` now use pre-compiled combined alternation regexes instead of iterating individual patterns sequentially, reducing per-cookie regex tests by ~70%.
+- **Script classification short-circuit** — `build_pre_consent_stats()` now tests the fast combined URL tracker regex before iterating 499 individual script patterns, short-circuiting immediately for known trackers.
+- **Partner database URL normalization cached** — The 5-step string manipulation chain for partner entry URLs is now cached via `@functools.lru_cache`, running at most once per unique URL instead of once per domain per entry per request.
+- **Domain keyword classifier fast-fail** — Added a combined alternation regex for the 5 domain keyword classifiers. Domains that match no keyword (the majority) now fail in one regex test instead of five.
+- **Script grouping fast-fail** — Added a combined alternation regex for the 8 groupable script patterns. Non-matching URLs now exit in one test instead of eight.
+- **Network graph entrance animations faster** — Node stagger delay reduced to 3ms per node (150ms duration), edges fade in after 80ms (150ms), and labels after 120ms (150ms) for a snappier initial render.
+- **Network graph overlays made transparent** — The statistics overlay, hover tooltip, and selected-node detail panel all use 90% transparent backgrounds with backdrop blur, reducing visual obstruction of the graph.
+- **Selected-node detail panel shown as overlay** — The detail panel is now positioned as an overlay inside the graph container instead of below it, so selecting a node no longer resizes the graph.
+- **Click background to deselect node** — Clicking on the graph background now clears the selected node and restores the default view.
+- **Filter changes dismiss selected node** — Changing the view mode or category filter now automatically deselects any selected node and resets the highlight.
+- **Network graph performance optimizations** — Third-party filter uses a pre-built Set for O(1) lookups instead of O(n) `find()` per edge. Hover handlers operate directly on the hovered element via `select(this)` instead of re-querying all circles. Force simulation parameters adapt to graph size (weaker charge, shorter links, faster decay for 100+ nodes). Minimap rendering throttled to every 3rd tick for large graphs, with node drawing batched by colour to reduce canvas state changes. Highlight restore computes the stroke scale once outside the per-edge callback.
+- **Pan to selected node when off-screen** — Clicking a node that is outside the visible viewport now smoothly pans the graph to centre it on screen.
+- **Domain links use company URLs from local database** — Domain names in the Network tab are now clickable links to the company's website (from partner databases) instead of the tracking endpoint URL. Disconnect entries no longer fabricate URLs from the tracker domain.
+- **Post data sanitization** — Network request payloads now strip non-printable control characters that can appear from binary payloads or chunked transfer encoding artifacts captured by Playwright.
+- **Collapsible URL parameters and POST payloads in Network tab** — Long GET URLs now display only the path, with a toggle button to expand query parameters as a key-value list. POST payloads (form-encoded and JSON) use the same collapsible display. Only one section can be expanded at a time.
+
+### Fixed
+
+- **Pre-consent edges not fading on node selection** — Dotted pre-consent lines now fade correctly when a node is selected, using `stroke-opacity` and hiding arrow markers on dimmed edges.
+
 ## 1.7.2
 
 ### Fixed

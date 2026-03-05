@@ -278,7 +278,7 @@ The application is available as a pre-built Docker image from GitHub Container R
 docker pull ghcr.io/irarainey/meddlingkids:latest
 
 # Pull a specific version
-docker pull ghcr.io/irarainey/meddlingkids:1.7.2
+docker pull ghcr.io/irarainey/meddlingkids:1.7.3
 ```
 
 ### Quick Start (Recommended)

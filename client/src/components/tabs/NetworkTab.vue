@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import type { NetworkRequest } from '../../types'
 import { getResourceTypeIcon, truncateValue } from '../../utils'
 
@@ -12,6 +12,70 @@ const props = defineProps<{
   /** Filtered network requests */
   filteredNetworkRequests: NetworkRequest[]
 }>()
+
+/** Key of the request whose query parameters are expanded (only one at a time). */
+const expandedParams = ref<string | null>(null)
+
+function toggleParams(key: string): void {
+  expandedParams.value = expandedParams.value === key ? null : key
+}
+
+/** Extract origin + pathname from a URL (no query string). */
+function shortUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.origin + u.pathname
+  } catch {
+    return url
+  }
+}
+
+/** Parse query parameters from a URL. Returns empty array if none. */
+function getQueryParams(url: string): { key: string; value: string }[] {
+  try {
+    const u = new URL(url)
+    const params: { key: string; value: string }[] = []
+    u.searchParams.forEach((value, key) => {
+      params.push({ key, value })
+    })
+    return params
+  } catch {
+    return []
+  }
+}
+
+/** Key of the request whose post data is expanded (only one at a time). */
+const expandedPayload = ref<string | null>(null)
+
+function togglePayload(key: string): void {
+  expandedPayload.value = expandedPayload.value === key ? null : key
+}
+
+/** Parse post data into key-value pairs. Supports form-encoded and JSON. */
+function parsePostData(data: string): { key: string; value: string }[] | null {
+  // Try form-encoded (key=value&key2=value2)
+  if (data.includes('=') && !data.startsWith('{') && !data.startsWith('[')) {
+    try {
+      const params = new URLSearchParams(data)
+      const pairs: { key: string; value: string }[] = []
+      params.forEach((value, key) => pairs.push({ key, value }))
+      if (pairs.length > 1) return pairs
+    } catch { /* fall through */ }
+  }
+  // Try JSON
+  if (data.startsWith('{') || data.startsWith('[')) {
+    try {
+      const obj = JSON.parse(data)
+      if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+        return Object.entries(obj).map(([key, value]) => ({
+          key,
+          value: typeof value === 'string' ? value : JSON.stringify(value),
+        }))
+      }
+    } catch { /* fall through */ }
+  }
+  return null
+}
 
 /** Cached domain info keyed by domain. */
 const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null }>>({})
@@ -83,7 +147,15 @@ watch(
         <h3 class="domain-header">
           <div class="domain-header-line">
             <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
-            {{ domain }} ({{ domainRequests.length }})
+            <a
+              v-if="domainInfo[String(domain)]?.url"
+              :href="domainInfo[String(domain)]!.url!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="domain-name-link"
+            >{{ domain }}</a>
+            <span v-else>{{ domain }}</span>
+            ({{ domainRequests.length }})
           </div>
           <div v-if="domainInfo[String(domain)]?.company || domainInfo[String(domain)]?.description" class="domain-org-info">
             <span class="org-caption">Vendor:</span>
@@ -98,7 +170,7 @@ watch(
             <span v-if="domainInfo[String(domain)]?.description" class="org-description">{{ domainInfo[String(domain)]!.description }}</span>
           </div>
         </h3>
-        <div v-for="request in domainRequests" :key="`${request.method}-${request.url}`" class="network-item">
+        <div v-for="(request, rIdx) in domainRequests" :key="`${domain}-${rIdx}`" class="network-item">
           <div class="network-item-header">
             <span v-if="request.preConsent" class="pre-consent-badge" title="Sent before consent was granted">Pre-consent</span>
             <span class="resource-type"
@@ -108,11 +180,47 @@ watch(
             <span v-if="request.duplicateCount && request.duplicateCount > 1" class="duplicate-badge"
               >×{{ request.duplicateCount }}</span
             >
-            <a :href="request.url" target="_blank" class="request-url">{{ request.url }}</a>
+            <a :href="request.url" target="_blank" class="request-url" :title="request.url">{{ shortUrl(request.url) }}</a>
+            <button
+              v-if="getQueryParams(request.url).length > 0"
+              class="params-toggle"
+              :title="expandedParams === `${domain}-${rIdx}` ? 'Hide parameters' : 'Show parameters'"
+              @click="toggleParams(`${domain}-${rIdx}`)"
+            >
+              {{ getQueryParams(request.url).length }} param{{ getQueryParams(request.url).length !== 1 ? 's' : '' }}
+              {{ expandedParams === `${domain}-${rIdx}` ? '▲' : '▼' }}
+            </button>
+          </div>
+          <div v-if="expandedParams === `${domain}-${rIdx}`" class="query-params">
+            <div v-for="(param, idx) in getQueryParams(request.url)" :key="idx" class="query-param">
+              <span class="param-key">{{ param.key }}</span>
+              <span class="param-eq">=</span>
+              <span class="param-value">{{ truncateValue(decodeURIComponent(param.value), 200) }}</span>
+            </div>
           </div>
           <div v-if="request.postData" class="post-data">
             <span class="post-data-label">Payload:</span>
-            <code class="post-data-value" :title="request.postData">{{ truncateValue(request.postData, 512) }}</code>
+            <button
+              class="params-toggle"
+              :title="expandedPayload === `${domain}-${rIdx}` ? 'Hide payload' : 'Show payload'"
+              @click="togglePayload(`${domain}-${rIdx}`)"
+            >
+              <template v-if="parsePostData(request.postData)">
+                {{ parsePostData(request.postData)!.length }} field{{ parsePostData(request.postData)!.length !== 1 ? 's' : '' }}
+              </template>
+              <template v-else>Data</template>
+              {{ expandedPayload === `${domain}-${rIdx}` ? '▲' : '▼' }}
+            </button>
+            <div v-if="expandedPayload === `${domain}-${rIdx}`" class="query-params" style="margin-top: 0.3rem">
+              <template v-if="parsePostData(request.postData)">
+                <div v-for="(param, idx) in parsePostData(request.postData)" :key="idx" class="query-param">
+                  <span class="param-key">{{ param.key }}</span>
+                  <span class="param-eq">=</span>
+                  <span class="param-value">{{ truncateValue(param.value, 200) }}</span>
+                </div>
+              </template>
+              <code v-else class="post-data-value">{{ truncateValue(request.postData, 512) }}</code>
+            </div>
           </div>
         </div>
       </div>
@@ -243,6 +351,62 @@ watch(
   text-decoration: underline;
 }
 
+.params-toggle {
+  background: var(--surface-code);
+  border: 1px solid var(--border-separator);
+  border-radius: 4px;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.params-toggle:hover {
+  color: #e0e7ff;
+  border-color: #6366f1;
+}
+
+.query-params {
+  margin-top: 0.3rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--surface-code);
+  border-radius: 4px;
+  border-left: 3px solid #6366f1;
+  font-size: 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.query-param {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--border-separator);
+  word-break: break-all;
+}
+
+.query-param:last-child {
+  border-bottom: none;
+}
+
+.param-key {
+  color: #c7d2fe;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.param-eq {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.param-value {
+  color: #d1d5db;
+}
+
 .post-data {
   margin-top: 0.35rem;
   padding: 0.35rem 0.5rem;
@@ -292,6 +456,16 @@ watch(
 }
 
 .org-name-link:hover {
+  text-decoration: underline;
+  color: var(--link-hover);
+}
+
+.domain-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.domain-name-link:hover {
   text-decoration: underline;
   color: var(--link-hover);
 }

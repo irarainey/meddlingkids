@@ -18,6 +18,25 @@ _GENERIC_CATEGORIES = {"Email", "Content"}
 
 
 @functools.cache
+def _get_company_name_index() -> dict[str, str]:
+    """Pre-build a lowercased company name -> URL lookup from partner databases."""
+    index: dict[str, str] = {}
+    for cfg in partner_loader.PARTNER_CATEGORIES:
+        db = partner_loader.get_partner_database(cfg.file)
+        for name, entry in db.items():
+            if entry.url:
+                key = name.strip().lower()
+                if key not in index:
+                    index[key] = entry.url
+    return index
+
+
+def _find_company_url(company: str) -> str | None:
+    """Look up a company URL from partner databases by company name."""
+    return _get_company_name_index().get(company.strip().lower())
+
+
+@functools.cache
 def _get_partner_domain_index() -> dict[str, dict[str, str | None]]:
     """Pre-build a domain -> description lookup from partner databases.
 
@@ -73,8 +92,9 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
             labels = [tracker_loader._humanise_disconnect_category(c) for c in cats]
         cat_label = ", ".join(dict.fromkeys(labels))  # deduplicate, preserve order
         description = f"{cat_label} service" + (f" by {company}" if company else "")
-        # Construct a URL from the domain for Disconnect entries.
-        url = f"https://{domain}"
+        # Try to find the company URL from partner databases rather
+        # than fabricating one from the tracking domain.
+        url = _find_company_url(company) if company else None
         return {"company": company, "description": description, "url": url}
 
     # 2. Partner databases — O(1) lookup via pre-built domain index.

@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
 import type { ScreenshotModal } from '../types'
 
 /**
  * Screenshot gallery with thumbnails and fullscreen modal.
  */
-defineProps<{
+const props = defineProps<{
   /** Array of base64 screenshot data URLs */
   screenshots: string[]
   /** Currently selected screenshot for modal display */
@@ -18,6 +19,16 @@ const emit = defineEmits<{
   closeModal: []
 }>()
 
+const rowRef = ref<HTMLElement | null>(null)
+
+watch(() => props.screenshots.length, () => {
+  nextTick(() => {
+    if (rowRef.value) {
+      rowRef.value.scrollTo({ left: rowRef.value.scrollWidth, behavior: 'smooth' })
+    }
+  })
+})
+
 /**
  * Get label for screenshot by index.
  */
@@ -28,7 +39,7 @@ function getLabel(index: number): string {
 
 <template>
   <!-- Screenshot thumbnails row -->
-  <div v-if="screenshots.length > 0" class="screenshots-row">
+  <div v-if="screenshots.length > 0" ref="rowRef" class="screenshots-row">
     <div
       v-for="(shot, index) in screenshots"
       :key="index"

@@ -18,6 +18,7 @@ import {
   scaleLinear,
   scaleSqrt,
   zoomIdentity,
+
 } from 'd3'
 import type {
   Simulation,
@@ -644,11 +645,8 @@ const filteredGraphData = computed(() => {
 
   if (mode !== 'all') {
     if (mode === 'third-party') {
-      modeEdges = edges.filter(e => {
-        const src = nodes.find(n => n.id === e.sourceId)
-        const tgt = nodes.find(n => n.id === e.targetId)
-        return (src?.isThirdParty || tgt?.isThirdParty)
-      })
+      const thirdPartyIds = new Set(nodes.filter(n => n.isThirdParty).map(n => n.id))
+      modeEdges = edges.filter(e => thirdPartyIds.has(e.sourceId) || thirdPartyIds.has(e.targetId))
     } else {
       // pre-consent
       modeEdges = edges.filter(e => e.preConsent)
@@ -775,6 +773,13 @@ function renderGraphInner() {
     })
   svgSel.call(zoomRef)
 
+  // Click on background (not a node) to deselect
+  svgSel.on('click', (event) => {
+    if (event.target === svg || event.target.tagName === 'rect') {
+      selectedNode.value = null
+    }
+  })
+
   // Arrow marker for directed edges
   svgSel.append('defs').append('marker')
     .attr('id', 'arrowhead')
@@ -801,20 +806,35 @@ function renderGraphInner() {
     .attr('d', 'M0,-5L10,0L0,5')
     .attr('fill', '#f59e0b')
 
+  // Glow filter for node hover effect
+  const glowFilter = svgSel.select('defs').append('filter')
+    .attr('id', 'node-glow')
+    .attr('x', '-50%').attr('y', '-50%')
+    .attr('width', '200%').attr('height', '200%')
+  glowFilter.append('feGaussianBlur')
+    .attr('in', 'SourceGraphic')
+    .attr('stdDeviation', '4')
+    .attr('result', 'blur')
+  glowFilter.append('feComposite')
+    .attr('in', 'SourceGraphic')
+    .attr('in2', 'blur')
+    .attr('operator', 'over')
+
   // Edge scale for stroke width
   const maxWeight = max(edges, e => e.weight) ?? 1
   const strokeScale = scaleLinear().domain([1, maxWeight]).range([1, 4])
 
-  // Draw edges
+  // Draw edges as curved paths
   const linkGroup = container.append('g').attr('class', 'links')
-  const linkSel = linkGroup.selectAll<SVGLineElement, GraphEdge>('line')
+  const linkSel = linkGroup.selectAll<SVGPathElement, GraphEdge>('path')
     .data(edges)
-    .join('line')
+    .join('path')
+    .attr('fill', 'none')
     .attr('stroke', d => d.preConsent ? '#f59e0b' : '#4b5563')
     .attr('stroke-width', d => strokeScale(d.weight))
     .attr('stroke-dasharray', d => d.preConsent ? '5,3' : 'none')
     .attr('marker-end', d => d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
-    .attr('opacity', 0.6)
+    .attr('opacity', 0)
 
   // Node radius scale
   const maxReq = max(nodes, n => n.requestCount) ?? 1
@@ -829,23 +849,36 @@ function renderGraphInner() {
   const nodeSel = nodeGroup.selectAll<SVGCircleElement, GraphNode>('circle')
     .data(nodes, d => d.id)
     .join('circle')
-    .attr('r', d => d.category === 'origin' ? 16 : radiusScale(d.requestCount))
+    .attr('r', 0)
     .attr('fill', d => CATEGORY_COLOURS[d.category])
     .attr('stroke', '#1e2235')
     .attr('stroke-width', 1.5)
     .attr('cursor', 'pointer')
-    .on('mouseover', (_event, d) => {
+    .on('mouseover', function (_event, d) {
       hoveredNode.value = d
+      // Apply glow filter on hover — operate on `this` element directly
+      select(this)
+        .attr('filter', 'url(#node-glow)')
+        .transition().duration(200)
+        .attr('stroke', CATEGORY_COLOURS[d.category])
+        .attr('stroke-width', 3)
       // Show label on hover for nodes that lack a persistent label
       labelSel.filter(n => n.id === d.id).attr('opacity', 1)
     })
-    .on('mouseout', (_event, d) => {
+    .on('mouseout', function (_event, d) {
       hoveredNode.value = null
+      // Remove glow filter — operate on `this` element directly
+      select(this)
+        .attr('filter', null)
+        .transition().duration(300)
+        .attr('stroke', '#1e2235')
+        .attr('stroke-width', 1.5)
       // Restore original opacity
       labelSel.filter(n => n.id === d.id)
         .attr('opacity', n => showLabel(n) ? 1 : 0)
     })
-    .on('click', (_event, d) => {
+    .on('click', (event, d) => {
+      event.stopPropagation()
       selectedNode.value = selectedNode.value?.id === d.id ? null : d
     })
 
@@ -865,31 +898,71 @@ function renderGraphInner() {
     .attr('text-anchor', 'middle')
     .attr('dy', d => -(d.category === 'origin' ? 20 : radiusScale(d.requestCount) + 6))
     .attr('pointer-events', 'none')
+    .attr('opacity', 0)
+
+  // ── Entrance animations ──
+  // Staggered node scale-up
+  nodeSel.transition()
+    .delay((_d, i) => i * 3)
+    .duration(150)
+    .attr('r', d => d.category === 'origin' ? 16 : radiusScale(d.requestCount))
+
+  // Fade in edges after nodes settle
+  linkSel.transition()
+    .delay(80)
+    .duration(150)
+    .attr('opacity', 0.6)
+
+  // Fade in labels
+  labelSel.transition()
+    .delay(120)
+    .duration(150)
     .attr('opacity', d => showLabel(d) ? 1 : 0)
+
+  // Tune parameters based on graph size
+  const nodeCount = nodes.length
+
+  // Throttle minimap to avoid re-drawing every frame for large graphs
+  let minimapTickCount = 0
+  const minimapInterval = nodeCount > 100 ? 3 : 1
 
   // Store a reference to the currently rendered data so the
   // zoom handler can redraw the minimap after simulation stops.
   renderedNodes = nodes
   renderedEdges = edges
 
-  // Force simulation — increased alphaDecay for faster convergence
+  // Force simulation — adaptive parameters for large graphs
+  const chargeStrength = nodeCount > 150 ? -180 : nodeCount > 80 ? -250 : -320
+  const linkDistance = nodeCount > 150 ? 100 : nodeCount > 80 ? 120 : 140
+  const alphaDecay = nodeCount > 100 ? 0.08 : 0.05
+
   simulation = forceSimulation<GraphNode, GraphEdge>(nodes)
-    .alphaDecay(0.05)
-    .force('link', forceLink<GraphNode, GraphEdge>(edges).id(d => d.id).distance(100))
-    .force('charge', forceManyBody().strength(-200))
+    .alphaDecay(alphaDecay)
+    .force('link', forceLink<GraphNode, GraphEdge>(edges).id(d => d.id).distance(linkDistance))
+    .force('charge', forceManyBody().strength(chargeStrength).distanceMax(nodeCount > 100 ? 400 : 600))
     .force('center', forceCenter(width / 2, height / 2))
-    .force('collision', forceCollide<GraphNode>().radius(d => radiusScale(d.requestCount) + 8))
+    .force('collision', forceCollide<GraphNode>().radius(d => radiusScale(d.requestCount) + 12))
     .on('tick', () => {
       // Throttle DOM updates to one per animation frame
       if (tickScheduled) return
       tickScheduled = true
       requestAnimationFrame(() => {
         tickScheduled = false
-        linkSel
-          .attr('x1', d => (d.source as GraphNode).x ?? 0)
-          .attr('y1', d => (d.source as GraphNode).y ?? 0)
-          .attr('x2', d => (d.target as GraphNode).x ?? 0)
-          .attr('y2', d => (d.target as GraphNode).y ?? 0)
+
+        // Curved links with quadratic Bézier offset
+        linkSel.attr('d', (d: GraphEdge) => {
+          const src = d.source as GraphNode
+          const tgt = d.target as GraphNode
+          const sx = src.x ?? 0, sy = src.y ?? 0
+          const tx = tgt.x ?? 0, ty = tgt.y ?? 0
+          const dx = tx - sx, dy = ty - sy
+          // Perpendicular offset for curve (proportional to distance, capped)
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          const offset = Math.min(dist * 0.15, 40)
+          const mx = (sx + tx) / 2 - (dy / dist) * offset
+          const my = (sy + ty) / 2 + (dx / dist) * offset
+          return `M${sx},${sy}Q${mx},${my} ${tx},${ty}`
+        })
 
         nodeSel
           .attr('cx', d => d.x ?? 0)
@@ -899,7 +972,10 @@ function renderGraphInner() {
           .attr('x', d => d.x ?? 0)
           .attr('y', d => d.y ?? 0)
 
-        renderMinimap(nodes, edges)
+        minimapTickCount++
+        if (minimapTickCount % minimapInterval === 0) {
+          renderMinimap(nodes, edges)
+        }
       })
     })
 
@@ -948,16 +1024,28 @@ function applyHighlight(): void {
 
   const svgSel = select(svg)
   const circlesSel = svgSel.selectAll<SVGCircleElement, GraphNode>('.nodes circle')
-  const linesSel = svgSel.selectAll<SVGLineElement, GraphEdge>('.links line')
+  const pathsSel = svgSel.selectAll<SVGPathElement, GraphEdge>('.links path')
   const textsSel = svgSel.selectAll<SVGTextElement, GraphNode>('.labels text')
 
   const sel = selectedNode.value
   if (!sel) {
     // Restore defaults
-    circlesSel.attr('opacity', 1)
-    linesSel.attr('opacity', 0.6)
+    circlesSel
+      .attr('opacity', 1)
+      .attr('filter', null)
+      .attr('stroke', '#1e2235')
+      .attr('stroke-width', 1.5)
+    const maxWeight = max(filteredGraphData.value.edges, e => e.weight) ?? 1
+    const s = scaleLinear().domain([1, maxWeight]).range([1, 4])
+    pathsSel
+      .attr('opacity', 0.6)
+      .attr('stroke-opacity', null)
+      .attr('marker-end', (d: GraphEdge) => d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
+      .attr('stroke-width', d => s(d.weight))
     textsSel.attr('opacity', (d: GraphNode) =>
       d.category === 'origin' || d.requestCount >= currentLabelThreshold ? 1 : 0)
+    // Remove any path trace highlights
+    svgSel.selectAll('.path-trace').remove()
     return
   }
 
@@ -969,10 +1057,91 @@ function applyHighlight(): void {
     if (e.targetId === sel.id) connectedIds.add(e.sourceId)
   }
 
-  circlesSel.attr('opacity', (d: GraphNode) => connectedIds.has(d.id) ? 1 : 0.12)
-  linesSel.attr('opacity', (d: GraphEdge) =>
-    d.sourceId === sel.id || d.targetId === sel.id ? 0.85 : 0.04)
-  textsSel.attr('opacity', (d: GraphNode) => connectedIds.has(d.id) ? 1 : 0.04)
+  // Path tracing: find all paths from origin to selected node via BFS
+  const traceIds = tracePathToOrigin(sel.id, edges, originDomain.value)
+
+  // Combine connected + traced nodes
+  const highlightIds = new Set([...connectedIds, ...traceIds])
+
+  circlesSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.12)
+  pathsSel.each(function (this: SVGPathElement, d: GraphEdge) {
+    const isDirectlyConnected = d.sourceId === sel!.id || d.targetId === sel!.id
+    const isOnTracedPath = traceIds.has(d.sourceId) && traceIds.has(d.targetId)
+    const highlighted = isDirectlyConnected || isOnTracedPath
+
+    const pathEl = select(this)
+    pathEl.attr('opacity', isDirectlyConnected ? 0.85 : isOnTracedPath ? 0.6 : 0.04)
+    pathEl.attr('stroke-opacity', highlighted ? null : 0.04)
+    pathEl.attr('marker-end', highlighted
+      ? (d.preConsent ? 'url(#arrowhead-precon)' : 'url(#arrowhead)')
+      : 'none')
+  })
+  textsSel.attr('opacity', (d: GraphNode) => highlightIds.has(d.id) ? 1 : 0.04)
+
+  // Glow the selected node
+  circlesSel
+    .filter((d: GraphNode) => d.id === sel.id)
+    .attr('filter', 'url(#node-glow)')
+    .attr('stroke', CATEGORY_COLOURS[sel.category])
+    .attr('stroke-width', 3)
+}
+
+// ============================================================================
+// Path Tracing
+// ============================================================================
+
+/**
+ * Trace all nodes on any path from origin to the target node.
+ * Uses reverse BFS from the target back to origin, collecting
+ * every node along the way.
+ */
+function tracePathToOrigin(targetId: string, edges: GraphEdge[], origin: string): Set<string> {
+  if (targetId === origin) return new Set([origin])
+
+  // Build forward adjacency: source → [targets]
+  const adj = new Map<string, string[]>()
+  for (const e of edges) {
+    let targets = adj.get(e.sourceId)
+    if (!targets) { targets = []; adj.set(e.sourceId, targets) }
+    targets.push(e.targetId)
+  }
+
+  // BFS from origin, recording parent pointers
+  const parents = new Map<string, string[]>()
+  const visited = new Set<string>([origin])
+  const queue = [origin]
+  let found = false
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (current === targetId) { found = true; continue }
+    const neighbors = adj.get(current) ?? []
+    for (const next of neighbors) {
+      if (!parents.has(next)) parents.set(next, [])
+      parents.get(next)!.push(current)
+      if (!visited.has(next)) {
+        visited.add(next)
+        queue.push(next)
+      }
+    }
+  }
+
+  if (!found) return new Set([targetId])
+
+  // Walk backwards from target to origin to collect all nodes on paths
+  const onPath = new Set<string>([targetId])
+  const backQueue = [targetId]
+  while (backQueue.length > 0) {
+    const current = backQueue.shift()!
+    const preds = parents.get(current) ?? []
+    for (const p of preds) {
+      if (!onPath.has(p)) {
+        onPath.add(p)
+        backQueue.push(p)
+      }
+    }
+  }
+  return onPath
 }
 
 // ============================================================================
@@ -1023,7 +1192,7 @@ function renderMinimap(nodes: GraphNode[], edges: GraphEdge[]): void {
   ctx.fillStyle = 'rgba(21, 24, 37, 0.9)'
   ctx.fillRect(0, 0, mw, mh)
 
-  // Edges
+  // Edges — batch into a single path for large graphs
   ctx.strokeStyle = 'rgba(75, 85, 99, 0.35)'
   ctx.lineWidth = 0.5
   ctx.beginPath()
@@ -1035,12 +1204,34 @@ function renderMinimap(nodes: GraphNode[], edges: GraphEdge[]): void {
   }
   ctx.stroke()
 
-  // Nodes
+  // Nodes — batch by colour to minimise fillStyle changes
+  const byColour = new Map<string, GraphNode[]>()
   for (const n of nodes) {
-    ctx.fillStyle = CATEGORY_COLOURS[n.category]
-    ctx.globalAlpha = n.category === 'origin' ? 1 : 0.8
+    const colour = CATEGORY_COLOURS[n.category]
+    let group = byColour.get(colour)
+    if (!group) { group = []; byColour.set(colour, group) }
+    group.push(n)
+  }
+  for (const [colour, group] of byColour) {
+    ctx.fillStyle = colour
+    ctx.globalAlpha = 0.8
     ctx.beginPath()
-    ctx.arc(toMx(n.x ?? 0), toMy(n.y ?? 0), n.category === 'origin' ? 3 : 2, 0, Math.PI * 2)
+    for (const n of group) {
+      const mx = toMx(n.x ?? 0)
+      const my = toMy(n.y ?? 0)
+      const r = n.category === 'origin' ? 3 : 2
+      ctx.moveTo(mx + r, my)
+      ctx.arc(mx, my, r, 0, Math.PI * 2)
+    }
+    ctx.fill()
+  }
+  // Re-draw origin on top at full opacity
+  const originNode = nodes.find(n => n.category === 'origin')
+  if (originNode) {
+    ctx.fillStyle = CATEGORY_COLOURS.origin
+    ctx.globalAlpha = 1
+    ctx.beginPath()
+    ctx.arc(toMx(originNode.x ?? 0), toMy(originNode.y ?? 0), 3, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.globalAlpha = 1
@@ -1096,6 +1287,45 @@ function truncateLabel(domain: string): string {
   return domain.length > 28 ? domain.slice(0, 25) + '…' : domain
 }
 
+/**
+ * Smoothly pan the graph so the given node is visible if it's
+ * currently outside the viewport, centering it on screen.
+ */
+function panToNodeIfNeeded(node: GraphNode): void {
+  const svg = svgRef.value
+  if (!svg || !zoomRef) return
+
+  const nx = node.x ?? 0
+  const ny = node.y ?? 0
+  const k = currentTransform.k
+  const tx = currentTransform.x
+  const ty = currentTransform.y
+
+  // Node position in screen (SVG pixel) coordinates
+  const screenX = nx * k + tx
+  const screenY = ny * k + ty
+
+  const svgW = svg.clientWidth || 900
+  const svgH = svg.clientHeight || 500
+
+  // Margin from edges before we consider the node "out of view"
+  const margin = 60
+
+  if (screenX >= margin && screenX <= svgW - margin &&
+      screenY >= margin && screenY <= svgH - margin) {
+    return // already in view
+  }
+
+  const newTransform = zoomIdentity
+    .translate(svgW / 2 - nx * k, svgH / 2 - ny * k)
+    .scale(k)
+
+  select<SVGSVGElement, unknown>(svg)
+    .transition()
+    .duration(300)
+    .call(zoomRef.transform, newTransform)
+}
+
 // ============================================================================
 // Lifecycle & Reactivity
 // ============================================================================
@@ -1124,13 +1354,15 @@ onUnmounted(() => {
 
 watch(filteredGraphData, () => {
   // Data changed — reset dimension cache so renderGraph performs a full rebuild
+  selectedNode.value = null
   lastWidth = 0
   lastHeight = 0
   renderGraph()
 }, { flush: 'post' })
 
-watch(selectedNode, () => {
+watch(selectedNode, (node) => {
   applyHighlight()
+  if (node) panToNodeIfNeeded(node)
 })
 
 /** Connected domains for the selected node (shown in detail panel). */
@@ -1186,6 +1418,24 @@ const selectedResourceBreakdown = computed(() => {
     })
     .sort((a, b) => b.count - a.count)
 })
+
+/** Category breakdown for the stats overlay. */
+const graphStatsOverlay = computed(() => {
+  const { nodes } = filteredGraphData.value
+  const counts = new Map<TrackerCategory, number>()
+  for (const n of nodes) {
+    counts.set(n.category, (counts.get(n.category) ?? 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([cat, count]) => ({
+      category: cat,
+      label: CATEGORY_LABELS[cat],
+      colour: CATEGORY_COLOURS[cat],
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
 </script>
 
 <template>
@@ -1300,36 +1550,50 @@ const selectedResourceBreakdown = computed(() => {
           </span>
           <span>{{ hoveredNode.requestCount }} request{{ hoveredNode.requestCount !== 1 ? 's' : '' }}</span>
         </div>
-      </div>
 
-      <!-- Selected-node detail panel -->
-      <div v-if="selectedNode" class="detail-panel">
-        <div class="detail-header">
-          <span class="detail-dot" :style="{ background: CATEGORY_COLOURS[selectedNode.category] }"></span>
-          <strong>{{ selectedNode.label }}</strong>
-          <span class="detail-cat">{{ CATEGORY_LABELS[selectedNode.category] }}</span>
-          <button class="detail-close" @click="selectedNode = null">&times;</button>
-        </div>
-        <div class="detail-stats">
-          <span>{{ selectedNode.requestCount }} request{{ selectedNode.requestCount !== 1 ? 's' : '' }}</span>
-          <span v-if="selectedNode.isThirdParty" class="third-party-badge">3rd Party</span>
-        </div>
-        <div v-if="selectedConnections.length > 0" class="detail-connections">
-          <h4>Connections</h4>
-          <div v-for="conn in selectedConnections" :key="conn.domain + conn.direction" class="conn-item">
-            <span class="conn-dir">{{ conn.direction === 'outbound' ? '→' : '←' }}</span>
-            <span class="conn-domain">{{ conn.domain }}</span>
-            <span class="conn-weight">×{{ conn.weight }}</span>
-            <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
+        <!-- Graph statistics overlay -->
+        <div class="graph-stats-overlay">
+          <div class="stats-overlay-row" v-for="cat in graphStatsOverlay" :key="cat.category">
+            <span class="stats-overlay-dot" :style="{ background: cat.colour }"></span>
+            <span class="stats-overlay-label">{{ cat.label }}</span>
+            <span class="stats-overlay-count">{{ cat.count }}</span>
+          </div>
+          <div class="stats-overlay-divider"></div>
+          <div class="stats-overlay-row">
+            <span class="stats-overlay-label stats-overlay-total">Connections</span>
+            <span class="stats-overlay-count">{{ filteredGraphData.edges.length }}</span>
           </div>
         </div>
-        <div v-if="selectedResourceBreakdown.length > 0" class="detail-resources">
-          <h4>Resource Types</h4>
-          <div class="resource-grid">
-            <div v-for="res in selectedResourceBreakdown" :key="res.type" class="resource-item">
-              <span class="resource-icon">{{ res.icon }}</span>
-              <span class="resource-label">{{ res.label }}</span>
-              <span class="resource-count">{{ res.count }}</span>
+
+        <!-- Selected-node detail panel (overlay) -->
+        <div v-if="selectedNode" class="detail-panel">
+          <div class="detail-header">
+            <span class="detail-dot" :style="{ background: CATEGORY_COLOURS[selectedNode.category] }"></span>
+            <strong>{{ selectedNode.label }}</strong>
+            <span class="detail-cat">{{ CATEGORY_LABELS[selectedNode.category] }}</span>
+            <button class="detail-close" @click="selectedNode = null">&times;</button>
+          </div>
+          <div class="detail-stats">
+            <span>{{ selectedNode.requestCount }} request{{ selectedNode.requestCount !== 1 ? 's' : '' }}</span>
+            <span v-if="selectedNode.isThirdParty" class="third-party-badge">3rd Party</span>
+          </div>
+          <div v-if="selectedConnections.length > 0" class="detail-connections">
+            <h4>Connections</h4>
+            <div v-for="conn in selectedConnections" :key="conn.domain + conn.direction" class="conn-item">
+              <span class="conn-dir">{{ conn.direction === 'outbound' ? '→' : '←' }}</span>
+              <span class="conn-domain">{{ conn.domain }}</span>
+              <span class="conn-weight">×{{ conn.weight }}</span>
+              <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
+            </div>
+          </div>
+          <div v-if="selectedResourceBreakdown.length > 0" class="detail-resources">
+            <h4>Resource Types</h4>
+            <div class="resource-grid">
+              <div v-for="res in selectedResourceBreakdown" :key="res.type" class="resource-item">
+                <span class="resource-icon">{{ res.icon }}</span>
+                <span class="resource-label">{{ res.label }}</span>
+                <span class="resource-count">{{ res.count }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1606,7 +1870,7 @@ const selectedResourceBreakdown = computed(() => {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: var(--surface-panel);
+  background: rgba(21, 24, 37, 0.1);
   border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
@@ -1617,6 +1881,7 @@ const selectedResourceBreakdown = computed(() => {
   pointer-events: none;
   z-index: 10;
   color: var(--section-title-color);
+  backdrop-filter: blur(4px);
 }
 
 .tooltip-cat {
@@ -1626,10 +1891,16 @@ const selectedResourceBreakdown = computed(() => {
 
 /* Detail panel */
 .detail-panel {
-  background: var(--surface-panel);
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: 360px;
+  background: rgba(21, 24, 37, 0.1);
   border: 1px solid var(--border-separator);
   border-radius: 6px;
   padding: 0.75rem 1rem;
+  z-index: 10;
+  backdrop-filter: blur(4px);
 }
 
 .detail-header {
@@ -1802,5 +2073,59 @@ const selectedResourceBreakdown = computed(() => {
   color: var(--muted-color);
   text-align: center;
   margin: 0;
+}
+
+/* Graph statistics overlay */
+.graph-stats-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(21, 24, 37, 0.1);
+  border: 1px solid var(--border-separator);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  backdrop-filter: blur(4px);
+  min-width: 130px;
+}
+
+.stats-overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stats-overlay-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-overlay-label {
+  flex: 1;
+  color: #9ca3af;
+}
+
+.stats-overlay-total {
+  color: #c7d2fe;
+  font-weight: 500;
+}
+
+.stats-overlay-count {
+  font-weight: 600;
+  color: #e0e7ff;
+  text-align: right;
+}
+
+.stats-overlay-divider {
+  height: 1px;
+  background: var(--border-separator);
+  margin: 0.15rem 0;
 }
 </style>

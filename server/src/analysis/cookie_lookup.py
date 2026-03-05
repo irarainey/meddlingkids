@@ -57,7 +57,7 @@ def _check_known_consent_cookie(name: str) -> cookie_info_agent.CookieInfoResult
 
 def _check_consent_pattern(name: str) -> bool:
     """Check if a cookie name matches a known consent-state pattern."""
-    return any(p.search(name) for p in tracker_patterns.CONSENT_STATE_COOKIE_PATTERNS)
+    return bool(tracker_patterns.CONSENT_STATE_COOKIE_COMBINED.search(name))
 
 
 def _check_tracking_pattern(name: str) -> cookie_info_agent.CookieInfoResult | None:
@@ -79,7 +79,7 @@ def _check_tracking_pattern(name: str) -> cookie_info_agent.CookieInfoResult | N
             )
 
     # Check generic tracking patterns
-    if any(p.search(name) for p in tracker_patterns.TRACKING_COOKIE_PATTERNS):
+    if tracker_patterns.TRACKING_COOKIE_COMBINED.search(name):
         return cookie_info_agent.CookieInfoResult(
             description="Known tracking cookie — used for analytics or advertising purposes.",
             setBy="Third-party tracker",
@@ -89,7 +89,7 @@ def _check_tracking_pattern(name: str) -> cookie_info_agent.CookieInfoResult | N
         )
 
     # Check fingerprint patterns
-    if any(p.search(name) for p in tracker_patterns.FINGERPRINT_COOKIE_PATTERNS):
+    if tracker_patterns.FINGERPRINT_COOKIE_COMBINED.search(name):
         return cookie_info_agent.CookieInfoResult(
             description="Fingerprinting-related cookie — used to create a unique device or browser identifier.",
             setBy="Fingerprinting service",

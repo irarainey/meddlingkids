@@ -144,7 +144,7 @@ def build_pre_consent_stats(
     cookie_combined = tracker_patterns.TRACKING_COOKIE_COMBINED
 
     tracking_cookies = sum(1 for c in cookies if cookie_combined.search(c.name))
-    tracking_scripts = sum(1 for s in scripts if any(t.compiled.search(s.url) for t in tracking_patterns_db) or url_combined.search(s.url))
+    tracking_scripts = sum(1 for s in scripts if url_combined.search(s.url) or any(t.compiled.search(s.url) for t in tracking_patterns_db))
     tracker_requests = sum(1 for r in requests if r.is_third_party and url_combined.search(r.url))
 
     return analysis.PreConsentStats(
