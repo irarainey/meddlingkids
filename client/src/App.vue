@@ -306,7 +306,6 @@ function onUrlMouseUp(event: Event): void {
 }
 
 .tagline {
-  max-width: 650px;
   margin: 0 auto 0.75rem;
   font-size: 0.95rem;
   line-height: 1.5;
@@ -328,7 +327,7 @@ function onUrlMouseUp(event: Event): void {
   font-size: 1rem;
   border: 1px solid #3d4663;
   border-radius: 8px;
-  width: 400px;
+  width: 500px;
   font-family: inherit;
   background: #1e2235;
   color: #e0e7ff;
