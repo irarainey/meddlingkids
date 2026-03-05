@@ -29,6 +29,7 @@
 - **Pan to selected node when off-screen** — Clicking a node that is outside the visible viewport now smoothly pans the graph to centre it on screen.
 - **Domain links use company URLs from local database** — Domain names in the Network tab are now clickable links to the company's website (from partner databases) instead of the tracking endpoint URL. Disconnect entries no longer fabricate URLs from the tracker domain.
 - **Post data sanitization** — Network request payloads now strip non-printable control characters that can appear from binary payloads or chunked transfer encoding artifacts captured by Playwright.
+- **Collapsible URL parameters and POST payloads in Network tab** — Long GET URLs now display only the path, with a toggle button to expand query parameters as a key-value list. POST payloads (form-encoded and JSON) use the same collapsible display. Only one section can be expanded at a time.
 
 ### Fixed
 
