@@ -271,14 +271,14 @@ uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 
 ## Docker Deployment
 
-The application is available as a pre-built Docker image from GitHub Container Registry. Images are tagged with both `latest` and the release version number (e.g., `1.6.0`):
+The application is available as a pre-built Docker image from GitHub Container Registry. Images are tagged with both `latest` and the release version number (e.g., `1.7.0`):
 
 ```bash
 # Pull the latest version
 docker pull ghcr.io/irarainey/meddlingkids:latest
 
 # Pull a specific version
-docker pull ghcr.io/irarainey/meddlingkids:1.6.0
+docker pull ghcr.io/irarainey/meddlingkids:1.7.0
 ```
 
 ### Quick Start (Recommended)
