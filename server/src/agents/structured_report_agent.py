@@ -73,6 +73,10 @@ class _ConsentAnalysisResponse(pydantic.BaseModel):
     section: report.ConsentAnalysisSection
 
 
+class _ConsentDigestResponse(pydantic.BaseModel):
+    plain_language_summary: str
+
+
 class _SocialMediaImplicationsResponse(pydantic.BaseModel):
     section: report.SocialMediaImplicationsSection
 
@@ -160,9 +164,9 @@ class StructuredReportAgent(base.BaseAgent):
         #
         # Wrap each coroutine so the optional progress callback
         # fires as sections finish, giving the client granular
-        # "Generating report: <section> (N/9)..." updates.
+        # "Generating report: <section> (N/10)..." updates.
         _sections_done = 0
-        _total_sections = 9
+        _total_sections = 10
 
         async def _tracked(
             coro: Awaitable[pydantic.BaseModel | None],
@@ -186,6 +190,17 @@ class StructuredReportAgent(base.BaseAgent):
             else _noop_section(report.ConsentAnalysisSection())
         )
 
+        consent_digest_coro = (
+            self._build_section(
+                structured_report.CONSENT_DIGEST,
+                _ctx("consent-digest"),
+                _ConsentDigestResponse,
+                "consent-digest",
+            )
+            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
+            else _noop_section(_ConsentDigestResponse(plain_language_summary=""))
+        )
+
         log.info("Building all report sections concurrently...")
         (
             tracking_tech,
@@ -195,6 +210,7 @@ class StructuredReportAgent(base.BaseAgent):
             storage_analysis,
             privacy_risk,
             consent_analysis,
+            consent_digest,
             social_media_implications,
             recommendations,
         ) = await asyncio.gather(
@@ -257,6 +273,10 @@ class StructuredReportAgent(base.BaseAgent):
                 "consent-analysis",
             ),
             _tracked(
+                consent_digest_coro,
+                "consent-digest",
+            ),
+            _tracked(
                 self._build_section(
                     structured_report.SOCIAL_MEDIA_IMPLICATIONS,
                     _ctx("social-media-implications"),
@@ -312,6 +332,13 @@ class StructuredReportAgent(base.BaseAgent):
                         if entry.url:
                             consent_sec.consent_platform_url = entry.url
                         break
+
+        # ── Plain-language consent digest ───────────────────
+        if consent_digest and isinstance(consent_digest, _ConsentDigestResponse):
+            consent_sec.plain_language_summary = consent_digest.plain_language_summary
+
+        # ── Deterministic user-rights note ──────────────────
+        consent_sec.user_rights_note = _build_user_rights_note(consent_details)
 
         # ── Deterministic third-party domain count ─────────
         # The LLM inconsistently counts whether to include
@@ -502,6 +529,57 @@ def _extract[S: pydantic.BaseModel](
     if isinstance(result, section_cls):
         return result
     return section_cls()
+
+
+def _build_user_rights_note(
+    consent_details: consent.ConsentDetails | None,
+) -> str:
+    """Build a plain-language note about the user's privacy rights.
+
+    Deterministic — no LLM.  The note is generated when TCF
+    infrastructure is detected (TC String present) and/or a
+    consent platform is identified.
+
+    Returns an empty string when no consent framework is detected.
+    """
+    if not consent_details:
+        return ""
+
+    has_tcf = bool(consent_details.tc_string_data)
+    platform = consent_details.consent_platform
+
+    if not has_tcf and not platform:
+        return ""
+
+    parts: list[str] = []
+
+    if has_tcf:
+        parts.append(
+            "This site uses the IAB Transparency & Consent Framework (TCF), "
+            "which means you have the right to withdraw your consent at any time."
+        )
+    elif platform:
+        parts.append(
+            f"This site uses {platform} for consent management. Under GDPR, you have the right to withdraw your consent at any time."
+        )
+
+    # Add practical action tip.
+    if platform:
+        parts.append(f'Look for "{platform}" or "Cookie Settings" in the page footer to change your preferences.')
+    else:
+        parts.append('Look for "Privacy Settings" or "Cookie Settings" in the page footer to change your preferences.')
+
+    # Add key rights from the GDPR reference data.
+    gdpr = loader.get_gdpr_reference()
+    rights = gdpr.get("gdpr", {}).get("data_subject_rights", [])
+    if rights and isinstance(rights, list):
+        # Pick the 3 most relevant rights for a general audience.
+        relevant = [r for r in rights if any(kw in r.lower() for kw in ("erasure", "access", "object"))]
+        if relevant:
+            rights_text = ", ".join(relevant[:3])
+            parts.append(f"Your key rights include: {rights_text}.")
+
+    return " ".join(parts)
 
 
 # Path substrings that indicate a privacy/policy page

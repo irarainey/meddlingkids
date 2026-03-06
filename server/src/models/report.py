@@ -252,6 +252,8 @@ class ConsentAnalysisSection(CamelCaseModel):
     partners_disclosed: int = 0
     discrepancies: list[ConsentDiscrepancy] = pydantic.Field(default_factory=list)
     summary: str = ""
+    plain_language_summary: str = ""
+    user_rights_note: str = ""
     consent_platform: str | None = None
     consent_platform_url: str | None = None
 

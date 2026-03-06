@@ -65,7 +65,7 @@ src/
 │   ├── consent_detection_agent.py   # Vision agent for page overlays (consent, sign-in, newsletter, paywall); reason field constrained to max 120 chars / 15 words
 │   ├── consent_extraction_agent.py  # Extract consent details agent
 │   ├── script_analysis_agent.py     # Script identification agent (Responses API for codex deployments)
-│   ├── structured_report_agent.py   # Structured privacy report agent
+│   ├── structured_report_agent.py   # Structured privacy report agent (10 concurrent sections + deterministic consent digest and user-rights note)
 │   ├── summary_findings_agent.py    # Summary findings agent
 │   ├── tracking_analysis_agent.py   # Main tracking analysis agent
 │   ├── cookie_info_agent.py         # Cookie information lookup agent (LLM fallback)
@@ -79,7 +79,7 @@ src/
 │   │   ├── cookie_info.py           # Cookie information lookup prompt
 │   │   ├── script_analysis.py       # Script analysis prompt
 │   │   ├── storage_info.py          # Storage key information lookup prompt
-│   │   ├── structured_report.py     # Structured report section prompts
+│   │   ├── structured_report.py     # Structured report section prompts (including consent digest)
 │   │   ├── summary_findings.py      # Summary findings prompt
 │   │   └── tracking_analysis.py     # Tracking analysis prompt
 │   └── scripts/                     # JavaScript snippets evaluated in-browser
@@ -163,11 +163,11 @@ src/
 │   ├── publishers/                  # Media group profiles
 │   │   └── media-groups.json        # 16 UK media group profiles (vendors, ad tech, data practices)
 │   └── trackers/                    # Tracking pattern databases (7 JSON files)
-│       ├── tracking-scripts.json    # 493 regex patterns for known trackers
+│       ├── tracking-scripts.json    # 499 regex patterns for known trackers
 │       ├── benign-scripts.json      # 52 patterns for safe libraries
 │       ├── tracking-cookies.json    # Known tracking cookie definitions (137 cookies)
 │       ├── tracking-storage.json    # Known storage key definitions (185 keys)
-│       ├── tracker-domains.json     # Known tracker domain database (4,644 domains)
+│       ├── tracker-domains.json     # Known tracker domain database (19,099 domains)
 │       ├── cname-domains.json       # CNAME cloaking tracker domains (122,018 domains)
 │       └── disconnect-services.json # Disconnect Tracking Protection list (4,370 domains)
 └── utils/                           # Cross-cutting utilities
@@ -234,7 +234,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files. Uses the Responses API when targeting a codex deployment |
-| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Uses a 60 s per-call timeout (large prompts on complex sites) |
+| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls and deterministic overrides. Includes a plain-language consent digest and deterministic user-rights note. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run(stream=True)` with a 60 s inactivity timeout) |
 | `CookieInfoAgent` | Cookie name + domain + value | `CookieInfoResult` | Explains individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not found in known databases |

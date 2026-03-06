@@ -33,8 +33,8 @@ src/
 │   ├── TrackerCategorySection.vue # Reusable tracker category block (used ×5 in SummaryTab)
 │   └── tabs/
 │       ├── index.ts             # Barrel export for tabs
-│       ├── SummaryTab.vue       # AI analysis results with structured report and findings
-│       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown
+│       ├── SummaryTab.vue       # AI analysis results with structured report, findings, and "What You Agreed To" consent digest
+│       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown and "Your Rights" note
 │       ├── CookiesTab.vue       # Cookies by domain
 │       ├── NetworkTab.vue       # Network requests
 │       ├── ScriptsTab.vue       # Scripts by domain

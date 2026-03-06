@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -67,6 +67,7 @@ const {
 
 const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
+const progressRef = ref<HTMLElement | null>(null)
 
 const appVersion = __APP_VERSION__
 
@@ -84,15 +85,31 @@ function scrollToTop(): void {
 window.addEventListener('scroll', onScroll, { passive: true })
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
-/** Scroll to the screenshot gallery when the first screenshot arrives. */
+/** Scroll to show the progress banner when analysis starts. */
+watch(isLoading, (loading) => {
+  if (loading) {
+    nextTick(() => {
+      const el = progressRef.value
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const targetY = window.scrollY + rect.bottom - window.innerHeight + 32
+      if (targetY > window.scrollY) {
+        window.scrollTo({ top: targetY, behavior: 'smooth' })
+      }
+    })
+  }
+})
+
+/** Scroll to the progress banner (or gallery) when the first screenshot arrives. */
 watch(
   () => screenshots.value.length,
   (len, oldLen) => {
     if (len === 1 && (oldLen === 0 || oldLen === undefined)) {
       nextTick(() => {
-        galleryRef.value?.scrollIntoView({
+        const target = progressRef.value ?? galleryRef.value
+        target?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start',
         })
       })
     }
@@ -102,7 +119,39 @@ watch(
 /** Close the score dialog and scroll to the report tabs. */
 function handleViewReport(): void {
   closeScoreDialog()
-  tabsRef.value?.scrollIntoView({ behavior: 'smooth' })
+  const el = tabsRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  window.scrollTo({ top: window.scrollY + rect.top - 32, behavior: 'smooth' })
+}
+
+/** URL validation — checks after the user has typed something. */
+const urlTouched = ref(false)
+function isValidUrl(value: string): boolean {
+  let candidate = value.trim()
+  if (!candidate) return false
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = 'https://' + candidate
+  }
+  try {
+    const parsed = new URL(candidate)
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+      && /\./.test(parsed.hostname)
+  } catch {
+    return false
+  }
+}
+const urlInvalid = computed(() => {
+  if (!urlTouched.value || !inputValue.value.trim()) return false
+  return !isValidUrl(inputValue.value)
+})
+
+function onUrlInput(): void {
+  urlTouched.value = true
+}
+
+function onUrlBlur(): void {
+  inputValue.value = inputValue.value.trim()
 }
 
 /** Select all text in the URL input on focus, preventing mouseup deselection. */
@@ -128,36 +177,46 @@ function onUrlMouseUp(event: Event): void {
       </p>
     </header>
 
-    <div class="url-bar">
-      <input
-        v-model="inputValue"
-        type="text"
-        class="text-input"
-        placeholder="Enter a suspicious URL to investigate..."
-        :disabled="isLoading"
-        @keyup.enter="analyzeUrl"
-        @focus="onUrlFocus"
-        @mouseup="onUrlMouseUp"
-      />
-      <select v-model="deviceType" class="device-select" :disabled="isLoading">
-        <option value="iphone">iPhone</option>
-        <option value="ipad">iPad</option>
-        <option value="android-phone">Android Phone</option>
-        <option value="android-tablet">Android Tablet</option>
-        <option value="windows-chrome">Windows Chrome</option>
-        <option value="macos-safari">macOS Safari</option>
-      </select>
-      <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
-        {{ isLoading ? 'Investigating...' : 'Unmask' }}
-      </button>
+    <div class="url-bar-wrapper">
+      <div class="url-bar">
+        <input
+          v-model="inputValue"
+          type="text"
+          class="text-input"
+          :class="{ 'text-input--invalid': urlInvalid }"
+          placeholder="Enter a suspicious URL to investigate..."
+          :disabled="isLoading"
+          @keyup.enter="analyzeUrl"
+          @input="onUrlInput"
+          @blur="onUrlBlur"
+          @focus="onUrlFocus"
+          @mouseup="onUrlMouseUp"
+        />
+        <select v-model="deviceType" class="device-select" :disabled="isLoading">
+          <option value="iphone">iPhone</option>
+          <option value="ipad">iPad</option>
+          <option value="android-phone">Android Phone</option>
+          <option value="android-tablet">Android Tablet</option>
+          <option value="windows-chrome">Windows Chrome</option>
+          <option value="macos-safari">macOS Safari</option>
+        </select>
+        <button class="go-button" :disabled="isLoading || urlInvalid" @click="analyzeUrl">
+          {{ isLoading ? 'Investigating...' : 'Unmask' }}
+        </button>
+      </div>
+      <Transition name="fade">
+        <p v-if="urlInvalid" class="url-hint">Please enter a valid URL, e.g. example.com or https://example.com</p>
+      </Transition>
     </div>
 
     <!-- Loading Banner with Progress -->
+    <div ref="progressRef">
     <ProgressBanner
       v-if="isLoading"
       :status-message="statusMessage"
       :progress-percent="progressPercent"
     />
+    </div>
 
     <!-- Privacy Score Dialog -->
     <ScoreDialog
@@ -200,7 +259,7 @@ function onUrlMouseUp(event: Event): void {
       <div ref="tabsRef" class="tabs">
           <button
             class="tab"
-            :class="{ active: activeTab === 'summary', highlight: structuredReport || summaryFindings.length > 0 }"
+            :class="{ active: activeTab === 'summary' }"
             @click="activeTab = 'summary'"
           >
             📋 Summary
@@ -312,12 +371,16 @@ function onUrlMouseUp(event: Event): void {
   padding: 0 1rem;
 }
 
+.url-bar-wrapper {
+  margin-bottom: 1.6rem;
+  text-align: center;
+}
+
 .url-bar {
   display: flex;
   align-items: center;
   gap: 1rem;
   justify-content: center;
-  margin-bottom: 1.6rem;
   flex-wrap: wrap;
 }
 
@@ -327,14 +390,30 @@ function onUrlMouseUp(event: Event): void {
   border: 1px solid #3d4663;
   border-radius: 8px;
   width: 500px;
+  max-width: 100%;
+  box-sizing: border-box;
   font-family: inherit;
   background: #1e2235;
   color: #e0e7ff;
 }
 
+.text-input--invalid {
+  border-color: #ef4444;
+}
+
 .text-input:focus {
   outline: none;
   border-color: #0C67AC;
+}
+
+.text-input--invalid:focus {
+  border-color: #ef4444;
+}
+
+.url-hint {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0;
 }
 
 .text-input::placeholder {
@@ -387,12 +466,6 @@ function onUrlMouseUp(event: Event): void {
 .go-button:disabled {
   background-color: #4a5568;
   cursor: not-allowed;
-}
-
-.error {
-  color: #f87171;
-  text-align: center;
-  margin: 1rem 0;
 }
 
 .main-content {
@@ -452,12 +525,6 @@ function onUrlMouseUp(event: Event): void {
 .app-footer a:hover {
   color: #7CB8E4;
   text-decoration: underline;
-}
-
-.app-footer .version {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.6rem;
 }
 
 .back-to-top {

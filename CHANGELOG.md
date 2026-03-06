@@ -1,6 +1,28 @@
 
 # Changelog
 
+## 1.7.4
+
+### Added
+
+- **URL input validation** — The URL text field now validates input as the user types, highlighting the border in red and displaying a hint message when the value is not a valid URL. The Unmask button is disabled until a valid URL is entered. A server-side guard in the composable also rejects invalid URLs before starting analysis.
+- **URL input trim on blur** — Leading and trailing whitespace is automatically stripped from the URL input when the field loses focus.
+- **"What You Agreed To" plain-language consent digest** — A new LLM-generated summary explains in 2–3 simple sentences what the user agreed to by clicking Accept on a site's consent dialog. Written at a reading age of ~12, it highlights how many companies can track the user, what data is collected, and whether data brokers are involved. Displayed as a visually distinct callout in the Consent tab, above the existing technical AI summary. Inspired by Pew Research finding that 56% of users click "agree" without reading consent dialogs.
+- **"Your Rights" privacy rights note** — When TCF infrastructure or a consent management platform is detected, a deterministic (no LLM) callout in the Consent tab explains the user's rights under GDPR, including the right to withdraw consent, practical instructions for finding cookie settings, and key data subject rights (access, erasure, objection). Inspired by Cisco's 2024 Consumer Privacy Survey finding that consumers aware of privacy laws are nearly twice as likely to feel they can protect their data.
+
+### Changed
+
+- **Mobile responsive layout fixes** — Added `max-width: 100%` and `box-sizing: border-box` to the URL input and device select to prevent horizontal overflow on narrow screens. Prevented horizontal page scroll with `overflow-x: hidden` on the html element.
+- **Summary tab mobile overflow fixes** — Added `flex-wrap` to score headings, section headings, risk factor rows, and data card headers. Added `overflow-wrap: anywhere` to factor text and tracker domain lists to prevent long text from breaking the page width.
+- **Score dialog mobile layout** — Added `box-sizing: border-box` to the dialog overlay and content. On screens ≤480px, reduced overlay padding, scaled down exclamation text, and tightened content padding so the dialog fits within the viewport.
+- **Progress bar visible on scan start** — The page now scrolls to show the progress banner with padding below when the scan begins, ensuring it is visible without sitting flush against the bottom of the viewport.
+- **Progress bar prioritised over screenshots on scroll** — When the first screenshot arrives, the page scrolls to the progress banner rather than the gallery, keeping the progress bar visible on mobile.
+- **View Full Report scroll offset** — Clicking "View Full Report" on the score dialog now scrolls to 32px above the report tabs for visual breathing room.
+
+### Removed
+
+- **Dead code cleanup** — Removed unused `formatMarkdown()` utility, dead `TrackerCategorySection.vue` component, orphaned `ScriptViewerDialog` barrel export, unused `.error` and `.app-footer .version` CSS rules, a no-op `highlight` class binding, and the uncalled `find_reject_button()` function from the server.
+
 ## 1.7.3
 
 ### Changed

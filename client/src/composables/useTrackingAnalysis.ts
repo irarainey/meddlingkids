@@ -307,6 +307,21 @@ export function useTrackingAnalysis() {
       url = 'https://' + url
     }
 
+    // Validate URL format
+    try {
+      const parsed = new URL(url)
+      if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || !/\./.test(parsed.hostname)) {
+        throw new Error('invalid')
+      }
+    } catch {
+      errorDialog.value = {
+        title: 'Invalid URL',
+        message: 'Please enter a valid URL, e.g. example.com or https://example.com',
+      }
+      showErrorDialog.value = true
+      return
+    }
+
     resetState()
 
     try {

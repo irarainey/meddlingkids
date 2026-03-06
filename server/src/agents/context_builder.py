@@ -126,6 +126,11 @@ SECTION_CONFIGS: dict[str, SectionNeeds] = {
         disconnect_db=True,
         include_partner_urls=True,
     ),
+    "consent-digest": SectionNeeds(
+        third_party_domains=True,
+        consent_info=True,
+        pre_consent_stats=True,
+    ),
     "social-media-implications": SectionNeeds(
         third_party_domains=True,
         domain_breakdown=True,

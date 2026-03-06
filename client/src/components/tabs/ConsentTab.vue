@@ -325,6 +325,17 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
           </div>
         </div>
 
+        <!-- Your Rights — deterministic note about user privacy rights -->
+        <div v-if="structuredReport?.consentAnalysis?.userRightsNote" class="user-rights-note">
+          <div class="user-rights-header">
+            <span class="user-rights-icon">⚖️</span>
+            <span class="user-rights-title">Your Rights</span>
+          </div>
+          <p class="user-rights-text">
+            {{ structuredReport.consentAnalysis.userRightsNote }}
+          </p>
+        </div>
+
         <!-- AI Summary -->
         <p v-if="structuredReport?.consentAnalysis?.summary" class="overview-summary">
           {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
@@ -659,6 +670,41 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   font-weight: 700;
   color: var(--stat-value-color);
   text-align: center;
+}
+
+/* ── User Rights Note ────────────────────────── */
+.user-rights-note {
+  margin: 0.5rem 0 0;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, #10b981 8%, var(--surface-card));
+  border-left: 3px solid #10b981;
+  border-radius: 6px;
+}
+
+.user-rights-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.user-rights-icon {
+  font-size: 1rem;
+}
+
+.user-rights-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #10b981;
+}
+
+.user-rights-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-primary);
 }
 
 /* ── Overview Summary ────────────────────────── */

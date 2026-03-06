@@ -16,6 +16,8 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📸 **Screenshot Timeline** — Captures page state at initial load, after consent, and final
 - 📱 **Device Emulation** — Test as iPhone, iPad, Android Phone, Android Tablet, Windows Chrome, or macOS Safari
 - 📋 **Overlay & Consent Detection** — Detects page overlays (cookie consent, sign-in, newsletter, paywall) and extracts consent details using three-tier extraction (LLM vision → text-only LLM fallback → local regex parser) with screenshot cropping to the dialog bounding box
+- 📋 **"What You Agreed To" Digest** — Plain-language summary of what clicking Accept means in practice, written for non-technical users — highlights how many companies can track you, what data is collected, and whether data brokers are involved
+- ⚖️ **Your Rights Note** — When TCF or a consent platform is detected, a deterministic note explains the user's GDPR rights including how to withdraw consent and where to find cookie settings
 - 🌐 **Real-time URL Analysis** — Enter any URL and watch as tracking is exposed in real-time
 - 🎯 **Privacy Score** — Scooby-Doo themed privacy rating (Zoinks! to Scoob-tastic!)
 - 🍪 **Cookie Detection** — Identifies all cookies including third-party trackers. Click any cookie for an instant explanation (database-first, LLM fallback)

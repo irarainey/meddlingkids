@@ -46,6 +46,7 @@ _SECTION_LABELS: dict[str, str] = {
     "storage-analysis": "Storage analysis",
     "privacy-risk": "Privacy risk",
     "consent-analysis": "Consent analysis",
+    "consent-digest": "Consent digest",
     "social-media-implications": "Social media",
     "recommendations": "Recommendations",
 }
@@ -609,6 +610,10 @@ def _render_consent_analysis(
         lines.append(f"    Actual: {disc.actual}")
     if consent_sec.summary:
         lines.append(f"\n  {consent_sec.summary}")
+    if consent_sec.plain_language_summary:
+        lines.append(f"\n  What you agreed to: {consent_sec.plain_language_summary}")
+    if consent_sec.user_rights_note:
+        lines.append(f"\n  Your rights: {consent_sec.user_rights_note}")
     lines.append("")
     return lines
 
