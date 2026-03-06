@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
 import { useTrackingAnalysis } from './composables'
 import {
@@ -105,6 +105,35 @@ function handleViewReport(): void {
   tabsRef.value?.scrollIntoView({ behavior: 'smooth' })
 }
 
+/** URL validation — checks after the user has typed something. */
+const urlTouched = ref(false)
+function isValidUrl(value: string): boolean {
+  let candidate = value.trim()
+  if (!candidate) return false
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = 'https://' + candidate
+  }
+  try {
+    const parsed = new URL(candidate)
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+      && /\./.test(parsed.hostname)
+  } catch {
+    return false
+  }
+}
+const urlInvalid = computed(() => {
+  if (!urlTouched.value || !inputValue.value.trim()) return false
+  return !isValidUrl(inputValue.value)
+})
+
+function onUrlInput(): void {
+  urlTouched.value = true
+}
+
+function onUrlBlur(): void {
+  inputValue.value = inputValue.value.trim()
+}
+
 /** Select all text in the URL input on focus, preventing mouseup deselection. */
 let selectOnNextMouseUp = false
 function onUrlFocus(event: Event): void {
@@ -128,28 +157,36 @@ function onUrlMouseUp(event: Event): void {
       </p>
     </header>
 
-    <div class="url-bar">
-      <input
-        v-model="inputValue"
-        type="text"
-        class="text-input"
-        placeholder="Enter a suspicious URL to investigate..."
-        :disabled="isLoading"
-        @keyup.enter="analyzeUrl"
-        @focus="onUrlFocus"
-        @mouseup="onUrlMouseUp"
-      />
-      <select v-model="deviceType" class="device-select" :disabled="isLoading">
-        <option value="iphone">iPhone</option>
-        <option value="ipad">iPad</option>
-        <option value="android-phone">Android Phone</option>
-        <option value="android-tablet">Android Tablet</option>
-        <option value="windows-chrome">Windows Chrome</option>
-        <option value="macos-safari">macOS Safari</option>
-      </select>
-      <button class="go-button" :disabled="isLoading" @click="analyzeUrl">
-        {{ isLoading ? 'Investigating...' : 'Unmask' }}
-      </button>
+    <div class="url-bar-wrapper">
+      <div class="url-bar">
+        <input
+          v-model="inputValue"
+          type="text"
+          class="text-input"
+          :class="{ 'text-input--invalid': urlInvalid }"
+          placeholder="Enter a suspicious URL to investigate..."
+          :disabled="isLoading"
+          @keyup.enter="analyzeUrl"
+          @input="onUrlInput"
+          @blur="onUrlBlur"
+          @focus="onUrlFocus"
+          @mouseup="onUrlMouseUp"
+        />
+        <select v-model="deviceType" class="device-select" :disabled="isLoading">
+          <option value="iphone">iPhone</option>
+          <option value="ipad">iPad</option>
+          <option value="android-phone">Android Phone</option>
+          <option value="android-tablet">Android Tablet</option>
+          <option value="windows-chrome">Windows Chrome</option>
+          <option value="macos-safari">macOS Safari</option>
+        </select>
+        <button class="go-button" :disabled="isLoading || urlInvalid" @click="analyzeUrl">
+          {{ isLoading ? 'Investigating...' : 'Unmask' }}
+        </button>
+      </div>
+      <Transition name="fade">
+        <p v-if="urlInvalid" class="url-hint">Please enter a valid URL, e.g. example.com or https://example.com</p>
+      </Transition>
     </div>
 
     <!-- Loading Banner with Progress -->
@@ -312,12 +349,16 @@ function onUrlMouseUp(event: Event): void {
   padding: 0 1rem;
 }
 
+.url-bar-wrapper {
+  margin-bottom: 1.6rem;
+  text-align: center;
+}
+
 .url-bar {
   display: flex;
   align-items: center;
   gap: 1rem;
   justify-content: center;
-  margin-bottom: 1.6rem;
   flex-wrap: wrap;
 }
 
@@ -332,9 +373,23 @@ function onUrlMouseUp(event: Event): void {
   color: #e0e7ff;
 }
 
+.text-input--invalid {
+  border-color: #ef4444;
+}
+
 .text-input:focus {
   outline: none;
   border-color: #0C67AC;
+}
+
+.text-input--invalid:focus {
+  border-color: #ef4444;
+}
+
+.url-hint {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0;
 }
 
 .text-input::placeholder {

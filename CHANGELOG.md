@@ -1,6 +1,13 @@
 
 # Changelog
 
+## 1.7.4
+
+### Added
+
+- **URL input validation** — The URL text field now validates input as the user types, highlighting the border in red and displaying a hint message when the value is not a valid URL. The Unmask button is disabled until a valid URL is entered. A server-side guard in the composable also rejects invalid URLs before starting analysis.
+- **URL input trim on blur** — Leading and trailing whitespace is automatically stripped from the URL input when the field loses focus.
+
 ## 1.7.3
 
 ### Changed
