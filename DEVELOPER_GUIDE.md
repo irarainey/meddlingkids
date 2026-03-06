@@ -273,6 +273,8 @@ All data captured
    │   │  build_structured_report(tracking_summary, consent)   │
    │   │   ├── 10 concurrent section LLM calls                 │
    │   │   ├── GDPR/TCF reference data                         │
+   │   │   ├── Plain-language consent digest (LLM)              │
+   │   │   ├── Deterministic user-rights note (no LLM)          │
    │   │   └── Deterministic overrides (partner count,         │
    │   │       domain count, cookie count, storage counts)     │
    │   │                                                       │
@@ -424,8 +426,8 @@ App.vue
 ├── ScreenshotGallery (thumbnail row + modal)
 ├── TrackerCategorySection (reusable tracker category block)
 └── Tab Content (v-if="isComplete")
-    ├── SummaryTab (uses TrackerCategorySection ×5)
-    ├── ConsentTab (visible when consent dialog detected)
+    ├── SummaryTab (uses TrackerCategorySection ×5, includes "What You Agreed To" consent digest)
+    ├── ConsentTab (visible when consent dialog detected, includes "Your Rights" note)
     ├── CookiesTab
     ├── StorageTab
     ├── NetworkTab
@@ -456,7 +458,7 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model. Uses the Responses API when targeting a codex deployment |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring. Receives consent delta (post-consent changes) and consent platform data for richer findings. Results sorted by severity (critical first, positive last) |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 9 concurrent section LLM calls (2 waves) and deterministic overrides. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Results sorted by severity within each section. Uses a 60 s per-call timeout |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves) and deterministic overrides. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Includes a plain-language consent digest section and deterministic user-rights note. Results sorted by severity within each section. Uses a 60 s per-call timeout |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Overall privacy risk narrative (streaming markdown) — scope narrowed to 3 sections (Tracking Technologies, Privacy Risk Assessment, Consent Dialog Analysis). Receives decoded privacy cookies and decoded consent signals. Uses `run(stream=True)` with a 90 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 90 s |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
@@ -553,11 +555,11 @@ The data package is split into feature-specific sub-modules. `loader.py` is a th
 | `data/consent_loader.py` | TCF purposes, consent cookies, GDPR reference, GVL vendors, Google ATP providers, and consent platforms |
 | `data/media_loader.py` | Media group profiles (`get_media_groups()`, `find_media_group_by_domain()`) and LLM context builder |
 | `data/domain_info.py` | Cross-category domain descriptions (`get_domain_description()`) and storage key hints (`get_storage_key_hint()`) — combines tracker, partner, and Disconnect databases |
-| `data/trackers/tracking-scripts.json` | 493 regex patterns for known trackers |
+| `data/trackers/tracking-scripts.json` | 499 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 52 patterns for safe libraries |
 | `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
 | `data/trackers/tracking-storage.json` | Known tracking storage key definitions (185 keys) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
-| `data/trackers/tracker-domains.json` | Known tracker domain database (4,644 domains) from Privacy Badger |
+| `data/trackers/tracker-domains.json` | Known tracker domain database (19,099 domains) from Privacy Badger |
 | `data/trackers/cname-domains.json` | CNAME cloaking tracker domains (122,018 domains) from Privacy Badger and AdGuard |
 | `data/trackers/disconnect-services.json` | Disconnect Tracking Protection list (4,370 domains) |
 | `data/partners/*.json` | 574 partner entries across 8 risk categories |
