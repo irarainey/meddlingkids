@@ -385,6 +385,7 @@ function platformUrl(name: string): string {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .score-summary {
@@ -469,6 +470,7 @@ function platformUrl(name: string): string {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
   font-size: var(--section-title-size);
   font-weight: var(--section-title-weight);
   color: var(--section-title-color);
@@ -559,6 +561,7 @@ function platformUrl(name: string): string {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--border-separator);
   font-size: 0.95rem;
@@ -584,6 +587,8 @@ function platformUrl(name: string): string {
 
 .factor-text {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin-right: 0.25rem;
 }
 
@@ -632,6 +637,7 @@ function platformUrl(name: string): string {
   color: #7c8ab8;
   font-size: 0.85rem;
   font-family: monospace;
+  overflow-wrap: anywhere;
 }
 
 :deep(.tracker-purpose) {
@@ -665,6 +671,8 @@ function platformUrl(name: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .data-card-header strong {

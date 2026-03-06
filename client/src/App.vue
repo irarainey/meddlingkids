@@ -67,6 +67,7 @@ const {
 
 const tabsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<HTMLElement | null>(null)
+const progressRef = ref<HTMLElement | null>(null)
 
 const appVersion = __APP_VERSION__
 
@@ -84,15 +85,31 @@ function scrollToTop(): void {
 window.addEventListener('scroll', onScroll, { passive: true })
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
-/** Scroll to the screenshot gallery when the first screenshot arrives. */
+/** Scroll to show the progress banner when analysis starts. */
+watch(isLoading, (loading) => {
+  if (loading) {
+    nextTick(() => {
+      const el = progressRef.value
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const targetY = window.scrollY + rect.bottom - window.innerHeight + 32
+      if (targetY > window.scrollY) {
+        window.scrollTo({ top: targetY, behavior: 'smooth' })
+      }
+    })
+  }
+})
+
+/** Scroll to the progress banner (or gallery) when the first screenshot arrives. */
 watch(
   () => screenshots.value.length,
   (len, oldLen) => {
     if (len === 1 && (oldLen === 0 || oldLen === undefined)) {
       nextTick(() => {
-        galleryRef.value?.scrollIntoView({
+        const target = progressRef.value ?? galleryRef.value
+        target?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start',
         })
       })
     }
@@ -102,7 +119,10 @@ watch(
 /** Close the score dialog and scroll to the report tabs. */
 function handleViewReport(): void {
   closeScoreDialog()
-  tabsRef.value?.scrollIntoView({ behavior: 'smooth' })
+  const el = tabsRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  window.scrollTo({ top: window.scrollY + rect.top - 32, behavior: 'smooth' })
 }
 
 /** URL validation — checks after the user has typed something. */
@@ -190,11 +210,13 @@ function onUrlMouseUp(event: Event): void {
     </div>
 
     <!-- Loading Banner with Progress -->
+    <div ref="progressRef">
     <ProgressBanner
       v-if="isLoading"
       :status-message="statusMessage"
       :progress-percent="progressPercent"
     />
+    </div>
 
     <!-- Privacy Score Dialog -->
     <ScoreDialog
@@ -368,6 +390,8 @@ function onUrlMouseUp(event: Event): void {
   border: 1px solid #3d4663;
   border-radius: 8px;
   width: 500px;
+  max-width: 100%;
+  box-sizing: border-box;
   font-family: inherit;
   background: #1e2235;
   color: #e0e7ff;

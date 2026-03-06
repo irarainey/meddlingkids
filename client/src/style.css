@@ -72,6 +72,10 @@ a:hover {
   color: var(--link-hover);
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;

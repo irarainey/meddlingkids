@@ -8,6 +8,15 @@
 - **URL input validation** — The URL text field now validates input as the user types, highlighting the border in red and displaying a hint message when the value is not a valid URL. The Unmask button is disabled until a valid URL is entered. A server-side guard in the composable also rejects invalid URLs before starting analysis.
 - **URL input trim on blur** — Leading and trailing whitespace is automatically stripped from the URL input when the field loses focus.
 
+### Changed
+
+- **Mobile responsive layout fixes** — Added `max-width: 100%` and `box-sizing: border-box` to the URL input and device select to prevent horizontal overflow on narrow screens. Prevented horizontal page scroll with `overflow-x: hidden` on the html element.
+- **Summary tab mobile overflow fixes** — Added `flex-wrap` to score headings, section headings, risk factor rows, and data card headers. Added `overflow-wrap: anywhere` to factor text and tracker domain lists to prevent long text from breaking the page width.
+- **Score dialog mobile layout** — Added `box-sizing: border-box` to the dialog overlay and content. On screens ≤480px, reduced overlay padding, scaled down exclamation text, and tightened content padding so the dialog fits within the viewport.
+- **Progress bar visible on scan start** — The page now scrolls to show the progress banner with padding below when the scan begins, ensuring it is visible without sitting flush against the bottom of the viewport.
+- **Progress bar prioritised over screenshots on scroll** — When the first screenshot arrives, the page scrolls to the progress banner rather than the gallery, keeping the progress bar visible on mobile.
+- **View Full Report scroll offset** — Clicking "View Full Report" on the score dialog now scrolls to 32px above the report tabs for visual breathing room.
+
 ## 1.7.3
 
 ### Changed
