@@ -325,14 +325,14 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
           </div>
         </div>
 
-        <!-- What You Agreed To — plain-language digest -->
-        <div v-if="structuredReport?.consentAnalysis?.plainLanguageSummary" class="consent-digest">
-          <div class="consent-digest-header">
-            <span class="consent-digest-icon">📋</span>
-            <span class="consent-digest-title">What You Agreed To</span>
+        <!-- Your Rights — deterministic note about user privacy rights -->
+        <div v-if="structuredReport?.consentAnalysis?.userRightsNote" class="user-rights-note">
+          <div class="user-rights-header">
+            <span class="user-rights-icon">⚖️</span>
+            <span class="user-rights-title">Your Rights</span>
           </div>
-          <p class="consent-digest-text">
-            {{ structuredReport.consentAnalysis.plainLanguageSummary }}
+          <p class="user-rights-text">
+            {{ structuredReport.consentAnalysis.userRightsNote }}
           </p>
         </div>
 
@@ -672,37 +672,37 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   text-align: center;
 }
 
-/* ── Consent Digest (What You Agreed To) ─────── */
-.consent-digest {
-  margin: 0.75rem 0 0;
+/* ── User Rights Note ────────────────────────── */
+.user-rights-note {
+  margin: 0.5rem 0 0;
   padding: 0.85rem 1rem;
-  background: color-mix(in srgb, var(--accent-color, #3b82f6) 8%, var(--surface-card));
-  border-left: 3px solid var(--accent-color, #3b82f6);
+  background: color-mix(in srgb, #10b981 8%, var(--surface-card));
+  border-left: 3px solid #10b981;
   border-radius: 6px;
 }
 
-.consent-digest-header {
+.user-rights-header {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.4rem;
 }
 
-.consent-digest-icon {
+.user-rights-icon {
   font-size: 1rem;
 }
 
-.consent-digest-title {
+.user-rights-title {
   font-size: 0.82rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--accent-color, #3b82f6);
+  color: #10b981;
 }
 
-.consent-digest-text {
+.user-rights-text {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.55;
   color: var(--text-primary);
 }

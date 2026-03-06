@@ -141,6 +141,16 @@ function platformUrl(name: string): string {
           <span class="score-label">{{ getRiskLevel(privacyScore) }}</span>
         </div>
         <p v-if="privacySummary" class="score-summary">{{ privacySummary }} The score is calculated deterministically from tracking data — the AI analysis below may highlight individual practices that are more or less severe.</p>
+
+        <!-- What You Agreed To — inside the score banner -->
+        <div v-if="structuredReport?.consentAnalysis?.plainLanguageSummary" class="consent-digest">
+          <div class="consent-digest-header">
+            <span class="consent-digest-title">What You Agreed To</span>
+          </div>
+          <p class="consent-digest-text">
+            {{ structuredReport.consentAnalysis.plainLanguageSummary }}
+          </p>
+        </div>
       </div>
 
       <!-- ── Summary: Key Findings ─────────────────────────── -->
@@ -393,6 +403,35 @@ function platformUrl(name: string): string {
   color: var(--summary-color);
   margin: 0;
   line-height: 1.5;
+}
+
+/* ── Consent Digest (inside score banner) ────── */
+.consent-digest {
+  margin: 0;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.consent-digest-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.consent-digest-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.consent-digest-text {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.5;
+  color: var(--text-primary);
 }
 
 .privacy-score-banner .score-exclamation,

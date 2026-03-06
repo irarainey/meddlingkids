@@ -588,6 +588,8 @@ export interface ConsentAnalysisSection {
   summary: string
   /** Plain-language "what you agreed to" digest for non-technical users */
   plainLanguageSummary?: string
+  /** Deterministic note about the user's privacy rights under the detected framework */
+  userRightsNote?: string
   /** Detected consent management platform name (e.g. "Sourcepoint", "OneTrust") */
   consentPlatform?: string | null
   /** Base URL of the consent management platform vendor */
