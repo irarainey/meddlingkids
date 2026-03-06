@@ -325,6 +325,17 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
           </div>
         </div>
 
+        <!-- What You Agreed To — plain-language digest -->
+        <div v-if="structuredReport?.consentAnalysis?.plainLanguageSummary" class="consent-digest">
+          <div class="consent-digest-header">
+            <span class="consent-digest-icon">📋</span>
+            <span class="consent-digest-title">What You Agreed To</span>
+          </div>
+          <p class="consent-digest-text">
+            {{ structuredReport.consentAnalysis.plainLanguageSummary }}
+          </p>
+        </div>
+
         <!-- AI Summary -->
         <p v-if="structuredReport?.consentAnalysis?.summary" class="overview-summary">
           {{ stripMarkdown(structuredReport.consentAnalysis.summary) }}
@@ -659,6 +670,41 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
   font-weight: 700;
   color: var(--stat-value-color);
   text-align: center;
+}
+
+/* ── Consent Digest (What You Agreed To) ─────── */
+.consent-digest {
+  margin: 0.75rem 0 0;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--accent-color, #3b82f6) 8%, var(--surface-card));
+  border-left: 3px solid var(--accent-color, #3b82f6);
+  border-radius: 6px;
+}
+
+.consent-digest-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.consent-digest-icon {
+  font-size: 1rem;
+}
+
+.consent-digest-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-color, #3b82f6);
+}
+
+.consent-digest-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-primary);
 }
 
 /* ── Overview Summary ────────────────────────── */

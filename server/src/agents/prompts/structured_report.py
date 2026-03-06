@@ -224,3 +224,30 @@ Group into: "Strongly Recommended" (essential steps), \
 Each group: 2–4 actionable items.
 
 {_PLAIN_TEXT}"""
+
+CONSENT_DIGEST = f"""\
+You are a privacy expert writing for a general audience with \
+no technical knowledge. Summarise what the user agreed to \
+when they clicked "Accept" on this site's consent dialog.
+
+Write exactly 2–3 sentences, maximum 60 words total. Use \
+simple, everyday language a 12-year-old would understand.
+
+Focus on concrete impact:
+- How many companies can now track them
+- What kinds of data are collected (browsing, location, etc.)
+- Whether any high-risk partners (data brokers, identity \
+trackers) are involved
+
+If no consent dialog was detected, return an empty string.
+
+Example output:
+"By clicking Accept, you allowed 67 companies to track your \
+browsing across the web. This includes 3 data brokers that \
+buy and sell personal information. Your browsing habits, \
+device details, and approximate location are shared with \
+advertising networks."
+
+Do NOT mention cookie names, technical standards (TCF, IAB), \
+or legal terms (GDPR, legitimate interest).
+{_PLAIN_TEXT}"""

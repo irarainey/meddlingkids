@@ -7,6 +7,7 @@
 
 - **URL input validation** — The URL text field now validates input as the user types, highlighting the border in red and displaying a hint message when the value is not a valid URL. The Unmask button is disabled until a valid URL is entered. A server-side guard in the composable also rejects invalid URLs before starting analysis.
 - **URL input trim on blur** — Leading and trailing whitespace is automatically stripped from the URL input when the field loses focus.
+- **"What You Agreed To" plain-language consent digest** — A new LLM-generated summary explains in 2–3 simple sentences what the user agreed to by clicking Accept on a site's consent dialog. Written at a reading age of ~12, it highlights how many companies can track the user, what data is collected, and whether data brokers are involved. Displayed as a visually distinct callout in the Consent tab, above the existing technical AI summary. Inspired by Pew Research finding that 56% of users click "agree" without reading consent dialogs.
 
 ### Changed
 

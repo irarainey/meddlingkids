@@ -73,6 +73,10 @@ class _ConsentAnalysisResponse(pydantic.BaseModel):
     section: report.ConsentAnalysisSection
 
 
+class _ConsentDigestResponse(pydantic.BaseModel):
+    plain_language_summary: str
+
+
 class _SocialMediaImplicationsResponse(pydantic.BaseModel):
     section: report.SocialMediaImplicationsSection
 
@@ -160,9 +164,9 @@ class StructuredReportAgent(base.BaseAgent):
         #
         # Wrap each coroutine so the optional progress callback
         # fires as sections finish, giving the client granular
-        # "Generating report: <section> (N/9)..." updates.
+        # "Generating report: <section> (N/10)..." updates.
         _sections_done = 0
-        _total_sections = 9
+        _total_sections = 10
 
         async def _tracked(
             coro: Awaitable[pydantic.BaseModel | None],
@@ -186,6 +190,17 @@ class StructuredReportAgent(base.BaseAgent):
             else _noop_section(report.ConsentAnalysisSection())
         )
 
+        consent_digest_coro = (
+            self._build_section(
+                structured_report.CONSENT_DIGEST,
+                _ctx("consent-digest"),
+                _ConsentDigestResponse,
+                "consent-digest",
+            )
+            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
+            else _noop_section(_ConsentDigestResponse(plain_language_summary=""))
+        )
+
         log.info("Building all report sections concurrently...")
         (
             tracking_tech,
@@ -195,6 +210,7 @@ class StructuredReportAgent(base.BaseAgent):
             storage_analysis,
             privacy_risk,
             consent_analysis,
+            consent_digest,
             social_media_implications,
             recommendations,
         ) = await asyncio.gather(
@@ -257,6 +273,10 @@ class StructuredReportAgent(base.BaseAgent):
                 "consent-analysis",
             ),
             _tracked(
+                consent_digest_coro,
+                "consent-digest",
+            ),
+            _tracked(
                 self._build_section(
                     structured_report.SOCIAL_MEDIA_IMPLICATIONS,
                     _ctx("social-media-implications"),
@@ -312,6 +332,10 @@ class StructuredReportAgent(base.BaseAgent):
                         if entry.url:
                             consent_sec.consent_platform_url = entry.url
                         break
+
+        # ── Plain-language consent digest ───────────────────
+        if consent_digest and isinstance(consent_digest, _ConsentDigestResponse):
+            consent_sec.plain_language_summary = consent_digest.plain_language_summary
 
         # ── Deterministic third-party domain count ─────────
         # The LLM inconsistently counts whether to include
