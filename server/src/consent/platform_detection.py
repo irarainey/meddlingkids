@@ -350,25 +350,3 @@ async def find_accept_button(
         profile.accept_button_patterns,
         "Accept",
     )
-
-
-async def find_reject_button(
-    page: async_api.Page,
-    profile: ConsentPlatformProfile,
-) -> tuple[async_api.Locator, async_api.Frame, str] | None:
-    """Try to find a reject button using CMP-specific selectors.
-
-    Args:
-        page: The Playwright page to search.
-        profile: The detected CMP profile.
-
-    Returns:
-        A tuple of ``(locator, frame, selector)`` if found,
-        or ``None``.
-    """
-    return await _find_button_by_patterns(
-        page,
-        profile,
-        profile.reject_button_patterns,
-        "Reject",
-    )

@@ -17,6 +17,10 @@
 - **Progress bar prioritised over screenshots on scroll** — When the first screenshot arrives, the page scrolls to the progress banner rather than the gallery, keeping the progress bar visible on mobile.
 - **View Full Report scroll offset** — Clicking "View Full Report" on the score dialog now scrolls to 32px above the report tabs for visual breathing room.
 
+### Removed
+
+- **Dead code cleanup** — Removed unused `formatMarkdown()` utility, dead `TrackerCategorySection.vue` component, orphaned `ScriptViewerDialog` barrel export, unused `.error` and `.app-footer .version` CSS rules, a no-op `highlight` class binding, and the uncalled `find_reject_button()` function from the server.
+
 ## 1.7.3
 
 ### Changed

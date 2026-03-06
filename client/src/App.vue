@@ -259,7 +259,7 @@ function onUrlMouseUp(event: Event): void {
       <div ref="tabsRef" class="tabs">
           <button
             class="tab"
-            :class="{ active: activeTab === 'summary', highlight: structuredReport || summaryFindings.length > 0 }"
+            :class="{ active: activeTab === 'summary' }"
             @click="activeTab = 'summary'"
           >
             📋 Summary
@@ -468,12 +468,6 @@ function onUrlMouseUp(event: Event): void {
   cursor: not-allowed;
 }
 
-.error {
-  color: #f87171;
-  text-align: center;
-  margin: 1rem 0;
-}
-
 .main-content {
   margin-top: 1rem;
 }
@@ -531,12 +525,6 @@ function onUrlMouseUp(event: Event): void {
 .app-footer a:hover {
   color: #7CB8E4;
   text-decoration: underline;
-}
-
-.app-footer .version {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.6rem;
 }
 
 .back-to-top {
