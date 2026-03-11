@@ -13,6 +13,7 @@ Sub-modules:
     ``media_loader``     -- media group profiles, LLM context
     ``domain_info``      -- cross-category domain descriptions,
                            storage key hints
+    ``geo_loader``       -- IP geolocation (DB-IP Lite, CC BY 4.0)
 """
 
 from __future__ import annotations
@@ -32,6 +33,9 @@ from src.data.consent_loader import get_tcf_purposes as get_tcf_purposes
 from src.data.consent_loader import load_consent_platforms as load_consent_platforms
 from src.data.domain_info import get_domain_description as get_domain_description
 from src.data.domain_info import get_storage_key_hint as get_storage_key_hint
+
+# ── IP geolocation ──────────────────────────────────────────
+from src.data.geo_loader import lookup_country as lookup_country
 from src.data.media_loader import build_media_group_context as build_media_group_context
 from src.data.media_loader import (
     find_media_group_by_domain as find_media_group_by_domain,

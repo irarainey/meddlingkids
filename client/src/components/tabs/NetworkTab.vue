@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import type { NetworkRequest } from '../../types'
-import { getResourceTypeIcon, truncateValue } from '../../utils'
+import { countryFlagUrl, countryName, getResourceTypeIcon, truncateValue } from '../../utils'
 
 /**
  * Tab panel displaying network requests grouped by domain.
@@ -78,7 +78,7 @@ function parsePostData(data: string): { key: string; value: string }[] | null {
 }
 
 /** Cached domain info keyed by domain. */
-const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null }>>({})
+const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null; country: string | null }>>({})
 
 /** Fetch company/description info for all visible domains. */
 async function fetchDomainInfo(domains: string[]): Promise<void> {
@@ -95,7 +95,7 @@ async function fetchDomainInfo(domains: string[]): Promise<void> {
     if (response.ok) {
       const data = await response.json()
       for (const [domain, info] of Object.entries(data)) {
-        domainInfo[domain] = info as { company: string | null; description: string | null; url: string | null }
+        domainInfo[domain] = info as { company: string | null; description: string | null; url: string | null; country: string | null }
       }
     }
   } catch {
@@ -142,11 +142,15 @@ watch(
         <p class="section-subtitle">
           All data requests grouped by domain. Click on any URL to view it in a new tab.
         </p>
+        <p class="section-disclaimer">🏳️ Flags show where an IP address is registered, not necessarily where the server is physically located. Services using CDNs may show a different country to where your data is actually handled.</p>
         <div class="domain-groups">
         <div v-for="(domainRequests, domain) in networkByDomain" :key="domain" class="domain-group">
         <h3 class="domain-header">
           <div class="domain-header-line">
             <span v-if="domainRequests[0]?.isThirdParty" class="third-party-badge">3rd Party</span>
+            <span v-if="domainInfo[String(domain)]?.country" class="country-badge" :title="countryName(domainInfo[String(domain)]!.country!)">
+              <img :src="countryFlagUrl(domainInfo[String(domain)]!.country!)" :alt="domainInfo[String(domain)]!.country!" class="country-flag" />
+            </span>
             <a
               v-if="domainInfo[String(domain)]?.url"
               :href="domainInfo[String(domain)]!.url!"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import type { TrackedScript, ScriptGroup } from '../../types'
+import { countryFlagUrl, countryName } from '../../utils'
 import ScriptViewerDialog from '../ScriptViewerDialog.vue'
 
 /** Return the URL without query string or fragment for display purposes. */
@@ -19,7 +20,7 @@ function baseUrl(url: string): string {
  * Tab panel displaying scripts grouped by domain.
  * Also shows script groups for similar scripts (e.g., application chunks).
  */
-defineProps<{
+const props = defineProps<{
   /** Scripts grouped by domain */
   scriptsByDomain: Record<string, TrackedScript[]>
   /** Total number of scripts */
@@ -41,6 +42,40 @@ function openViewer(url: string, description?: string): void {
   viewerDescription.value = description ?? ''
   viewerOpen.value = true
 }
+
+/** Cached domain info keyed by domain. */
+const domainInfo = reactive<Record<string, { country: string | null }>>({})
+
+/** Fetch country info for all visible script domains. */
+async function fetchDomainInfo(domains: string[]): Promise<void> {
+  const unknown = domains.filter((d) => !(d in domainInfo))
+  if (unknown.length === 0) return
+
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/domain-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [domain, info] of Object.entries(data)) {
+        domainInfo[domain] = info as { country: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — enrichment is non-critical
+  }
+}
+
+watch(
+  () => Object.keys(props.scriptsByDomain),
+  (domains) => {
+    if (domains.length > 0) fetchDomainInfo(domains)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -91,13 +126,19 @@ function openViewer(url: string, description?: string): void {
       <!-- Individual Scripts by Domain -->
       <section class="scripts-analysis-section">
         <h2 class="section-title">🔎 Analysis</h2>
+        <p class="section-disclaimer">🏳️ Flags show where an IP address is registered, not necessarily where the server is physically located. Services using CDNs may show a different country to where your data is actually handled.</p>
         <p class="section-subtitle">
           All individual scripts grouped by domain. Click any URL to view its source.
         </p>
         <div class="domain-groups">
         <div v-for="(domainScripts, domain) in scriptsByDomain" :key="domain" class="domain-group">
           <template v-if="domainScripts.some(s => !s.isGrouped)">
-            <h3 class="domain-header">{{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})</h3>
+            <h3 class="domain-header">
+              <span v-if="domainInfo[String(domain)]?.country" class="country-badge" :title="countryName(domainInfo[String(domain)]!.country!)">
+                <img :src="countryFlagUrl(domainInfo[String(domain)]!.country!)" :alt="domainInfo[String(domain)]!.country!" class="country-flag" />
+              </span>
+              {{ domain }} ({{ domainScripts.filter(s => !s.isGrouped).length }})
+            </h3>
             <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
               <div class="script-main">
                 <button class="script-url" :title="script.url" @click="openViewer(script.url, script.description)">{{ baseUrl(script.url) }}</button>

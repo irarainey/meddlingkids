@@ -108,7 +108,7 @@ src/
 │   ├── script_cache.py              # Script analysis cache per script domain (base URL + MD5 hash, cross-site, JSON)
 │   ├── script_grouping.py           # Group similar scripts to reduce noise
 │   ├── tracker_patterns.py          # Regex patterns for tracker classification (with combined alternation)
-│   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats
+│   ├── tracking_summary.py          # Summary builder for LLM input & pre-consent stats (with geo enrichment)
 │   ├── domain_cache.py              # Domain knowledge cache for cross-run consistency (merge-on-save, JSON)
 │   ├── cookie_lookup.py             # Cookie info lookup (consent DB → tracking patterns → LLM fallback)
 │   ├── storage_lookup.py            # Storage key info lookup (tracking patterns → LLM fallback)
@@ -118,6 +118,7 @@ src/
 │   ├── vendor_lookup.py             # Vendor name resolution (GVL vendor IDs + Google ATP provider IDs → names)
 │   ├── cookie_decoders.py           # Structured cookie decoders (OneTrust, Cookiebot, GA, FB, Google Ads, USP, GPC/DNT, GPP)
 │   ├── domain_classifier.py         # Three-tier domain classification (Disconnect + partner DBs + keyword heuristics, no LLM)
+│   ├── geo_lookup.py                # DNS-based geolocation for third-party domains (async batch support, LRU-cached DNS)
 │   └── scoring/                     # Decomposed privacy scoring package (0-100)
 │       ├── _tiers.py                # Shared score_by_tiers() helper and Tier type alias for declarative threshold tables
 │       ├── calculator.py            # Orchestrator: calls category scorers, applies curve
@@ -151,7 +152,9 @@ src/
 │   ├── partner_loader.py            # Partner databases and PARTNER_CATEGORIES config
 │   ├── consent_loader.py            # TCF, GVL, GDPR, ATP, consent platform loaders
 │   ├── media_loader.py              # Media group profiles and LLM context builder
-│   ├── domain_info.py               # Cross-category domain descriptions and storage key hints
+│   ├── domain_info.py               # Cross-category domain descriptions and storage key hints (with geo country enrichment)
+│   ├── geo_loader.py                # IP geolocation (DB-IP Lite, CC BY 4.0) — auto-download, binary search, DNS+IP→country
+│   ├── geo/                         # Downloaded DB-IP Lite CSV files (gitignored, auto-downloaded on startup)
 │   ├── consent/                     # Consent and GDPR/TCF reference data
 │   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
 │   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)

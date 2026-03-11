@@ -36,10 +36,10 @@ src/
 │       ├── SummaryTab.vue       # AI analysis results with structured report, findings, and "What You Agreed To" consent digest
 │       ├── ConsentTab.vue       # Consent details with TCF purpose breakdown and "Your Rights" note
 │       ├── CookiesTab.vue       # Cookies by domain
-│       ├── NetworkTab.vue       # Network requests
-│       ├── ScriptsTab.vue       # Scripts by domain
+│       ├── NetworkTab.vue       # Network requests with country flags
+│       ├── ScriptsTab.vue       # Scripts by domain with country flags
 │       ├── StorageTab.vue       # localStorage/sessionStorage
-│       └── TrackerGraphTab.vue  # Interactive tracker relationship graph (D3.js)
+│       └── TrackerGraphTab.vue  # Interactive tracker relationship graph (D3.js) with country flags
 ├── composables/
 │   ├── index.ts                 # Barrel export
 │   └── useTrackingAnalysis.ts   # Main state management composable
@@ -48,7 +48,7 @@ src/
 │   └── tracking.ts              # TypeScript interfaces
 └── utils/
     ├── index.ts                 # Barrel export
-    └── formatters.ts            # Display formatting utilities
+    └── formatters.ts            # Display formatting utilities (score labels, resource icons, country flags, country names)
 ```
 
 ## Key Components
@@ -122,10 +122,10 @@ Each tab is a self-contained component with its own template and scoped styles:
 | `SummaryTab` | Full AI analysis with structured report, summary findings, and clickable vendor/service links |
 | `ConsentTab` | Consent dialog details with IAB TCF v2.2 purpose breakdown, consent categories, and partners grouped by risk level |
 | `CookiesTab` | Cookies grouped by domain with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
-| `NetworkTab` | Network requests with third-party filter and filter explanation note |
-| `ScriptsTab` | JavaScript files grouped by domain with click-to-view source dialog (syntax highlighted, auto-formatted) |
+| `NetworkTab` | Network requests with third-party filter, country flag icons (from IP geolocation), and filter explanation note |
+| `ScriptsTab` | JavaScript files grouped by domain with country flag icons and click-to-view source dialog (syntax highlighted, auto-formatted) |
 | `StorageTab` | localStorage and sessionStorage items with click-to-expand info lookup (database-first, LLM fallback) showing description, who sets it, purpose, risk level, and privacy note |
-| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Colour-coded by category (analytics, advertising, social, identity, session replay, consent management, CDN, first-party). Includes view modes (all domains, third-party only, pre-consent only), clickable category legend for single-category path filtering, first-party domain alias recognition, subdomain prefix heuristics, Disconnect override corrections, subgraph highlighting, minimap navigation, resource-type breakdown, and domain keyword heuristic to reduce "other" classifications |
+| `TrackerGraphTab` | Interactive force-directed network graph of tracker domain relationships using D3.js. Colour-coded by category (analytics, advertising, social, identity, session replay, consent management, CDN, first-party). Includes view modes (all domains, third-party only, pre-consent only), clickable category legend for single-category path filtering, first-party domain alias recognition, subdomain prefix heuristics, Disconnect override corrections, subgraph highlighting, minimap navigation, resource-type breakdown, country flag icons on tooltips and detail panels, and domain keyword heuristic to reduce "other" classifications |
 
 ### useTrackingAnalysis Composable
 

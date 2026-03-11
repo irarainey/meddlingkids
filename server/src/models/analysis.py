@@ -27,6 +27,7 @@ class DomainBreakdown(pydantic.BaseModel):
     script_count: int
     request_count: int
     request_types: list[str]
+    server_country: str | None = None
 
 
 class TrackingSummary(pydantic.BaseModel):
