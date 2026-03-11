@@ -100,6 +100,59 @@ export function getResourceTypeIcon(type: string): string {
 }
 
 /**
+ * Convert an ISO 3166-1 alpha-2 country code to its flag emoji.
+ *
+ * Each letter is offset to the Unicode Regional Indicator Symbol
+ * range (U+1F1E6..U+1F1FF), which renders as a flag emoji.
+ *
+ * @param code - Two-letter country code (e.g. "US", "DE")
+ * @returns Flag emoji (e.g. "🇺🇸", "🇩🇪"), or empty string for invalid input
+ */
+export function countryCodeToFlag(code: string): string {
+  if (!code || code.length !== 2) return ''
+  const upper = code.toUpperCase()
+  const first = upper.codePointAt(0)
+  const second = upper.codePointAt(1)
+  if (!first || !second) return ''
+  // Regional indicator symbols: A=0x1F1E6, B=0x1F1E7, ...
+  return String.fromCodePoint(first - 0x41 + 0x1F1E6) + String.fromCodePoint(second - 0x41 + 0x1F1E6)
+}
+
+/**
+ * Get the URL for a country flag SVG image.
+ *
+ * Uses the flag-icons project (MIT license) via CDN.
+ * @see https://github.com/lipis/flag-icons
+ *
+ * @param code - Two-letter country code (e.g. "US", "DE")
+ * @returns URL to a 4x3 SVG flag image, or empty string for invalid input
+ */
+export function countryFlagUrl(code: string): string {
+  if (!code || code.length !== 2) return ''
+  return `https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/${code.toLowerCase()}.svg`
+}
+
+/** Cached Intl.DisplayNames instance for country name lookups. */
+const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
+
+/**
+ * Get the full English name for an ISO 3166-1 alpha-2 country code.
+ *
+ * Uses the browser's built-in Intl.DisplayNames API.
+ *
+ * @param code - Two-letter country code (e.g. "US", "DE")
+ * @returns Full country name (e.g. "United States", "Germany"), or the code itself as fallback
+ */
+export function countryName(code: string): string {
+  if (!code || code.length !== 2) return code
+  try {
+    return countryNames.of(code.toUpperCase()) ?? code
+  } catch {
+    return code
+  }
+}
+
+/**
  * Strip markdown formatting from text for plain-text display.
  *
  * LLM-generated text sometimes includes markdown bold (`**text**`),

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import collections
 
-from src.analysis import tracker_patterns
+from src.analysis import geo_lookup, tracker_patterns
 from src.data import loader
 from src.models import analysis, tracking_data
 from src.utils import logger, url
@@ -49,8 +49,16 @@ def _get_third_party_domains(domain_data: dict[str, analysis.DomainData], analyz
 
 def _build_domain_breakdown(
     domain_data: dict[str, analysis.DomainData],
+    geo_countries: dict[str, str | None] | None = None,
 ) -> list[analysis.DomainBreakdown]:
-    """Build a summary breakdown for each domain's tracking activity."""
+    """Build a summary breakdown for each domain's tracking activity.
+
+    Args:
+        domain_data: Tracking data grouped by domain.
+        geo_countries: Optional mapping of domain to ISO 3166-1
+            alpha-2 country code from IP geolocation.
+    """
+    countries = geo_countries or {}
     return [
         analysis.DomainBreakdown(
             domain=domain,
@@ -58,7 +66,10 @@ def _build_domain_breakdown(
             cookie_names=[c.name for c in data.cookies],
             script_count=len(data.scripts),
             request_count=len(data.network_requests),
-            request_types=list({r.resource_type for r in data.network_requests}),
+            request_types=list(
+                {r.resource_type for r in data.network_requests},
+            ),
+            server_country=countries.get(domain),
         )
         for domain, data in domain_data.items()
     ]
@@ -73,6 +84,20 @@ def _build_storage_preview(items: list[tracking_data.StorageItem]) -> list[dict[
     return [{"key": item.key, "valuePreview": item.value[:_STORAGE_VALUE_PREVIEW_LIMIT]} for item in items]
 
 
+def _resolve_geo_countries(
+    domain_data: dict[str, analysis.DomainData],
+) -> dict[str, str | None]:
+    """Resolve geolocation for all domains synchronously.
+
+    Falls back to an empty dict when the geo database is not
+    available.
+    """
+    if not geo_lookup.geo_loader.is_available():
+        return {}
+
+    return {domain: geo_lookup.resolve_domain_country(domain) for domain in domain_data}
+
+
 def build_tracking_summary(
     cookies: list[tracking_data.TrackedCookie],
     scripts: list[tracking_data.TrackedScript],
@@ -80,10 +105,27 @@ def build_tracking_summary(
     local_storage: list[tracking_data.StorageItem],
     session_storage: list[tracking_data.StorageItem],
     analyzed_url: str,
+    geo_countries: dict[str, str | None] | None = None,
 ) -> analysis.TrackingSummary:
-    """Build a complete tracking summary for LLM privacy analysis."""
+    """Build a complete tracking summary for LLM privacy analysis.
+
+    Args:
+        cookies: Tracked cookies from the browser session.
+        scripts: Tracked scripts loaded by the page.
+        network_requests: Captured network requests.
+        local_storage: Captured localStorage items.
+        session_storage: Captured sessionStorage items.
+        analyzed_url: The URL being analysed.
+        geo_countries: Optional domain-to-country mapping from
+            IP geolocation (see :mod:`geo_lookup`).
+    """
     domain_data = _group_by_domain(cookies, scripts, network_requests)
     third_party = _get_third_party_domains(domain_data, analyzed_url)
+
+    # Enrich with geolocation when available.
+    countries = geo_countries
+    if countries is None:
+        countries = _resolve_geo_countries(domain_data)
 
     log.info(
         "Tracking summary built",
@@ -93,6 +135,7 @@ def build_tracking_summary(
             "cookies": len(cookies),
             "scripts": len(scripts),
             "requests": len(network_requests),
+            "geoResolved": sum(1 for v in countries.values() if v) if countries else 0,
         },
     )
 
@@ -104,7 +147,10 @@ def build_tracking_summary(
         local_storage_items=len(local_storage),
         session_storage_items=len(session_storage),
         third_party_domains=third_party,
-        domain_breakdown=_build_domain_breakdown(domain_data),
+        domain_breakdown=_build_domain_breakdown(
+            domain_data,
+            countries,
+        ),
         local_storage=_build_storage_preview(local_storage),
         session_storage=_build_storage_preview(session_storage),
     )

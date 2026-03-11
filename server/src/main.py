@@ -24,7 +24,7 @@ from starlette import responses
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
 from src.browser import manager
-from src.data import loader
+from src.data import geo_loader, loader
 from src.pipeline import stream
 from src.utils import cache, logger
 
@@ -33,6 +33,7 @@ def _bootstrap() -> None:
     """Load environment and configure observability (called once at startup)."""
     dotenv.load_dotenv()
     observability_setup.setup()
+    geo_loader.ensure_database()
 
 
 _bootstrap()

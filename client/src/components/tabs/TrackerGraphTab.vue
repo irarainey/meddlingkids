@@ -4,7 +4,7 @@
  * tracker relationships derived from captured network requests.
  */
 
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   select,
   forceSimulation,
@@ -29,6 +29,7 @@ import type {
   ZoomBehavior,
 } from 'd3'
 import type { NetworkRequest, StructuredReport } from '../../types'
+import { countryFlagUrl, countryName } from '../../utils'
 
 // ============================================================================
 // Types
@@ -313,6 +314,31 @@ const selectedNode = ref<GraphNode | null>(null)
 const isFullscreen = ref(false)
 const viewMode = ref<ViewMode>('all')
 const showExplanation = ref(true)
+
+/** Cached domain info keyed by domain (for country flags). */
+const domainInfo = reactive<Record<string, { country: string | null }>>({})
+
+/** Fetch country info for all graph domains. */
+async function fetchDomainInfo(domains: string[]): Promise<void> {
+  const unknown = domains.filter((d) => !(d in domainInfo))
+  if (unknown.length === 0) return
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/domain-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domains: unknown }),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      for (const [domain, info] of Object.entries(data)) {
+        domainInfo[domain] = info as { country: string | null }
+      }
+    }
+  } catch {
+    // Silently fail — enrichment is non-critical
+  }
+}
 
 /** The single active category filter — null means "show all". */
 const activeCategory = ref<TrackerCategory | null>(null)
@@ -629,6 +655,15 @@ const presentCategories = computed(() => {
   for (const n of graphData.value.nodes) cats.add(n.category)
   return cats
 })
+
+// Fetch country info whenever graph nodes change.
+watch(
+  () => graphData.value.nodes.map(n => n.id),
+  (domains) => {
+    if (domains.length > 0) fetchDomainInfo(domains)
+  },
+  { immediate: true },
+)
 
 /**
  * Apply the active view mode filter to the full graph data.
@@ -1544,7 +1579,10 @@ const graphStatsOverlay = computed(() => {
           v-if="hoveredNode && !selectedNode"
           class="graph-tooltip"
         >
-          <strong>{{ hoveredNode.label }}</strong>
+          <strong>
+            <img v-if="domainInfo[hoveredNode.id]?.country" :src="countryFlagUrl(domainInfo[hoveredNode.id]!.country!)" :alt="domainInfo[hoveredNode.id]!.country!" class="country-flag" :title="countryName(domainInfo[hoveredNode.id]!.country!)" />
+            {{ hoveredNode.label }}
+          </strong>
           <span class="tooltip-cat" :style="{ color: CATEGORY_COLOURS[hoveredNode.category] }">
             {{ CATEGORY_LABELS[hoveredNode.category] }}
           </span>
@@ -1569,6 +1607,7 @@ const graphStatsOverlay = computed(() => {
         <div v-if="selectedNode" class="detail-panel">
           <div class="detail-header">
             <span class="detail-dot" :style="{ background: CATEGORY_COLOURS[selectedNode.category] }"></span>
+            <img v-if="domainInfo[selectedNode.id]?.country" :src="countryFlagUrl(domainInfo[selectedNode.id]!.country!)" :alt="domainInfo[selectedNode.id]!.country!" class="country-flag" :title="countryName(domainInfo[selectedNode.id]!.country!)" />
             <strong>{{ selectedNode.label }}</strong>
             <span class="detail-cat">{{ CATEGORY_LABELS[selectedNode.category] }}</span>
             <button class="detail-close" @click="selectedNode = null">&times;</button>
@@ -1576,11 +1615,13 @@ const graphStatsOverlay = computed(() => {
           <div class="detail-stats">
             <span>{{ selectedNode.requestCount }} request{{ selectedNode.requestCount !== 1 ? 's' : '' }}</span>
             <span v-if="selectedNode.isThirdParty" class="third-party-badge">3rd Party</span>
+            <span v-if="domainInfo[selectedNode.id]?.country" class="detail-country" :title="countryName(domainInfo[selectedNode.id]!.country!)">{{ countryName(domainInfo[selectedNode.id]!.country!) }}</span>
           </div>
           <div v-if="selectedConnections.length > 0" class="detail-connections">
             <h4>Connections</h4>
             <div v-for="conn in selectedConnections" :key="conn.domain + conn.direction" class="conn-item">
               <span class="conn-dir">{{ conn.direction === 'outbound' ? '→' : '←' }}</span>
+              <img v-if="domainInfo[conn.domain]?.country" :src="countryFlagUrl(domainInfo[conn.domain]!.country!)" :alt="domainInfo[conn.domain]!.country!" class="country-flag" :title="countryName(domainInfo[conn.domain]!.country!)" />
               <span class="conn-domain">{{ conn.domain }}</span>
               <span class="conn-weight">×{{ conn.weight }}</span>
               <span v-if="conn.preConsent" class="pre-consent-badge">Pre-consent</span>
@@ -1953,6 +1994,12 @@ const graphStatsOverlay = computed(() => {
   border-radius: var(--badge-radius);
   font-size: var(--badge-size);
   font-weight: 600;
+}
+
+.detail-country {
+  font-size: var(--badge-size);
+  color: var(--muted-light);
+  font-style: italic;
 }
 
 .detail-connections {

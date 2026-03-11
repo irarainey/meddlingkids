@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import functools
 
-from src.data import partner_loader, tracker_loader
+from src.data import geo_loader, partner_loader, tracker_loader
 from src.utils import url as url_mod
 
 # Categories that are too generic to be useful as the sole label.
@@ -95,19 +95,23 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
         # Try to find the company URL from partner databases rather
         # than fabricating one from the tracking domain.
         url = _find_company_url(company) if company else None
-        return {"company": company, "description": description, "url": url}
+        country = geo_loader.lookup_country_for_domain(domain)
+        return {"company": company, "description": description, "url": url, "country": country}
 
     # 2. Partner databases — O(1) lookup via pre-built domain index.
     partner_index = _get_partner_domain_index()
     hit = partner_index.get(domain) or partner_index.get(url_mod.get_base_domain(domain))
     if hit:
+        hit["country"] = geo_loader.lookup_country_for_domain(domain)
         return hit
 
     # 3. Tracker-domains — minimal info (block/cookieblock).
     if tracker_loader.is_known_tracker_domain(domain):
-        return {"company": None, "description": "Known tracking domain", "url": None}
+        country = geo_loader.lookup_country_for_domain(domain)
+        return {"company": None, "description": "Known tracking domain", "url": None, "country": country}
 
-    return {"company": None, "description": None, "url": None}
+    country = geo_loader.lookup_country_for_domain(domain)
+    return {"company": None, "description": None, "url": None, "country": country}
 
 
 def get_storage_key_hint(key: str) -> dict[str, str | None]:

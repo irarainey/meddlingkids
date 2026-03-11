@@ -40,6 +40,10 @@ dist-ssr
 # Python
 # =============================================================================
 
+# Downloaded IP geolocation database (CC BY 4.0, ~7 MB)
+# Run scripts/update-geo-db.sh to fetch it locally.
+server/src/data/geo/dbip-*.csv
+
 # Byte-compiled / optimised / DLL files
 __pycache__/
 *.py[cod]

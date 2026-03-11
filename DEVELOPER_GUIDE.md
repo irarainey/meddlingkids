@@ -519,6 +519,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
 | `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains) with override corrections for known misclassifications, (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
+| `geo_lookup.py` | DNS-based geolocation for third-party domains — resolves domain names to IP addresses and looks up their country using the DB-IP Lite database. Provides synchronous single-domain lookup (`resolve_domain_country()`) and async batch resolution (`resolve_domains_countries()`). DNS results are LRU-cached (4096 entries) |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/_tiers.py` | Shared `score_by_tiers()` helper and `Tier` type alias — declarative `(threshold, points, issue_template)` tuples checked in descending order, replacing 20 if/elif threshold chains across category scorers |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
@@ -554,7 +555,9 @@ The data package is split into feature-specific sub-modules. `loader.py` is a th
 | `data/partner_loader.py` | Partner databases (`get_partner_database()`) and `PARTNER_CATEGORIES` config (8 risk categories) |
 | `data/consent_loader.py` | TCF purposes, consent cookies, GDPR reference, GVL vendors, Google ATP providers, and consent platforms |
 | `data/media_loader.py` | Media group profiles (`get_media_groups()`, `find_media_group_by_domain()`) and LLM context builder |
-| `data/domain_info.py` | Cross-category domain descriptions (`get_domain_description()`) and storage key hints (`get_storage_key_hint()`) — combines tracker, partner, and Disconnect databases |
+| `data/domain_info.py` | Cross-category domain descriptions (`get_domain_description()`) and storage key hints (`get_storage_key_hint()`) — combines tracker, partner, and Disconnect databases. Returns a `country` field from IP geolocation when the geo database is available |
+| `data/geo_loader.py` | IP geolocation database loader — parses the DB-IP Lite CSV (CC BY 4.0) into sorted integer ranges for O(log n) binary search. Auto-downloads the database on first startup via `ensure_database()`. Provides `lookup_country()` (IP→country) and `lookup_country_for_domain()` (DNS+IP→country) |
+| `data/geo/` | Downloaded DB-IP Lite CSV files (gitignored). Stable symlink `dbip-country-lite.csv` points to the latest dated file |
 | `data/trackers/tracking-scripts.json` | 499 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 52 patterns for safe libraries |
 | `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |
