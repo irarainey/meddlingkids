@@ -12,6 +12,10 @@
 - **`scripts/update-geo-db.sh`** — Optional shell script to manually download or pin a specific month's DB-IP database. The server auto-downloads on startup, so this is only needed for manual control.
 - **Debug logging for geo lookups** — Each domain→IP→country resolution is logged at debug level for troubleshooting.
 
+### Changed
+
+- **`agent-framework-core` updated to 1.0.0rc3** — Bumped from rc2 to rc3 (also pulls `azure-ai-projects` b3→b4 as a transitive dependency).
+
 
 
 ## 1.7.4

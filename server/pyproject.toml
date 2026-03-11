@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.129.0",
     "uvicorn[standard]>=0.41.0",
-    "agent-framework-core==1.0.0rc2",
+    "agent-framework-core==1.0.0rc3",
     "azure-monitor-opentelemetry-exporter>=1.0.0b48",
     "playwright>=1.58.0",
     "python-dotenv>=1.2.1",
