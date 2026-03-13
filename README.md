@@ -1,7 +1,5 @@
 <img src="./images/banner.jpg" alt="Meddling Kids Logo">
 
-## Meddling Kids
-
 Zoinks! There's something spooky going on with these websites... but don't worry, gang! This mystery-solving machine pulls the mask off sneaky trackers and exposes the villain underneath. Feed it any URL and watch as we unmask those cookies, scripts, network requests, and shady overlays. And we would have never figured it out if it wasn't for those meddling kids!
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
