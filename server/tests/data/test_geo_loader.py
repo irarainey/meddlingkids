@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import gzip
+import pathlib
 import textwrap
 from unittest import mock
 
@@ -10,10 +12,22 @@ import pytest
 from src.data import geo_loader
 
 
+def _write_gz_csv(
+    geo_dir: pathlib.Path,
+    content: str,
+    name: str = "dbip-country-lite-2026-03.csv.gz",
+) -> pathlib.Path:
+    """Helper: write *content* as a gzipped CSV into *geo_dir*."""
+    gz_path = geo_dir / name
+    gz_path.write_bytes(gzip.compress(content.encode()))
+    return gz_path
+
+
 @pytest.fixture(autouse=True)
 def _clear_cache() -> None:
-    """Clear the cached database between tests."""
-    geo_loader._load_database.cache_clear()
+    """Reset the module-level database cache between tests."""
+    geo_loader._db_cache = None
+    geo_loader._db_loaded = False
 
 
 class TestLookupCountry:
@@ -78,12 +92,10 @@ class TestIsAvailable:
 
 
 class TestLoadDatabase:
-    """CSV parsing and validation."""
+    """Compressed CSV parsing and validation."""
 
-    def test_parses_valid_csv(self, tmp_path: object) -> None:
-        """Parses a well-formed DB-IP Lite CSV."""
-        import pathlib
-
+    def test_parses_valid_csv_gz(self, tmp_path: object) -> None:
+        """Parses a well-formed gzipped DB-IP Lite CSV."""
         csv_content = textwrap.dedent("""\
             1.0.0.0,1.0.0.255,AU
             1.0.1.0,1.0.3.255,CN
@@ -91,11 +103,10 @@ class TestLoadDatabase:
         """)
         geo_dir = pathlib.Path(str(tmp_path)) / "geo"
         geo_dir.mkdir()
-        csv_file = geo_dir / "dbip-country-lite.csv"
-        csv_file.write_text(csv_content)
+        _write_gz_csv(geo_dir, csv_content)
 
         with mock.patch.object(geo_loader, "_GEO_DIR", geo_dir):
-            result = geo_loader._load_database.__wrapped__()
+            result = geo_loader._load_database()
 
         assert result is not None
         starts, _ends, countries = result
@@ -106,8 +117,6 @@ class TestLoadDatabase:
 
     def test_skips_malformed_rows(self, tmp_path: object) -> None:
         """Silently skips rows with invalid IP addresses."""
-        import pathlib
-
         csv_content = textwrap.dedent("""\
             1.0.0.0,1.0.0.255,AU
             bad-ip,1.0.3.255,CN
@@ -115,11 +124,10 @@ class TestLoadDatabase:
         """)
         geo_dir = pathlib.Path(str(tmp_path)) / "geo"
         geo_dir.mkdir()
-        csv_file = geo_dir / "dbip-country-lite.csv"
-        csv_file.write_text(csv_content)
+        _write_gz_csv(geo_dir, csv_content)
 
         with mock.patch.object(geo_loader, "_GEO_DIR", geo_dir):
-            result = geo_loader._load_database.__wrapped__()
+            result = geo_loader._load_database()
 
         assert result is not None
         _, _, countries = result
@@ -127,14 +135,29 @@ class TestLoadDatabase:
         assert countries == ["AU", "DE"]
 
     def test_returns_none_when_file_missing(self) -> None:
-        """Returns None when no CSV file exists."""
-        import pathlib
-
+        """Returns None when no .csv.gz file exists."""
         with mock.patch.object(
             geo_loader,
             "_GEO_DIR",
             pathlib.Path("/nonexistent"),
         ):
-            result = geo_loader._load_database.__wrapped__()
+            result = geo_loader._load_database()
 
         assert result is None
+
+    def test_picks_newest_file(self, tmp_path: object) -> None:
+        """When multiple .csv.gz files exist, uses the newest."""
+        old_csv = "1.0.0.0,1.0.0.255,US\n"
+        new_csv = "1.0.0.0,1.0.0.255,DE\n"
+
+        geo_dir = pathlib.Path(str(tmp_path)) / "geo"
+        geo_dir.mkdir()
+        _write_gz_csv(geo_dir, old_csv, "dbip-country-lite-2025-01.csv.gz")
+        _write_gz_csv(geo_dir, new_csv, "dbip-country-lite-2026-03.csv.gz")
+
+        with mock.patch.object(geo_loader, "_GEO_DIR", geo_dir):
+            result = geo_loader._load_database()
+
+        assert result is not None
+        _, _, countries = result
+        assert countries == ["DE"]

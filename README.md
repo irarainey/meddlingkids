@@ -22,7 +22,7 @@ Zoinks! There's something spooky going on with these websites... but don't worry
 - 📜 **Script Tracking** — Lists all JavaScript files with smart grouping for app chunks and vendor bundles. Click any script URL to view its source code in a fullscreen dialog with syntax highlighting and automatic formatting of minified code
 - 🔄 **Network Monitoring** — Captures HTTP requests with third-party filtering and initiator domain tracking
 - 🕸️ **Tracker Graph** — Interactive force-directed network graph showing domain-to-domain tracker relationships, with view modes (all, third-party only, pre-consent only), clickable category filters (analytics, advertising, social, identity, session replay, consent management, CDN, first-party), first-party domain alias recognition, subdomain prefix heuristics, Disconnect override corrections, minimap navigation, resource-type breakdown, and country flag icons on nodes and connections
-- 🌍 **IP Geolocation** — Country flag icons on Network, Scripts, and Tracker Graph tabs showing where each domain's server IP is registered. Uses the DB-IP Lite database (CC BY 4.0) — auto-downloaded on first startup. Hover for full country name
+- 🌍 **IP Geolocation** — Country flag icons on Network, Scripts, and Tracker Graph tabs showing where each domain's server IP is registered. Uses the DB-IP Lite database (CC BY 4.0), bundled as a compressed CSV. Hover for full country name
 - 💾 **Storage Inspection** — Reveals localStorage and sessionStorage usage. Click any storage key for an instant explanation (database-first, LLM fallback)
 - 🎯 **TCF Purpose Breakdown** — Maps consent purposes to the IAB TCF v2.2 taxonomy with risk levels, lawful bases, and human-readable explanations
 - 🔓 **TC String Decoding** — Decodes IAB TCF v2 consent strings (euconsent-v2) to reveal purpose consents, vendor consents, legitimate interest signals, and CMP metadata
@@ -121,7 +121,7 @@ meddlingkids/
 │       ├── models/            # Pydantic data models
 │       ├── data/              # Static data and reference databases (JSON)
 │       │   ├── consent/       # Consent and GDPR/TCF reference data (CMP profiles, GVL vendors, Google ATP providers, consent cookies, lawful bases, purposes)
-│       │   ├── geo/           # Downloaded DB-IP Lite CSV (auto-downloaded, gitignored)
+│       │   ├── geo/           # Bundled DB-IP Lite database (compressed .csv.gz)
 │       │   ├── partners/      # Partner risk databases (8 JSON files, 574 entries)
 │       │   ├── publishers/    # Media group profiles (16 UK media groups)
 │       │   └── trackers/      # Tracking pattern databases (7 JSON files)
