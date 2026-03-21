@@ -556,8 +556,8 @@ The data package is split into feature-specific sub-modules. `loader.py` is a th
 | `data/consent_loader.py` | TCF purposes, consent cookies, GDPR reference, GVL vendors, Google ATP providers, and consent platforms |
 | `data/media_loader.py` | Media group profiles (`get_media_groups()`, `find_media_group_by_domain()`) and LLM context builder |
 | `data/domain_info.py` | Cross-category domain descriptions (`get_domain_description()`) and storage key hints (`get_storage_key_hint()`) — combines tracker, partner, and Disconnect databases. Returns a `country` field from IP geolocation when the geo database is available |
-| `data/geo_loader.py` | IP geolocation database loader — parses the DB-IP Lite CSV (CC BY 4.0) into sorted integer ranges for O(log n) binary search. Auto-downloads the database on first startup via `ensure_database()`. Provides `lookup_country()` (IP→country) and `lookup_country_for_domain()` (DNS+IP→country) |
-| `data/geo/` | Downloaded DB-IP Lite CSV files (gitignored). Stable symlink `dbip-country-lite.csv` points to the latest dated file |
+| `data/geo_loader.py` | IP geolocation database loader — parses the bundled DB-IP Lite `.csv.gz` (CC BY 4.0) into sorted integer ranges for O(log n) binary search. Loads the newest `dbip-country-lite-*.csv.gz` from the `geo/` directory on first use. Provides `lookup_country()` (IP→country) and `lookup_country_for_domain()` (DNS+IP→country) |
+| `data/geo/` | Bundled DB-IP Lite compressed CSV files (`.csv.gz`). The loader automatically selects the newest dated file. Run `scripts/update-geo-db.sh` to refresh |
 | `data/trackers/tracking-scripts.json` | 499 regex patterns for known trackers |
 | `data/trackers/benign-scripts.json` | 52 patterns for safe libraries |
 | `data/trackers/tracking-cookies.json` | Known tracking cookie definitions (137 cookies) with regex patterns, descriptions, purposes, risk levels, and privacy notes |

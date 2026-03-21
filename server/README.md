@@ -153,8 +153,8 @@ src/
 │   ├── consent_loader.py            # TCF, GVL, GDPR, ATP, consent platform loaders
 │   ├── media_loader.py              # Media group profiles and LLM context builder
 │   ├── domain_info.py               # Cross-category domain descriptions and storage key hints (with geo country enrichment)
-│   ├── geo_loader.py                # IP geolocation (DB-IP Lite, CC BY 4.0) — auto-download, binary search, DNS+IP→country
-│   ├── geo/                         # Downloaded DB-IP Lite CSV files (gitignored, auto-downloaded on startup)
+│   ├── geo_loader.py                # IP geolocation (DB-IP Lite, CC BY 4.0) — bundled .csv.gz, binary search, DNS+IP→country
+│   ├── geo/                         # Bundled DB-IP Lite .csv.gz files (committed to repo)
 │   ├── consent/                     # Consent and GDPR/TCF reference data
 │   │   ├── consent-platforms.json   # 19 CMP profiles with DOM selectors, button patterns, and cookie indicators
 │   │   ├── consent-cookies.json     # Known consent-state cookie names (TCF and CMP)

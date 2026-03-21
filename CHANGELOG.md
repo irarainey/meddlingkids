@@ -1,15 +1,23 @@
 
 # Changelog
 
+## 1.7.6
+
+### Changed
+
+- **GeoIP database bundled in repository** — The DB-IP Lite country database (~3.8 MB compressed) is now committed to the repo as a `.csv.gz` file and loaded directly at runtime, eliminating the fragile download-on-startup approach. The loader reads the compressed file in-memory (`gzip.open`) without decompressing to disk. Use `scripts/update-geo-db.sh` to refresh to a newer month's database.
+- **GeoIP loader simplified** — Removed all download, retry, and symlink logic from `geo_loader.py`. The loader now finds the newest `dbip-country-lite-*.csv.gz` in the `geo/` directory and parses it on first use. Failed loads (missing file) are not cached so the database is re-checked on each call.
+- **`agent-framework-core` updated to 1.0.0rc5** — Bumped from rc3 to rc5 (also pulls `azure-ai-projects` 2.0.0b4 → 2.0.1 GA as a transitive dependency).
+
 ## 1.7.5
 
 ### Added
 
-- **IP geolocation for third-party domains** — Domains on the Network, Scripts, and Tracker Graph tabs now display a country flag icon showing where the domain's IP address is registered. Hovering over the flag shows the full country name. Uses the [DB-IP Lite](https://db-ip.com/db/lite.php) database (CC BY 4.0, ~600k IP ranges) with O(log n) binary search lookups. The database is automatically downloaded on first server startup and cached on disk.
+- **IP geolocation for third-party domains** — Domains on the Network, Scripts, and Tracker Graph tabs now display a country flag icon showing where the domain's IP address is registered. Hovering over the flag shows the full country name. Uses the [DB-IP Lite](https://db-ip.com/db/lite.php) database (CC BY 4.0, ~600k IP ranges) with O(log n) binary search lookups.
 - **Country flags on tracker graph** — The interactive network graph now shows country flag icons on hover tooltips, the selected-node detail panel (with full country name), and connection list items.
 - **Geo disclaimer on Network and Scripts tabs** — A subtle note below the Analysis heading explains that flags show where an IP address is registered, not necessarily where the server is physically located, since CDN-fronted services may show a different country.
 - **`/api/domain-info` enriched with `country` field** — The domain info API now returns an ISO 3166-1 alpha-2 country code alongside company, description, and URL. Geolocation uses DNS resolution followed by IP-to-country lookup.
-- **`scripts/update-geo-db.sh`** — Optional shell script to manually download or pin a specific month's DB-IP database. The server auto-downloads on startup, so this is only needed for manual control.
+- **`scripts/update-geo-db.sh`** — Shell script to download and update the bundled DB-IP database to a newer month's release.
 - **Debug logging for geo lookups** — Each domain→IP→country resolution is logged at debug level for troubleshooting.
 
 ### Changed

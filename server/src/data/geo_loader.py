@@ -4,8 +4,10 @@ Loads the DB-IP Lite country database (CC BY 4.0) and
 provides O(log n) IP-to-country lookups using binary search
 on sorted IPv4/IPv6 integer ranges.
 
-The database file is optional.  When absent, all lookups
-return ``None`` and a debug message is logged once.
+The database is bundled as a compressed ``.csv.gz`` file in
+the ``geo/`` directory.  When absent, all lookups return
+``None`` and a debug message is logged once.  Use
+``scripts/update-geo-db.sh`` to refresh the bundled file.
 
 Attribution: IP Geolocation by DB-IP (https://db-ip.com)
 License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
@@ -15,13 +17,11 @@ from __future__ import annotations
 
 import bisect
 import csv
-import functools
 import gzip
+import io
 import pathlib
 import socket
 import struct
-import urllib.request
-from datetime import UTC, datetime
 
 from src.utils import logger
 
@@ -29,101 +29,53 @@ log = logger.create_logger("GeoLoader")
 
 _GEO_DIR = pathlib.Path(__file__).resolve().parent / "geo"
 
-# Stable symlink name created by scripts/update-geo-db.sh or ensure_database().
-_DB_SYMLINK = "dbip-country-lite.csv"
+# Glob pattern for the bundled compressed database.
+_GZ_GLOB = "dbip-country-lite-*.csv.gz"
 
-# DB-IP Lite download URL template.  The file is published on
-# the 1st of each month and licensed under CC BY 4.0.
-_DOWNLOAD_URL = "https://download.db-ip.com/free/dbip-country-lite-{slug}.csv.gz"
+# Module-level cache — only populated after a successful parse.
+_db_cache: tuple[list[int], list[int], list[str]] | None = None
+_db_loaded: bool = False
 
 
-def ensure_database() -> bool:
-    """Download the DB-IP Lite database if not already present.
+def _find_database() -> pathlib.Path | None:
+    """Locate the newest bundled ``.csv.gz`` file in the geo dir.
 
-    Checks for the symlink/CSV file and, if missing, downloads
-    the current month's database from DB-IP.  This is safe to
-    call on every startup — it only downloads when needed.
-
-    Returns:
-        ``True`` if the database is available after this call.
+    Returns ``None`` when no database file is present.
     """
-    csv_path = _GEO_DIR / _DB_SYMLINK
-    if csv_path.exists():
-        return True
-
-    _GEO_DIR.mkdir(parents=True, exist_ok=True)
-
-    slug = datetime.now(tz=UTC).strftime("%Y-%m")
-    filename = f"dbip-country-lite-{slug}.csv"
-    csv_file = _GEO_DIR / filename
-    gz_file = _GEO_DIR / f"{filename}.gz"
-
-    # If the dated CSV already exists, just create the symlink.
-    if csv_file.exists():
-        symlink = _GEO_DIR / _DB_SYMLINK
-        symlink.symlink_to(filename)
-        log.info("IP geolocation database symlink created", {"file": filename})
-        return True
-
-    url = _DOWNLOAD_URL.format(slug=slug)
-    log.info("Downloading IP geolocation database", {"url": url})
-
-    try:
-        urllib.request.urlretrieve(url, gz_file)
-    except Exception:
-        log.warn(
-            "Failed to download IP geolocation database — "
-            "country flags will not be shown. "
-            "Run scripts/update-geo-db.sh manually if needed.",
-        )
-        gz_file.unlink(missing_ok=True)
-        return False
-
-    try:
-        with gzip.open(gz_file, "rb") as f_in, open(csv_file, "wb") as f_out:
-            while chunk := f_in.read(65536):
-                f_out.write(chunk)
-    except Exception:
-        log.warn("Failed to decompress IP geolocation database")
-        csv_file.unlink(missing_ok=True)
-        gz_file.unlink(missing_ok=True)
-        return False
-
-    gz_file.unlink(missing_ok=True)
-
-    # Create the stable symlink.
-    symlink = _GEO_DIR / _DB_SYMLINK
-    symlink.symlink_to(filename)
-
-    log.info("IP geolocation database downloaded", {"file": filename})
-    return True
-
-
-@functools.cache
-def _load_database() -> tuple[list[int], list[int], list[str]] | None:
-    """Parse the DB-IP Lite CSV into sorted integer ranges.
-
-    Returns a tuple of ``(starts, ends, countries)`` where
-    each list is aligned by index.  ``starts`` is sorted in
-    ascending order for binary search.
-
-    Uses ``socket.inet_pton`` + ``struct.unpack`` for fast IP
-    parsing instead of ``ipaddress.ip_address()`` (~10× faster).
-
-    Returns ``None`` when the database file is not present.
-    """
-    csv_path = _GEO_DIR / _DB_SYMLINK
-    if not csv_path.exists():
-        log.debug(
-            "IP geolocation database not found — run scripts/update-geo-db.sh to download it",
+    geo_dir = _GEO_DIR.resolve()
+    candidates = sorted(geo_dir.glob(_GZ_GLOB))
+    if not candidates:
+        return None
+    newest = candidates[-1]
+    # Prevent symlink escape outside the data directory.
+    if not newest.resolve().is_relative_to(geo_dir):
+        log.error(
+            "Geo database file escapes data directory",
+            {"path": str(newest)},
         )
         return None
+    return newest
 
-    resolved = csv_path.resolve()
-    if not resolved.is_relative_to(_GEO_DIR.resolve()):
-        log.error(
-            "Geo database symlink escapes data directory",
-            {"path": str(resolved)},
+
+def _load_database() -> tuple[list[int], list[int], list[str]] | None:
+    """Parse the bundled DB-IP Lite CSV into sorted ranges.
+
+    Reads directly from the compressed ``.csv.gz`` to avoid
+    needing to decompress to disk.  The result is cached after
+    the first successful parse.
+
+    Returns a tuple of ``(starts, ends, countries)`` where
+    each list is aligned by index, or ``None`` when no
+    database file is present.
+    """
+    global _db_cache, _db_loaded
+    if _db_loaded:
+        return _db_cache
+
+    gz_path = _find_database()
+    if gz_path is None:
+        log.debug(
+            "IP geolocation database not found — run scripts/update-geo-db.sh to download it",
         )
         return None
 
@@ -131,8 +83,8 @@ def _load_database() -> tuple[list[int], list[int], list[str]] | None:
     ends: list[int] = []
     countries: list[str] = []
 
-    with open(resolved, newline="", encoding="utf-8") as fh:
-        reader = csv.reader(fh)
+    with gzip.open(gz_path, "rt", encoding="utf-8") as fh:
+        reader = csv.reader(io.StringIO(fh.read()))
         for row in reader:
             if len(row) < 3:
                 continue
@@ -147,11 +99,18 @@ def _load_database() -> tuple[list[int], list[int], list[str]] | None:
             ends.append(end_int)
             countries.append(country)
 
+    result = starts, ends, countries
     log.info(
         "IP geolocation database loaded",
-        {"entries": len(starts)},
+        {
+            "file": gz_path.name,
+            "entries": len(starts),
+        },
     )
-    return starts, ends, countries
+
+    _db_cache = result
+    _db_loaded = True
+    return result
 
 
 def _ip_to_int(addr: str) -> int:

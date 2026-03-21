@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # ============================================================================
-# Download the DB-IP Lite country database for IP geolocation lookups
+# Update the bundled DB-IP Lite country database for IP geolocation lookups
+#
+# The geo_loader reads directly from the compressed .csv.gz file, so this
+# script downloads, validates, and stores the .csv.gz in the repo.
+# Commit the updated file after running this script.
 #
 # Source: https://db-ip.com/db/lite.php
 # License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
@@ -21,6 +25,9 @@ usage() {
     echo "Usage: $(basename "$0") [YYYY-MM]"
     echo "  Downloads the DB-IP Lite country database."
     echo "  Defaults to the current year-month if omitted."
+    echo ""
+    echo "  The compressed .csv.gz file is stored in the repo and"
+    echo "  loaded directly by the server. Commit it after updating."
     echo ""
     echo "License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/"
     echo "Attribution: IP Geolocation by DB-IP (https://db-ip.com)"
@@ -43,35 +50,30 @@ main() {
     local filename="dbip-country-lite-${date_slug}.csv"
     local url="https://download.db-ip.com/free/${filename}.gz"
     local output_gz="$GEO_DIR/${filename}.gz"
-    local output_csv="$GEO_DIR/${filename}"
-    local symlink="$GEO_DIR/dbip-country-lite.csv"
 
     mkdir -p "$GEO_DIR"
 
     echo "Downloading DB-IP Lite country database (${date_slug})..."
-    if ! curl -fSL --retry 3 --retry-delay 5 -o "$output_gz" "$url"; then
+    if ! curl -fSL --retry 3 --retry-delay 5 \
+         -A "Mozilla/5.0 (compatible; MeddlingKids/1.0)" \
+         -o "$output_gz" "$url"; then
         echo "Error: failed to download $url" >&2
         echo "The database is published on the 1st of each month." >&2
         echo "Check https://db-ip.com/db/lite.php for availability." >&2
         exit 1
     fi
 
-    echo "Decompressing..."
-    gunzip -f "$output_gz"
-
     # Validate the CSV has expected structure (ip_start,ip_end,country)
     local line_count
-    line_count="$(wc -l < "$output_csv")"
+    line_count="$(zcat "$output_gz" | wc -l)"
     if [[ "$line_count" -lt 1000 ]]; then
         echo "Error: downloaded file has only $line_count lines — expected 100k+" >&2
-        rm -f "$output_csv"
+        rm -f "$output_gz"
         exit 1
     fi
 
-    # Create/update stable symlink so the loader finds the latest file
-    ln -sf "$filename" "$symlink"
-
-    echo "Done. Database saved to $output_csv ($line_count entries)"
+    echo "Done. Database saved to $output_gz ($line_count entries)"
+    echo "Commit this file to the repository."
     echo ""
     echo "Attribution: IP Geolocation by DB-IP (https://db-ip.com)"
     echo "License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/"

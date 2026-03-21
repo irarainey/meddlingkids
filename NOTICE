@@ -129,3 +129,21 @@ These files were compiled from publicly available information including
 vendor documentation, company websites, regulatory text, and the IAB
 TCF CMP registry. They do not reproduce substantial portions of any
 copyrighted dataset.
+
+
+DB-IP Lite Country Database (geo/dbip-country-lite-*.csv.gz)
+------------------------------------------------------------
+Copyright (C) db-ip.com
+License: CC BY 4.0
+         https://creativecommons.org/licenses/by/4.0/
+Source: https://db-ip.com/db/lite.php
+Usage: IP-to-country lookups used to display country flag icons
+       on Network, Scripts, and Tracker Graph tabs. The database
+       maps ~600k IPv4/IPv6 ranges to ISO 3166-1 alpha-2 country
+       codes.
+
+This data file is a separate work licensed under the Creative Commons
+Attribution 4.0 International license. It is NOT covered by the
+project's AGPL-3.0 license. Attribution: IP Geolocation by DB-IP
+(https://db-ip.com). Use scripts/update-geo-db.sh to refresh to a
+newer month's release.
