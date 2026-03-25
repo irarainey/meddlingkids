@@ -1702,6 +1702,7 @@ source = { editable = "." }
 dependencies = [
     { name = "agent-framework-core" },
     { name = "aiohttp" },
+    { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry-exporter" },
     { name = "brotli" },
     { name = "fastapi" },
@@ -1728,6 +1729,7 @@ dev = [
 requires-dist = [
     { name = "agent-framework-core", specifier = "==1.0.0rc5" },
     { name = "aiohttp", specifier = ">=3.13.3" },
+    { name = "azure-identity", specifier = ">=1.21.0" },
     { name = "azure-monitor-opentelemetry-exporter", specifier = ">=1.0.0b48" },
     { name = "brotli", specifier = ">=1.2.0" },
     { name = "fastapi", specifier = ">=0.129.0" },
