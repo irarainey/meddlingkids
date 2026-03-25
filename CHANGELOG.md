@@ -8,6 +8,12 @@
 - **Azure Managed Identity authentication** — Azure OpenAI now supports authenticating via `DefaultAzureCredential` as an alternative to API keys. Set `AZURE_USE_MANAGED_IDENTITY=true` to enable. Works with system-assigned and user-assigned managed identities (via `AZURE_CLIENT_ID`), Azure CLI, and other credential sources supported by the Azure Identity SDK. API key authentication remains the default and continues to work unchanged.
 - **`azure-identity` added as explicit dependency** — Previously only a transitive dependency; now declared directly in `pyproject.toml`.
 
+### Fixed
+
+- **Country flags not appearing on Network, Scripts, and Graph tabs** — The `/api/domain-info` endpoint performed synchronous DNS lookups on the async event loop, blocking all other requests for 10–20 seconds when resolving hundreds of domains. Moved the blocking work to a thread pool via `asyncio.to_thread()`.
+- **Progressive domain info loading** — The Network and Tracker Graph tabs now fetch domain info in batches of 30 instead of sending all domains in a single request. Flags and company info appear progressively within ~1 second instead of waiting for the entire list to resolve.
+- **Partner database cache mutation** — `get_domain_description()` was mutating cached dictionaries from the partner domain index when adding the `country` field, which could cause inconsistent results under concurrent access. Fixed by copying the dict before modification.
+
 ## 1.7.6
 
 ### Changed
