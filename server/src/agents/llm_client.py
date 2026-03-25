@@ -4,9 +4,16 @@ Chat client factory for Microsoft Agent Framework.
 Supports both Azure OpenAI and standard OpenAI backends.
 Automatically detects which backend to use based on environment
 variables, preferring Azure when fully configured.
+
+Azure OpenAI supports two authentication modes:
+
+* **API key** – set ``AZURE_OPENAI_API_KEY``.
+* **Managed Identity** – set ``AZURE_USE_MANAGED_IDENTITY=true``.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 import agent_framework
 from agent_framework import azure, openai
@@ -18,6 +25,25 @@ log = logger.create_logger("LLM-Client")
 
 # Minimum Azure API version required by the Responses API.
 _MIN_RESPONSES_API_VERSION = "2025-03-01-preview"
+
+
+def _build_azure_auth_kwargs(cfg: config.AzureOpenAIConfig) -> dict[str, Any]:
+    """Return authentication keyword arguments for Azure OpenAI clients.
+
+    When managed identity is enabled, returns a
+    ``DefaultAzureCredential`` via the ``credential`` key.
+    Otherwise, returns the ``api_key`` key.
+    """
+    if cfg.use_managed_identity:
+        from azure import identity  # noqa: important[misplaced-import]
+
+        credential_kwargs: dict[str, str] = {}
+        if cfg.managed_identity_client_id:
+            credential_kwargs["managed_identity_client_id"] = cfg.managed_identity_client_id
+
+        return {"credential": identity.DefaultAzureCredential(**credential_kwargs)}
+
+    return {"api_key": cfg.api_key.get_secret_value()}
 
 
 def get_chat_client(
@@ -113,19 +139,22 @@ def _create_azure_client(
             "endpoint": cfg.endpoint,
             "apiVersion": api_version,
             "clientKind": client_kind,
+            "auth": "managed-identity" if cfg.use_managed_identity else "api-key",
         },
     )
 
+    auth_kwargs = _build_azure_auth_kwargs(cfg)
+
     if use_responses_api:
         return azure.AzureOpenAIResponsesClient(  # type: ignore[return-value]
-            api_key=cfg.api_key.get_secret_value(),
+            **auth_kwargs,
             api_version=api_version,
             endpoint=cfg.endpoint,
             deployment_name=deployment,
         )
 
     return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
-        api_key=cfg.api_key.get_secret_value(),
+        **auth_kwargs,
         api_version=api_version,
         endpoint=cfg.endpoint,
         deployment_name=deployment,

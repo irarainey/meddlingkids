@@ -21,9 +21,13 @@ uv run playwright install chromium
 
 ### Azure OpenAI (checked first)
 - `AZURE_OPENAI_ENDPOINT` - Azure OpenAI resource endpoint URL
-- `AZURE_OPENAI_API_KEY` - API key for authentication
 - `AZURE_OPENAI_DEPLOYMENT` - Name of the deployed model (must support vision, e.g., `gpt-5.2-chat`)
 - `OPENAI_API_VERSION` - API version (default: `2024-12-01-preview`)
+
+**Authentication (choose one):**
+- `AZURE_OPENAI_API_KEY` - API key for authentication
+- `AZURE_USE_MANAGED_IDENTITY` - Set to `true` to authenticate via `DefaultAzureCredential` instead of an API key (for Azure-hosted containers)
+- `AZURE_CLIENT_ID` - Optional client ID for a user-assigned managed identity (only used when `AZURE_USE_MANAGED_IDENTITY=true`)
 
 ### Per-Agent Deployment Overrides
 - `AZURE_OPENAI_SCRIPT_DEPLOYMENT` - Alternative deployment for the `ScriptAnalysisAgent` (e.g., `gpt-5.1-codex-mini`). Falls back to `AZURE_OPENAI_DEPLOYMENT` when unset

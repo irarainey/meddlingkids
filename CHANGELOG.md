@@ -1,6 +1,13 @@
 
 # Changelog
 
+## 1.7.7
+
+### Added
+
+- **Azure Managed Identity authentication** — Azure OpenAI now supports authenticating via `DefaultAzureCredential` as an alternative to API keys. Set `AZURE_USE_MANAGED_IDENTITY=true` to enable. Works with system-assigned and user-assigned managed identities (via `AZURE_CLIENT_ID`), Azure CLI, and other credential sources supported by the Azure Identity SDK. API key authentication remains the default and continues to work unchanged.
+- **`azure-identity` added as explicit dependency** — Previously only a transitive dependency; now declared directly in `pyproject.toml`.
+
 ## 1.7.6
 
 ### Changed

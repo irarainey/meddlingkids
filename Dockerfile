@@ -16,11 +16,18 @@
 # Run on a custom port (e.g., 8080):
 #   docker run -p 8080:8080 -e UVICORN_PORT=8080 --env-file .env meddlingkids
 #
-# Run with environment variables:
+# Run with environment variables (API key):
 #   docker run -p 3001:3001 \
 #     -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
 #     -e AZURE_OPENAI_API_KEY=your-api-key \
 #     -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
+#     meddlingkids
+#
+# Run with Managed Identity (Azure-hosted containers):
+#   docker run -p 3001:3001 \
+#     -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
+#     -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
+#     -e AZURE_USE_MANAGED_IDENTITY=true \
 #     meddlingkids
 # =============================================================================
 
@@ -142,6 +149,8 @@ ENV WRITE_TO_FILE=false
 # ENV AZURE_OPENAI_ENDPOINT=
 # ENV AZURE_OPENAI_API_KEY=
 # ENV AZURE_OPENAI_DEPLOYMENT=
+# ENV AZURE_USE_MANAGED_IDENTITY=false
+# ENV AZURE_CLIENT_ID=
 
 # Use tini as init process for proper signal handling (CTRL+C)
 ENTRYPOINT ["/usr/bin/tini", "--"]
