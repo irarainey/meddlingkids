@@ -102,8 +102,9 @@ def get_domain_description(domain: str) -> dict[str, str | None]:
     partner_index = _get_partner_domain_index()
     hit = partner_index.get(domain) or partner_index.get(url_mod.get_base_domain(domain))
     if hit:
-        hit["country"] = geo_loader.lookup_country_for_domain(domain)
-        return hit
+        result = dict(hit)
+        result["country"] = geo_loader.lookup_country_for_domain(domain)
+        return result
 
     # 3. Tracker-domains — minimal info (block/cookieblock).
     if tracker_loader.is_known_tracker_domain(domain):

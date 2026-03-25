@@ -322,21 +322,29 @@ const domainInfo = reactive<Record<string, { country: string | null }>>({})
 async function fetchDomainInfo(domains: string[]): Promise<void> {
   const unknown = domains.filter((d) => !(d in domainInfo))
   if (unknown.length === 0) return
-  try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/domain-info`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domains: unknown }),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      for (const [domain, info] of Object.entries(data)) {
-        domainInfo[domain] = info as { country: string | null }
+
+  // Batch into chunks so flags appear progressively instead of
+  // waiting for a single large request to complete.
+  const BATCH_SIZE = 30
+  const apiBase = import.meta.env.VITE_API_URL || ''
+
+  for (let i = 0; i < unknown.length; i += BATCH_SIZE) {
+    const batch = unknown.slice(i, i + BATCH_SIZE)
+    try {
+      const response = await fetch(`${apiBase}/api/domain-info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domains: batch }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        for (const [domain, info] of Object.entries(data)) {
+          domainInfo[domain] = info as { country: string | null }
+        }
       }
+    } catch {
+      // Silently fail — enrichment is non-critical
     }
-  } catch {
-    // Silently fail — enrichment is non-critical
   }
 }
 

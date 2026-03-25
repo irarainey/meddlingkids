@@ -139,6 +139,9 @@ async def domain_info_endpoint(
     Disconnect services database, partner databases, and
     tracker-domains list to build a one-line description.
 
+    DNS-based geolocation runs in a thread pool to avoid
+    blocking the async event loop.
+
     Accepts ``{"domains": ["example.com", ...]}`` and returns
     a map of domain → ``{company, description}``.
     """
@@ -147,12 +150,12 @@ async def domain_info_endpoint(
     if not domains:
         raise fastapi.HTTPException(status_code=400, detail="domains list is required")
 
-    result: dict[str, dict[str, str | None]] = {}
-    for domain in domains:
-        d = domain.strip()
-        if d:
-            result[d] = loader.get_domain_description(d)
-    return result
+    cleaned = [d.strip() for d in domains if d.strip()]
+
+    def _lookup() -> dict[str, dict[str, str | None]]:
+        return {d: loader.get_domain_description(d) for d in cleaned}
+
+    return await asyncio.to_thread(_lookup)
 
 
 @app.post("/api/storage-key-info")

@@ -224,7 +224,7 @@ cp .env.example .env
 
 Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and standard OpenAI. The configured model **must support vision** (image input) — overlay detection relies on screenshot analysis.
 
-**Option A: Azure OpenAI**
+**Option A: Azure OpenAI (API key)**
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
@@ -235,7 +235,21 @@ AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat
 # AZURE_OPENAI_SCRIPT_DEPLOYMENT=gpt-5.1-codex-mini
 ```
 
-**Option B: Standard OpenAI**
+**Option B: Azure OpenAI (Managed Identity)**
+
+When running on Azure (Container Apps, AKS, VMs), you can authenticate using Managed Identity instead of an API key:
+```env
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat
+AZURE_USE_MANAGED_IDENTITY=true
+
+# Optional: Client ID for a user-assigned managed identity
+# AZURE_CLIENT_ID=00000000-0000-0000-0000-000000000000
+```
+
+This uses `DefaultAzureCredential` from the Azure Identity SDK, which automatically supports system-assigned managed identities, user-assigned managed identities, Azure CLI, and other credential sources.
+
+**Option C: Standard OpenAI**
 ```env
 OPENAI_API_KEY=your-api-key
 OPENAI_MODEL=gpt-5.2-chat
@@ -287,12 +301,21 @@ docker pull ghcr.io/irarainey/meddlingkids:1.7.3
 
 Pull and run the latest image:
 
-**Azure OpenAI:**
+**Azure OpenAI (API key):**
 ```bash
 docker run -p 3001:3001 \
   -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
   -e AZURE_OPENAI_API_KEY=your-api-key \
   -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
+  ghcr.io/irarainey/meddlingkids:latest
+```
+
+**Azure OpenAI (Managed Identity):**
+```bash
+docker run -p 3001:3001 \
+  -e AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/ \
+  -e AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat \
+  -e AZURE_USE_MANAGED_IDENTITY=true \
   ghcr.io/irarainey/meddlingkids:latest
 ```
 

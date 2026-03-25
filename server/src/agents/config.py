@@ -72,11 +72,24 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
     Loads configuration from environment variables and validates
     that all required settings are present.
 
+    Supports two authentication modes:
+
+    * **API key** – set ``AZURE_OPENAI_API_KEY``.
+    * **Managed Identity** – set ``AZURE_USE_MANAGED_IDENTITY=true``
+      (and optionally ``AZURE_CLIENT_ID`` for user-assigned identities).
+
+    Both modes require ``AZURE_OPENAI_ENDPOINT`` and
+    ``AZURE_OPENAI_DEPLOYMENT``.
+
     Attributes:
         endpoint: Azure OpenAI service endpoint URL.
         api_key: API key for authentication.
         api_version: API version to use.
         deployment: Model deployment name.
+        use_managed_identity: When ``True``, authenticate via
+            ``DefaultAzureCredential`` instead of an API key.
+        managed_identity_client_id: Optional client ID for a
+            user-assigned managed identity.
     """
 
     endpoint: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_ENDPOINT")
@@ -89,14 +102,25 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
         validation_alias="OPENAI_API_VERSION",
     )
     deployment: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_DEPLOYMENT")
+    use_managed_identity: bool = pydantic.Field(
+        default=False,
+        validation_alias="AZURE_USE_MANAGED_IDENTITY",
+    )
+    managed_identity_client_id: str = pydantic.Field(
+        default="",
+        validation_alias="AZURE_CLIENT_ID",
+    )
 
     def validate_config(self) -> bool:
         """Check if all required configuration is present.
 
         Returns:
-            True when endpoint, api_key, and deployment are set.
+            True when endpoint and deployment are set, and
+            either an API key or managed identity is configured.
         """
-        return bool(self.endpoint and self.api_key.get_secret_value() and self.deployment)
+        if not (self.endpoint and self.deployment):
+            return False
+        return bool(self.api_key.get_secret_value()) or self.use_managed_identity
 
 
 class OpenAIConfig(pydantic_settings.BaseSettings):
@@ -156,8 +180,10 @@ def validate_llm_config() -> str | None:
     log.warn("No LLM backend configured")
     return (
         "LLM is not configured. Please set one of the following:\n"
-        "  Azure OpenAI: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY,"
-        " AZURE_OPENAI_DEPLOYMENT\n"
+        "  Azure OpenAI (API key): AZURE_OPENAI_ENDPOINT,"
+        " AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT\n"
+        "  Azure OpenAI (Managed Identity): AZURE_OPENAI_ENDPOINT,"
+        " AZURE_OPENAI_DEPLOYMENT, AZURE_USE_MANAGED_IDENTITY=true\n"
         "  Standard OpenAI: OPENAI_API_KEY (and optionally"
         " OPENAI_MODEL, OPENAI_BASE_URL)"
     )
