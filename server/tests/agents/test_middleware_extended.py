@@ -51,9 +51,9 @@ class TestDescribeResponse:
         desc = _describe_response(result)
         assert "finish_reason=stop" in desc
 
-    def test_with_model_id(self) -> None:
-        result = mock.MagicMock(spec=["model_id"])
-        result.model_id = "gpt-4o"
+    def test_with_model(self) -> None:
+        result = mock.MagicMock(spec=["model"])
+        result.model = "gpt-4o"
         desc = _describe_response(result)
         assert "model=gpt-4o" in desc
 
@@ -73,7 +73,7 @@ class TestDescribeResponse:
     def test_with_all_fields(self) -> None:
         result = mock.MagicMock()
         result.finish_reason = "stop"
-        result.model_id = "gpt-4o"
+        result.model = "gpt-4o"
         result.usage_details = {"input_token_count": 1000, "output_token_count": 500}
         result.additional_properties = None
         desc = _describe_response(result)

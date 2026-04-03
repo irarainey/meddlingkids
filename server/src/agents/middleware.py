@@ -159,7 +159,7 @@ def _estimate_message_chars(messages: Sequence[Any]) -> int:
 def _describe_response(result: object) -> str:
     """Build a short diagnostic string from an LLM response.
 
-    Extracts ``finish_reason``, ``model_id``, and
+    Extracts ``finish_reason``, ``model``, and
     ``usage_details`` (input/output token counts) when
     available on the response object.
 
@@ -180,7 +180,7 @@ def _describe_response(result: object) -> str:
     if finish is not None:
         parts.append(f"finish_reason={finish}")
 
-    model = getattr(result, "model_id", None)
+    model = getattr(result, "model", None)
     if model is not None:
         parts.append(f"model={model}")
 
