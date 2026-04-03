@@ -247,7 +247,7 @@ class TestDescribeResponse:
     def test_finish_reason_only(self) -> None:
         result = mock.MagicMock(spec=[])
         result.finish_reason = "stop"
-        result.model_id = None
+        result.model = None
         result.usage_details = None
         result.additional_properties = None
         desc = middleware_mod._describe_response(result)
@@ -256,7 +256,7 @@ class TestDescribeResponse:
     def test_full_metadata(self) -> None:
         result = mock.MagicMock(spec=[])
         result.finish_reason = "length"
-        result.model_id = "gpt-5.2-chat"
+        result.model = "gpt-5.2-chat"
         result.usage_details = {
             "input_token_count": 50000,
             "output_token_count": 2048,
@@ -272,16 +272,16 @@ class TestDescribeResponse:
     def test_usage_without_token_counts(self) -> None:
         result = mock.MagicMock(spec=[])
         result.finish_reason = "content_filter"
-        result.model_id = None
+        result.model = None
         result.usage_details = {}
         result.additional_properties = None
         desc = middleware_mod._describe_response(result)
         assert desc == "finish_reason=content_filter"
 
-    def test_model_id_without_finish_reason(self) -> None:
+    def test_model_without_finish_reason(self) -> None:
         result = mock.MagicMock(spec=[])
         result.finish_reason = None
-        result.model_id = "gpt-5.2-chat"
+        result.model = "gpt-5.2-chat"
         result.usage_details = None
         result.additional_properties = None
         desc = middleware_mod._describe_response(result)
@@ -309,7 +309,7 @@ class TestEmptyResponseMetadata:
         result = mock.MagicMock(spec=[])
         result.text = ""
         result.finish_reason = "content_filter"
-        result.model_id = "gpt-5.2-chat"
+        result.model = "gpt-5.2-chat"
         result.usage_details = {
             "input_token_count": 114000,
             "output_token_count": 0,

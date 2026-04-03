@@ -43,7 +43,7 @@ def _make_response(
         text: Raw response text.
     """
     return agent_framework.AgentResponse(
-        messages=[agent_framework.Message(role="assistant", text=text)],
+        messages=[agent_framework.Message(role="assistant", contents=[text])],
     )
 
 

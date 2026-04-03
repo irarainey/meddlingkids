@@ -119,7 +119,7 @@ class TestParseResponse:
     def _response(self, text: str) -> agent_framework.AgentResponse:
         return agent_framework.AgentResponse(
             messages=[
-                agent_framework.Message(role="assistant", text=text),
+                agent_framework.Message(role="assistant", contents=[text]),
             ],
         )
 

@@ -284,7 +284,7 @@ class BaseAgent:
         )
         message = agent_framework.Message(
             role="user",
-            text=user_prompt,
+            contents=[user_prompt],
         )
         async with self._build_agent(instructions, max_tokens, response_model) as agent:
             session = agent_framework.AgentSession()

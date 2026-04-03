@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 import agent_framework
-from agent_framework import azure, openai
+from agent_framework import openai
 
 from src.agents import config
 from src.utils import logger
@@ -65,8 +65,8 @@ def get_chat_client(
         deployment_override: Optional Azure deployment name that
             replaces the default ``AZURE_OPENAI_DEPLOYMENT``.
         use_responses_api: When ``True``, create an
-            ``AzureOpenAIResponsesClient`` instead of the
-            default ``AzureOpenAIChatClient``.  Required
+            ``OpenAIChatClient`` instead of the
+            default ``OpenAIChatCompletionClient``.  Required
             for deployments (e.g. codex models) that only
             support the Responses API.
 
@@ -100,10 +100,10 @@ def _create_azure_client(
     """Instantiate an Azure OpenAI client.
 
     When *use_responses_api* is ``True``, an
-    ``AzureOpenAIResponsesClient`` is created, which calls
-    the Responses API instead of Chat Completions.  This is
-    required for models (e.g. codex) that do not support the
-    Chat Completions endpoint.
+    ``OpenAIChatClient`` (Responses API) is created instead
+    of ``OpenAIChatCompletionClient``.  This is required for
+    models (e.g. codex) that do not support the Chat
+    Completions endpoint.
 
     Args:
         cfg: Validated Azure OpenAI configuration.
@@ -114,8 +114,8 @@ def _create_azure_client(
             API client.
 
     Returns:
-        An ``AzureOpenAIChatClient`` or
-        ``AzureOpenAIResponsesClient`` instance.
+        An ``OpenAIChatCompletionClient`` or
+        ``OpenAIChatClient`` instance.
     """
     deployment = deployment_override or cfg.deployment
     client_kind = "Responses" if use_responses_api else "ChatCompletion"
@@ -146,18 +146,18 @@ def _create_azure_client(
     auth_kwargs = _build_azure_auth_kwargs(cfg)
 
     if use_responses_api:
-        return azure.AzureOpenAIResponsesClient(  # type: ignore[return-value]
+        return openai.OpenAIChatClient(  # type: ignore[no-any-return]
             **auth_kwargs,
             api_version=api_version,
-            endpoint=cfg.endpoint,
-            deployment_name=deployment,
+            azure_endpoint=cfg.endpoint,
+            model=deployment,
         )
 
-    return azure.AzureOpenAIChatClient(  # type: ignore[return-value]
+    return openai.OpenAIChatCompletionClient(  # type: ignore[no-any-return]
         **auth_kwargs,
         api_version=api_version,
-        endpoint=cfg.endpoint,
-        deployment_name=deployment,
+        azure_endpoint=cfg.endpoint,
+        model=deployment,
     )
 
 
@@ -172,7 +172,7 @@ def _create_openai_client(
         agent_name: Optional agent name for logging.
 
     Returns:
-        An ``OpenAIChatClient`` instance.
+        An ``OpenAIChatCompletionClient`` instance.
     """
     log.info(
         "Using standard OpenAI",
@@ -182,8 +182,8 @@ def _create_openai_client(
         },
     )
 
-    return openai.OpenAIChatClient(  # type: ignore[return-value]
+    return openai.OpenAIChatCompletionClient(  # type: ignore[no-any-return]
         api_key=cfg.api_key.get_secret_value(),
-        model_id=cfg.model or None,
+        model=cfg.model or None,
         base_url=cfg.base_url,
     )

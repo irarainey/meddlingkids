@@ -1,6 +1,34 @@
 
 # Changelog
 
+## 1.7.8
+
+### Changed
+
+- **`agent-framework-core` upgraded to 1.0.0 GA** — Migrated from `1.0.0rc5` (pre-release) to the `1.0.0` stable release. This is a breaking change in the upstream package that required updating all agent code:
+  - `AzureOpenAIResponsesClient` → `OpenAIChatClient` (from `agent_framework.openai`, with `azure_endpoint=` parameter)
+  - `AzureOpenAIChatClient` → `OpenAIChatCompletionClient` (from `agent_framework.openai`, with `azure_endpoint=` parameter)
+  - `OpenAIChatClient` (standard OpenAI) → `OpenAIChatCompletionClient`
+  - `deployment_name` parameter → `model`
+  - `model_id` parameter → `model`
+  - `Message(role=..., text=...)` → `Message(role=..., contents=[...])`
+  - `response.model_id` → `response.model`
+  - Removed `agent_framework.azure` import (Azure OpenAI clients now live in `agent_framework.openai`)
+  - The GA release trimmed transitive dependencies (`openai`, `httpx`, `mcp`, `azure-ai-projects`, etc.), resulting in a leaner install
+- **`agent-framework-openai` added as explicit dependency** — The GA release split the OpenAI/Azure OpenAI client classes (`OpenAIChatClient`, `OpenAIChatCompletionClient`) into a separate `agent-framework-openai` package. Previously bundled inside `agent-framework-core` during the RC phase.
+- **Dependency version bumps** — Updated minimum version floors and lock file for all dependencies with available updates:
+  - `fastapi` 0.129.0 → 0.135.3
+  - `uvicorn` 0.41.0 → 0.42.0
+  - `azure-monitor-opentelemetry-exporter` 1.0.0b48 → 1.0.0b50
+  - `python-dotenv` 1.2.1 → 1.2.2
+  - `aiohttp` 3.13.3 → 3.13.5
+  - `pillow` 12.1.1 → 12.2.0
+  - `orjson` 3.10.18 → 3.11.8
+  - `poethepoet` (dev) 0.41.0 → 0.42.1
+  - `mypy` (dev) 1.19.1 → 1.20.0
+  - `ruff` (dev) 0.15.2 → 0.15.9
+- **`httpx` added as explicit dev dependency** — Previously a transitive dependency via `openai` (which the GA `agent-framework-core` no longer pulls). Required by `fastapi.testclient` / `starlette.testclient` for integration tests. Pinned to `>=0.28.0,<1.0` to avoid the incompatible 1.0 pre-release.
+
 ## 1.7.7
 
 ### Added
