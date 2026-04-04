@@ -48,13 +48,26 @@ def _get_trusted_base_url(request: requests.Request) -> str:
     Prevents Host-header injection attacks that could redirect OAuth
     callbacks or post-logout URIs to an attacker-controlled domain.
 
+    When running behind a TLS-terminating reverse proxy the inbound
+    connection uses plain HTTP, so ``request.base_url`` will carry an
+    ``http`` scheme even though the original client request was HTTPS.
+    We honour the ``X-Forwarded-Proto`` header (set by the proxy) to
+    reconstruct the correct scheme for redirect URIs.
+
     Raises:
         HTTPException: 400 if the Host header is not in the trusted set.
     """
     hostname = request.base_url.hostname or ""
     if hostname not in config.get_trusted_hosts():
         raise fastapi.HTTPException(status_code=400, detail="Untrusted host")
-    return str(request.base_url).rstrip("/")
+
+    base = str(request.base_url).rstrip("/")
+
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_proto == "https" and base.startswith("http://"):
+        base = "https://" + base[len("http://") :]
+
+    return base
 
 
 # ── Login ────────────────────────────────────────────────────────────────
