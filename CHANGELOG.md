@@ -1,6 +1,12 @@
 
 # Changelog
 
+## 1.8.1
+
+### Fixed
+
+- **OAuth redirect URI scheme on HTTPS** — Fixed the OAuth `redirect_uri` (and post-logout redirect) using `http://` instead of `https://` when the server runs behind a TLS-terminating reverse proxy. The `_get_trusted_base_url` helper now honours the `X-Forwarded-Proto` header to reconstruct the correct scheme.
+
 ## 1.8.0
 
 ### Added
