@@ -162,6 +162,18 @@ wheels = [
 ]
 
 [[package]]
+name = "authlib"
+version = "1.6.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/98/00d3dd826d46959ad8e32af2dbb2398868fd9fd0683c26e56d0789bd0e68/authlib-1.6.9.tar.gz", hash = "sha256:d8f2421e7e5980cc1ddb4e32d3f5fa659cfaf60d8eaf3281ebed192e4ab74f04", size = 165134, upload-time = "2026-03-02T07:44:01.998Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/23/b65f568ed0c22f1efacb744d2db1a33c8068f384b8c9b482b52ebdbc3ef6/authlib-1.6.9-py2.py3-none-any.whl", hash = "sha256:f08b4c14e08f0861dc18a32357b33fbcfd2ea86cfe3fe149484b4d764c4a0ac3", size = 244197, upload-time = "2026-03-02T07:44:00.307Z" },
+]
+
+[[package]]
 name = "azure-core"
 version = "1.39.0"
 source = { registry = "https://pypi.org/simple" }
@@ -657,6 +669,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/54/4d/e940025e2ce31a8ce1202635910747e5a87cc3a6a6bb2d00973375014749/isodate-0.7.2.tar.gz", hash = "sha256:4cd1aa0f43ca76f4a6c6c0292a85f40b35ec2e43e315b59f06e6d32171a953e6", size = 29705, upload-time = "2024-10-08T23:04:11.5Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/15/aa/0aca39a37d3c7eb941ba736ede56d689e7be91cab5d9ca846bde3999eba6/isodate-0.7.2-py3-none-any.whl", hash = "sha256:28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15", size = 22320, upload-time = "2024-10-08T23:04:09.501Z" },
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
 ]
 
 [[package]]
@@ -1523,16 +1544,19 @@ wheels = [
 
 [[package]]
 name = "server"
-version = "1.7.8"
+version = "1.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "agent-framework-core" },
     { name = "agent-framework-openai" },
     { name = "aiohttp" },
+    { name = "authlib" },
     { name = "azure-identity" },
     { name = "azure-monitor-opentelemetry-exporter" },
     { name = "brotli" },
     { name = "fastapi" },
+    { name = "httpx" },
+    { name = "itsdangerous" },
     { name = "orjson" },
     { name = "pillow" },
     { name = "playwright" },
@@ -1558,10 +1582,13 @@ requires-dist = [
     { name = "agent-framework-core", specifier = "==1.0.0" },
     { name = "agent-framework-openai", specifier = "==1.0.0" },
     { name = "aiohttp", specifier = ">=3.13.5" },
+    { name = "authlib", specifier = ">=1.3.0" },
     { name = "azure-identity", specifier = ">=1.21.0" },
     { name = "azure-monitor-opentelemetry-exporter", specifier = ">=1.0.0b50" },
     { name = "brotli", specifier = ">=1.2.0" },
     { name = "fastapi", specifier = ">=0.135.3" },
+    { name = "httpx", specifier = ">=0.28.0,<1.0" },
+    { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "orjson", specifier = ">=3.11.8" },
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "playwright", specifier = ">=1.58.0" },

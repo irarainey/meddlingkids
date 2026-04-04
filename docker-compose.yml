@@ -27,6 +27,11 @@ services:
     environment:
       - SHOW_UI=true
       - UID_GID=${UID_GID:-1000:1000}
+      # OAuth2 authentication (optional — uncomment to enable)
+      # - OAUTH_ISSUER=${OAUTH_ISSUER}
+      # - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      # - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      # - SESSION_SECRET=${SESSION_SECRET}
     volumes:
       - ~/.meddlingkids/output:/app/server/.output
     stdin_open: true

@@ -45,6 +45,7 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │  │  - Device selector                                                   │   │
 │  │  - Tab navigation                                                    │   │
 │  │  - Dialog components                                                 │   │
+│  │  - Auth check on mount (useAuth) + optional logout button            │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                    │                                        │
 │                                    ▼                                        │
@@ -61,6 +62,12 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                                  SERVER                                    │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  auth/ (Optional OAuth2 — disabled when env vars absent)             │  │
+│  │  - SessionMiddleware (signed cookie) → auth_guard middleware          │  │
+│  │  - /auth/login → /auth/callback → /auth/me → /auth/logout           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
 │  │  pipeline/stream.py (SSE Orchestrator)                               │  │
 │  │  - Orchestrates the 6-phase analysis workflow                        │  │
@@ -320,7 +327,19 @@ Analysis complete
 
 ### State Management
 
-All state lives in `useTrackingAnalysis.ts` composable:
+All analysis state lives in `useTrackingAnalysis.ts` composable. Authentication state is in `useAuth.ts`:
+
+```typescript
+// useAuth.ts — optional OAuth2 session management
+user                 // AuthUser | null (name, email, picture)
+isAuthenticated      // Whether the user has a valid session
+isAuthEnabled        // Whether OAuth is configured on the server
+isCheckingAuth       // Loading state during /auth/me check
+checkAuth()          // Checks session on mount, redirects if 401
+logout()             // POSTs to /auth/logout (CSRF-safe)
+```
+
+All analysis state lives in `useTrackingAnalysis.ts` composable:
 
 ```typescript
 // Input state
@@ -419,6 +438,8 @@ eventSource.addEventListener('error', (e) => {
 
 ```
 App.vue
+├── Auth loading state (v-if="isCheckingAuth")
+├── Logout button (v-if="isAuthEnabled", top-right corner)
 ├── ProgressBanner (loading state)
 ├── ScoreDialog (privacy score popup)
 ├── PageErrorDialog (access denied)
@@ -438,6 +459,26 @@ App.vue
 ---
 
 ## Server Architecture
+
+### Authentication Layer (Optional)
+
+The `auth/` module implements OAuth2 Authorization Code + PKCE using `authlib`. It is entirely optional — when the four required environment variables (`OAUTH_ISSUER`, `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `SESSION_SECRET`) are absent, no auth middleware or session middleware is registered and the app runs without authentication.
+
+When enabled:
+1. **SessionMiddleware** (Starlette) manages signed session cookies (`mk_session`, 24-hour expiry, `SameSite=lax`)
+2. **auth_guard middleware** blocks unauthenticated requests — returns 401 for `/api/*`, redirects to `/auth/login` for page requests, passes through `/auth/*` and `/assets/*`
+3. **Auth routes** handle the OAuth2 flow:
+   - `GET /auth/login` — generates PKCE pair, redirects to provider
+   - `GET /auth/callback` — exchanges code for tokens, creates session
+   - `GET /auth/me` — returns user info (or `{"enabled": false}` when auth disabled)
+   - `POST /auth/logout` — clears session, redirects to provider logout
+
+Security measures:
+- Host header validated against `CORS_ALLOWED_ORIGINS` to prevent redirect URI injection
+- OAuth errors logged server-side; generic message returned to client
+- Logout uses POST to prevent CSRF via `<img>` or link tags
+
+**Middleware ordering matters** — Starlette uses LIFO for `add_middleware`. `SessionMiddleware` must be added _after_ the auth guard so it wraps it (outermost), ensuring the session cookie is decoded before the guard reads `request.session`.
 
 ### Agent Layer
 

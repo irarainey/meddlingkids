@@ -1,6 +1,28 @@
 
 # Changelog
 
+## 1.8.0
+
+### Added
+
+- **Optional OAuth2 authentication** — The application now supports OAuth2 Authorization Code + PKCE authentication via any OIDC-compliant provider (e.g. Auth0, Entra ID, Google, Keycloak). Authentication is entirely optional and gated by four environment variables (`OAUTH_ISSUER`, `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `SESSION_SECRET`). When absent, the app runs without authentication as before.
+- **Server-side BFF (Backend for Frontend) pattern** — Tokens (access, refresh, ID) stay server-side in signed session cookies. The SPA never handles tokens directly, which also avoids issues with SSE `EventSource` not supporting custom `Authorization` headers.
+- **Auth module (`server/src/auth/`)** — New module with config, routes, and middleware:
+  - `GET /auth/login` — generates PKCE code challenge, redirects to provider
+  - `GET /auth/callback` — exchanges authorization code for tokens, creates session
+  - `GET /auth/me` — returns user info or `{"enabled": false}` when auth disabled
+  - `POST /auth/logout` — clears session, redirects to provider logout (OIDC `end_session_endpoint` or Auth0 `/v2/logout` fallback)
+  - Auth guard middleware blocks unauthenticated requests: 401 for `/api/*`, redirect to login for page requests, pass-through for `/auth/*` and `/assets/*`
+- **Client auth composable (`useAuth.ts`)** — Checks `/auth/me` on app mount. When authenticated, shows an unobtrusive logout button in the header. When unauthenticated, redirects to the server-side login flow.
+- **Host header validation** — OAuth redirect URIs are validated against `CORS_ALLOWED_ORIGINS` to prevent Host-header injection attacks.
+- **New dependencies** — `authlib` (OIDC client + PKCE), `httpx` (promoted from dev to runtime for authlib's async HTTP), `itsdangerous` (session cookie signing).
+
+### Changed
+
+- **CORS `allow_credentials`** — Automatically set to `true` when OAuth is enabled so session cookies work correctly with cross-origin requests.
+- **Vite dev proxy** — Added `/auth` proxy alongside the existing `/api` proxy for seamless development with authentication enabled.
+- **Test fixture** — The test client now injects a signed session cookie when OAuth env vars are present, ensuring existing API tests pass through the auth middleware.
+
 ## 1.7.8
 
 ### Changed

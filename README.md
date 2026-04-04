@@ -104,13 +104,14 @@ meddlingkids/
 ├── client/                    # Vue.js 3 frontend
 │   ├── src/
 │   │   ├── components/        # UI components (tabs, gallery, progress, script viewer)
-│   │   ├── composables/       # State management (useTrackingAnalysis)
+│   │   ├── composables/       # State management (useTrackingAnalysis, useAuth)
 │   │   ├── types/             # TypeScript interfaces
 │   │   └── utils/             # Formatting utilities
 │   └── public/                # Static assets
 ├── server/                    # Python FastAPI backend
 │   └── src/
 │       ├── main.py            # FastAPI application entry point
+│       ├── auth/              # Optional OAuth2 authentication (Authorization Code + PKCE)
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       │   ├── prompts/       # System prompts (one module per agent)
 │       ├── browser/           # Browser automation (PlaywrightManager singleton, per-request BrowserSession, device configs)
@@ -266,6 +267,27 @@ WRITE_TO_FILE=true
 # Optional: Serve the built client UI from the server (default: false)
 # SHOW_UI=true
 ```
+
+**Optional: OAuth2 Authentication**
+
+To restrict access, configure OAuth2 with any OIDC-compliant provider (e.g. Auth0). When all four variables are set, unauthenticated users are blocked. Leave them unset to run without authentication.
+
+```env
+OAUTH_ISSUER=https://your-tenant.auth0.com
+OAUTH_CLIENT_ID=your-client-id
+OAUTH_CLIENT_SECRET=your-client-secret
+SESSION_SECRET=<generate with: openssl rand -hex 32>
+
+# Required: include your production domain so Host-header validation passes
+CORS_ALLOWED_ORIGINS=https://your-domain.com,http://localhost:5173
+
+# Set to 'true' when running behind HTTPS (marks session cookie as Secure)
+# SESSION_SECURE=false
+```
+
+Register these callback and logout URLs with your provider:
+- **Callback URLs**: `http://localhost:5173/auth/callback`, `https://your-domain.com/auth/callback`
+- **Allowed Logout URLs**: `http://localhost:5173`, `https://your-domain.com`
 
 ### 3. Run Development Server
 
