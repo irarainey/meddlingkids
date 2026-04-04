@@ -14,10 +14,30 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def client() -> TestClient:
-    """Create a test client without triggering lifespan."""
+    """Create a test client without triggering lifespan.
+
+    When OAuth is enabled (env vars present), injects a valid session
+    cookie so existing API tests are not blocked by the auth middleware.
+    """
     from src.main import app
 
-    return TestClient(app, raise_server_exceptions=False)
+    c = TestClient(app, raise_server_exceptions=False)
+
+    from src.auth.config import is_auth_enabled
+
+    if is_auth_enabled():
+        import base64
+        import json
+        import os
+
+        from itsdangerous import TimestampSigner
+
+        signer = TimestampSigner(os.environ["SESSION_SECRET"])
+        session = {"user": {"sub": "test", "name": "Test User", "email": "test@example.com", "picture": ""}}
+        data = base64.b64encode(json.dumps(session).encode("utf-8"))
+        c.cookies.set("mk_session", signer.sign(data).decode("utf-8"))
+
+    return c
 
 
 class TestClearCacheEndpoint:

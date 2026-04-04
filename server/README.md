@@ -48,6 +48,21 @@ uv run playwright install chromium
 ### Observability (Optional)
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Azure Application Insights connection string for Agent Framework telemetry (traces, logs, metrics)
 
+### OAuth2 Authentication (Optional)
+
+Authentication is disabled by default. Set all four required variables to enable OAuth2 (Authorization Code + PKCE) with any OIDC-compliant provider.
+
+- `OAUTH_ISSUER` **(required)** - OIDC issuer URL (e.g. `https://your-tenant.auth0.com`)
+- `OAUTH_CLIENT_ID` **(required)** - OAuth2 client ID
+- `OAUTH_CLIENT_SECRET` **(required)** - OAuth2 client secret
+- `SESSION_SECRET` **(required)** - Secret key for signing session cookies (generate with `openssl rand -hex 32`)
+- `OAUTH_AUDIENCE` - API audience (optional, Auth0-specific)
+- `OAUTH_SCOPES` - Space-separated scopes (default: `openid profile email`)
+- `OAUTH_POST_LOGOUT_REDIRECT_URI` - Where to redirect after provider-side logout (default: app base URL)
+- `SESSION_SECURE` - Set to `true` when running behind HTTPS (marks session cookie as Secure)
+
+When OAuth is enabled, the Host header is validated against `CORS_ALLOWED_ORIGINS` to prevent redirect injection. Ensure your production domain is included in that list.
+
 ## Running
 
 ```bash
@@ -60,7 +75,11 @@ uv run uvicorn src.main:app --reload --port 3001 --env-file ../.env
 
 ```
 src/
-├── main.py                          # FastAPI app entry point (lifespan: starts/stops PlaywrightManager, CORS, cache-control middleware, API routes)
+├── main.py                          # FastAPI app entry point (lifespan: starts/stops PlaywrightManager, CORS, cache-control middleware, optional OAuth2, API routes)
+├── auth/                            # Optional OAuth2 authentication (Authorization Code + PKCE via authlib)
+│   ├── config.py                    # OAuth env var reader, is_auth_enabled() gate, trusted-host whitelist
+│   ├── routes.py                    # /auth/login, /auth/callback, /auth/me, /auth/logout
+│   └── middleware.py                # Auth guard — blocks unauthenticated requests (401 for API, redirect for pages)
 ├── agents/                          # AI agents (Microsoft Agent Framework)
 │   ├── base.py                      # BaseAgent with structured output support
 │   ├── config.py                    # LLM configuration (pydantic-settings BaseSettings) with per-agent deployment overrides and cached validation
@@ -194,6 +213,10 @@ src/
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/auth/login` | Redirects to OAuth2 provider (when auth enabled) |
+| GET | `/auth/callback` | Handles OAuth2 callback and creates session |
+| GET | `/auth/me` | Returns current user info, or `{"enabled": false}` when auth disabled |
+| POST | `/auth/logout` | Clears session and redirects to provider logout |
 | GET | `/api/open-browser-stream` | SSE endpoint for real-time URL analysis (params: `url`, `device`, `clear-cache`) |
 | POST | `/api/clear-cache` | Clears all analysis caches (scripts, domain, overlay) |
 | POST | `/api/cookie-info` | Looks up cookie information (database-first, LLM fallback) |

@@ -20,9 +20,11 @@ import fastapi
 from fastapi import staticfiles
 from fastapi.middleware import cors, gzip
 from starlette import responses
+from starlette.middleware import sessions
 
 from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
+from src.auth import config, middleware, routes
 from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
@@ -51,6 +53,7 @@ async def lifespan(_app: fastapi.FastAPI) -> AsyncGenerator[None]:
         {
             "showUi": SHOW_UI,
             "corsOrigins": _ALLOWED_ORIGINS,
+            "authEnabled": config.is_auth_enabled(),
         },
     )
 
@@ -93,7 +96,7 @@ _ALLOWED_ORIGINS = os.environ.get(
 app.add_middleware(
     cors.CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
-    allow_credentials=False,
+    allow_credentials=config.is_auth_enabled(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -102,6 +105,40 @@ app.add_middleware(
 # (JSON arrays of cookies/requests) compress ~85-90 %, keeping
 # even extreme sites well under browser EventSource limits.
 app.add_middleware(gzip.GZipMiddleware, minimum_size=500)
+
+
+# ── Optional OAuth2 authentication ─────────────────────────────────────
+# Enabled only when OAUTH_ISSUER, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET,
+# and SESSION_SECRET are all set in the environment.
+if config.is_auth_enabled():
+    _auth_cfg = config.get_oauth_config()
+
+    @app.middleware("http")
+    async def _auth_guard_middleware(
+        request: fastapi.Request,
+        call_next,  # type: ignore[no-untyped-def]
+    ) -> fastapi.Response:
+        return await middleware.auth_guard(request, call_next)
+
+    # SessionMiddleware must be added AFTER the auth guard so it is the
+    # outermost layer (Starlette uses LIFO ordering).  This ensures the
+    # session cookie is decoded before the guard reads request.session.
+
+    app.add_middleware(
+        sessions.SessionMiddleware,
+        secret_key=_auth_cfg["session_secret"],
+        session_cookie="mk_session",
+        max_age=24 * 60 * 60,  # 24 hours
+        same_site="lax",
+        https_only=os.environ.get("SESSION_SECURE", "").lower() == "true",
+    )
+
+    log.info("OAuth2 authentication enabled", {"issuer": _auth_cfg["issuer"]})
+
+
+# Auth routes are always registered so /auth/me can report "disabled"
+# instead of being swallowed by the SPA catch-all.
+app.include_router(routes.router)
 
 
 @app.middleware("http")

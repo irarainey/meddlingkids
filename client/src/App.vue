@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import logo from './assets/logo.svg'
-import { useTrackingAnalysis } from './composables'
+import { useAuth, useTrackingAnalysis } from './composables'
 import {
   ProgressBanner,
   ScreenshotGallery,
@@ -16,6 +16,20 @@ import {
   StorageTab,
   TrackerGraphTab,
 } from './components'
+
+// ── Authentication ──────────────────────────────────────────────────────
+const {
+  user: authUser,
+  isAuthEnabled,
+  isCheckingAuth,
+  checkAuth,
+  logout,
+} = useAuth()
+
+onMounted(() => {
+  checkAuth()
+})
+
 
 // All state, computed properties, and methods from the composable
 const {
@@ -170,7 +184,17 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
+  <!-- Auth loading state — show logo while checking session -->
+  <div v-if="isCheckingAuth" class="auth-loading">
+    <img :src="logo" alt="Meddling Kids" class="logo" />
+  </div>
+
+  <!-- Main app — rendered only when authenticated (or auth disabled) -->
+  <template v-else>
   <header class="header">
+      <button v-if="isAuthEnabled" class="logout-button" :title="`Signed in as ${authUser?.email}`" @click="logout">
+        {{ authUser?.name || 'User' }} · Sign out
+      </button>
       <img :src="logo" alt="Meddling Kids" class="logo" />
       <p class="tagline">
         Feed the meddling kids a URL to unmask hidden trackers, cookies, scripts, and shady consent dialogs.
@@ -348,12 +372,39 @@ function onUrlMouseUp(event: Event): void {
         <span class="chevron-up"></span>
       </button>
     </Transition>
+  </template>
 </template>
 
 <style scoped>
+.auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60dvh;
+}
+
 .header {
+  position: relative;
   text-align: center;
   margin-bottom: 1.5rem;
+}
+
+.logout-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--muted-color);
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  transition: color 0.2s;
+}
+
+.logout-button:hover {
+  color: var(--link-color);
+  border-color: transparent;
 }
 
 .logo {
