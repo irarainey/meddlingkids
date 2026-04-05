@@ -161,7 +161,7 @@ async def auth_logout(request: requests.Request) -> responses.RedirectResponse:
     so an attacker's page cannot include the victim's session cookie.
     """
     if not config.is_auth_enabled():
-        return responses.RedirectResponse(url="/")
+        return responses.RedirectResponse(url="/", status_code=303)
 
     cfg = config.get_oauth_config()
     request.session.clear()
@@ -186,15 +186,15 @@ async def auth_logout(request: requests.Request) -> responses.RedirectResponse:
                 "post_logout_redirect_uri": post_logout,
             }
         )
-        return responses.RedirectResponse(url=f"{end_session}?{params}")
+        return responses.RedirectResponse(url=f"{end_session}?{params}", status_code=303)
 
     # Fallback for providers (e.g. Auth0) that don't advertise
-    # end_session_endpoint but do support /v2/logout.
+    # end_session_endpoint but do support /oidc/logout.
     issuer = cfg["issuer"]
     params = urllib.parse.urlencode(
         {
             "client_id": cfg["client_id"],
-            "returnTo": post_logout,
+            "post_logout_redirect_uri": post_logout,
         }
     )
-    return responses.RedirectResponse(url=f"{issuer}/v2/logout?{params}")
+    return responses.RedirectResponse(url=f"{issuer}/oidc/logout?{params}", status_code=303)

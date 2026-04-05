@@ -1,6 +1,13 @@
 
 # Changelog
 
+## 1.8.2
+
+### Fixed
+
+- **OAuth logout redirect method** — Fixed logout failing on Auth0 (and potentially other providers) with a "Not Found" error. The `POST /auth/logout` handler was returning a 307 redirect, which preserves the HTTP method — causing the browser to POST to the provider's logout endpoint instead of GET. All logout redirects now use 303 (See Other) to correctly convert to GET.
+- **Auth0 logout endpoint modernised** — The Auth0-specific fallback now uses the OIDC-compliant `/oidc/logout` endpoint with `post_logout_redirect_uri` instead of the legacy `/v2/logout` with `returnTo`. This aligns the fallback with the standard `end_session_endpoint` code path.
+
 ## 1.8.1
 
 ### Fixed
@@ -17,7 +24,7 @@
   - `GET /auth/login` — generates PKCE code challenge, redirects to provider
   - `GET /auth/callback` — exchanges authorization code for tokens, creates session
   - `GET /auth/me` — returns user info or `{"enabled": false}` when auth disabled
-  - `POST /auth/logout` — clears session, redirects to provider logout (OIDC `end_session_endpoint` or Auth0 `/v2/logout` fallback)
+  - `POST /auth/logout` — clears session, redirects to provider logout (OIDC `end_session_endpoint` or `/oidc/logout` fallback)
   - Auth guard middleware blocks unauthenticated requests: 401 for `/api/*`, redirect to login for page requests, pass-through for `/auth/*` and `/assets/*`
 - **Client auth composable (`useAuth.ts`)** — Checks `/auth/me` on app mount. When authenticated, shows an unobtrusive logout button in the header. When unauthenticated, redirects to the server-side login flow.
 - **Host header validation** — OAuth redirect URIs are validated against `CORS_ALLOWED_ORIGINS` to prevent Host-header injection attacks.
