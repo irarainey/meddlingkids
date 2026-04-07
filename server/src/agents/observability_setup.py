@@ -23,7 +23,13 @@ log = logger.create_logger("Observability")
 
 
 def setup() -> None:
-    """Configure Agent Framework observability with Azure Application Insights."""
+    """Configure Agent Framework observability with Azure Application Insights.
+
+    Enables MAF's built-in instrumentation (``AgentTelemetryLayer``
+    and ``ChatTelemetryLayer``) which automatically capture
+    timing, token usage, and model metadata as OpenTelemetry
+    spans and metrics for every agent and chat-client call.
+    """
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
     if not connection_string:
@@ -43,5 +49,6 @@ def setup() -> None:
     ]
 
     observability.configure_otel_providers(exporters=cast(list[Any], exporters))
+    observability.enable_instrumentation()
 
     log.success("Agent Framework observability configured with Azure Monitor")

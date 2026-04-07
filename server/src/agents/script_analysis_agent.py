@@ -162,4 +162,5 @@ def _is_model_error(error: BaseException) -> bool:
         "operationnotsupported" in err_str
         or "does not work with the specified model" in err_str
         or "is enabled only for api-version" in err_str
+        or "api version not supported" in err_str
     )

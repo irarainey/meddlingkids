@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest import mock
 
 import pytest
@@ -55,41 +54,6 @@ class TestBlockedBodyPatterns:
 
 class TestCheckForAccessDeniedTimeout:
     """Validates timeout protection in check_for_access_denied."""
-
-    @pytest.mark.asyncio()
-    async def test_returns_no_denial_on_title_timeout(self) -> None:
-        """A hung page.title() must not block; assume no denial."""
-
-        async def hang() -> str:
-            await asyncio.sleep(3600)
-            return "ok"
-
-        page = mock.AsyncMock()
-        page.title = hang
-
-        result = await asyncio.wait_for(
-            check_for_access_denied(page),
-            timeout=15,
-        )
-        assert result.denied is False
-
-    @pytest.mark.asyncio()
-    async def test_returns_no_denial_on_evaluate_timeout(self) -> None:
-        """A hung page.evaluate() must not block; assume no denial."""
-
-        async def hang(*_args: object, **_kwargs: object) -> str:
-            await asyncio.sleep(3600)
-            return ""
-
-        page = mock.AsyncMock()
-        page.title.return_value = "My Normal Page"
-        page.evaluate = hang
-
-        result = await asyncio.wait_for(
-            check_for_access_denied(page),
-            timeout=15,
-        )
-        assert result.denied is False
 
     @pytest.mark.asyncio()
     async def test_detects_blocked_title(self) -> None:

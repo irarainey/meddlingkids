@@ -1,21 +1,23 @@
 """Structured report agent for deterministic privacy reports.
 
 Makes focused LLM calls for each report section, producing
-structured JSON output rather than free-form markdown. Each
+structured JSON output rather than free-form markdown.  Each
 section gets its own system prompt and response schema to
 ensure consistent, professional output.
+
+Section generation is orchestrated by a MAF ``Workflow``
+(see :mod:`report_workflow`) using fan-out / fan-in for
+concurrent execution.
 """
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from urllib import parse
 
 import pydantic
 
-from src.agents import base, context_builder, middleware
-from src.agents.prompts import structured_report
+from src.agents import base, middleware, report_workflow
 from src.analysis import domain_cache, domain_classifier
 from src.data import loader
 from src.models import analysis, consent, report
@@ -114,8 +116,8 @@ class StructuredReportAgent(base.BaseAgent):
     ) -> report.StructuredReport:
         """Build a complete structured report.
 
-        All 10 sections run concurrently in a single batch —
-        they are independent and share the same data context.
+        All 10 sections run concurrently via a MAF
+        ``Workflow`` with fan-out / fan-in edges.
 
         Args:
             tracking_summary: Collected tracking data summary.
@@ -134,167 +136,39 @@ class StructuredReportAgent(base.BaseAgent):
         log.start_timer("structured-report")
 
         # ── Deterministic tracking classification ───────────
-        # Classify domains from local databases (Disconnect,
-        # partner DBs) before any LLM calls.  This provides
-        # instant, deterministic results for known domains
-        # and reduces LLM token usage.
         det_tracking, _unclassified = domain_classifier.build_deterministic_tracking_section(
             tracking_summary,
         )
 
-        # Build per-section context strings — each section
-        # receives only the data blocks it actually needs,
-        # reducing token usage by 30–90 % compared to the
-        # old shared-context approach.
-        def _ctx(section_name: str) -> str:
-            return context_builder.build_section_context(
-                section_name,
-                tracking_summary,
-                consent_details=consent_details,
-                pre_consent_stats=pre_consent_stats,
-                score_breakdown=score_breakdown,
-                domain_knowledge=domain_knowledge,
-                social_media_trackers=det_tracking.social_media,
-            )
-
-        # All sections are independent — they share the same
-        # data context and none reference another's output.
-        # Running them in a single concurrent batch maximises
-        # throughput.
-        #
-        # Wrap each coroutine so the optional progress callback
-        # fires as sections finish, giving the client granular
-        # "Generating report: <section> (N/10)..." updates.
-        _sections_done = 0
-        _total_sections = 10
-
-        async def _tracked(
-            coro: Awaitable[pydantic.BaseModel | None],
-            section_name: str,
-        ) -> pydantic.BaseModel | None:
-            nonlocal _sections_done
-            result = await coro
-            _sections_done += 1
-            if on_section_done:
-                on_section_done(section_name, _sections_done, _total_sections)
-            return result
-
-        consent_section_coro = (
-            self._build_section(
-                structured_report.CONSENT_ANALYSIS,
-                _ctx("consent-analysis"),
-                _ConsentAnalysisResponse,
-                "consent-analysis",
-            )
-            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
-            else _noop_section(report.ConsentAnalysisSection())
+        # ── Run all 10 sections via workflow ────────────────
+        report_input = report_workflow.ReportInput(
+            tracking_summary=tracking_summary,
+            consent_details=consent_details,
+            pre_consent_stats=pre_consent_stats,
+            score_breakdown=score_breakdown,
+            domain_knowledge=domain_knowledge,
         )
 
-        consent_digest_coro = (
-            self._build_section(
-                structured_report.CONSENT_DIGEST,
-                _ctx("consent-digest"),
-                _ConsentDigestResponse,
-                "consent-digest",
-            )
-            if consent_details and (consent_details.categories or consent_details.partners or consent_details.claimed_partner_count)
-            else _noop_section(_ConsentDigestResponse(plain_language_summary=""))
+        log.info("Building all report sections concurrently via workflow...")
+        section_map = await report_workflow.run_report_workflow(
+            agent=self,
+            report_input=report_input,
+            consent_details=consent_details,
+            social_media_trackers=det_tracking.social_media,
+            on_section_done=on_section_done,
         )
 
-        log.info("Building all report sections concurrently...")
-        (
-            tracking_tech,
-            data_collection,
-            third_party,
-            cookie_analysis,
-            storage_analysis,
-            privacy_risk,
-            consent_analysis,
-            consent_digest,
-            social_media_implications,
-            recommendations,
-        ) = await asyncio.gather(
-            _tracked(
-                self._build_section(
-                    structured_report.TRACKING_TECH,
-                    _ctx("tracking-technologies"),
-                    _TrackingTechResponse,
-                    "tracking-technologies",
-                ),
-                "tracking-technologies",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.DATA_COLLECTION,
-                    _ctx("data-collection"),
-                    _DataCollectionResponse,
-                    "data-collection",
-                ),
-                "data-collection",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.THIRD_PARTY,
-                    _ctx("third-party-services"),
-                    _ThirdPartyResponse,
-                    "third-party-services",
-                ),
-                "third-party-services",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.COOKIE_ANALYSIS,
-                    _ctx("cookie-analysis"),
-                    _CookieAnalysisResponse,
-                    "cookie-analysis",
-                ),
-                "cookie-analysis",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.STORAGE_ANALYSIS,
-                    _ctx("storage-analysis"),
-                    _StorageAnalysisResponse,
-                    "storage-analysis",
-                ),
-                "storage-analysis",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.PRIVACY_RISK,
-                    _ctx("privacy-risk"),
-                    _PrivacyRiskResponse,
-                    "privacy-risk",
-                ),
-                "privacy-risk",
-            ),
-            _tracked(
-                consent_section_coro,
-                "consent-analysis",
-            ),
-            _tracked(
-                consent_digest_coro,
-                "consent-digest",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.SOCIAL_MEDIA_IMPLICATIONS,
-                    _ctx("social-media-implications"),
-                    _SocialMediaImplicationsResponse,
-                    "social-media-implications",
-                ),
-                "social-media-implications",
-            ),
-            _tracked(
-                self._build_section(
-                    structured_report.RECOMMENDATIONS,
-                    _ctx("recommendations"),
-                    _RecommendationsResponse,
-                    "recommendations",
-                ),
-                "recommendations",
-            ),
-        )
+        # ── Extract typed sections from workflow results ────
+        tracking_tech = section_map.get("tracking-technologies")
+        data_collection = section_map.get("data-collection")
+        third_party = section_map.get("third-party-services")
+        cookie_analysis = section_map.get("cookie-analysis")
+        storage_analysis = section_map.get("storage-analysis")
+        privacy_risk = section_map.get("privacy-risk")
+        consent_analysis = section_map.get("consent-analysis")
+        consent_digest = section_map.get("consent-digest")
+        social_media_implications = section_map.get("social-media-implications")
+        recommendations = section_map.get("recommendations")
 
         # ── Deterministic consent overrides ─────────────────
         # The LLM may miscount or omit consent dialog facts
@@ -495,13 +369,6 @@ class StructuredReportAgent(base.BaseAgent):
                 {"section": section_name, "error": str(err)},
             )
             return None
-
-
-async def _noop_section(
-    default: pydantic.BaseModel,
-) -> pydantic.BaseModel:
-    """Return a default section without an LLM call."""
-    return default
 
 
 def _extract[S: pydantic.BaseModel](

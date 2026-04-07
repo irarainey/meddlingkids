@@ -8,13 +8,13 @@ and defines its own instructions and response format.
 
 from __future__ import annotations
 
-import copy
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import agent_framework
 import pydantic
 
 from src.agents import config, llm_client
+from src.agents import context_providers as ctx_providers
 from src.agents import middleware as middleware_mod
 from src.utils import image, logger
 
@@ -59,6 +59,7 @@ class BaseAgent:
         self._fallback_client: agent_framework.SupportsChatGetResponse | None = None
         self._using_fallback = False
         self._deployment: str | None = None
+        self._agent: agent_framework.Agent | None = None
         self._timing = middleware_mod.TimingChatMiddleware(self.agent_name)
         self._retry = middleware_mod.RetryChatMiddleware(
             self.agent_name,
@@ -67,7 +68,12 @@ class BaseAgent:
         )
 
     def initialise(self) -> bool:
-        """Create the underlying LLM chat client.
+        """Create the underlying LLM chat client and build the reusable Agent.
+
+        The MAF ``Agent`` is built once and reused across
+        calls.  Per-call overrides (instructions,
+        response_format, max_tokens) are passed via
+        ``agent.run(options=...)``.
 
         When the agent's name has a deployment override
         configured via ``config.get_agent_deployment()``,
@@ -95,6 +101,10 @@ class BaseAgent:
             self._fallback_client = llm_client.get_chat_client(
                 agent_name=self.agent_name,
             )
+
+        if self._chat_client is not None:
+            self._agent = self._create_agent(self._chat_client)
+
         return self._chat_client is not None
 
     @property
@@ -108,7 +118,7 @@ class BaseAgent:
         return self._fallback_client is not None and not self._using_fallback
 
     def activate_fallback(self) -> bool:
-        """Switch to the fallback client.
+        """Switch to the fallback client and rebuild the agent.
 
         Called when the primary (override) deployment
         returns a non-retryable error such as
@@ -125,53 +135,11 @@ class BaseAgent:
         self._chat_client = self._fallback_client
         self._fallback_client = None
         self._using_fallback = True
+        assert self._chat_client is not None  # guaranteed by has_fallback check
+        self._agent = self._create_agent(self._chat_client)
         return True
 
     # ── Agent construction ──────────────────────────────────────
-
-    @staticmethod
-    def _prepare_strict_schema(
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Make a Pydantic JSON schema compatible with Azure OpenAI strict mode.
-
-        Azure OpenAI structured output requires every object
-        in the schema to have ``additionalProperties: false``
-        and all properties listed in ``required``.  Pydantic's
-        ``model_json_schema()`` omits these, so we patch them
-        in recursively.
-
-        Args:
-            schema: Raw schema from
-                ``Model.model_json_schema()``.
-
-        Returns:
-            A new schema dict ready for ``response_format``.
-        """
-
-        schema = copy.deepcopy(schema)
-
-        def _patch_object(obj: dict[str, Any]) -> None:
-            """Add strict-mode keys to a single object schema."""
-            if obj.get("type") == "object":
-                obj["additionalProperties"] = False
-                props = obj.get("properties", {})
-                obj["required"] = list(props.keys())
-                for prop in props.values():
-                    _patch_object(prop)
-                    # Handle anyOf / oneOf wrappers
-                    for key in ("anyOf", "oneOf"):
-                        for variant in prop.get(key, []):
-                            _patch_object(variant)
-            elif obj.get("type") == "array":
-                items = obj.get("items", {})
-                _patch_object(items)
-
-        _patch_object(schema)
-        for defn in schema.get("$defs", {}).values():
-            _patch_object(defn)
-
-        return schema
 
     def _build_options(
         self,
@@ -181,6 +149,10 @@ class BaseAgent:
         seed: int | None = None,
     ) -> agent_framework.ChatOptions:
         """Build ``ChatOptions`` with optional structured output.
+
+        Passes the Pydantic model class directly to
+        ``response_format`` — the MAF + OpenAI SDK handles
+        strict-mode schema conversion automatically.
 
         Args:
             max_tokens: Override for max response tokens.
@@ -194,23 +166,12 @@ class BaseAgent:
             Configured ``ChatOptions`` instance.
         """
         model = response_model or self.response_model
-        response_format: dict[str, Any] | None = None
-        if model is not None:
-            raw_schema = model.model_json_schema()
-            response_format = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": model.__name__,
-                    "strict": True,
-                    "schema": self._prepare_strict_schema(raw_schema),
-                },
-            }
 
         opts = agent_framework.ChatOptions(
             max_tokens=max_tokens or self.max_tokens,
         )
-        if response_format is not None:
-            opts["response_format"] = response_format  # type: ignore[typeddict-item]
+        if model is not None:
+            opts["response_format"] = model  # type: ignore[typeddict-item]
 
         effective_temp = temperature if temperature is not None else self.temperature
         if effective_temp is not None:
@@ -222,38 +183,36 @@ class BaseAgent:
 
         return opts
 
-    def _build_agent(
+    def _create_agent(
         self,
-        instructions: str | None = None,
-        max_tokens: int | None = None,
-        response_model: type[pydantic.BaseModel] | None = None,
+        client: agent_framework.SupportsChatGetResponse,
     ) -> agent_framework.Agent:
-        """Build an ``Agent`` with middleware and options.
+        """Build a reusable ``Agent`` with middleware and default options.
 
-        The returned agent must be used as an async context
-        manager (``async with``).
+        The agent is created once and stored on the instance.
+        Per-call overrides (instructions, response_format,
+        max_tokens) are passed via ``agent.run(options=...)``.
+
+        Includes the ``GdprReferenceProvider`` so agents can
+        opt into GDPR/TCF context injection by setting
+        ``session.state["gdpr-reference"]["gdpr_context_enabled"] = True``
+        before calling ``agent.run()``.
 
         Args:
-            instructions: Override system prompt. Defaults to
-                ``self.instructions``.
-            max_tokens: Override max tokens.
-            response_model: Override response model for
-                structured output.
+            client: The chat client to use.
 
         Returns:
-            An ``Agent`` ready for ``async with``.
+            A configured ``Agent`` instance.
         """
-        if self._chat_client is None:
-            raise ValueError(f"{self.agent_name}: chat client not initialised. Call initialise() first.")
-
         return agent_framework.Agent(
-            client=self._chat_client,
-            instructions=instructions or self.instructions,
+            client=client,
+            instructions=self.instructions or None,
             name=self.agent_name,
-            description=(f"Chat agent for {self.agent_name}"),
+            description=f"Chat agent for {self.agent_name}",
             tools=[],
-            default_options=self._build_options(max_tokens, response_model),
+            default_options=self._build_options(),
             middleware=[self._retry, self._timing],
+            context_providers=[ctx_providers.GdprReferenceProvider()],
         )
 
     # ── Convenience helpers ─────────────────────────────────────
@@ -268,6 +227,9 @@ class BaseAgent:
     ) -> agent_framework.AgentResponse:
         """Run a text-only completion and return the raw response.
 
+        Reuses the pre-built ``Agent`` instance, passing
+        per-call overrides via ``options``.
+
         Args:
             user_prompt: User message content.
             instructions: Override system prompt.
@@ -278,6 +240,9 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
+        if self._agent is None:
+            raise ValueError(f"{self.agent_name}: agent not initialised. Call initialise() first.")
+
         log.debug(
             f"{self.agent_name}: text completion",
             {"promptChars": len(user_prompt), "maxTokens": max_tokens or self.max_tokens},
@@ -286,12 +251,23 @@ class BaseAgent:
             role="user",
             contents=[user_prompt],
         )
-        async with self._build_agent(instructions, max_tokens, response_model) as agent:
-            session = agent_framework.AgentSession()
-            try:
-                response = await agent.run(message, session=session)
-            finally:
-                logger.save_agent_thread(self.agent_name, session.to_dict())
+
+        # Build per-call options only for overrides.
+        call_opts: agent_framework.ChatOptions | None = None
+        if instructions is not None or max_tokens is not None or response_model is not None:
+            call_opts = agent_framework.ChatOptions()
+            if instructions is not None:
+                call_opts["instructions"] = instructions
+            if max_tokens is not None:
+                call_opts["max_tokens"] = max_tokens
+            if response_model is not None:
+                call_opts["response_format"] = response_model  # type: ignore[typeddict-item]
+
+        session = agent_framework.AgentSession()
+        try:
+            response = await self._agent.run(message, session=session, options=call_opts)
+        finally:
+            logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -308,7 +284,8 @@ class BaseAgent:
     ) -> agent_framework.AgentResponse:
         """Run a vision completion and return the raw response.
 
-        Base64 encoding is performed once before the call.
+        Reuses the pre-built ``Agent`` instance.  Base64
+        encoding is performed once before the call.
 
         Args:
             user_text: Textual part of the user message.
@@ -319,6 +296,9 @@ class BaseAgent:
         Returns:
             The ``AgentResponse`` from the agent.
         """
+        if self._agent is None:
+            raise ValueError(f"{self.agent_name}: agent not initialised. Call initialise() first.")
+
         image_uri, jpeg_size = image.optimize_for_llm(screenshot)
         log.debug(
             f"{self.agent_name}: vision completion",
@@ -337,12 +317,20 @@ class BaseAgent:
                 agent_framework.Content.from_text(user_text),
             ],
         )
-        async with self._build_agent(instructions, max_tokens) as agent:
-            session = agent_framework.AgentSession()
-            try:
-                response = await agent.run(message, session=session)
-            finally:
-                logger.save_agent_thread(self.agent_name, session.to_dict())
+
+        call_opts: agent_framework.ChatOptions | None = None
+        if instructions is not None or max_tokens is not None:
+            call_opts = agent_framework.ChatOptions()
+            if instructions is not None:
+                call_opts["instructions"] = instructions
+            if max_tokens is not None:
+                call_opts["max_tokens"] = max_tokens
+
+        session = agent_framework.AgentSession()
+        try:
+            response = await self._agent.run(message, session=session, options=call_opts)
+        finally:
+            logger.save_agent_thread(self.agent_name, session.to_dict())
         log.debug(
             f"{self.agent_name}: vision response received",
             {"responseChars": len(response.text) if response.text else 0},
@@ -356,11 +344,9 @@ class BaseAgent:
     ) -> T | None:
         """Attempt to parse a response into a Pydantic model.
 
-        The agent framework's ``response.value`` only works
-        when ``response_format`` is a Pydantic class, but we
-        pass a dict (required for Azure strict-mode schemas).
-        So we parse ``response.text`` directly with
-        ``model.model_validate_json``.
+        Tries ``response.value`` first (native MAF structured
+        output parsing), then falls back to manual
+        ``model.model_validate_json`` on ``response.text``.
 
         Falls back to ``None`` if parsing fails.
 
@@ -371,6 +357,15 @@ class BaseAgent:
         Returns:
             Parsed model instance or ``None``.
         """
+        # Try native MAF structured output parsing first.
+        try:
+            val = response.value
+            if val is not None and isinstance(val, model):
+                return val
+        except Exception:
+            pass
+
+        # Fallback: parse response.text directly.
         text = response.text
         if not text:
             log.warn(

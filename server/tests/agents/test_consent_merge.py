@@ -119,7 +119,6 @@ class TestMergeResults:
         assert result.consent_platform == "OneTrust"
 
     def test_raw_text_from_llm(self) -> None:
-        _ = _make_details()
         llm_raw = consent.ConsentDetails(
             has_manage_options=False,
             categories=[],

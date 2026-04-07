@@ -22,7 +22,7 @@ uv run playwright install chromium
 ### Azure OpenAI (checked first)
 - `AZURE_OPENAI_ENDPOINT` - Azure OpenAI resource endpoint URL
 - `AZURE_OPENAI_DEPLOYMENT` - Name of the deployed model (must support vision, e.g., `gpt-5.2-chat`)
-- `OPENAI_API_VERSION` - API version (default: `2024-12-01-preview`)
+- `OPENAI_API_VERSION` - API version (default: `2025-04-01-preview`)
 
 **Authentication (choose one):**
 - `AZURE_OPENAI_API_KEY` - API key for authentication
@@ -255,7 +255,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 1. `BaseAgent.initialise()` creates a `SupportsChatGetResponse` client via the `llm_client` factory (supports Azure OpenAI and standard OpenAI)
 2. `BaseAgent._build_agent()` constructs an `Agent` with the agent's system prompt, `ChatOptions` (including `response_format` for structured JSON output), and middleware (`RetryChatMiddleware`, `TimingChatMiddleware`)
 3. Agents call `_complete()` for text-only prompts or `_complete_vision()` for multimodal prompts (screenshot + text)
-4. Responses are parsed into Pydantic models via `BaseAgent._parse_response()`, which calls `model.model_validate_json(response.text)` directly
+4. Responses are parsed into Pydantic models via `BaseAgent._parse_response()`, which uses `response.value` (native MAF structured output) with a `response.text` JSON fallback
 
 ### Agents
 
@@ -264,7 +264,7 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 | `ConsentDetectionAgent` | Screenshot | `CookieConsentDetection` | Vision-only detection of page overlays (consent, sign-in, newsletter, paywall) and their dismiss buttons. Uses a 30 s per-call timeout and 2 retries. Returns `error=True` on timeout (distinct from "not found"). The `reason` field is constrained to max 120 characters / 15 words for concise output |
 | `ConsentExtractionAgent` | Screenshot + DOM text + consent bounds | `ConsentDetails` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. The LLM is authoritative for categories, partners, and purposes; the local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | Script URL + content | `str` description | Identifies and describes unknown JavaScript files. Uses the Responses API when targeting a codex deployment |
-| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report with 10 concurrent section LLM calls and deterministic overrides. Includes a plain-language consent digest and deterministic user-rights note. Uses a 60 s per-call timeout (large prompts on complex sites) |
+| `StructuredReportAgent` | Tracking data + consent + GDPR/TCF reference | `StructuredReport` | Generates structured privacy report using MAF WorkflowBuilder (fan-out/fan-in) with 10 concurrent section executors and deterministic overrides. Includes a plain-language consent digest and deterministic user-rights note. Uses a 60 s per-call timeout (large prompts on complex sites) |
 | `SummaryFindingsAgent` | Analysis markdown + consent details + tracking metrics | `list[SummaryFinding]` | Distils full analysis into 6 prioritized findings with deterministic metric anchoring |
 | `TrackingAnalysisAgent` | Tracking summary + GDPR/TCF reference | Markdown report | Comprehensive privacy analysis with GDPR/ePrivacy context (supports streaming via `run(stream=True)` with a 60 s inactivity timeout) |
 | `CookieInfoAgent` | Cookie name + domain + value | `CookieInfoResult` | Explains individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not found in known databases |
@@ -276,6 +276,6 @@ The server uses the [Microsoft Agent Framework](https://github.com/microsoft/age
 |--------|---------|
 | `base.py` | `BaseAgent` — shared agent factory with structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, and `use_responses_api` flag for Responses API client selection |
 | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure OpenAI / standard OpenAI) with per-agent deployment overrides (`get_agent_deployment()`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` |
-| `llm_client.py` | Chat client factory using `agent_framework.openai` — supports `deployment_override` for per-agent model selection and `use_responses_api` for creating `OpenAIChatClient` (Responses API) instances (auto-upgrades API version to `2025-03-01-preview` minimum when needed) |
+| `llm_client.py` | Chat client factory using `agent_framework.openai` — supports `deployment_override` for per-agent model selection and `use_responses_api` for creating `OpenAIChatClient` (Responses API) instances using the versionless `/openai/v1/` endpoint |
 | `middleware.py` | `TimingChatMiddleware` (logs duration + token estimation before each call) + `RetryChatMiddleware` (exponential backoff for 429/5xx, per-call timeout via `asyncio.wait_for`, global concurrency semaphore limiting to 10 in-flight LLM calls). Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |

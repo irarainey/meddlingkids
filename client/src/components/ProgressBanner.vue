@@ -104,5 +104,6 @@ defineProps<{
   color: #e0e7ff;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   letter-spacing: 0.5px;
+  transition: opacity 0.3s ease;
 }
 </style>

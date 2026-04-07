@@ -10,10 +10,11 @@ import asyncio
 import random
 import time
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, cast
+from typing import Any
 
 import agent_framework
 
+from src.agents.llm_client import LLMConnectionError
 from src.utils import logger, usage_tracking
 
 log = logger.create_logger("Agent-Middleware")
@@ -24,7 +25,12 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
 
     Captures start time before sending messages to the LLM,
     processes the request through the pipeline, and logs the
-    elapsed duration for performance monitoring.
+    elapsed duration for human-readable monitoring.
+
+    Token usage metrics and tracing spans are handled by
+    MAF's built-in ``ChatTelemetryLayer`` (enabled via
+    ``observability.enable_instrumentation()``), so this
+    middleware focuses only on structured log output.
 
     Attributes:
         agent_name: Name of the agent using this middleware.
@@ -66,12 +72,6 @@ class TimingChatMiddleware(agent_framework.ChatMiddleware):
         log.info(
             f"Agent '{self.agent_name}' completed in {duration:.2f}s — {response_meta}",
         )
-
-        metadata = cast(dict[str, Any], context.metadata)
-        metadata["timing"] = {
-            "duration_seconds": round(duration, 3),
-            "agent_name": self.agent_name,
-        }
 
         # Record LLM token usage for the running session tally.
         self._record_usage(context)
@@ -235,6 +235,48 @@ def _is_retryable(error: BaseException) -> bool:
     )
 
 
+def _is_connection_error(error: BaseException) -> bool:
+    """Return ``True`` when the error indicates an LLM connectivity problem."""
+    if isinstance(error, (ConnectionError, TimeoutError)):
+        return True
+    msg = str(error).lower()
+    return any(
+        kw in msg
+        for kw in (
+            "getaddrinfo",
+            "name or service not known",
+            "connection refused",
+            "authentication",
+            "401",
+            "unauthorized",
+            "defaultazurecredential",
+            "credentialunavailableerror",
+            "404",
+            "not found",
+        )
+    )
+
+
+def _classify_connection_error(error: BaseException) -> LLMConnectionError:
+    """Wrap a raw exception in an ``LLMConnectionError`` with a diagnostic message."""
+    msg = str(error).lower()
+    if "authentication" in msg or "401" in msg or "unauthorized" in msg:
+        short = "Authentication failed. Your API key may be invalid or expired."
+    elif "defaultazurecredential" in msg or "credentialunavailableerror" in msg:
+        short = "No valid credential found. Try 'az login' or check AZURE_CLIENT_ID."
+    elif "404" in msg or "not found" in msg:
+        short = "Deployment not found. Check that AZURE_OPENAI_DEPLOYMENT is correct."
+    elif "getaddrinfo" in msg or "name or service not known" in msg:
+        short = "Cannot resolve endpoint. Check that AZURE_OPENAI_ENDPOINT is correct."
+    elif isinstance(error, TimeoutError) or "timed out" in msg or "timeout" in msg:
+        short = "LLM endpoint did not respond in time. Check your endpoint and network."
+    elif isinstance(error, ConnectionError) or "connection refused" in msg:
+        short = "Could not connect to the LLM endpoint. Check your configuration and network."
+    else:
+        short = "Could not connect to the LLM. Check your configuration and network."
+    return LLMConnectionError(short)
+
+
 class RetryChatMiddleware(agent_framework.ChatMiddleware):
     """Chat middleware that retries LLM calls on transient failures.
 
@@ -312,7 +354,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                 last_error = TimeoutError(f"LLM call timed out after {self.per_call_timeout}s")
                 if attempt >= self.max_retries:
                     log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {last_error}")
-                    raise last_error from exc
+                    raise _classify_connection_error(exc) from exc
 
                 delay_ms = await self._backoff_and_log(attempt, last_error, delay_ms)
             except Exception as exc:
@@ -320,6 +362,8 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
                 if attempt >= self.max_retries or not _is_retryable(exc):
                     if attempt >= self.max_retries:
                         log.error(f"Agent '{self.agent_name}' exhausted all {self.max_retries + 1} attempts: {exc}")
+                    if _is_connection_error(exc):
+                        raise _classify_connection_error(exc) from exc
                     raise
 
                 delay_ms = await self._backoff_and_log(attempt, exc, delay_ms)

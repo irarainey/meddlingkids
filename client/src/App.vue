@@ -184,23 +184,17 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
-  <!-- Auth loading state — show logo while checking session -->
-  <div v-if="isCheckingAuth" class="auth-loading">
-    <img :src="logo" alt="Meddling Kids" class="logo" />
-  </div>
-
-  <!-- Main app — rendered only when authenticated (or auth disabled) -->
-  <template v-else>
   <header class="header">
       <button v-if="isAuthEnabled" class="logout-button" :title="`Signed in as ${authUser?.email}`" @click="logout">
         {{ authUser?.name || 'User' }} · Sign out
       </button>
-      <img :src="logo" alt="Meddling Kids" class="logo" />
+      <img :src="logo" alt="Meddling Kids" class="logo" :class="{ 'logo--auth': isAuthEnabled }" />
       <p class="tagline">
         Feed the meddling kids a URL to unmask hidden trackers, cookies, scripts, and shady consent dialogs.
       </p>
     </header>
 
+    <template v-if="!isCheckingAuth">
     <div class="url-bar-wrapper">
       <div class="url-bar">
         <input
@@ -376,13 +370,6 @@ function onUrlMouseUp(event: Event): void {
 </template>
 
 <style scoped>
-.auth-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60dvh;
-}
-
 .header {
   position: relative;
   text-align: center;
@@ -412,6 +399,10 @@ function onUrlMouseUp(event: Event): void {
   height: auto;
   margin-bottom: 0.75rem;
   filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.3));
+}
+
+.logo--auth {
+  margin-top: 1rem;
 }
 
 .tagline {

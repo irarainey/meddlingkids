@@ -20,10 +20,11 @@ def get_safe_client_message(error: BaseException) -> str:
     maps to a generic message.
     """
     # Import here to avoid circular deps at module level.
+    from src.agents.llm_client import LLMConnectionError  # noqa: important[import-modules-not-symbols, misplaced-import]
     from src.utils.url import UnsafeURLError  # noqa: important[import-modules-not-symbols, misplaced-import]
 
     # Allow purpose-built user-facing error messages through.
-    if isinstance(error, (UnsafeURLError, TimeoutError)):
+    if isinstance(error, (UnsafeURLError, LLMConnectionError, TimeoutError)):
         return str(error) or _GENERIC_CLIENT_MESSAGE
 
     return _GENERIC_CLIENT_MESSAGE

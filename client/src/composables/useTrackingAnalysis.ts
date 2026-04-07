@@ -26,6 +26,31 @@ import type {
  */
 export function useTrackingAnalysis() {
   // ============================================================================
+  // Constants
+  // ============================================================================
+
+  /**
+   * Contextual messages cycled during the AI analysis phase (76–95%)
+   * to keep the UI feeling responsive while concurrent LLM calls
+   * are in flight.
+   */
+  const ANALYSIS_MESSAGES = [
+    'Analyzing tracking patterns...',
+    'Examining cookie behavior...',
+    'Reviewing network activity...',
+    'Inspecting third-party scripts...',
+    'Evaluating privacy practices...',
+    'Cross-referencing tracker databases...',
+    'Assessing data collection scope...',
+    'Building privacy risk profile...',
+    'Correlating tracker behaviors...',
+    'Reviewing consent mechanisms...',
+  ] as const
+
+  /** Interval between rotating analysis messages (ms). */
+  const ANALYSIS_ROTATE_INTERVAL_MS = 3500
+
+  // ============================================================================
   // State
   // ============================================================================
 
@@ -108,8 +133,37 @@ export function useTrackingAnalysis() {
   /** Active SSE connection (tracked for cleanup) */
   let activeEventSource: EventSource | null = null
 
+  /** Timer handle for the rotating analysis-phase messages. */
+  let analysisRotateTimer: ReturnType<typeof setTimeout> | null = null
+  /** Index into ANALYSIS_MESSAGES for the next rotation. */
+  let analysisMessageIndex = 0
+
+  /**
+   * Schedule the next rotating message after ANALYSIS_ROTATE_INTERVAL_MS.
+   * Only fires while progress is in the analysis phase (76–94%).
+   */
+  function scheduleAnalysisRotation(): void {
+    analysisRotateTimer = setTimeout(() => {
+      if (progressPercent.value >= 76 && progressPercent.value < 95) {
+        statusMessage.value =
+          ANALYSIS_MESSAGES[analysisMessageIndex % ANALYSIS_MESSAGES.length] ?? 'Analyzing...'
+        analysisMessageIndex++
+        scheduleAnalysisRotation()
+      }
+    }, ANALYSIS_ROTATE_INTERVAL_MS)
+  }
+
+  /** Cancel any pending rotation timer. */
+  function clearAnalysisRotation(): void {
+    if (analysisRotateTimer !== null) {
+      clearTimeout(analysisRotateTimer)
+      analysisRotateTimer = null
+    }
+  }
+
   // Clean up SSE connection when the composable's owner component unmounts
   onUnmounted(() => {
+    clearAnalysisRotation()
     if (activeEventSource) {
       activeEventSource.close()
       activeEventSource = null
@@ -267,6 +321,8 @@ export function useTrackingAnalysis() {
     statusMessage.value = 'Initializing...'
     progressStep.value = 'init'
     progressPercent.value = 0
+    clearAnalysisRotation()
+    analysisMessageIndex = 0
   }
 
   /**
@@ -369,6 +425,16 @@ export function useTrackingAnalysis() {
             statusMessage.value = data.message
             progressStep.value = data.step
             progressPercent.value = data.progress
+          }
+
+          // During the analysis phase (76–94%), schedule rotating
+          // contextual messages so the UI stays dynamic while
+          // concurrent LLM calls are in flight.
+          if (data.progress >= 76 && data.progress < 95) {
+            clearAnalysisRotation()
+            scheduleAnalysisRotation()
+          } else if (data.progress >= 95) {
+            clearAnalysisRotation()
           }
 
           // When the server signals 100% progress, start a timer.
@@ -532,6 +598,7 @@ export function useTrackingAnalysis() {
           statusMessage.value = data.message
           progressPercent.value = 100
           hasCompleted = true
+          clearAnalysisRotation()
           
           // Wait for the van animation to complete (500ms CSS transition + buffer)
           // before hiding progress, showing tabs, and opening the score dialog.
@@ -622,6 +689,7 @@ export function useTrackingAnalysis() {
 
       eventSource.onerror = () => {
         clearTimeout(connectionTimeout)
+        clearAnalysisRotation()
         if (completionTimeout) {
           clearTimeout(completionTimeout)
           completionTimeout = null
