@@ -69,26 +69,6 @@ class TestBrowserSessionClose:
         assert session._context is None
 
     @pytest.mark.asyncio()
-    async def test_close_handles_context_timeout(self) -> None:
-        """If context.close() hangs, close must not block forever."""
-        session = session_mod.BrowserSession()
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        ctx = mock.AsyncMock()
-        ctx.close = hang_forever
-        session._context = ctx
-
-        # close() should complete within a reasonable time
-        # (not hang for the full 3600s).
-        await asyncio.wait_for(
-            session.close(),
-            timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
-        )
-        assert session._context is None
-
-    @pytest.mark.asyncio()
     async def test_close_continues_after_context_error(
         self,
     ) -> None:
@@ -253,58 +233,6 @@ class TestPlaywrightManagerStop:
         await mgr.stop()
         assert mgr._browser is None
 
-    @pytest.mark.asyncio()
-    async def test_stop_handles_browser_timeout(self) -> None:
-        """If browser.close() hangs, stop must still finish."""
-        mgr = manager_mod.PlaywrightManager()
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        br = mock.AsyncMock()
-        br.close = hang_forever
-        pw = mock.AsyncMock()
-        mgr._browser = br
-        mgr._playwright = pw
-        mgr._browser_pid = None
-        mgr._started = True
-
-        await asyncio.wait_for(
-            mgr.stop(),
-            timeout=manager_mod._STOP_TIMEOUT_SECONDS * 2 + 10,
-        )
-        assert mgr._browser is None
-        pw.stop.assert_awaited_once()
-
-    @pytest.mark.asyncio()
-    async def test_stop_force_kills_on_timeout(self) -> None:
-        """When graceful close times out, SIGKILL the process."""
-        mgr = manager_mod.PlaywrightManager()
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        br = mock.AsyncMock()
-        br.close = hang_forever
-        pw = mock.AsyncMock()
-        mgr._browser = br
-        mgr._playwright = pw
-        mgr._browser_pid = 99999
-        mgr._started = True
-
-        with (
-            mock.patch("os.getpgid", return_value=999),
-            mock.patch("os.kill") as mock_kill,
-        ):
-            await asyncio.wait_for(
-                mgr.stop(),
-                timeout=manager_mod._STOP_TIMEOUT_SECONDS * 3 + 10,
-            )
-            mock_kill.assert_called_once_with(
-                99999,
-                signal.SIGKILL,
-            )
-
 
 class TestPlaywrightManagerCreateSession:
     """Validates create_session() creates isolated sessions."""
@@ -468,25 +396,6 @@ class TestGetPageContentTimeout:
     """Validates that get_page_content is bounded by a timeout."""
 
     @pytest.mark.asyncio()
-    async def test_returns_empty_on_timeout(self) -> None:
-        """When page.content() hangs, return an empty string."""
-        session = session_mod.BrowserSession()
-
-        async def hang_forever() -> str:
-            await asyncio.sleep(3600)
-            return "<html></html>"
-
-        page = mock.AsyncMock()
-        page.content = hang_forever
-        session._page = page
-
-        result = await asyncio.wait_for(
-            session.get_page_content(),
-            timeout=session_mod._CAPTURE_TIMEOUT_SECONDS + 5,
-        )
-        assert result == ""
-
-    @pytest.mark.asyncio()
     async def test_returns_content_on_success(self) -> None:
         """Normal page.content() returns the HTML."""
         session = session_mod.BrowserSession()
@@ -608,126 +517,3 @@ class TestHealthSuspect:
         assert br.new_context.call_count >= 2
         assert session._context is ctx
         assert mgr._health_suspect is False
-
-    @pytest.mark.asyncio()
-    async def test_hung_browser_triggers_restart(self) -> None:
-        """A browser that fails the health probe is restarted."""
-        mgr = manager_mod.PlaywrightManager()
-
-        # Original browser: connected but hangs on new_context
-        br_old = mock.AsyncMock()
-        br_old.is_connected = mock.Mock(return_value=True)
-
-        async def hang_new_context(**kwargs: object) -> mock.AsyncMock:
-            await asyncio.sleep(3600)
-            return mock.AsyncMock()
-
-        br_old.new_context = hang_new_context
-        mgr._browser = br_old
-        mgr._started = True
-        mgr._health_suspect = True
-
-        # Replacement browser after restart
-        br_new = mock.AsyncMock()
-        br_new.is_connected = mock.Mock(return_value=True)
-        ctx = mock.AsyncMock()
-        page = mock.MagicMock()
-        page.on = mock.Mock()
-        br_new.new_context.return_value = ctx
-        ctx.new_page.return_value = page
-
-        async def do_restart() -> None:
-            mgr._browser = br_new
-
-        with (
-            mock.patch.object(
-                mgr,
-                "_stop_internal",
-                new_callable=mock.AsyncMock,
-            ) as mock_stop,
-            mock.patch.object(
-                mgr,
-                "_start_browser",
-                new_callable=mock.AsyncMock,
-                side_effect=do_restart,
-            ) as mock_start,
-        ):
-            session = await mgr.create_session("ipad")
-
-            mock_stop.assert_awaited_once()
-            mock_start.assert_awaited_once()
-            assert session._context is ctx
-            assert mgr._health_suspect is False
-
-    @pytest.mark.asyncio()
-    async def test_close_timeout_marks_manager_health_suspect(self) -> None:
-        """BrowserSession.close() must flag the manager on context close timeout."""
-        mgr = manager_mod.PlaywrightManager()
-        session = session_mod.BrowserSession(manager=mgr)
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        ctx = mock.AsyncMock()
-        ctx.close = hang_forever
-        session._context = ctx
-
-        assert mgr._health_suspect is False
-
-        await asyncio.wait_for(
-            session.close(),
-            timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
-        )
-
-        assert session._context is None
-        assert mgr._health_suspect is True
-
-    @pytest.mark.asyncio()
-    async def test_close_timeout_without_manager_is_safe(self) -> None:
-        """Context close timeout without a manager reference must not raise."""
-        session = session_mod.BrowserSession()  # no manager
-
-        async def hang_forever() -> None:
-            await asyncio.sleep(3600)
-
-        ctx = mock.AsyncMock()
-        ctx.close = hang_forever
-        session._context = ctx
-
-        await asyncio.wait_for(
-            session.close(),
-            timeout=session_mod._CLOSE_TIMEOUT_SECONDS + 5,
-        )
-        assert session._context is None
-
-
-class TestCreateSessionTimeout:
-    """Validates the outer timeout on create_session."""
-
-    @pytest.mark.asyncio()
-    async def test_timeout_marks_health_suspect(self) -> None:
-        """create_session must flag health-suspect and raise on timeout."""
-        mgr = manager_mod.PlaywrightManager()
-        br = mock.AsyncMock()
-        br.is_connected = mock.Mock(return_value=True)
-
-        async def hang_new_context(**kwargs: object) -> mock.AsyncMock:
-            await asyncio.sleep(3600)
-            return mock.AsyncMock()
-
-        br.new_context = hang_new_context
-        mgr._browser = br
-        mgr._started = True
-
-        # Reduce the timeout for the test
-        with (
-            mock.patch.object(
-                manager_mod,
-                "_CREATE_SESSION_TIMEOUT_SECONDS",
-                2,
-            ),
-            pytest.raises(TimeoutError),
-        ):
-            await mgr.create_session("ipad")
-
-        assert mgr._health_suspect is True

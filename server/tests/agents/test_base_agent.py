@@ -8,7 +8,7 @@ from unittest import mock
 import agent_framework
 import pydantic
 
-from src.agents.base import BaseAgent
+from src.agents import base
 
 # ── Helper model ──────────────────────────────────────────────
 
@@ -20,99 +20,11 @@ class _SampleModel(pydantic.BaseModel):
     count: int
 
 
-class TestPrepareStrictSchema:
-    """Validates that _prepare_strict_schema patches schemas for Azure strict mode."""
-
-    def test_adds_additional_properties(self) -> None:
-        schema = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        }
-        result = BaseAgent._prepare_strict_schema(schema)
-        assert result["additionalProperties"] is False
-        assert result["required"] == ["name"]
-
-    def test_nested_objects(self) -> None:
-        schema = {
-            "type": "object",
-            "properties": {
-                "child": {
-                    "type": "object",
-                    "properties": {
-                        "value": {"type": "integer"},
-                    },
-                },
-            },
-        }
-        result = BaseAgent._prepare_strict_schema(schema)
-        child = result["properties"]["child"]
-        assert child["additionalProperties"] is False
-        assert child["required"] == ["value"]
-
-    def test_array_items(self) -> None:
-        schema = {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string"},
-                        },
-                    },
-                },
-            },
-        }
-        result = BaseAgent._prepare_strict_schema(schema)
-        item_schema = result["properties"]["items"]["items"]
-        assert item_schema["additionalProperties"] is False
-
-    def test_defs_patched(self) -> None:
-        schema = {
-            "type": "object",
-            "properties": {},
-            "$defs": {
-                "Nested": {
-                    "type": "object",
-                    "properties": {
-                        "x": {"type": "number"},
-                    },
-                },
-            },
-        }
-        result = BaseAgent._prepare_strict_schema(schema)
-        assert result["$defs"]["Nested"]["additionalProperties"] is False
-
-    def test_does_not_mutate_input(self) -> None:
-        schema = {"type": "object", "properties": {"a": {"type": "string"}}}
-        BaseAgent._prepare_strict_schema(schema)
-        assert "additionalProperties" not in schema
-
-    def test_anyof_variants_patched(self) -> None:
-        schema = {
-            "type": "object",
-            "properties": {
-                "field": {
-                    "anyOf": [
-                        {"type": "object", "properties": {"v": {"type": "string"}}},
-                        {"type": "string"},
-                    ],
-                },
-            },
-        }
-        result = BaseAgent._prepare_strict_schema(schema)
-        variant = result["properties"]["field"]["anyOf"][0]
-        assert variant["additionalProperties"] is False
-
-
 class TestParseResponse:
-    """Validates _parse_response directly parses response.text."""
+    """Validates _parse_response uses response.value then falls back to text."""
 
-    def _agent(self) -> BaseAgent:
-        agent = BaseAgent.__new__(BaseAgent)
+    def _agent(self) -> base.BaseAgent:
+        agent = base.BaseAgent.__new__(base.BaseAgent)
         agent.agent_name = "TestAgent"
         return agent
 
@@ -131,6 +43,26 @@ class TestParseResponse:
         assert result is not None
         assert result.name == "foo"
         assert result.count == 42
+
+    def test_uses_response_value_when_available(self) -> None:
+        """When response.value returns a matching model, use it directly."""
+        agent = self._agent()
+        expected = _SampleModel(name="bar", count=7)
+        resp = self._response(json.dumps({"name": "bar", "count": 7}))
+        resp._value = expected  # type: ignore[assignment]
+        resp._value_parsed = True
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is expected
+
+    def test_falls_back_to_text_when_value_wrong_type(self) -> None:
+        """When response.value returns wrong type, fall back to text parsing."""
+        agent = self._agent()
+        resp = self._response(json.dumps({"name": "baz", "count": 99}))
+        resp._value = "not a model"  # type: ignore[assignment]
+        resp._value_parsed = True
+        result = agent._parse_response(resp, _SampleModel)
+        assert result is not None
+        assert result.name == "baz"
 
     def test_returns_none_for_invalid_json(self) -> None:
         """Non-JSON text returns None (no crash)."""
@@ -154,18 +86,44 @@ class TestParseResponse:
         assert result is None
 
 
+class TestBuildOptions:
+    """Validates _build_options passes Pydantic models directly to response_format."""
+
+    def test_response_format_is_pydantic_class(self) -> None:
+        """response_format should be the model class, not a dict schema."""
+        agent = base.BaseAgent.__new__(base.BaseAgent)
+        agent.agent_name = "TestAgent"
+        agent.max_tokens = 1024
+        agent.response_model = _SampleModel
+        agent.temperature = None
+        agent.seed = None
+        opts = agent._build_options()
+        assert opts["response_format"] is _SampleModel
+
+    def test_no_response_format_without_model(self) -> None:
+        """response_format is absent when no model is set."""
+        agent = base.BaseAgent.__new__(base.BaseAgent)
+        agent.agent_name = "TestAgent"
+        agent.max_tokens = 1024
+        agent.response_model = None
+        agent.temperature = None
+        agent.seed = None
+        opts = agent._build_options()
+        assert "response_format" not in opts
+
+
 class TestFallbackClient:
     """Validates deployment fallback behaviour."""
 
     def test_no_fallback_without_override(self) -> None:
         """Agent without a deployment override has no fallback."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         assert agent.has_fallback is False
         assert agent.activate_fallback() is False
 
     def test_has_fallback_with_override(self) -> None:
         """Agent initialised with a deployment override prepares a fallback."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         primary = mock.MagicMock()
         fallback = mock.MagicMock()
         agent._chat_client = primary
@@ -174,7 +132,7 @@ class TestFallbackClient:
 
     def test_activate_fallback_switches_client(self) -> None:
         """activate_fallback replaces the primary with the fallback."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         primary = mock.MagicMock()
         fallback = mock.MagicMock()
         agent._chat_client = primary
@@ -189,7 +147,7 @@ class TestFallbackClient:
 
     def test_activate_fallback_only_once(self) -> None:
         """Fallback can only be activated once."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         agent._chat_client = mock.MagicMock()
         agent._fallback_client = mock.MagicMock()
 
@@ -202,7 +160,7 @@ class TestFallbackClient:
     ) -> None:
         """initialise() creates a fallback when a deployment
         override is configured."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         agent.agent_name = "ScriptAnalysisAgent"
 
         primary = mock.MagicMock()
@@ -239,7 +197,7 @@ class TestFallbackClient:
         self,
     ) -> None:
         """initialise() skips fallback when no override exists."""
-        agent = BaseAgent()
+        agent = base.BaseAgent()
         agent.agent_name = "TrackingAnalysisAgent"
 
         client = mock.MagicMock()

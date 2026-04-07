@@ -129,23 +129,6 @@ class TestTimeoutErrorMessage:
     """Timeout errors should include a descriptive message."""
 
     @pytest.mark.asyncio
-    async def test_timeout_raises_with_descriptive_message(self) -> None:
-        """A per-call timeout wraps the bare TimeoutError."""
-        middleware = middleware_mod.RetryChatMiddleware(
-            "TestAgent",
-            max_retries=0,
-            per_call_timeout=5.0,
-        )
-        context = mock.MagicMock()
-        context.result = None
-
-        async def slow_next() -> None:
-            await asyncio.sleep(999)
-
-        with pytest.raises(TimeoutError, match=r"timed out after 5\.0s"):
-            await middleware.process(context, slow_next)
-
-    @pytest.mark.asyncio
     async def test_timeout_retried_then_raises(self) -> None:
         """Timeouts are retried up to max_retries, then raised."""
         call_count = 0
@@ -164,7 +147,7 @@ class TestTimeoutErrorMessage:
         context = mock.MagicMock()
         context.result = None
 
-        with pytest.raises(TimeoutError, match=r"timed out after 0\.05s"):
+        with pytest.raises(middleware_mod.LLMConnectionError, match=r"did not respond in time"):
             await middleware.process(context, slow_next)
 
         assert call_count == 2  # initial + 1 retry
@@ -232,64 +215,6 @@ class TestSemaphoreIntegration:
         with pytest.raises(ValueError):
             await middleware.process(context, fail_next)
         assert middleware_mod._llm_semaphore._value == initial
-
-
-# ── _describe_response ─────────────────────────────────────────
-
-
-class TestDescribeResponse:
-    """Tests for the LLM response metadata extractor."""
-
-    def test_no_metadata_returns_fallback(self) -> None:
-        result = object()
-        assert middleware_mod._describe_response(result) == "(no metadata)"
-
-    def test_finish_reason_only(self) -> None:
-        result = mock.MagicMock(spec=[])
-        result.finish_reason = "stop"
-        result.model = None
-        result.usage_details = None
-        result.additional_properties = None
-        desc = middleware_mod._describe_response(result)
-        assert desc == "finish_reason=stop"
-
-    def test_full_metadata(self) -> None:
-        result = mock.MagicMock(spec=[])
-        result.finish_reason = "length"
-        result.model = "gpt-5.2-chat"
-        result.usage_details = {
-            "input_token_count": 50000,
-            "output_token_count": 2048,
-        }
-        result.additional_properties = {"system_fingerprint": None}
-        desc = middleware_mod._describe_response(result)
-        assert "finish_reason=length" in desc
-        assert "model=gpt-5.2-chat" in desc
-        assert "input_tokens=50000" in desc
-        assert "output_tokens=2048" in desc
-        assert "extra=" in desc
-
-    def test_usage_without_token_counts(self) -> None:
-        result = mock.MagicMock(spec=[])
-        result.finish_reason = "content_filter"
-        result.model = None
-        result.usage_details = {}
-        result.additional_properties = None
-        desc = middleware_mod._describe_response(result)
-        assert desc == "finish_reason=content_filter"
-
-    def test_model_without_finish_reason(self) -> None:
-        result = mock.MagicMock(spec=[])
-        result.finish_reason = None
-        result.model = "gpt-5.2-chat"
-        result.usage_details = None
-        result.additional_properties = None
-        desc = middleware_mod._describe_response(result)
-        assert desc == "model=gpt-5.2-chat"
-
-    def test_none_result(self) -> None:
-        """None has no attributes — should return fallback."""
-        assert middleware_mod._describe_response(None) == "(no metadata)"
 
 
 # ── Empty response metadata ────────────────────────────────────

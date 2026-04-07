@@ -98,7 +98,7 @@ class AzureOpenAIConfig(pydantic_settings.BaseSettings):
         validation_alias="AZURE_OPENAI_API_KEY",
     )
     api_version: str = pydantic.Field(
-        default="2024-12-01-preview",
+        default="2025-04-01-preview",
         validation_alias="OPENAI_API_VERSION",
     )
     deployment: str = pydantic.Field(default="", validation_alias="AZURE_OPENAI_DEPLOYMENT")

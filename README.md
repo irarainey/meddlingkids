@@ -230,7 +230,7 @@ Edit `.env` with your OpenAI credentials. The app supports both Azure OpenAI and
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-5.2-chat
-# OPENAI_API_VERSION=2024-12-01-preview  # Optional, shown is the default
+# OPENAI_API_VERSION=2025-04-01-preview  # Optional, shown is the default
 
 # Optional: Use a code-optimised model for script analysis
 # AZURE_OPENAI_SCRIPT_DEPLOYMENT=gpt-5.1-codex-mini

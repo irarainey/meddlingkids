@@ -278,10 +278,11 @@ All data captured
    │   │   └── Domain knowledge context                        │
    │   │                                                       │
    │   │  build_structured_report(tracking_summary, consent)   │
-   │   │   ├── 10 concurrent section LLM calls                 │
+   │   │   ├── MAF WorkflowBuilder fan-out/fan-in              │
+   │   │   ├── 10 concurrent section executors                 │
    │   │   ├── GDPR/TCF reference data                         │
-   │   │   ├── Plain-language consent digest (LLM)              │
-   │   │   ├── Deterministic user-rights note (no LLM)          │
+   │   │   ├── Plain-language consent digest (LLM)             │
+   │   │   ├── Deterministic user-rights note (no LLM)         │
    │   │   └── Deterministic overrides (partner count,         │
    │   │       domain count, cookie count, storage counts)     │
    │   │                                                       │
@@ -490,7 +491,7 @@ Key framework types used:
 - `agent_framework.ChatMiddleware` — pluggable request/response pipeline
 - `agent_framework.Message` / `agent_framework.Content` — message types (text + multimodal)
 - `agent_framework.ChatOptions` — token limits and structured output (`response_format`)
-- `agent_framework.AgentResponse` — typed response wrapper (structured output is parsed via `model.model_validate_json(response.text)` in `BaseAgent._parse_response()`)
+- `agent_framework.AgentResponse` — typed response wrapper (structured output is accessed via `response.value` when available, with a `response.text` JSON fallback in `BaseAgent._parse_response()`)
 - `agent_framework.AgentSession` — lightweight session container (replaces threads)
 
 | Agent | Module | Responsibility |
@@ -508,7 +509,7 @@ Key framework types used:
 |----------------|--------|---------------|
 | `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, per-agent deployment override support via `config.get_agent_deployment()`, and `use_responses_api` flag for Responses API client selection |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`). Azure supports API key and Managed Identity authentication (`AZURE_USE_MANAGED_IDENTITY`, `AZURE_CLIENT_ID`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` — environment variables are read once at startup |
-| `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection, `use_responses_api` for creating `OpenAIChatClient` (Responses API) instances (auto-upgrades API version to `2025-03-01-preview` minimum when needed), and Managed Identity support via `DefaultAzureCredential` when `AZURE_USE_MANAGED_IDENTITY=true` |
+| `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection, `use_responses_api` for creating `OpenAIChatClient` (Responses API) instances using the versionless `/openai/v1/` endpoint, and Managed Identity support via `DefaultAzureCredential` when `AZURE_USE_MANAGED_IDENTITY=true` |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking + token estimation before each call) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint. Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
 | `Observability` | `observability_setup.py` | Azure Monitor / Application Insights telemetry configuration |
 | `GDPR Context` | `gdpr_context.py` | Shared GDPR/TCF reference builder — assembles TCF purposes, consent cookies, lawful bases, and ePrivacy categories into a compact reference block for agent prompts |
@@ -1070,7 +1071,7 @@ The client (`useTrackingAnalysis.ts`) provides context-aware error messages:
 2. Create a prompt module in `server/src/agents/prompts/` with the system prompt
 3. Define `agent_name`, `instructions` (imported from the prompt module), `max_tokens`, and optionally `response_model`
 3. Add an orchestration function in the relevant domain package (`server/src/analysis/`, `server/src/consent/`, etc.) that calls the agent
-4. Call from `stream.py` in `server/src/pipeline/` (consider `asyncio.gather()` for parallel execution)
+4. Call from `stream.py` in `server/src/pipeline/` (for parallel execution, use MAF `WorkflowBuilder` with `add_fan_out_edges()` / `add_fan_in_edges()`, or `asyncio.create_task()` for independent streams)
 5. Include in `complete` event payload
 6. Display in client
 
@@ -1251,7 +1252,7 @@ Every LLM call is automatically tracked for call count and token usage via `usag
 All LLM calls are wrapped by `RetryChatMiddleware` (in `server/src/agents/middleware.py`), which provides automatic retry with exponential backoff:
 
 - **Retryable errors:** 429 (rate limit), 5xx (server errors), network failures
-- **Non-retryable errors:** `OutputTruncatedError` — raised when `finish_reason=length` produces an empty response (indicates `max_tokens` is too low for the output schema)
+- **Non-retryable errors:** `OutputTruncatedError` — raised when `finish_reason=length` produces an empty response (indicates `max_completion_tokens` is too low for the output schema)
 - **Backoff strategy:** Starts at 1s, doubles each retry, max 30s
 - **Jitter:** ±20% randomization to prevent thundering herd
 - **Max retries:** 5 (configurable per agent via `max_retries`)

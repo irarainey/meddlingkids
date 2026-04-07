@@ -1,6 +1,30 @@
 
 # Changelog
 
+## 1.8.3
+
+### Changed
+
+- **MAF structured output simplified** — Agent `response_format` now passes Pydantic model classes directly to the MAF + OpenAI SDK instead of manually building strict-mode JSON schemas. The `_prepare_strict_schema` workaround and `copy.deepcopy` patching have been removed. Response parsing uses `response.value` (native MAF structured output) with a `response.text` fallback.
+- **MAF built-in telemetry enabled** — `observability.enable_instrumentation()` is now called during setup, activating MAF's `AgentTelemetryLayer` and `ChatTelemetryLayer` for automatic OpenTelemetry spans and metrics on every agent and chat-client call. The custom `TimingChatMiddleware` no longer writes to `context.metadata["timing"]` (superseded by the built-in layers) and focuses on human-readable log output.
+- **MAF Agent reuse** — The framework `Agent` is now built once in `initialise()` and stored on the instance, rather than being constructed and torn down on every LLM call. Per-call overrides (instructions, response format, max tokens) are passed via `agent.run(options=...)`. Fallback activation rebuilds the agent with the new client.
+- **MAF ContextProvider for GDPR reference** — A new `GdprReferenceProvider` injects cached GDPR/TCF regulatory reference text as supplementary system instructions via the MAF `before_run` hook, gated by a session-state flag. Added to all agents via `_create_agent()`.
+- **MAF WorkflowBuilder for report generation** — The `StructuredReportAgent`'s 10-section `asyncio.gather()` has been replaced with a MAF `Workflow` using `WorkflowBuilder.add_fan_out_edges()` / `add_fan_in_edges()`. Ten `SectionExecutor` instances run concurrently with typed edges, convergence detection, and a `MergeExecutor` that collects results. Conditional section skipping (consent sections without consent data) is handled via executor-level `skip_condition` callbacks.
+- **MAF `@executor` pipeline wrappers** — Script analysis and tracking analysis pipeline steps are now wrapped as MAF `FunctionExecutor` instances via the `@executor` decorator, providing typed input/output contracts for workflow composition.
+- **Default Azure API version updated to `2025-04-01-preview`** — The previous default (`2024-12-01-preview`) is no longer supported by Azure OpenAI. The `.env.example` and config default have been updated accordingly.
+- **Responses API no longer passes explicit `api_version`** — The MAF `OpenAIChatClient` (Responses API) internally uses the versionless `/openai/v1/` endpoint. Passing an explicit `api_version` caused the underlying `AsyncAzureOpenAI` client to append a `?api-version=` query parameter that the v1 endpoint rejects. The `api_version` parameter and the `_MIN_RESPONSES_API_VERSION` auto-upgrade logic have been removed for Responses API clients.
+- **Upfront LLM connectivity check removed** — The `verify_connectivity()` pre-flight check (which made a throwaway LLM call before every analysis) has been removed. Connection errors are now caught at the point of real LLM calls by the retry middleware, which wraps them in `LLMConnectionError` with diagnostic messages (auth failures, DNS errors, timeouts, etc.).
+- **Explicit OIDC ID token validation** — The OAuth callback now passes explicit `claims_options` to authlib's `authorize_access_token()`, making the token validation requirements visible in code: `iss` must match the configured issuer, `sub` must be present, `aud` must match the client ID, and `exp` must not be expired. Clock-skew leeway tightened from 120s to 30s.
+
+### Added
+
+- **Auth guard security tests** — New `tests/auth/test_auth_guard.py` with 12 tests covering: unauthenticated access blocked (401 for API, redirect for pages), pass-through for `/auth/*` and `/assets/*`, valid session access, tampered cookies (wrong secret, corrupted payload, modified data, empty session), and expired session rejection.
+
+### Fixed
+
+- **LLM calls use `max_completion_tokens`** — The OpenAI SDK parameter was updated from the deprecated `max_tokens` to `max_completion_tokens`, which newer models require.
+- **Script analysis fallback on API version rejection** — `_is_model_error` now recognises `"API version not supported"` responses, allowing the `ScriptAnalysisAgent` to correctly fall back to the default ChatCompletion deployment instead of silently failing.
+
 ## 1.8.2
 
 ### Fixed

@@ -23,8 +23,9 @@ from src.utils import logger
 
 log = logger.create_logger("LLM-Client")
 
-# Minimum Azure API version required by the Responses API.
-_MIN_RESPONSES_API_VERSION = "2025-03-01-preview"
+
+class LLMConnectionError(Exception):
+    """Raised when the LLM endpoint is unreachable or credentials are invalid."""
 
 
 def _build_azure_auth_kwargs(cfg: config.AzureOpenAIConfig) -> dict[str, Any]:
@@ -120,16 +121,12 @@ def _create_azure_client(
     deployment = deployment_override or cfg.deployment
     client_kind = "Responses" if use_responses_api else "ChatCompletion"
 
-    # The Responses API requires api-version 2025-03-01-preview
-    # or later.  When the configured version is older, override
-    # it automatically so the client doesn't 400 immediately.
-    api_version = cfg.api_version
-    if use_responses_api and api_version < _MIN_RESPONSES_API_VERSION:
-        log.info(
-            "Upgrading api-version for Responses API",
-            {"configured": api_version, "minimum": _MIN_RESPONSES_API_VERSION},
-        )
-        api_version = _MIN_RESPONSES_API_VERSION
+    # The Responses API uses the versionless /openai/v1/ endpoint
+    # internally.  Passing an explicit api_version causes the
+    # underlying AsyncAzureOpenAI client to append a
+    # ?api-version= query parameter that the v1 endpoint rejects.
+    # Only pass api_version for the ChatCompletion path.
+    api_version: str | None = None if use_responses_api else cfg.api_version
 
     log.info(
         "Using Azure OpenAI",
@@ -137,7 +134,7 @@ def _create_azure_client(
             "agent": agent_name or "default",
             "deployment": deployment,
             "endpoint": cfg.endpoint,
-            "apiVersion": api_version,
+            "apiVersion": api_version or "(framework default)",
             "clientKind": client_kind,
             "auth": "managed-identity" if cfg.use_managed_identity else "api-key",
         },
@@ -148,7 +145,6 @@ def _create_azure_client(
     if use_responses_api:
         return openai.OpenAIChatClient(  # type: ignore[no-any-return]
             **auth_kwargs,
-            api_version=api_version,
             azure_endpoint=cfg.endpoint,
             model=deployment,
         )

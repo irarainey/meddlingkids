@@ -101,8 +101,33 @@ async def auth_callback(request: requests.Request) -> responses.RedirectResponse
         return responses.RedirectResponse(url="/")
 
     oauth = _get_oauth()
+    cfg = config.get_oauth_config()
+
+    # Explicit ID token claim validation — authlib performs these
+    # checks inside authorize_access_token → parse_id_token, but
+    # we surface them here so the requirements are visible:
+    #
+    #   iss  – must match the configured OAUTH_ISSUER
+    #   sub  – must be present (identifies the user)
+    #   aud  – must contain our client_id
+    #   exp  – must not be expired (30s leeway for clock skew)
+    #   nonce – must match the value stored in the session (replay protection)
+    #
+    # Signature verification (RS256 via provider JWKS) and at_hash
+    # validation are handled automatically by authlib.
+    claims_options = {
+        "iss": {"essential": True, "values": [cfg["issuer"]]},
+        "sub": {"essential": True},
+        "aud": {"essential": True, "value": cfg["client_id"]},
+        "exp": {"essential": True},
+    }
+
     try:
-        token = await oauth.provider.authorize_access_token(request)
+        token = await oauth.provider.authorize_access_token(
+            request,
+            claims_options=claims_options,
+            leeway=30,
+        )
     except starlette_client.OAuthError as exc:
         log.error("OAuth token exchange failed", {"error": exc.description})
         raise fastapi.HTTPException(
@@ -117,8 +142,11 @@ async def auth_callback(request: requests.Request) -> responses.RedirectResponse
     if not userinfo:
         raise fastapi.HTTPException(status_code=401, detail="Could not retrieve user information")
 
+    if not userinfo.get("sub"):
+        raise fastapi.HTTPException(status_code=401, detail="Token missing required 'sub' claim")
+
     request.session["user"] = {
-        "sub": userinfo.get("sub", ""),
+        "sub": userinfo["sub"],
         "name": userinfo.get("name", ""),
         "email": userinfo.get("email", ""),
         "picture": userinfo.get("picture", ""),
