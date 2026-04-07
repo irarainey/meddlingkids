@@ -184,13 +184,6 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
-  <!-- Auth loading state — show logo while checking session -->
-  <div v-if="isCheckingAuth" class="auth-loading">
-    <img :src="logo" alt="Meddling Kids" class="logo" />
-  </div>
-
-  <!-- Main app — rendered only when authenticated (or auth disabled) -->
-  <template v-else>
   <header class="header">
       <button v-if="isAuthEnabled" class="logout-button" :title="`Signed in as ${authUser?.email}`" @click="logout">
         {{ authUser?.name || 'User' }} · Sign out
@@ -201,6 +194,7 @@ function onUrlMouseUp(event: Event): void {
       </p>
     </header>
 
+    <template v-if="!isCheckingAuth">
     <div class="url-bar-wrapper">
       <div class="url-bar">
         <input
@@ -376,13 +370,6 @@ function onUrlMouseUp(event: Event): void {
 </template>
 
 <style scoped>
-.auth-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60dvh;
-}
-
 .header {
   position: relative;
   text-align: center;

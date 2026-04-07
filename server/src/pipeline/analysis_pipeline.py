@@ -20,7 +20,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
 from src import agents
-from src.analysis import domain_cache, scripts, tracking
+from src.analysis import domain_cache, geo_lookup, scripts, tracking
 from src.analysis import tracking_summary as tracking_summary_mod
 from src.analysis.scoring import calculator
 from src.browser import session as browser_session
@@ -111,15 +111,19 @@ async def run_ai_analysis(
     # captured data, not on LLM analysis output.  Computing
     # them upfront lets us start the structured report
     # concurrently with script and tracking analysis.
-    tracking_summary = tracking_summary_mod.build_tracking_summary(
-        final_cookies,
-        final_scripts,
-        final_requests,
-        storage.local_storage,
-        storage.session_storage,
-        url,
-    )
 
+    # Kick off async geo resolution first — the sync version
+    # blocks the event loop with socket.getaddrinfo for every
+    # domain, stalling SSE delivery.  The async variant uses
+    # run_in_executor with a semaphore, letting the event loop
+    # stay responsive while DNS resolves in a thread pool.
+    all_domains = {c.domain for c in final_cookies}
+    all_domains.update(s.domain for s in final_scripts)
+    all_domains.update(r.domain for r in final_requests)
+    geo_task = asyncio.create_task(geo_lookup.resolve_domains_countries(list(all_domains)))
+
+    # Scoring and domain knowledge don't need geo — compute
+    # them while DNS resolution runs in the background.
     score_breakdown = calculator.calculate_privacy_score(
         final_cookies,
         final_scripts,
@@ -149,6 +153,19 @@ async def run_ai_analysis(
         )
     else:
         log.info("Domain cache miss — no prior knowledge", {"domain": domain})
+
+    # Await geo results, then build the tracking summary with
+    # pre-resolved countries so it skips the internal sync DNS.
+    geo_countries = await geo_task
+    tracking_summary = tracking_summary_mod.build_tracking_summary(
+        final_cookies,
+        final_scripts,
+        final_requests,
+        storage.local_storage,
+        storage.session_storage,
+        url,
+        geo_countries=geo_countries,
+    )
 
     # ── Launch concurrent tasks and yield events in real-time ──
     progress_queue: asyncio.Queue[str | None] = asyncio.Queue()
@@ -201,11 +218,43 @@ async def run_ai_analysis(
 
     report_task = asyncio.create_task(_run_report())
 
+    # The summary agent can only run once tracking analysis
+    # completes (it needs the full analysis text).  Chain it
+    # as a 4th concurrent producer so it starts as soon as
+    # tracking finishes — overlapping with any still-in-flight
+    # report sections or script analysis.
+    async def _run_summary() -> list[analysis.SummaryFinding]:
+        try:
+            tracking_result = await tracking_task
+            progress_queue.put_nowait(
+                sse_helpers.format_progress_event(
+                    "ai-summarizing",
+                    "Generating findings summary...",
+                    95,
+                )
+            )
+            summary_agent = agents.get_summary_findings_agent()
+            return await summary_agent.summarise(
+                tracking_result.to_text(),
+                score_breakdown,
+                domain_knowledge,
+                consent_details,
+                tracking_summary,
+                pre_consent_stats,
+            )
+        except Exception:
+            log.warn("Summary generation failed — continuing without")
+            return []
+        finally:
+            progress_queue.put_nowait(None)
+
+    summary_task = asyncio.create_task(_run_summary())
+
     # Drain events as they arrive — this keeps SSE streaming
-    # in real-time rather than batching.  Three concurrent
-    # producers (script, tracking, report) each send a None
-    # sentinel when they finish.
-    tasks_remaining = 3
+    # in real-time rather than batching.  Four concurrent
+    # producers (script, tracking, report, summary) each send
+    # a None sentinel when they finish.
+    tasks_remaining = 4
     finished = 0
     while finished < tasks_remaining:
         event = await progress_queue.get()
@@ -218,9 +267,10 @@ async def run_ai_analysis(
         await script_task
         await tracking_task
         await report_task
+        await summary_task
     except Exception:
         # Cancel surviving tasks so they don't leak.
-        for task in (script_task, tracking_task, report_task):
+        for task in (script_task, tracking_task, report_task, summary_task):
             if not task.done():
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
@@ -229,14 +279,13 @@ async def run_ai_analysis(
 
     script_result = script_task.result()
     analysis_result = tracking_task.result()
+    structured_report = report_task.result()
+    summary_findings = list(summary_task.result())
 
     log.end_timer("tracking-analysis", "Tracking analysis complete")
 
-    log.info("Finalizing privacy score", {"score": score_breakdown.total_score})
-    yield sse_helpers.format_progress_event("ai-scoring", "Finalizing privacy score...", 95)
-
-    # ── Summary (scoring + report already in flight) ────────
-    async for event in _score_and_summarise(
+    # ── Finalize and emit results ──────────────────────────
+    async for event in _finalize_and_emit(
         final_cookies,
         final_requests,
         storage,
@@ -247,7 +296,8 @@ async def run_ai_analysis(
         tracking_summary,
         score_breakdown,
         domain_knowledge,
-        report_task,
+        structured_report,
+        summary_findings,
         pre_consent_stats,
         decoded_cookies=decoded_cookies,
     ):
@@ -342,6 +392,13 @@ def _launch_concurrent_tasks(
 
     async def _run_tracking() -> analysis.TrackingAnalysisResult:
         try:
+            progress_queue.put_nowait(
+                sse_helpers.format_progress_event(
+                    "tracking-analysis",
+                    "Analyzing tracking patterns...",
+                    80,
+                )
+            )
             return await tracking.run_tracking_analysis(
                 final_cookies,
                 storage.local_storage,
@@ -863,7 +920,7 @@ def _render_report_text(
     return "\n".join(lines)
 
 
-async def _score_and_summarise(
+async def _finalize_and_emit(
     final_cookies: list[tracking_data.TrackedCookie],
     final_requests: list[tracking_data.NetworkRequest],
     storage: tracking_data.CapturedStorage,
@@ -874,51 +931,21 @@ async def _score_and_summarise(
     tracking_summary: analysis.TrackingSummary,
     score_breakdown: analysis.ScoreBreakdown,
     domain_knowledge: domain_cache.DomainKnowledge | None,
-    report_task: asyncio.Task[report_models.StructuredReport],
+    structured_report: report_models.StructuredReport,
+    summary_findings: list[analysis.SummaryFinding],
     pre_consent_stats: analysis.PreConsentStats | None = None,
     *,
     decoded_cookies: dict[str, object] | None = None,
 ) -> AsyncGenerator[str]:
-    """Summarise and yield the complete event.
+    """Emit the final result events.
 
-    Scoring, the tracking summary, domain knowledge, and the
-    structured report are pre-computed / pre-launched by the
-    caller for maximum concurrency.
+    All analysis tasks (tracking, scripts, report, summary)
+    have already completed.  This function handles domain-cache
+    persistence, report archival, and the multi-part complete
+    SSE payload.
     """
     full_text = analysis_result.to_text()
     log.info("Analysis complete", {"length": len(full_text)})
-
-    # The structured report is already being built concurrently
-    # (launched alongside script and tracking analysis).  Only
-    # the summary needs the completed analysis text.
-    log.info("Generating findings summary")
-    yield sse_helpers.format_progress_event("ai-summarizing", "Generating findings summary...", 96)
-
-    summary_agent = agents.get_summary_findings_agent()
-    summary_task = asyncio.create_task(
-        summary_agent.summarise(
-            full_text,
-            score_breakdown,
-            domain_knowledge,
-            consent_details,
-            tracking_summary,
-            pre_consent_stats,
-        )
-    )
-
-    try:
-        structured_report, summary_findings = await asyncio.gather(
-            report_task,
-            summary_task,
-        )
-    except Exception:
-        # Cancel the surviving task so it doesn't leak.
-        for task in (report_task, summary_task):
-            if not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-        raise
 
     log.info(
         "Structured report and summary generated",

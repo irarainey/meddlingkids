@@ -261,17 +261,16 @@ All data captured
    │   │   └── Incremental cache save after each LLM result    │
    │   │                                                       │
    │   │  run_tracking_analysis(summary, consent, stats)       │
-   │   │   ├── build_tracking_summary() → Data for LLM         │
+   │   │   ├── Tracking summary (pre-built with async geo)     │
    │   │   ├── GDPR/TCF reference data (purposes, lawful       │
    │   │   │   bases, ePrivacy categories, consent cookies)    │
    │   │   ├── Pre-consent page-load stats                     │
    │   │   ├── Media group context (if domain recognised)      │
    │   │   └── Main analysis prompt → Structured JSON result   │
    │   │                                                       │
-   │   │                                                       │
-   │   │  calculate_privacy_score() → Deterministic 0-100      │
-   │   │                                                       │
    │   │  summarise(analysis_text, score, consent, metrics)    │
+   │   │   ├── Chained after tracking (awaits its result)      │
+   │   │   ├── Overlaps with report + remaining scripts        │
    │   │   ├── Deterministic consent facts (partner counts)    │
    │   │   ├── Deterministic tracking metrics (exact counts)   │
    │   │   ├── Pre-consent page-load stats                     │
@@ -280,17 +279,20 @@ All data captured
    │   │  build_structured_report(tracking_summary, consent)   │
    │   │   ├── MAF WorkflowBuilder fan-out/fan-in              │
    │   │   ├── 10 concurrent section executors                 │
+   │   │   ├── Real-time progress callback per section         │
    │   │   ├── GDPR/TCF reference data                         │
    │   │   ├── Plain-language consent digest (LLM)             │
    │   │   ├── Deterministic user-rights note (no LLM)         │
    │   │   └── Deterministic overrides (partner count,         │
    │   │       domain count, cookie count, storage counts)     │
    │   │                                                       │
+   │   │  calculate_privacy_score() → Deterministic 0-100      │
+   │   │                                                       │
    │   └───────────────────────────────────────────────────────┘
    │
-   └── Script analysis and tracking analysis run concurrently
-       Scoring, structured report, and summary run after analysis
-       Both tasks share a progress queue for merged SSE updates
+   └── Four concurrent producers share a progress queue:
+       scripts, tracking, report, and summary (chained after tracking).
+       Scoring and geo resolution run during pre-compute before tasks launch.
 ```
 
 ### Phase 6: Complete
@@ -396,6 +398,11 @@ eventSource.addEventListener('progress', (e) => {
   // silently ignored to prevent the status text from jumping
   // backward (e.g. a script analysis event at 84% arriving after
   // a report event at 91%).
+  //
+  // During the analysis phase (76–95%), a rotation timer cycles
+  // through contextual messages every 3.5s when no real server
+  // event arrives — keeps the UI feeling responsive during long
+  // concurrent LLM calls.
 })
 
 eventSource.addEventListener('screenshot', (e) => {
@@ -439,22 +446,23 @@ eventSource.addEventListener('error', (e) => {
 
 ```
 App.vue
-├── Auth loading state (v-if="isCheckingAuth")
+├── Header (always rendered — logo, tagline, optional logout button)
 ├── Logout button (v-if="isAuthEnabled", top-right corner)
-├── ProgressBanner (loading state)
-├── ScoreDialog (privacy score popup)
-├── PageErrorDialog (access denied)
-├── ErrorDialog (generic errors)
-├── ScreenshotGallery (thumbnail row + modal)
-├── TrackerCategorySection (reusable tracker category block)
-└── Tab Content (v-if="isComplete")
-    ├── SummaryTab (uses TrackerCategorySection ×5, includes "What You Agreed To" consent digest)
-    ├── ConsentTab (visible when consent dialog detected, includes "Your Rights" note)
-    ├── CookiesTab
-    ├── StorageTab
-    ├── NetworkTab
-    ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
-    ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
+├── Content gate (v-if="!isCheckingAuth")
+│   ├── ProgressBanner (loading state, rotating analysis-phase messages)
+│   ├── ScoreDialog (privacy score popup)
+│   ├── PageErrorDialog (access denied)
+│   ├── ErrorDialog (generic errors)
+│   ├── ScreenshotGallery (thumbnail row + modal)
+│   ├── TrackerCategorySection (reusable tracker category block)
+│   └── Tab Content (v-if="isComplete")
+│       ├── SummaryTab (uses TrackerCategorySection ×5, includes "What You Agreed To" consent digest)
+│       ├── ConsentTab (visible when consent dialog detected, includes "Your Rights" note)
+│       ├── CookiesTab
+│       ├── StorageTab
+│       ├── NetworkTab
+│       ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
+│       ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
 ```
 
 ---
@@ -500,7 +508,7 @@ Key framework types used:
 | `ConsentExtractionAgent` | `consent_extraction_agent.py` | Three-tier consent extraction: a local regex parser (`text_parser`) always runs alongside the LLM vision call. Screenshots are cropped to the dialog bounding box when bounds are available. LLM is authoritative; local parse supplements `has_manage_options` and `claimed_partner_count`. If the LLM vision call times out, a text-only LLM fallback (10 s timeout) is attempted before falling to the local parse as sole source |
 | `ScriptAnalysisAgent` | `script_analysis_agent.py` | Identify and describe unknown scripts via LLM. Supports a per-agent deployment override (`AZURE_OPENAI_SCRIPT_DEPLOYMENT`) for using a code-optimised model. Uses the Responses API when targeting a codex deployment |
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring. Receives consent delta (post-consent changes) and consent platform data for richer findings. Results sorted by severity (critical first, positive last) |
-| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls (2 waves) and deterministic overrides. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Includes a plain-language consent digest section and deterministic user-rights note. Results sorted by severity within each section. Uses a 60 s per-call timeout |
+| `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls via MAF WorkflowBuilder fan-out/fan-in. Each section executor fires a real-time progress callback on completion. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Includes a plain-language consent digest section and deterministic user-rights note. Results sorted by severity within each section. Uses a 60 s per-call timeout |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Overall privacy risk narrative (streaming markdown) — scope narrowed to 3 sections (Tracking Technologies, Privacy Risk Assessment, Consent Dialog Analysis). Receives decoded privacy cookies and decoded consent signals. Uses `run(stream=True)` with a 90 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 90 s |
 | `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
 | `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
@@ -561,7 +569,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `vendor_lookup.py` | Vendor name resolution — resolves IAB GVL vendor IDs and Google ATP provider IDs to human-readable names using the bundled reference files. Used by TC String and AC String decoders |
 | `cookie_decoders.py` | Structured cookie decoder framework — automatically decodes well-known cookie formats (OneTrust, Cookiebot, Google Analytics, Facebook Pixel, Google Ads, USP strings, GPC/DNT signals, GPP strings, Google SOCS) into human-readable breakdowns. Results are sent to the client as a `decodedCookies` SSE event |
 | `domain_classifier.py` | Three-tier domain classification without LLM calls: (1) Disconnect services (4 000+ domains) with override corrections for known misclassifications, (2) partner databases, (3) domain keyword heuristics (regex patterns on the domain name for ad-tech, analytics, social, identity keywords). Email/EmailAggressive Disconnect categories are mapped to advertising. `build_deterministic_tracking_section()` pre-populates tracking technology sections; `merge_tracking_sections()` merges LLM results over deterministic baseline |
-| `geo_lookup.py` | DNS-based geolocation for third-party domains — resolves domain names to IP addresses and looks up their country using the DB-IP Lite database. Provides synchronous single-domain lookup (`resolve_domain_country()`) and async batch resolution (`resolve_domains_countries()`). DNS results are LRU-cached (4096 entries) |
+| `geo_lookup.py` | DNS-based geolocation for third-party domains — resolves domain names to IP addresses and looks up their country using the DB-IP Lite database. Provides synchronous single-domain lookup (`resolve_domain_country()`) and async batch resolution (`resolve_domains_countries()`) with bounded concurrency (semaphore, max 20). DNS results are LRU-cached (4096 entries). The analysis pipeline uses the async variant to avoid blocking the event loop |
 | `scoring/` | Decomposed privacy scoring package (0-100) |
 | `scoring/_tiers.py` | Shared `score_by_tiers()` helper and `Tier` type alias — declarative `(threshold, points, issue_template)` tuples checked in descending order, replacing 20 if/elif threshold chains across category scorers |
 | `scoring/calculator.py` | Orchestrator — calls each category scorer, applies calibration curve |
@@ -582,7 +590,7 @@ Domain packages orchestrate browser automation and data processing. They call ag
 | `browser_phases.py` | Phases 1-3: navigate, page load, access check, initial data capture (browser session creation is handled by `PlaywrightManager` at a higher level) |
 | `overlay_pipeline.py` | Phase 4: `run()` orchestrator delegates to `_try_cmp_specific_dismiss()` (deterministic CMP-based dismiss), `_run_vision_loop()` (detection iterations), and `_click_and_capture()` (click + post-click capture). The async generator yields `str | BreakSignal` — `BreakSignal` is a frozen dataclass that replaces the former `"__BREAK__"` magic string sentinel, enabling type-safe `isinstance()` checks in consumer code. When prior strategies have already dismissed the consent dialog, the vision loop correctly reports `found=false` (expected — no additional overlays remain) |
 | `overlay_steps.py` | Sub-step functions for overlay pipeline (detect, validate, click, capture content, extract). `detect_overlay()` speculatively crops the viewport screenshot to the consent dialog bounding box (via `get_consent_bounds.js`) before sending to the LLM, preventing content-filter rejections from background imagery. `capture_consent_content()` returns a 3-tuple `(text, screenshot, consent_bounds)` where `ConsentBounds = tuple[int, int, int, int] | None` is obtained by evaluating `get_consent_bounds.js` in the browser. Screenshot calls are wrapped with try/except to prevent a single timeout from crashing the analysis |
-| `analysis_pipeline.py` | Phase 5: concurrent AI analysis and scoring |
+| `analysis_pipeline.py` | Phase 5: concurrent AI analysis (4 producers: scripts, tracking, report, summary) with async geo resolution and scoring |
 | `sse_helpers.py` | SSE formatting, serialization helpers, and screenshot capture with error recovery |
 
 ### Data Layer
@@ -1216,7 +1224,10 @@ Files are named `<domain>_YYYY-MM-DD_HH-MM-SS` with `.log` or `.txt` extensions 
 - Script analysis results are cached per **script domain** (not per site) by base URL (query strings stripped) + MD5 content hash; a script analysed on one site is an immediate cache hit on any other site that loads it. Within a single scan, scripts sharing the same base URL are deduplicated (fetched and analysed once)
 - Script content fetches share a single `aiohttp.ClientSession` for connection reuse
 - Script analysis and tracking analysis run concurrently via `asyncio`
+- Summary findings agent is chained after tracking and overlaps with in-flight report sections and script analysis
 - Structured report sections receive **per-section context** via `SectionNeeds` configs — each section gets only the data blocks it needs, reducing token usage by 30–90% compared to sending the full context to every section
+- Report section executors fire progress callbacks in real-time as each section completes (not batched after the workflow)
+- Domain geolocation uses async `resolve_domains_countries()` with `run_in_executor` to avoid blocking the event loop during DNS resolution; runs concurrently with scoring and domain-knowledge lookup
 - Domain breakdowns and third-party domain lists are **grouped by parent organization** in the LLM context, compressing ~40% of context characters
 - Screenshots are captured once as JPEG (quality 72) by Playwright — no format conversion needed
 - Vision API calls (detection, extraction) downscale JPEG to max 1280px wide

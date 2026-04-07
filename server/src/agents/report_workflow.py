@@ -102,6 +102,9 @@ class SectionExecutor(agent_framework.Executor):
         skip_condition: Callable[[ReportInput], bool] | None = None,
         default_result: pydantic.BaseModel | None = None,
         social_media_trackers: list[report.TrackerEntry] | None = None,
+        on_section_done: Callable[[str, int, int], None] | None = None,
+        done_counter: list[int] | None = None,
+        total_sections: int = 0,
     ) -> None:
         super().__init__(id=f"section-{section_name}")
         self._section_name = section_name
@@ -111,6 +114,19 @@ class SectionExecutor(agent_framework.Executor):
         self._skip_condition = skip_condition
         self._default_result = default_result
         self._social_media_trackers = social_media_trackers
+        self._on_section_done = on_section_done
+        self._done_counter = done_counter
+        self._total_sections = total_sections
+
+    def _fire_done(self) -> None:
+        """Increment the shared counter and fire the progress callback."""
+        if self._on_section_done is not None and self._done_counter is not None:
+            self._done_counter[0] += 1
+            self._on_section_done(
+                self._section_name,
+                self._done_counter[0],
+                self._total_sections,
+            )
 
     @agent_framework.handler(input=ReportInput, output=SectionResult)
     async def process(
@@ -120,6 +136,7 @@ class SectionExecutor(agent_framework.Executor):
     ) -> None:
         """Build one report section and send the result."""
         if self._skip_condition and self._skip_condition(data):
+            self._fire_done()
             await ctx.send_message(
                 SectionResult(
                     section_name=self._section_name,
@@ -145,6 +162,7 @@ class SectionExecutor(agent_framework.Executor):
             self._section_name,
         )
 
+        self._fire_done()
         await ctx.send_message(
             SectionResult(section_name=self._section_name, data=result),
         )
@@ -197,6 +215,7 @@ def build_report_workflow(
     agent: sra_mod.StructuredReportAgent,
     consent_details: consent.ConsentDetails | None = None,
     social_media_trackers: list[report.TrackerEntry] | None = None,
+    on_section_done: Callable[[str, int, int], None] | None = None,
 ) -> agent_framework.Workflow:
     """Build a workflow that generates all report sections concurrently.
 
@@ -206,6 +225,8 @@ def build_report_workflow(
             skipping.
         social_media_trackers: Deterministic tracker entries
             for the social-media section context.
+        on_section_done: Optional progress callback fired by each
+            executor as its section completes.
 
     Returns:
         A ``Workflow`` ready to run.
@@ -218,6 +239,11 @@ def build_report_workflow(
 
     broadcast = BroadcastExecutor()
     merge = MergeExecutor()
+
+    # Shared mutable counter so executors can report
+    # monotonically increasing done counts.
+    done_counter: list[int] = [0]
+    total_sections = len(configs)
 
     section_executors: list[SectionExecutor] = []
     for section_name, prompt, response_model in configs:
@@ -243,6 +269,9 @@ def build_report_workflow(
                 skip_condition=skip,
                 default_result=default,
                 social_media_trackers=social_media_trackers,
+                on_section_done=on_section_done,
+                done_counter=done_counter,
+                total_sections=total_sections,
             ),
         )
 
@@ -281,6 +310,7 @@ async def run_report_workflow(
         agent,
         consent_details,
         social_media_trackers,
+        on_section_done=on_section_done,
     )
 
     log.info("Running report workflow (10 sections concurrently)...")
@@ -296,12 +326,9 @@ async def run_report_workflow(
         elif isinstance(output, SectionResult):
             all_sections.append(output)
 
-    # Build result dict and fire progress callbacks
+    # Callbacks already fired in real-time by each executor.
     section_map: dict[str, pydantic.BaseModel | None] = {}
-    total = len(all_sections)
-    for i, section in enumerate(all_sections, 1):
+    for section in all_sections:
         section_map[section.section_name] = section.data
-        if on_section_done:
-            on_section_done(section.section_name, i, total)
 
     return section_map
