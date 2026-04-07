@@ -195,7 +195,7 @@ function onUrlMouseUp(event: Event): void {
       <button v-if="isAuthEnabled" class="logout-button" :title="`Signed in as ${authUser?.email}`" @click="logout">
         {{ authUser?.name || 'User' }} · Sign out
       </button>
-      <img :src="logo" alt="Meddling Kids" class="logo" />
+      <img :src="logo" alt="Meddling Kids" class="logo" :class="{ 'logo--auth': isAuthEnabled }" />
       <p class="tagline">
         Feed the meddling kids a URL to unmask hidden trackers, cookies, scripts, and shady consent dialogs.
       </p>
@@ -412,6 +412,10 @@ function onUrlMouseUp(event: Event): void {
   height: auto;
   margin-bottom: 0.75rem;
   filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.3));
+}
+
+.logo--auth {
+  margin-top: 1rem;
 }
 
 .tagline {
