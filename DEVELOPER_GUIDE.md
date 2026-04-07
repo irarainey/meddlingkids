@@ -64,8 +64,8 @@ Communication happens via **Server-Sent Events (SSE)**, allowing real-time progr
 │                                  SERVER                                    │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
 │  │  auth/ (Optional OAuth2 — disabled when env vars absent)             │  │
-│  │  - SessionMiddleware (signed cookie) → auth_guard middleware          │  │
-│  │  - /auth/login → /auth/callback → /auth/me → /auth/logout           │  │
+│  │  - SessionMiddleware (signed cookie) → auth_guard middleware         │  │
+│  │  - /auth/login → /auth/callback → /auth/me → /auth/logout            │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
