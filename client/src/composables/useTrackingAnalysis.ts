@@ -146,7 +146,7 @@ export function useTrackingAnalysis() {
     analysisRotateTimer = setTimeout(() => {
       if (progressPercent.value >= 76 && progressPercent.value < 95) {
         statusMessage.value =
-          ANALYSIS_MESSAGES[analysisMessageIndex % ANALYSIS_MESSAGES.length]
+          ANALYSIS_MESSAGES[analysisMessageIndex % ANALYSIS_MESSAGES.length] ?? 'Analyzing...'
         analysisMessageIndex++
         scheduleAnalysisRotation()
       }
