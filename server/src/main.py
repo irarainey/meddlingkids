@@ -7,16 +7,15 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import ipaddress
 import json
 import os
 import pathlib
-import urllib.parse
 from collections.abc import AsyncGenerator
 
 import aiohttp
 import dotenv
 import fastapi
+import pydantic
 from fastapi import staticfiles
 from fastapi.middleware import cors, gzip
 from starlette import responses
@@ -29,6 +28,7 @@ from src.browser import manager
 from src.data import loader
 from src.pipeline import stream
 from src.utils import cache, logger
+from src.utils.url import UnsafeURLError, resolve_and_validate, validate_analysis_url
 
 
 def _bootstrap() -> None:
@@ -158,6 +158,48 @@ async def disable_static_cache(
 # ============================================================================
 
 
+# ── Request models ───────────────────────────────────────────────────────
+
+
+class DomainInfoRequest(pydantic.BaseModel):
+    domains: list[str] = pydantic.Field(..., min_length=1)
+
+
+class StorageKeyInfoRequest(pydantic.BaseModel):
+    keys: list[str] = pydantic.Field(..., min_length=1)
+
+
+class CookieInfoRequest(pydantic.BaseModel):
+    name: str = pydantic.Field(..., min_length=1)
+    domain: str = ""
+    value: str = ""
+
+
+class StorageInfoRequest(pydantic.BaseModel):
+    key: str = pydantic.Field(..., min_length=1)
+    storage_type: str = pydantic.Field("localStorage", alias="storageType")
+    value: str = ""
+
+    model_config = pydantic.ConfigDict(populate_by_name=True)
+
+
+class TcfPurposesRequest(pydantic.BaseModel):
+    purposes: list[str] = pydantic.Field(default_factory=list)
+
+
+class TcStringDecodeRequest(pydantic.BaseModel):
+    tc_string: str = pydantic.Field("", alias="tcString")
+
+    model_config = pydantic.ConfigDict(populate_by_name=True)
+
+
+class FetchScriptRequest(pydantic.BaseModel):
+    url: str = pydantic.Field(..., min_length=1)
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────
+
+
 @app.post("/api/clear-cache")
 async def clear_cache_endpoint() -> dict[str, object]:
     """Delete all cached data (domain, overlay, scripts)."""
@@ -168,7 +210,7 @@ async def clear_cache_endpoint() -> dict[str, object]:
 
 @app.post("/api/domain-info")
 async def domain_info_endpoint(
-    request: fastapi.Request,
+    body: DomainInfoRequest,
 ) -> dict[str, dict[str, str | None]]:
     """Look up tracker/company info for one or more domains.
 
@@ -182,12 +224,7 @@ async def domain_info_endpoint(
     Accepts ``{"domains": ["example.com", ...]}`` and returns
     a map of domain → ``{company, description}``.
     """
-    body = await request.json()
-    domains: list[str] = body.get("domains", [])
-    if not domains:
-        raise fastapi.HTTPException(status_code=400, detail="domains list is required")
-
-    cleaned = [d.strip() for d in domains if d.strip()]
+    cleaned = [d.strip() for d in body.domains if d.strip()]
 
     def _lookup() -> dict[str, dict[str, str | None]]:
         return {d: loader.get_domain_description(d) for d in cleaned}
@@ -197,7 +234,7 @@ async def domain_info_endpoint(
 
 @app.post("/api/storage-key-info")
 async def storage_key_info_endpoint(
-    request: fastapi.Request,
+    body: StorageKeyInfoRequest,
 ) -> dict[str, dict[str, str | None]]:
     """Look up known descriptions for storage key names.
 
@@ -207,13 +244,8 @@ async def storage_key_info_endpoint(
     Accepts ``{"keys": ["_ga", ...]}`` and returns a map of
     key → ``{setBy, description}``.
     """
-    body = await request.json()
-    keys: list[str] = body.get("keys", [])
-    if not keys:
-        raise fastapi.HTTPException(status_code=400, detail="keys list is required")
-
     result: dict[str, dict[str, str | None]] = {}
-    for key in keys:
+    for key in body.keys:
         k = key.strip()
         if k:
             result[k] = loader.get_storage_key_hint(k)
@@ -222,53 +254,37 @@ async def storage_key_info_endpoint(
 
 @app.post("/api/cookie-info")
 async def cookie_info_endpoint(
-    request: fastapi.Request,
+    body: CookieInfoRequest,
 ) -> dict[str, object]:
     """Look up information about a specific cookie.
 
     Checks known databases first and falls back to LLM for
     unrecognised cookies.
     """
-    body = await request.json()
-    name: str = body.get("name", "")
-    domain: str = body.get("domain", "")
-    value: str = body.get("value", "")
-
-    if not name:
-        raise fastapi.HTTPException(status_code=400, detail="Cookie name is required")
-
     agent = get_cookie_info_agent()
-    result = await cookie_lookup.get_cookie_info(name, domain, value, agent)
+    result = await cookie_lookup.get_cookie_info(body.name, body.domain, body.value, agent)
 
     return result.model_dump(by_alias=True)
 
 
 @app.post("/api/storage-info")
 async def storage_info_endpoint(
-    request: fastapi.Request,
+    body: StorageInfoRequest,
 ) -> dict[str, object]:
     """Look up information about a specific storage key.
 
     Checks known databases first and falls back to LLM for
     unrecognised keys.
     """
-    body = await request.json()
-    key: str = body.get("key", "")
-    storage_type: str = body.get("storageType", "localStorage")
-    value: str = body.get("value", "")
-
-    if not key:
-        raise fastapi.HTTPException(status_code=400, detail="Storage key is required")
-
     agent = get_storage_info_agent()
-    result = await storage_lookup.get_storage_info(key, storage_type, value, agent)
+    result = await storage_lookup.get_storage_info(body.key, body.storage_type, body.value, agent)
 
     return result.model_dump(by_alias=True)
 
 
 @app.post("/api/tcf-purposes")
 async def tcf_purposes_endpoint(
-    request: fastapi.Request,
+    body: TcfPurposesRequest,
 ) -> dict[str, object]:
     """Map consent purpose strings to IAB TCF v2.2 purposes.
 
@@ -277,19 +293,16 @@ async def tcf_purposes_endpoint(
     bases, notes) and any unmatched strings.  Matching is purely
     deterministic — no LLM calls.
     """
-    body = await request.json()
-    purposes: list[str] = body.get("purposes", [])
-
-    if not purposes:
+    if not body.purposes:
         return {"matched": [], "unmatched": []}
 
-    result = tcf_lookup.lookup_purposes(purposes)
+    result = tcf_lookup.lookup_purposes(body.purposes)
     return result.model_dump(by_alias=True)
 
 
 @app.post("/api/tc-string-decode")
 async def tc_string_decode_endpoint(
-    request: fastapi.Request,
+    body: TcStringDecodeRequest,
 ) -> dict[str, object]:
     """Decode an IAB TCF v2 TC String.
 
@@ -298,15 +311,12 @@ async def tc_string_decode_endpoint(
     purpose consents, vendor consents, and legitimate interest
     signals.  Purely deterministic — no LLM calls.
     """
-    body = await request.json()
-    raw: str = body.get("tcString", "")
+    if not body.tc_string:
+        raise fastapi.HTTPException(status_code=400, detail="No tcString provided")
 
-    if not raw:
-        return {"error": "No tcString provided"}
-
-    decoded = tc_string.decode_tc_string(raw)
+    decoded = tc_string.decode_tc_string(body.tc_string)
     if decoded is None:
-        return {"error": "Failed to decode TC string"}
+        raise fastapi.HTTPException(status_code=400, detail="Failed to decode TC string")
 
     return decoded.model_dump(by_alias=True)
 
@@ -315,44 +325,9 @@ async def tc_string_decode_endpoint(
 _MAX_PREVIEW_BYTES = 4096 * 1024
 
 
-async def _is_safe_remote_url(url: str) -> bool:
-    """Validate that a URL points to a public HTTP(S) host.
-
-    Rejects loopback, private, link-local, multicast, and
-    reserved IP ranges to prevent SSRF.
-    """
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme not in {"http", "https"}:
-        return False
-    if not parsed.hostname:
-        return False
-
-    host = parsed.hostname
-    loop = asyncio.get_running_loop()
-
-    try:
-        addrinfo = await loop.getaddrinfo(
-            host,
-            parsed.port or (443 if parsed.scheme == "https" else 80),
-        )
-    except OSError:
-        return False
-
-    for _family, _, _, _, sockaddr in addrinfo:
-        ip_str = sockaddr[0]
-        try:
-            ip = ipaddress.ip_address(ip_str)
-        except ValueError:
-            return False
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-            return False
-
-    return True
-
-
 @app.post("/api/fetch-script")
 async def fetch_script_endpoint(
-    request: fastapi.Request,
+    body: FetchScriptRequest,
 ) -> dict[str, object]:
     """Fetch the source content of a remote JavaScript file.
 
@@ -360,24 +335,37 @@ async def fetch_script_endpoint(
     syntax-highlighted script source without CORS restrictions.
     Only HTTP(S) URLs are accepted and the response is capped
     at 4096 KB to prevent abuse.
+
+    DNS is resolved once and pinned to the validated addresses
+    to prevent DNS rebinding (TOCTOU) attacks.
     """
+    url = body.url.strip()
 
-    body = await request.json()
-    url: str = body.get("url", "").strip()
+    try:
+        resolved = await resolve_and_validate(url)
+    except UnsafeURLError as exc:
+        raise fastapi.HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if not url:
-        raise fastapi.HTTPException(status_code=400, detail="url is required")
+    # Pin aiohttp to the pre-validated IP addresses so a DNS
+    # rebinding attack cannot redirect the connection after
+    # validation.
+    class _PinnedResolver(aiohttp.abc.AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: int = 0,
+        ) -> list[aiohttp.abc.ResolveResult]:
+            return resolved  # type: ignore[return-value]
 
-    if not url.startswith(("http://", "https://")):
-        raise fastapi.HTTPException(status_code=400, detail="Only HTTP(S) URLs are accepted")
-
-    if not await _is_safe_remote_url(url):
-        raise fastapi.HTTPException(status_code=400, detail="URL points to a disallowed host")
+        async def close(self) -> None:
+            pass
 
     try:
         timeout = aiohttp.ClientTimeout(total=10)
+        connector = aiohttp.TCPConnector(resolver=_PinnedResolver())
         async with (
-            aiohttp.ClientSession(timeout=timeout) as session,
+            aiohttp.ClientSession(timeout=timeout, connector=connector) as session,
             session.get(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
@@ -386,8 +374,12 @@ async def fetch_script_endpoint(
         ):
             # Validate the final URL after redirects to prevent
             # SSRF via an open-redirect chain.
-            if resp.url is not None and str(resp.url) != url and not await _is_safe_remote_url(str(resp.url)):
-                return {"error": "Redirect target points to a disallowed host", "content": None}
+            final_url = str(resp.url) if resp.url is not None else url
+            if final_url != url:
+                try:
+                    await validate_analysis_url(final_url)
+                except UnsafeURLError:
+                    return {"error": "Redirect target points to a disallowed host", "content": None}
             if resp.status >= 400:
                 return {"error": f"HTTP {resp.status}", "content": None}
             raw = await resp.content.read(_MAX_PREVIEW_BYTES)

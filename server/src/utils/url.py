@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import socket
+from typing import TypedDict
 from urllib import parse
 
 import tldextract
@@ -165,6 +167,80 @@ async def validate_analysis_url(url: str) -> None:
         return
 
     _check_ip(addr, hostname)
+
+
+class ResolvedAddress(TypedDict):
+    """Pre-resolved address info for pinned DNS connections."""
+
+    hostname: str
+    host: str
+    port: int
+    family: int
+    proto: int
+    flags: int
+
+
+async def resolve_and_validate(url: str) -> list[ResolvedAddress]:
+    """Resolve DNS for *url*, validate all IPs, and return address info.
+
+    Eliminates DNS rebinding (TOCTOU) by resolving once and returning
+    the validated addresses for the caller to pin connections to.
+
+    Args:
+        url: The URL to resolve and validate.
+
+    Returns:
+        A list of :class:`ResolvedAddress` dicts for use with a
+        pinned aiohttp resolver.
+
+    Raises:
+        UnsafeURLError: If the URL or any resolved IP is unsafe.
+    """
+    parsed = parse.urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeURLError(f"Only http and https URLs are supported (got {parsed.scheme!r})")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("URL has no hostname")
+
+    hostname_lower = hostname.lower()
+    if hostname_lower in _BLOCKED_HOSTNAMES:
+        raise UnsafeURLError(f"Blocked hostname: {hostname}")
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(hostname, port)
+    except OSError as exc:
+        raise UnsafeURLError(f"DNS resolution failed for {hostname}") from exc
+
+    results: list[ResolvedAddress] = []
+    seen: set[str] = set()
+    for family, _, _, _, sockaddr in infos:
+        ip_str = sockaddr[0]
+        if ip_str in seen:
+            continue
+        seen.add(ip_str)
+        addr = ipaddress.ip_address(ip_str)
+        _check_ip(addr, hostname)
+        results.append(
+            ResolvedAddress(
+                hostname=hostname,
+                host=ip_str,
+                port=port,
+                family=family,
+                proto=0,
+                flags=socket.AI_NUMERICHOST,
+            )
+        )
+
+    if not results:
+        raise UnsafeURLError(f"No addresses resolved for {hostname}")
+
+    return results
 
 
 def _check_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address, hostname: str) -> None:

@@ -152,6 +152,148 @@ export function countryName(code: string): string {
   }
 }
 
+// ============================================================================
+// Risk / Severity Utilities
+// ============================================================================
+
+/**
+ * Map a severity level to its badge CSS class.
+ *
+ * @param level - Severity level (critical, very-high, high, medium, low, none)
+ * @returns CSS class name for the badge
+ */
+export function severityClass(level: string): string {
+  switch (level) {
+    case 'critical':
+    case 'very-high':
+      return 'badge-critical'
+    case 'high':
+      return 'badge-high'
+    case 'medium':
+      return 'badge-medium'
+    case 'low':
+      return 'badge-low'
+    case 'none':
+      return 'badge-none'
+    default:
+      return 'badge-medium'
+  }
+}
+
+/**
+ * Convert a severity level to a human-readable label.
+ *
+ * @param level - Severity level key
+ * @returns Display-friendly label
+ */
+export function riskLabel(level: string): string {
+  switch (level) {
+    case 'very-high':
+      return 'Very High'
+    case 'critical':
+      return 'Critical'
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+    case 'none':
+      return 'None'
+    default:
+      return level
+  }
+}
+
+/**
+ * Map a risk level to its CSS class.
+ *
+ * @param level - Risk level (none, low, medium, high, critical, unknown)
+ * @returns CSS class name for risk styling
+ */
+export function riskClass(level: string): string {
+  const classes: Record<string, string> = {
+    none: 'risk-none',
+    low: 'risk-low',
+    medium: 'risk-medium',
+    high: 'risk-high',
+    critical: 'risk-critical',
+    unknown: 'risk-unknown',
+  }
+  return classes[level] || 'risk-low'
+}
+
+/**
+ * Map a tracking purpose to an emoji-prefixed label.
+ *
+ * @param purpose - Purpose identifier
+ * @returns Emoji + label string
+ */
+export function purposeLabel(purpose: string): string {
+  const labels: Record<string, string> = {
+    analytics: '📊 Analytics',
+    advertising: '📢 Advertising',
+    functional: '⚙️ Functional',
+    session: '🔑 Session',
+    consent: '✅ Consent',
+    'social-media': '👥 Social Media',
+    fingerprinting: '🔍 Fingerprinting',
+    'identity-resolution': '🆔 Identity Resolution',
+    unknown: '❓ Unknown',
+  }
+  return labels[purpose] || purpose
+}
+
+// ============================================================================
+// URL Utilities
+// ============================================================================
+
+/**
+ * Strip query string and fragment from a URL, returning origin + pathname.
+ *
+ * @param url - Full URL string
+ * @returns URL without query/fragment, or the original string on parse failure
+ */
+export function stripQueryAndFragment(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.origin + u.pathname
+  } catch {
+    const noQuery = url.indexOf('?') >= 0 ? url.substring(0, url.indexOf('?')) : url
+    const noFrag = noQuery.indexOf('#') >= 0 ? noQuery.substring(0, noQuery.indexOf('#')) : noQuery
+    return noFrag
+  }
+}
+
+/** Two-part TLDs that require a three-label base domain. */
+const TWO_PART_TLDS = [
+  'co.uk', 'com.au', 'org.uk', 'co.jp', 'com.br',
+  'co.nz', 'co.za', 'com.mx', 'co.kr', 'com.in',
+]
+
+/**
+ * Extract the registrable base domain from a hostname.
+ *
+ * Handles common multi-part TLDs (e.g. co.uk, com.au).
+ *
+ * @param hostname - Full hostname, optionally with leading dot
+ * @returns Base domain (e.g. "example.co.uk")
+ */
+export function baseDomain(hostname: string): string {
+  const parts = hostname.replace(/^\./, '').split('.')
+  if (parts.length >= 3) {
+    const lastTwo = parts.slice(-2).join('.')
+    if (TWO_PART_TLDS.includes(lastTwo)) {
+      return parts.slice(-3).join('.')
+    }
+  }
+  return parts.slice(-2).join('.')
+}
+
+// ============================================================================
+// Text Formatting Utilities
+// ============================================================================
+
 /**
  * Strip markdown formatting from text for plain-text display.
  *

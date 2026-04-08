@@ -3,6 +3,7 @@ import { ref, watch, computed, onUnmounted } from 'vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import { js_beautify } from 'js-beautify'
+import { stripQueryAndFragment } from '../utils'
 
 hljs.registerLanguage('javascript', javascript)
 
@@ -34,20 +35,7 @@ const isTruncated = ref(false)
 const copied = ref(false)
 
 /** URL without query string or fragment, matching the panel display. */
-const shortUrl = computed(() => {
-  try {
-    const u = new URL(props.scriptUrl)
-    return u.origin + u.pathname
-  } catch {
-    const noQuery = props.scriptUrl.indexOf('?') >= 0
-      ? props.scriptUrl.substring(0, props.scriptUrl.indexOf('?'))
-      : props.scriptUrl
-    const noFrag = noQuery.indexOf('#') >= 0
-      ? noQuery.substring(0, noQuery.indexOf('#'))
-      : noQuery
-    return noFrag
-  }
-})
+const shortUrl = computed(() => stripQueryAndFragment(props.scriptUrl))
 
 /** Syntax-highlighted HTML produced by highlight.js. */
 const highlightedHtml = computed(() => {

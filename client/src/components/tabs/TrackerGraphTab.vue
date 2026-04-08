@@ -4,7 +4,7 @@
  * tracker relationships derived from captured network requests.
  */
 
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   select,
   forceSimulation,
@@ -29,7 +29,8 @@ import type {
   ZoomBehavior,
 } from 'd3'
 import type { NetworkRequest, StructuredReport } from '../../types'
-import { countryFlagUrl, countryName } from '../../utils'
+import { baseDomain, countryFlagUrl, countryName } from '../../utils'
+import { useDomainInfo } from '../../composables'
 
 // ============================================================================
 // Types
@@ -315,38 +316,7 @@ const isFullscreen = ref(false)
 const viewMode = ref<ViewMode>('all')
 const showExplanation = ref(true)
 
-/** Cached domain info keyed by domain (for country flags). */
-const domainInfo = reactive<Record<string, { country: string | null }>>({})
-
-/** Fetch country info for all graph domains. */
-async function fetchDomainInfo(domains: string[]): Promise<void> {
-  const unknown = domains.filter((d) => !(d in domainInfo))
-  if (unknown.length === 0) return
-
-  // Batch into chunks so flags appear progressively instead of
-  // waiting for a single large request to complete.
-  const BATCH_SIZE = 30
-  const apiBase = import.meta.env.VITE_API_URL || ''
-
-  for (let i = 0; i < unknown.length; i += BATCH_SIZE) {
-    const batch = unknown.slice(i, i + BATCH_SIZE)
-    try {
-      const response = await fetch(`${apiBase}/api/domain-info`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domains: batch }),
-      })
-      if (response.ok) {
-        const data = await response.json()
-        for (const [domain, info] of Object.entries(data)) {
-          domainInfo[domain] = info as { country: string | null }
-        }
-      }
-    } catch {
-      // Silently fail — enrichment is non-critical
-    }
-  }
-}
+const { domainInfo, fetchDomainInfo } = useDomainInfo()
 
 /** The single active category filter — null means "show all". */
 const activeCategory = ref<TrackerCategory | null>(null)
@@ -471,28 +441,10 @@ const originDomain = computed(() => {
 })
 
 /**
- * Derive the base (registrable) domain from a hostname.
- * Strips leading subdomains, keeping the last two segments
- * (or three for known two-part TLDs like `.co.uk`).
- */
-function getBaseDomain(hostname: string): string {
-  const parts = hostname.split('.')
-  // Handle two-part TLDs like co.uk, com.au, org.uk, etc.
-  const twoPartTlds = ['co.uk', 'com.au', 'org.uk', 'co.nz', 'co.za', 'com.br', 'co.jp', 'co.kr', 'co.in']
-  if (parts.length >= 3) {
-    const lastTwo = parts.slice(-2).join('.')
-    if (twoPartTlds.includes(lastTwo)) {
-      return parts.slice(-3).join('.')
-    }
-  }
-  return parts.slice(-2).join('.')
-}
-
-/**
  * The base (registrable) domain of the origin, used to
  * detect first-party subdomains that share the same base.
  */
-const originBaseDomain = computed(() => getBaseDomain(originDomain.value))
+const originBaseDomain = computed(() => baseDomain(originDomain.value))
 
 /**
  * Set of base domains that should be treated as first-party
@@ -541,7 +493,7 @@ const graphData = computed(() => {
     // Ensure source node exists
     if (!nodeMap.has(source)) {
       const isOrigin = source === origin
-      const isFirstParty = !isOrigin && fpBases.has(getBaseDomain(source))
+      const isFirstParty = !isOrigin && fpBases.has(baseDomain(source))
       nodeMap.set(source, {
         id: source,
         label: source,
@@ -554,7 +506,7 @@ const graphData = computed(() => {
     // Ensure target node exists and bump its request count
     if (!nodeMap.has(target)) {
       const isOrigin = target === origin
-      const isFirstParty = !isOrigin && fpBases.has(getBaseDomain(target))
+      const isFirstParty = !isOrigin && fpBases.has(baseDomain(target))
       nodeMap.set(target, {
         id: target,
         label: target,

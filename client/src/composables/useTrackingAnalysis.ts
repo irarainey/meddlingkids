@@ -19,6 +19,8 @@ import type {
   ErrorDialogState,
   StructuredReport,
 } from '../types'
+import { API_BASE } from '../utils/api'
+import { useSSEConnection } from './useSSEConnection'
 
 /**
  * Composable that provides all state and methods for tracking analysis.
@@ -63,8 +65,7 @@ export function useTrackingAnalysis() {
 
   // Immediately clear server caches when the page loads with ?clear-cache=true
   if (clearCache) {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    fetch(`${apiBase}/api/clear-cache`, { method: 'POST' })
+    fetch(`${API_BASE}/api/clear-cache`, { method: 'POST' })
       .then(res => res.json())
       .then(data => console.warn('[CacheClear] Server caches cleared:', data))
       .catch(err => console.warn('[CacheClear] Failed to clear caches:', err))
@@ -130,9 +131,6 @@ export function useTrackingAnalysis() {
   /** Screenshot modal state */
   const selectedScreenshot = ref<ScreenshotModal | null>(null)
 
-  /** Active SSE connection (tracked for cleanup) */
-  let activeEventSource: EventSource | null = null
-
   /** Timer handle for the rotating analysis-phase messages. */
   let analysisRotateTimer: ReturnType<typeof setTimeout> | null = null
   /** Index into ANALYSIS_MESSAGES for the next rotation. */
@@ -161,13 +159,10 @@ export function useTrackingAnalysis() {
     }
   }
 
-  // Clean up SSE connection when the composable's owner component unmounts
+  // Clean up rotation timers when the composable's owner component unmounts.
+  // The SSE connection cleanup is handled by useSSEConnection's own onUnmounted.
   onUnmounted(() => {
     clearAnalysisRotation()
-    if (activeEventSource) {
-      activeEventSource.close()
-      activeEventSource = null
-    }
   })
 
   // ============================================================================
@@ -384,16 +379,13 @@ export function useTrackingAnalysis() {
       // Use relative URL — Vite proxies /api to the Python server in
       // development; production serves both client and API on the same
       // origin.  VITE_API_URL is only needed for manual overrides.
-      const apiBase = import.meta.env.VITE_API_URL || ''
-      const eventSource = new EventSource(
-        `${apiBase}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}${clearCache ? '&clear-cache=true' : ''}`
-      )
-      activeEventSource = eventSource
+      const sseUrl =
+        `${API_BASE}/api/open-browser-stream?url=${encodeURIComponent(url)}&device=${encodeURIComponent(deviceType.value)}${clearCache ? '&clear-cache=true' : ''}`
 
       // Safety-net timeout — if the server never sends the first
       // event (e.g. it isn't running, or a proxy is buffering the
       // SSE stream), surface an error instead of waiting forever.
-      const connectionTimeout = setTimeout(() => {
+      let connectionTimeout: ReturnType<typeof setTimeout> | null = setTimeout(() => {
         if (!statusMessage.value && isLoading.value) {
           errorDialog.value = {
             title: 'Connection Timeout',
@@ -401,8 +393,7 @@ export function useTrackingAnalysis() {
           }
           showErrorDialog.value = true
           isLoading.value = false
-          eventSource.close()
-          activeEventSource = null
+          sseConnection.close()
         }
       }, 15_000)
 
@@ -411,227 +402,6 @@ export function useTrackingAnalysis() {
       // event never arrives (e.g. payload too large, proxy drop),
       // surface an error instead of leaving the UI stuck.
       let completionTimeout: ReturnType<typeof setTimeout> | null = null
-
-      eventSource.addEventListener('progress', (event) => {
-        try {
-          clearTimeout(connectionTimeout)
-          const data = JSON.parse(event.data)
-          // Only advance — never allow the progress bar or status
-          // message to go backward.  The server emits progress
-          // values from multiple concurrent pipeline stages that
-          // may arrive out of order (e.g. script analysis at 84%
-          // interleaved with report generation at 91%).
-          if (data.progress >= progressPercent.value) {
-            statusMessage.value = data.message
-            progressStep.value = data.step
-            progressPercent.value = data.progress
-          }
-
-          // During the analysis phase (76–94%), schedule rotating
-          // contextual messages so the UI stays dynamic while
-          // concurrent LLM calls are in flight.
-          if (data.progress >= 76 && data.progress < 95) {
-            clearAnalysisRotation()
-            scheduleAnalysisRotation()
-          } else if (data.progress >= 95) {
-            clearAnalysisRotation()
-          }
-
-          // When the server signals 100% progress, start a timer.
-          // The actual 'complete' event (with the full payload)
-          // should arrive within seconds.  If it doesn't, the
-          // payload was likely too large or got dropped.
-          if (data.progress >= 100 && !completionTimeout) {
-            completionTimeout = setTimeout(() => {
-              if (!hasCompleted && !isComplete.value) {
-                console.error('[SSE] Completion timeout — complete event not received')
-                errorDialog.value = {
-                  title: 'Results Not Received',
-                  message: 'The analysis completed on the server but the results could not be delivered. '
-                    + 'This can happen on sites with very large amounts of tracking data. '
-                    + 'Please try again.',
-                }
-                showErrorDialog.value = true
-                isLoading.value = false
-                eventSource.close()
-                activeEventSource = null
-              }
-            }, 15_000)
-          }
-        } catch {
-          console.error('[SSE] Failed to parse progress event')
-        }
-      })
-
-      eventSource.addEventListener('screenshot', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.screenshot) {
-            screenshots.value.push(data.screenshot)
-          }
-          cookies.value = data.cookies || []
-          scripts.value = data.scripts || []
-          networkRequests.value = data.networkRequests || []
-          localStorage.value = data.localStorage || []
-          sessionStorage.value = data.sessionStorage || []
-        } catch {
-          console.error('[SSE] Failed to parse screenshot event')
-        }
-      })
-
-      eventSource.addEventListener('screenshotUpdate', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.screenshot && screenshots.value.length > 0) {
-            screenshots.value[screenshots.value.length - 1] = data.screenshot
-          }
-        } catch {
-          console.error('[SSE] Failed to parse screenshotUpdate event')
-        }
-      })
-
-      eventSource.addEventListener('pageError', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          pageError.value = {
-            type: data.isAccessDenied ? 'access-denied' : data.isOverlayBlocked ? 'overlay-blocked' : 'server-error',
-            message: data.message || 'Failed to load page',
-            statusCode: data.statusCode,
-          }
-          showPageErrorDialog.value = true
-          isLoading.value = false
-          eventSource.close()
-          activeEventSource = null
-        } catch {
-          console.error('[SSE] Failed to parse pageError event')
-        }
-      })
-
-      eventSource.addEventListener('consentDetails', (event) => {
-        try {
-          const data = JSON.parse(event.data) as ConsentDetails
-          consentDetails.value = data
-        } catch {
-          console.error('[SSE] Failed to parse consentDetails event')
-        }
-      })
-
-      eventSource.addEventListener('decodedCookies', (event) => {
-        try {
-          const data = JSON.parse(event.data) as DecodedCookies
-          decodedCookies.value = data
-        } catch {
-          console.error('[SSE] Failed to parse decodedCookies event')
-        }
-      })
-
-      // ── Multi-part completion events ──────────────────────
-      // The server splits the final payload across several SSE
-      // events to keep each well under browser/proxy size limits.
-      // These three arrive before the final 'complete' event and
-      // populate the data tabs with the full (uncapped) collections.
-
-      eventSource.addEventListener('completeTracking', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.cookies) {
-            cookies.value = data.cookies
-          }
-          if (data.networkRequests) {
-            networkRequests.value = data.networkRequests
-          }
-          if (data.localStorage) {
-            localStorage.value = data.localStorage
-          }
-          if (data.sessionStorage) {
-            sessionStorage.value = data.sessionStorage
-          }
-        } catch {
-          console.error('[SSE] Failed to parse completeTracking event')
-        }
-      })
-
-      eventSource.addEventListener('completeScripts', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.scripts) {
-            scripts.value = data.scripts
-          }
-          if (data.scriptGroups) {
-            scriptGroups.value = data.scriptGroups
-          }
-        } catch {
-          console.error('[SSE] Failed to parse completeScripts event')
-        }
-      })
-
-      eventSource.addEventListener('complete', (event) => {
-        try {
-          clearTimeout(connectionTimeout)
-          if (completionTimeout) {
-            clearTimeout(completionTimeout)
-            completionTimeout = null
-          }
-          const data = JSON.parse(event.data)
-
-          if (data.summaryFindings) {
-            summaryFindings.value = data.summaryFindings
-          }
-          if (data.privacyScore !== null && data.privacyScore !== undefined) {
-            privacyScore.value = data.privacyScore
-            privacySummary.value = data.privacySummary || ''
-          }
-          if (data.structuredReport) {
-            structuredReport.value = data.structuredReport
-          }
-          if (data.analysisError) {
-            analysisError.value = data.analysisError
-          }
-          if (data.consentDetails) {
-            consentDetails.value = data.consentDetails
-          }
-          if (data.decodedCookies) {
-            decodedCookies.value = data.decodedCookies
-          }
-
-          activeTab.value = 'summary'
-          statusMessage.value = data.message
-          progressPercent.value = 100
-          hasCompleted = true
-          clearAnalysisRotation()
-          
-          // Wait for the van animation to complete (500ms CSS transition + buffer)
-          // before hiding progress, showing tabs, and opening the score dialog.
-          // Setting isComplete and showScoreDialog in the same tick ensures the
-          // score overlay is already rendered when the tabs appear — otherwise
-          // the tabs flash in 700ms before the dialog.
-          setTimeout(() => {
-            isLoading.value = false
-            isComplete.value = true
-            if (data.privacyScore !== null && data.privacyScore !== undefined) {
-              showScoreDialog.value = true
-            }
-          }, 700)
-          eventSource.close()
-          activeEventSource = null
-        } catch (err) {
-          console.error('[SSE] Failed to parse complete event', err)
-          if (completionTimeout) {
-            clearTimeout(completionTimeout)
-            completionTimeout = null
-          }
-          errorDialog.value = {
-            title: 'Results Error',
-            message: 'The analysis completed but the results could not be processed. '
-              + 'This can happen on sites with very large amounts of tracking data. '
-              + 'Please try again.',
-          }
-          showErrorDialog.value = true
-          isLoading.value = false
-          eventSource.close()
-          activeEventSource = null
-        }
-      })
 
       // Tracks whether the server already sent a specific error
       // via the SSE 'error' event.  When it did, the native
@@ -644,19 +414,215 @@ export function useTrackingAnalysis() {
       // guards the onerror handler during the animation delay.
       let hasCompleted = false
 
-      eventSource.addEventListener('error', (event) => {
-        clearTimeout(connectionTimeout)
-        if (completionTimeout) {
-          clearTimeout(completionTimeout)
-          completionTimeout = null
-        }
-        hasServerError = true
-        if (event instanceof MessageEvent) {
-          try {
-            const data = JSON.parse(event.data)
-            const error = data.error || 'An error occurred'
+      const sseConnection = useSSEConnection(sseUrl, {
+        progress(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout)
+            connectionTimeout = null
+          }
+          // Only advance — never allow the progress bar or status
+          // message to go backward.  The server emits progress
+          // values from multiple concurrent pipeline stages that
+          // may arrive out of order (e.g. script analysis at 84%
+          // interleaved with report generation at 91%).
+          if ((data.progress as number) >= progressPercent.value) {
+            statusMessage.value = data.message as string
+            progressStep.value = data.step as string
+            progressPercent.value = data.progress as number
+          }
 
-            // Categorise the server error for a more helpful title
+          // During the analysis phase (76–94%), schedule rotating
+          // contextual messages so the UI stays dynamic while
+          // concurrent LLM calls are in flight.
+          if ((data.progress as number) >= 76 && (data.progress as number) < 95) {
+            clearAnalysisRotation()
+            scheduleAnalysisRotation()
+          } else if ((data.progress as number) >= 95) {
+            clearAnalysisRotation()
+          }
+
+          // When the server signals 100% progress, start a timer.
+          // The actual 'complete' event (with the full payload)
+          // should arrive within seconds.  If it doesn't, the
+          // payload was likely too large or got dropped.
+          if ((data.progress as number) >= 100 && !completionTimeout) {
+            completionTimeout = setTimeout(() => {
+              if (!hasCompleted && !isComplete.value) {
+                console.error('[SSE] Completion timeout — complete event not received')
+                errorDialog.value = {
+                  title: 'Results Not Received',
+                  message: 'The analysis completed on the server but the results could not be delivered. '
+                    + 'This can happen on sites with very large amounts of tracking data. '
+                    + 'Please try again.',
+                }
+                showErrorDialog.value = true
+                isLoading.value = false
+                sseConnection.close()
+              }
+            }, 15_000)
+          }
+        },
+
+        screenshot(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (data.screenshot) {
+            screenshots.value.push(data.screenshot as string)
+          }
+          cookies.value = (data.cookies as TrackedCookie[]) || []
+          scripts.value = (data.scripts as TrackedScript[]) || []
+          networkRequests.value = (data.networkRequests as NetworkRequest[]) || []
+          localStorage.value = (data.localStorage as StorageItem[]) || []
+          sessionStorage.value = (data.sessionStorage as StorageItem[]) || []
+        },
+
+        screenshotUpdate(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (data.screenshot && screenshots.value.length > 0) {
+            screenshots.value[screenshots.value.length - 1] = data.screenshot as string
+          }
+        },
+
+        pageError(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          pageError.value = {
+            type: data.isAccessDenied ? 'access-denied' : data.isOverlayBlocked ? 'overlay-blocked' : 'server-error',
+            message: (data.message as string) || 'Failed to load page',
+            statusCode: (data.statusCode as number | undefined) ?? null,
+          }
+          showPageErrorDialog.value = true
+          isLoading.value = false
+          sseConnection.close()
+        },
+
+        consentDetails(_data: unknown) {
+          consentDetails.value = _data as ConsentDetails
+        },
+
+        decodedCookies(_data: unknown) {
+          decodedCookies.value = _data as DecodedCookies
+        },
+
+        // ── Multi-part completion events ──────────────────────
+        // The server splits the final payload across several SSE
+        // events to keep each well under browser/proxy size limits.
+        completeTracking(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (data.cookies) {
+            cookies.value = data.cookies as TrackedCookie[]
+          }
+          if (data.networkRequests) {
+            networkRequests.value = data.networkRequests as NetworkRequest[]
+          }
+          if (data.localStorage) {
+            localStorage.value = data.localStorage as StorageItem[]
+          }
+          if (data.sessionStorage) {
+            sessionStorage.value = data.sessionStorage as StorageItem[]
+          }
+        },
+
+        completeScripts(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (data.scripts) {
+            scripts.value = data.scripts as TrackedScript[]
+          }
+          if (data.scriptGroups) {
+            scriptGroups.value = data.scriptGroups as ScriptGroup[]
+          }
+        },
+
+        complete(_data: unknown) {
+          const data = _data as Record<string, unknown>
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout)
+            connectionTimeout = null
+          }
+          if (completionTimeout) {
+            clearTimeout(completionTimeout)
+            completionTimeout = null
+          }
+
+          if (data.summaryFindings) {
+            summaryFindings.value = data.summaryFindings as SummaryFinding[]
+          }
+          if (data.privacyScore !== null && data.privacyScore !== undefined) {
+            privacyScore.value = data.privacyScore as number
+            privacySummary.value = (data.privacySummary as string) || ''
+          }
+          if (data.structuredReport) {
+            structuredReport.value = data.structuredReport as StructuredReport
+          }
+          if (data.analysisError) {
+            analysisError.value = data.analysisError as string
+          }
+          if (data.consentDetails) {
+            consentDetails.value = data.consentDetails as ConsentDetails
+          }
+          if (data.decodedCookies) {
+            decodedCookies.value = data.decodedCookies as DecodedCookies
+          }
+
+          activeTab.value = 'summary'
+          statusMessage.value = data.message as string
+          progressPercent.value = 100
+          hasCompleted = true
+          clearAnalysisRotation()
+          
+          // Wait for the van animation to complete (500ms CSS transition + buffer)
+          // before hiding progress, showing tabs, and opening the score dialog.
+          setTimeout(() => {
+            isLoading.value = false
+            isComplete.value = true
+            if (data.privacyScore !== null && data.privacyScore !== undefined) {
+              showScoreDialog.value = true
+            }
+          }, 700)
+          sseConnection.close()
+        },
+
+        error(_data: unknown) {
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout)
+            connectionTimeout = null
+          }
+          if (completionTimeout) {
+            clearTimeout(completionTimeout)
+            completionTimeout = null
+          }
+          hasServerError = true
+
+          // The SSE 'error' event may carry a MessageEvent with JSON
+          // data from the server, or a plain Event on connection loss.
+          // useSSEConnection tries JSON.parse first; if that fails for
+          // the 'error' event type it forwards the raw MessageEvent.
+          if (_data instanceof MessageEvent) {
+            try {
+              const data = JSON.parse(_data.data)
+              const error = data.error || 'An error occurred'
+
+              let title = 'Error'
+              if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
+                title = 'Configuration Error'
+              } else if (error.includes('timed out')) {
+                title = 'Analysis Timed Out'
+              } else if (error.includes('failed to start') || error.includes('display server')) {
+                title = 'Browser Error'
+              }
+
+              errorDialog.value = { title, message: error }
+              showErrorDialog.value = true
+            } catch {
+              errorDialog.value = {
+                title: 'Error',
+                message: 'Received an invalid error response from the server.',
+              }
+              showErrorDialog.value = true
+            }
+          } else if (typeof _data === 'object' && _data !== null && 'error' in (_data as Record<string, unknown>)) {
+            const data = _data as Record<string, unknown>
+            const error = (data.error as string) || 'An error occurred'
+
             let title = 'Error'
             if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
               title = 'Configuration Error'
@@ -668,81 +634,74 @@ export function useTrackingAnalysis() {
 
             errorDialog.value = { title, message: error }
             showErrorDialog.value = true
-          } catch {
+          } else {
             errorDialog.value = {
-              title: 'Error',
-              message: 'Received an invalid error response from the server.',
+              title: 'Connection Error',
+              message: 'Failed to connect to the server. Please check that the server is running.',
             }
             showErrorDialog.value = true
           }
-        } else {
+          isLoading.value = false
+          sseConnection.close()
+        },
+
+        __onerror() {
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout)
+            connectionTimeout = null
+          }
+          clearAnalysisRotation()
+          if (completionTimeout) {
+            clearTimeout(completionTimeout)
+            completionTimeout = null
+          }
+          // After a successful 'complete' event the handler calls
+          // sseConnection.close(), which sets readyState to CLOSED.
+          if (isComplete.value || hasCompleted) {
+            return
+          }
+
+          // If the server already sent a specific error message via
+          // the SSE 'error' event, the stream closing is expected.
+          if (hasServerError) {
+            return
+          }
+
+          // Build a contextual message based on how far analysis
+          // progressed before the connection dropped.
+          const step = progressStep.value
+          let message: string
+          if (!step || step === 'init') {
+            message = 'The server connection was lost before analysis could begin. '
+              + 'Please check the server is running and try again.'
+          } else if (step === 'browser' || step === 'navigate') {
+            message = 'The connection was lost while launching the browser. '
+              + 'The browser process may have crashed — please try again.'
+          } else if (step === 'wait-network' || step === 'wait-content') {
+            message = 'The connection was lost while loading the page. '
+              + 'The target site may be unresponsive — please try again.'
+          } else if (step === 'overlay-detect' || step === 'overlay-dismiss') {
+            message = 'The connection was lost while handling cookie consent. '
+              + 'Please try again.'
+          } else if (step === 'analysis-start') {
+            message = 'The connection was lost during AI analysis. '
+              + 'This may indicate a timeout — please try again.'
+          } else {
+            message = 'The server connection was lost unexpectedly. '
+              + 'Please try again.'
+          }
+
           errorDialog.value = {
-            title: 'Connection Error',
-            message: 'Failed to connect to the server. Please check that the server is running.',
+            title: 'Connection Lost',
+            message,
           }
           showErrorDialog.value = true
-        }
-        isLoading.value = false
-        eventSource.close()
-        activeEventSource = null
+          isLoading.value = false
+          sseConnection.close()
+        },
       })
 
-      eventSource.onerror = () => {
-        clearTimeout(connectionTimeout)
-        clearAnalysisRotation()
-        if (completionTimeout) {
-          clearTimeout(completionTimeout)
-          completionTimeout = null
-        }
-        // After a successful 'complete' event the handler calls
-        // eventSource.close(), which sets readyState to CLOSED.
-        // In that case the error is just the browser noticing the
-        // connection went away — nothing to report.  hasCompleted
-        // covers the animation delay before isComplete is set.
-        if (isComplete.value || hasCompleted) {
-          return
-        }
-
-        // If the server already sent a specific error message via
-        // the SSE 'error' event, the stream closing is expected.
-        // Don't overwrite the specific message with a generic one.
-        if (hasServerError) {
-          return
-        }
-
-        // Build a contextual message based on how far analysis
-        // progressed before the connection dropped.
-        const step = progressStep.value
-        let message: string
-        if (!step || step === 'init') {
-          message = 'The server connection was lost before analysis could begin. '
-            + 'Please check the server is running and try again.'
-        } else if (step === 'browser' || step === 'navigate') {
-          message = 'The connection was lost while launching the browser. '
-            + 'The browser process may have crashed — please try again.'
-        } else if (step === 'wait-network' || step === 'wait-content') {
-          message = 'The connection was lost while loading the page. '
-            + 'The target site may be unresponsive — please try again.'
-        } else if (step === 'overlay-detect' || step === 'overlay-dismiss') {
-          message = 'The connection was lost while handling cookie consent. '
-            + 'Please try again.'
-        } else if (step === 'analysis-start') {
-          message = 'The connection was lost during AI analysis. '
-            + 'This may indicate a timeout — please try again.'
-        } else {
-          message = 'The server connection was lost unexpectedly. '
-            + 'Please try again.'
-        }
-
-        errorDialog.value = {
-          title: 'Connection Lost',
-          message,
-        }
-        showErrorDialog.value = true
-        isLoading.value = false
-        eventSource.close()
-        activeEventSource = null
-      }
+      sseConnection.connect()
     } catch (error) {
       errorDialog.value = {
         title: 'Error',

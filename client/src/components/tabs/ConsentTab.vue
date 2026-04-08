@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import type { ConsentDetails, TcfPurpose, TcfLookupResult, TcValidationResult, TcValidationFinding, AcStringData, StructuredReport } from '../../types'
-import { stripMarkdown } from '../../utils'
+import { stripMarkdown, riskClass, API_BASE } from '../../utils'
 
 /**
  * Tab panel displaying consent dialog details with IAB TCF purpose breakdown.
@@ -49,8 +49,7 @@ watch(
     tcfLoading.value = true
     tcfError.value = false
     try {
-      const apiBase = import.meta.env.VITE_API_URL || ''
-      const response = await fetch(`${apiBase}/api/tcf-purposes`, {
+      const response = await fetch(`${API_BASE}/api/tcf-purposes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purposes }),
@@ -68,17 +67,6 @@ watch(
   },
   { immediate: true },
 )
-
-function riskClass(level: string): string {
-  const classes: Record<string, string> = {
-    'low': 'risk-low',
-    'medium': 'risk-medium',
-    'high': 'risk-high',
-    'critical': 'risk-critical',
-    'unknown': 'risk-unknown',
-  }
-  return classes[level] || 'risk-unknown'
-}
 
 function categoryLabel(cat: TcfPurpose['category']): string {
   const labels: Record<string, string> = {
@@ -119,14 +107,14 @@ function riskEmoji(level: string): string {
 }
 
 /** Computed TC validation result. */
-function tcValidation(): TcValidationResult | null {
+const tcValidation = computed<TcValidationResult | null>(() => {
   return props.consentDetails?.tcValidation ?? null
-}
+})
 
 /** Computed AC String data (Google Additional Consent Mode). */
-function acStringData(): AcStringData | null {
+const acStringData = computed<AcStringData | null>(() => {
   return props.consentDetails?.acStringData ?? null
-}
+})
 
 /** Category icon mapping for the vendor summary. */
 function categoryEmoji(category: string): string {
@@ -173,7 +161,7 @@ const vendorSummary = computed(() => {
   for (const v of props.consentDetails?.tcStringData?.resolvedVendorLi ?? []) {
     process(v.name, v.category, v.concerns)
   }
-  for (const p of acStringData()?.resolvedProviders ?? []) {
+  for (const p of acStringData.value?.resolvedProviders ?? []) {
     process(p.name, p.category, p.concerns)
   }
 
@@ -283,29 +271,29 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
             <span class="meta-value">{{ consentDetails.consentPlatform }}</span>
           </div>
           <div v-if="consentDetails.claimedPartnerCount" class="meta-card"
-               :class="{ 'meta-card-alert': tcValidation()?.vendorCountMismatch }">
+               :class="{ 'meta-card-alert': tcValidation?.vendorCountMismatch }">
             <span class="meta-icon">📢</span>
             <span class="meta-label">Partners Claimed</span>
             <span class="meta-value">{{ consentDetails.claimedPartnerCount }}</span>
             <span class="source-badge source-ai">dialog</span>
           </div>
-          <div v-if="tcValidation()" class="meta-card"
-               :class="{ 'meta-card-alert': tcValidation()!.vendorCountMismatch }">
+          <div v-if="tcValidation" class="meta-card"
+               :class="{ 'meta-card-alert': tcValidation?.vendorCountMismatch }">
             <span class="meta-icon">📜</span>
             <span class="meta-label">Vendor Consents</span>
-            <span class="meta-value">{{ tcValidation()!.vendorConsentCount }}</span>
+            <span class="meta-value">{{ tcValidation?.vendorConsentCount }}</span>
             <span class="source-badge source-tc">TC String</span>
           </div>
-          <div v-if="tcValidation() && tcValidation()!.vendorLiCount > 0" class="meta-card">
+          <div v-if="tcValidation && tcValidation.vendorLiCount > 0" class="meta-card">
             <span class="meta-icon">⚖️</span>
             <span class="meta-label">Legitimate Interest</span>
-            <span class="meta-value">{{ tcValidation()!.vendorLiCount }}</span>
+            <span class="meta-value">{{ tcValidation?.vendorLiCount }}</span>
             <span class="source-badge source-tc">TC String</span>
           </div>
-          <div v-if="acStringData()" class="meta-card">
+          <div v-if="acStringData" class="meta-card">
             <span class="meta-icon">🔗</span>
             <span class="meta-label">Non-IAB Vendors</span>
-            <span class="meta-value">{{ acStringData()!.vendorCount }}</span>
+            <span class="meta-value">{{ acStringData?.vendorCount }}</span>
             <span class="source-badge source-ac">AC String</span>
           </div>
           <div v-if="consentDetails.purposes.length > 0" class="meta-card">
@@ -430,15 +418,15 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
         </div>
 
         <!-- Google ATP Providers (AC String) -->
-        <div v-if="acStringData()?.resolvedProviders?.length" class="vendor-list-toggle">
+        <div v-if="acStringData?.resolvedProviders?.length" class="vendor-list-toggle">
           <button class="vendor-toggle-btn ac-toggle" @click="showAcProviders = !showAcProviders">
             {{ showAcProviders ? '▾' : '▸' }}
             🔗 Google ATP Providers
-            ({{ acStringData()!.resolvedProviders!.length }} identified)
+            ({{ acStringData?.resolvedProviders?.length }} identified)
           </button>
           <div v-if="showAcProviders" class="vendor-name-list">
             <div
-              v-for="(p, idx) in acStringData()!.resolvedProviders"
+              v-for="(p, idx) in acStringData?.resolvedProviders"
               :key="idx"
               class="vendor-name-item"
               :class="{ 'vendor-has-concerns': p.concerns?.length }"
@@ -453,17 +441,17 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
                 <span v-for="(c, ci) in p.concerns" :key="ci" class="concern-tag">⚠️ {{ c }}</span>
               </div>
             </div>
-            <div v-if="acStringData()!.unresolvedProviderCount" class="vendor-unresolved-note">
-              + {{ acStringData()!.unresolvedProviderCount }} provider ID{{ acStringData()!.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
+            <div v-if="acStringData?.unresolvedProviderCount" class="vendor-unresolved-note">
+              + {{ acStringData?.unresolvedProviderCount }} provider ID{{ acStringData?.unresolvedProviderCount === 1 ? '' : 's' }} not listed in Google&rsquo;s published ATP register
             </div>
           </div>
         </div>
 
         <!-- Findings -->
-        <div v-if="tcValidation()?.findings?.length" class="tc-findings">
+        <div v-if="tcValidation?.findings?.length" class="tc-findings">
           <h3 class="tc-subsection-title">Concerns</h3>
           <div
-            v-for="(finding, idx) in tcValidation()!.findings"
+            v-for="(finding, idx) in tcValidation?.findings"
             :key="idx"
             class="tc-finding"
             :class="findingSeverityClass(finding.severity)"
@@ -544,7 +532,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
       </section>
 
       <!-- ── Purpose Consent Matrix ─────────────────── -->
-      <section v-if="tcValidation()" class="tc-verification-section">
+      <section v-if="tcValidation" class="tc-verification-section">
         <h2 class="section-title">📊 Purpose Consent Matrix <span class="source-badge source-tc">TC String</span></h2>
         <p class="section-subtitle">
           All 11 IAB TCF purposes and their actual consent status as encoded
@@ -562,7 +550,7 @@ function purposeStatusLabel(consented: boolean, li: boolean): string {
         </div>
         <div class="tcf-purposes">
           <div
-            v-for="ps in tcValidation()!.purposeSignals"
+            v-for="ps in tcValidation?.purposeSignals"
             :key="ps.id"
             class="purpose-card"
             :class="[riskClass(ps.riskLevel), {

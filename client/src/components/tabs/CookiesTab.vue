@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import type { TrackedCookie, CookieInfo, DecodedCookies, StructuredReport } from '../../types'
-import { formatExpiry, truncateValue, stripMarkdown } from '../../utils'
+import { formatExpiry, truncateValue, stripMarkdown, baseDomain, purposeLabel, riskClass, severityClass, riskLabel, API_BASE } from '../../utils'
+import { useDomainInfo } from '../../composables'
 
 /**
  * Tab panel displaying cookies grouped by domain.
@@ -19,18 +20,6 @@ const props = defineProps<{
   /** Structured report for the AI cookie analysis section */
   structuredReport?: StructuredReport | null
 }>()
-
-/** Extract the registrable base domain from a hostname (e.g. "www.bbc.co.uk" → "bbc.co.uk"). */
-function baseDomain(hostname: string): string {
-  const parts = hostname.replace(/^\./, '').split('.')
-  // Handle two-part TLDs like co.uk, com.au, org.uk
-  const twoPartTlds = ['co.uk', 'com.au', 'org.uk', 'co.jp', 'com.br', 'co.nz', 'co.za', 'com.mx']
-  const last2 = parts.slice(-2).join('.')
-  if (twoPartTlds.includes(last2) && parts.length >= 3) {
-    return parts.slice(-3).join('.')
-  }
-  return parts.slice(-2).join('.')
-}
 
 /** The base domain of the analyzed URL, used to detect first-party cookies. */
 const firstPartyDomain = computed(() => {
@@ -58,8 +47,7 @@ const loadingKeys = reactive<Set<string>>(new Set())
 /** Set of cookie keys that are expanded (info panel visible). */
 const expandedKeys = reactive<Set<string>>(new Set())
 
-/** Cache of domain descriptions, keyed by domain. */
-const domainDescriptions = reactive<Record<string, { company: string | null; description: string | null }>>({})
+const { domainInfo, fetchDomainInfo } = useDomainInfo()
 
 /**
  * Resolve the description to display for a domain.
@@ -67,39 +55,16 @@ const domainDescriptions = reactive<Record<string, { company: string | null; des
  * if the server lookup returns nothing.
  */
 function domainDescription(domain: string): string | null {
-  const info = domainDescriptions[domain]
+  const info = domainInfo[domain]
   if (info?.description) return info.description
   if (isFirstParty(domain)) return 'First-party cookie'
   return null
 }
 
-/** Fetch domain descriptions for all visible cookie domains. */
-async function fetchDomainDescriptions(domains: string[]): Promise<void> {
-  const unknown = domains.filter((d) => !(d in domainDescriptions))
-  if (unknown.length === 0) return
-
-  try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/domain-info`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domains: unknown }),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      for (const [domain, info] of Object.entries(data)) {
-        domainDescriptions[domain] = info as { company: string | null; description: string | null }
-      }
-    }
-  } catch {
-    // Silently fail — descriptions are non-critical
-  }
-}
-
 watch(
   () => Object.keys(props.cookiesByDomain),
   (domains) => {
-    if (domains.length > 0) fetchDomainDescriptions(domains)
+    if (domains.length > 0) fetchDomainInfo(domains)
   },
   { immediate: true },
 )
@@ -128,8 +93,7 @@ async function toggleCookieInfo(cookie: TrackedCookie): Promise<void> {
   // Fetch from server
   loadingKeys.add(key)
   try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/cookie-info`, {
+    const response = await fetch(`${API_BASE}/api/cookie-info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -148,74 +112,10 @@ async function toggleCookieInfo(cookie: TrackedCookie): Promise<void> {
   }
 }
 
-function purposeLabel(purpose: string): string {
-  const labels: Record<string, string> = {
-    'analytics': '📊 Analytics',
-    'advertising': '📢 Advertising',
-    'functional': '⚙️ Functional',
-    'session': '🔑 Session',
-    'consent': '✅ Consent',
-    'social-media': '👥 Social Media',
-    'fingerprinting': '🔍 Fingerprinting',
-    'identity-resolution': '🆔 Identity Resolution',
-    'unknown': '❓ Unknown',
-  }
-  return labels[purpose] || purpose
-}
-
 function isUnknownPurpose(info: CookieInfo | undefined): boolean {
   return info?.purpose === 'unknown'
 }
 
-function riskClass(level: string): string {
-  const classes: Record<string, string> = {
-    'none': 'risk-none',
-    'low': 'risk-low',
-    'medium': 'risk-medium',
-    'high': 'risk-high',
-    'critical': 'risk-critical',
-  }
-  return classes[level] || 'risk-low'
-}
-
-/** Colour-coded severity/risk badge class for AI analysis. */
-function severityClass(level: string): string {
-  switch (level) {
-    case 'critical':
-    case 'very-high':
-      return 'badge-critical'
-    case 'high':
-      return 'badge-high'
-    case 'medium':
-      return 'badge-medium'
-    case 'low':
-      return 'badge-low'
-    case 'none':
-      return 'badge-none'
-    default:
-      return 'badge-medium'
-  }
-}
-
-/** Human-readable label for risk levels. */
-function riskLabel(level: string): string {
-  switch (level) {
-    case 'very-high':
-      return 'Very High'
-    case 'critical':
-      return 'Critical'
-    case 'high':
-      return 'High'
-    case 'medium':
-      return 'Medium'
-    case 'low':
-      return 'Low'
-    case 'none':
-      return 'None'
-    default:
-      return level
-  }
-}
 </script>
 
 <template>
