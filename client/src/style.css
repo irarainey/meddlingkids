@@ -79,6 +79,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
 }
 
 h1 {

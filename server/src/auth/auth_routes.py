@@ -11,6 +11,7 @@ import urllib.parse
 
 import fastapi
 from authlib.integrations import starlette_client
+from authlib.jose import errors as jose_errors
 from starlette import requests, responses
 
 from src.auth import config
@@ -103,11 +104,30 @@ async def auth_callback(request: requests.Request) -> responses.RedirectResponse
     oauth = _get_oauth()
     cfg = config.get_oauth_config()
 
+    # Resolve the canonical issuer from the OIDC discovery document.
+    # The OIDC spec requires the ``iss`` claim in the ID token to
+    # exactly match the ``issuer`` advertised in the provider's
+    # metadata.  Using the metadata value (rather than the raw
+    # OAUTH_ISSUER env var) avoids mismatches caused by trailing
+    # slashes or version-path differences between what the operator
+    # configures and what the provider actually emits.
+    try:
+        metadata = await oauth.provider.load_server_metadata()
+        canonical_issuer = metadata.get("issuer", cfg["issuer"])
+    except Exception:
+        canonical_issuer = cfg["issuer"]
+
+    if canonical_issuer != cfg["issuer"]:
+        log.warn(
+            "OAUTH_ISSUER differs from provider metadata issuer; using metadata value",
+            {"configured": cfg["issuer"], "metadata": canonical_issuer},
+        )
+
     # Explicit ID token claim validation — authlib performs these
     # checks inside authorize_access_token → parse_id_token, but
     # we surface them here so the requirements are visible:
     #
-    #   iss  – must match the configured OAUTH_ISSUER
+    #   iss  – must match the provider's canonical issuer
     #   sub  – must be present (identifies the user)
     #   aud  – must contain our client_id
     #   exp  – must not be expired (30s leeway for clock skew)
@@ -116,7 +136,7 @@ async def auth_callback(request: requests.Request) -> responses.RedirectResponse
     # Signature verification (RS256 via provider JWKS) and at_hash
     # validation are handled automatically by authlib.
     claims_options = {
-        "iss": {"essential": True, "values": [cfg["issuer"]]},
+        "iss": {"essential": True, "values": [canonical_issuer]},
         "sub": {"essential": True},
         "aud": {"essential": True, "value": cfg["client_id"]},
         "exp": {"essential": True},
@@ -130,6 +150,12 @@ async def auth_callback(request: requests.Request) -> responses.RedirectResponse
         )
     except starlette_client.OAuthError as exc:
         log.error("OAuth token exchange failed", {"error": exc.description})
+        raise fastapi.HTTPException(
+            status_code=401,
+            detail="Authentication failed. Please try again.",
+        ) from exc
+    except jose_errors.JoseError as exc:
+        log.error("ID token validation failed", {"error": str(exc)})
         raise fastapi.HTTPException(
             status_code=401,
             detail="Authentication failed. Please try again.",
