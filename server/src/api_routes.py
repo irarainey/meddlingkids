@@ -13,6 +13,7 @@ import aiohttp.abc
 import fastapi
 import pydantic
 from starlette import responses
+import urllib.parse
 
 from src import agents
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
@@ -192,6 +193,10 @@ async def tc_string_decode_endpoint(
 # Maximum bytes to fetch for script preview (4096 KB).
 _MAX_PREVIEW_BYTES = 4096 * 1024
 
+# Hosts that are allowed for script fetching to avoid full SSRF.
+# Adjust this list as appropriate for the deployment environment.
+_ALLOWED_SCRIPT_HOSTS: set[str] = set()
+
 
 @router.post("/api/fetch-script")
 async def fetch_script_endpoint(
@@ -208,6 +213,19 @@ async def fetch_script_endpoint(
     to prevent DNS rebinding (TOCTOU) attacks.
     """
     url = body.url.strip()
+
+    # Basic surface validation to constrain the URL and reduce SSRF risk
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except Exception:
+        raise fastapi.HTTPException(status_code=400, detail="Invalid URL format")
+
+    if parsed.scheme not in ("http", "https"):
+        raise fastapi.HTTPException(status_code=400, detail="Only http and https URLs are allowed")
+
+    # If an allowlist of hosts is configured, enforce it here.
+    if _ALLOWED_SCRIPT_HOSTS and (parsed.hostname not in _ALLOWED_SCRIPT_HOSTS):
+        raise fastapi.HTTPException(status_code=400, detail="Host is not allowed for script fetching")
 
     try:
         resolved = await url_mod.resolve_and_validate(url)
