@@ -25,7 +25,8 @@ def get_oauth_config() -> dict[str, str]:
 
     Only call this when :func:`is_auth_enabled` returns ``True``.
     """
-    issuer = os.environ["OAUTH_ISSUER"].rstrip("/")
+    issuer = os.environ["OAUTH_ISSUER"]
+    issuer_base = issuer.rstrip("/")
     return {
         "issuer": issuer,
         "client_id": os.environ["OAUTH_CLIENT_ID"],
@@ -34,7 +35,7 @@ def get_oauth_config() -> dict[str, str]:
         "audience": os.environ.get("OAUTH_AUDIENCE", ""),
         "scopes": os.environ.get("OAUTH_SCOPES", "openid profile email"),
         "post_logout_redirect_uri": os.environ.get("OAUTH_POST_LOGOUT_REDIRECT_URI", ""),
-        "server_metadata_url": f"{issuer}/.well-known/openid-configuration",
+        "server_metadata_url": f"{issuer_base}/.well-known/openid-configuration",
     }
 
 

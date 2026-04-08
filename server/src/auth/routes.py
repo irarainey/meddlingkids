@@ -218,7 +218,7 @@ async def auth_logout(request: requests.Request) -> responses.RedirectResponse:
 
     # Fallback for providers (e.g. Auth0) that don't advertise
     # end_session_endpoint but do support /oidc/logout.
-    issuer = cfg["issuer"]
+    issuer = cfg["issuer"].rstrip("/")
     params = urllib.parse.urlencode(
         {
             "client_id": cfg["client_id"],

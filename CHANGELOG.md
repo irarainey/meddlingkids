@@ -1,6 +1,12 @@
 
 # Changelog
 
+## 1.8.4
+
+### Fixed
+
+- **Auth0 issuer validation failure** — Fixed `InvalidClaimError: Invalid claim 'iss'` when logging in with Auth0. The `OAUTH_ISSUER` value was normalised with `rstrip("/")` before being used for ID token issuer validation, but Auth0 tokens always include a trailing slash in the `iss` claim (e.g. `https://example.auth0.com/`). The raw environment variable value is now preserved for claim validation, with slash-stripping applied only when constructing URL paths (metadata URL and logout fallback).
+
 ## 1.8.3
 
 ### Changed
