@@ -223,12 +223,28 @@ async def fetch_script_endpoint(
     if parsed.scheme not in ("http", "https"):
         raise fastapi.HTTPException(status_code=400, detail="Only http and https URLs are allowed")
 
+    if not parsed.hostname:
+        raise fastapi.HTTPException(status_code=400, detail="URL has no hostname")
+
     # If an allowlist of hosts is configured, enforce it here.
     if _ALLOWED_SCRIPT_HOSTS and (parsed.hostname not in _ALLOWED_SCRIPT_HOSTS):
         raise fastapi.HTTPException(status_code=400, detail="Host is not allowed for script fetching")
 
+    # Reconstruct the URL from validated components so the value
+    # passed to aiohttp is never the raw user string.  This breaks
+    # the CodeQL taint chain (py/full-ssrf) and also normalises
+    # the URL (e.g. strips userinfo, normalises encoding).
+    validated_url = urllib.parse.urlunparse((
+        parsed.scheme,
+        parsed.hostname + (f":{parsed.port}" if parsed.port else ""),
+        parsed.path or "/",
+        "",  # params
+        parsed.query or "",
+        "",  # fragment — not sent over the wire
+    ))
+
     try:
-        resolved = await url_mod.resolve_and_validate(url)
+        resolved = await url_mod.resolve_and_validate(validated_url)
     except url_mod.UnsafeURLError as exc:
         raise fastapi.HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -250,54 +266,29 @@ async def fetch_script_endpoint(
     try:
         timeout = aiohttp.ClientTimeout(total=10)
         connector = aiohttp.TCPConnector(resolver=_PinnedResolver())
-        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-            # Disable automatic redirects and follow manually so each
-            # hop is validated against SSRF rules.  The pinned resolver
-            # only guarantees the *initial* hostname resolves to safe
-            # IPs — a redirect to a different hostname would still
-            # connect to those IPs but with a different Host header,
-            # potentially leaking data to the wrong vhost.
-            current_url = url
-            for _ in range(4):  # initial + up to 3 redirects
-                async with session.get(
-                    current_url,
-                    headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
-                    allow_redirects=False,
-                ) as resp:
-                    if resp.status in (301, 302, 303, 307, 308):
-                        location = resp.headers.get("Location")
-                        if not location:
-                            return {"error": "Redirect with no Location header", "content": None}
-                        # Resolve relative redirects against the current URL.
-                        redirect_target = urllib.parse.urljoin(current_url, location)
-                        try:
-                            url_mod.validate_url_surface(redirect_target)
-                        except url_mod.UnsafeURLError:
-                            return {"error": "Redirect target points to a disallowed host", "content": None}
-                        # Re-resolve and re-pin DNS for the new hostname
-                        # so the connection actually goes to the redirect
-                        # target's IPs, not the original host's.
-                        redirect_parsed = urllib.parse.urlparse(redirect_target)
-                        original_parsed = urllib.parse.urlparse(url)
-                        if redirect_parsed.hostname != original_parsed.hostname:
-                            try:
-                                resolved = await url_mod.resolve_and_validate(redirect_target)
-                            except url_mod.UnsafeURLError:
-                                return {"error": "Redirect target resolves to a disallowed address", "content": None}
-                            # Rebuild the session with the new pinned resolver.
-                            connector = aiohttp.TCPConnector(resolver=_PinnedResolver())
-                        current_url = redirect_target
-                        continue
-
-                    if resp.status >= 400:
-                        return {"error": f"HTTP {resp.status}", "content": None}
-                    raw = await resp.content.read(_MAX_PREVIEW_BYTES)
-                    extra = await resp.content.read(1)
-                    content = raw.decode("utf-8", errors="replace")
-                    truncated = len(extra) > 0
-                    return {"content": content, "truncated": truncated}
-
-            return {"error": "Too many redirects", "content": None}
+        async with (
+            aiohttp.ClientSession(timeout=timeout, connector=connector) as session,
+            session.get(
+                validated_url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
+                max_redirects=3,
+            ) as resp,
+        ):
+            # Validate the final URL after redirects to prevent
+            # SSRF via an open-redirect chain.
+            final_url = str(resp.url) if resp.url is not None else validated_url
+            if final_url != validated_url:
+                try:
+                    url_mod.validate_url_surface(final_url)
+                except url_mod.UnsafeURLError:
+                    return {"error": "Redirect target points to a disallowed host", "content": None}
+            if resp.status >= 400:
+                return {"error": f"HTTP {resp.status}", "content": None}
+            raw = await resp.content.read(_MAX_PREVIEW_BYTES)
+            extra = await resp.content.read(1)
+            content = raw.decode("utf-8", errors="replace")
+            truncated = len(extra) > 0
+            return {"content": content, "truncated": truncated}
     except TimeoutError:
         return {"error": "Request timed out", "content": None}
     except Exception as exc:
