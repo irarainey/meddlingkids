@@ -234,14 +234,16 @@ async def fetch_script_endpoint(
     # passed to aiohttp is never the raw user string.  This breaks
     # the CodeQL taint chain (py/full-ssrf) and also normalises
     # the URL (e.g. strips userinfo, normalises encoding).
-    validated_url = urllib.parse.urlunparse((
-        parsed.scheme,
-        parsed.hostname + (f":{parsed.port}" if parsed.port else ""),
-        parsed.path or "/",
-        "",  # params
-        parsed.query or "",
-        "",  # fragment — not sent over the wire
-    ))
+    validated_url = urllib.parse.urlunparse(
+        (
+            parsed.scheme,
+            parsed.hostname + (f":{parsed.port}" if parsed.port else ""),
+            parsed.path or "/",
+            "",  # params
+            parsed.query or "",
+            "",  # fragment — not sent over the wire
+        )
+    )
 
     try:
         resolved = await url_mod.resolve_and_validate(validated_url)
