@@ -1,20 +1,19 @@
 """
-Server entry point — FastAPI app setup and route configuration.
-Sets up the FastAPI server with CORS, static file serving, and all API routes.
+Server entry point — FastAPI app factory, middleware, and static files.
+
+Route handlers live in :mod:`src.api_routes`.  This module is responsible
+for bootstrapping the application, wiring middleware (CORS, GZip,
+optional OAuth2), and mounting the SPA static files.
 """
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
-import ipaddress
 import json
 import os
 import pathlib
-import urllib.parse
 from collections.abc import AsyncGenerator
 
-import aiohttp
 import dotenv
 import fastapi
 from fastapi import staticfiles
@@ -22,13 +21,11 @@ from fastapi.middleware import cors, gzip
 from starlette import responses
 from starlette.middleware import sessions
 
-from src.agents import get_cookie_info_agent, get_storage_info_agent, observability_setup
-from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
-from src.auth import config, middleware, routes
+from src import api_routes
+from src.agents import observability_setup
+from src.auth import auth_routes, config, middleware
 from src.browser import manager
-from src.data import loader
-from src.pipeline import stream
-from src.utils import cache, logger
+from src.utils import logger
 
 
 def _bootstrap() -> None:
@@ -42,6 +39,13 @@ _bootstrap()
 log = logger.create_logger("Server")
 
 SHOW_UI = os.environ.get("SHOW_UI", "false").lower() == "true"
+
+_ALLOWED_ORIGINS = config.get_allowed_origins()
+
+
+# ============================================================================
+# App factory & lifespan
+# ============================================================================
 
 
 @contextlib.asynccontextmanager
@@ -88,11 +92,6 @@ async def _json_decode_error_handler(
 # Middleware
 # ============================================================================
 
-_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:4173",
-).split(",")
-
 app.add_middleware(
     cors.CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
@@ -138,7 +137,7 @@ if config.is_auth_enabled():
 
 # Auth routes are always registered so /auth/me can report "disabled"
 # instead of being swallowed by the SPA catch-all.
-app.include_router(routes.router)
+app.include_router(auth_routes.router)
 
 
 @app.middleware("http")
@@ -157,274 +156,7 @@ async def disable_static_cache(
 # API Routes
 # ============================================================================
 
-
-@app.post("/api/clear-cache")
-async def clear_cache_endpoint() -> dict[str, object]:
-    """Delete all cached data (domain, overlay, scripts)."""
-    removed = cache.clear_all()
-    log.success("Cache cleared via API", {"filesRemoved": removed})
-    return {"success": True, "filesRemoved": removed}
-
-
-@app.post("/api/domain-info")
-async def domain_info_endpoint(
-    request: fastapi.Request,
-) -> dict[str, dict[str, str | None]]:
-    """Look up tracker/company info for one or more domains.
-
-    Fast deterministic lookup — no LLM calls.  Checks the
-    Disconnect services database, partner databases, and
-    tracker-domains list to build a one-line description.
-
-    DNS-based geolocation runs in a thread pool to avoid
-    blocking the async event loop.
-
-    Accepts ``{"domains": ["example.com", ...]}`` and returns
-    a map of domain → ``{company, description}``.
-    """
-    body = await request.json()
-    domains: list[str] = body.get("domains", [])
-    if not domains:
-        raise fastapi.HTTPException(status_code=400, detail="domains list is required")
-
-    cleaned = [d.strip() for d in domains if d.strip()]
-
-    def _lookup() -> dict[str, dict[str, str | None]]:
-        return {d: loader.get_domain_description(d) for d in cleaned}
-
-    return await asyncio.to_thread(_lookup)
-
-
-@app.post("/api/storage-key-info")
-async def storage_key_info_endpoint(
-    request: fastapi.Request,
-) -> dict[str, dict[str, str | None]]:
-    """Look up known descriptions for storage key names.
-
-    Fast deterministic lookup — no LLM calls.  Matches keys
-    against the tracking-storage pattern database.
-
-    Accepts ``{"keys": ["_ga", ...]}`` and returns a map of
-    key → ``{setBy, description}``.
-    """
-    body = await request.json()
-    keys: list[str] = body.get("keys", [])
-    if not keys:
-        raise fastapi.HTTPException(status_code=400, detail="keys list is required")
-
-    result: dict[str, dict[str, str | None]] = {}
-    for key in keys:
-        k = key.strip()
-        if k:
-            result[k] = loader.get_storage_key_hint(k)
-    return result
-
-
-@app.post("/api/cookie-info")
-async def cookie_info_endpoint(
-    request: fastapi.Request,
-) -> dict[str, object]:
-    """Look up information about a specific cookie.
-
-    Checks known databases first and falls back to LLM for
-    unrecognised cookies.
-    """
-    body = await request.json()
-    name: str = body.get("name", "")
-    domain: str = body.get("domain", "")
-    value: str = body.get("value", "")
-
-    if not name:
-        raise fastapi.HTTPException(status_code=400, detail="Cookie name is required")
-
-    agent = get_cookie_info_agent()
-    result = await cookie_lookup.get_cookie_info(name, domain, value, agent)
-
-    return result.model_dump(by_alias=True)
-
-
-@app.post("/api/storage-info")
-async def storage_info_endpoint(
-    request: fastapi.Request,
-) -> dict[str, object]:
-    """Look up information about a specific storage key.
-
-    Checks known databases first and falls back to LLM for
-    unrecognised keys.
-    """
-    body = await request.json()
-    key: str = body.get("key", "")
-    storage_type: str = body.get("storageType", "localStorage")
-    value: str = body.get("value", "")
-
-    if not key:
-        raise fastapi.HTTPException(status_code=400, detail="Storage key is required")
-
-    agent = get_storage_info_agent()
-    result = await storage_lookup.get_storage_info(key, storage_type, value, agent)
-
-    return result.model_dump(by_alias=True)
-
-
-@app.post("/api/tcf-purposes")
-async def tcf_purposes_endpoint(
-    request: fastapi.Request,
-) -> dict[str, object]:
-    """Map consent purpose strings to IAB TCF v2.2 purposes.
-
-    Accepts a list of purpose strings and returns matched TCF
-    purposes with full metadata (description, risk level, lawful
-    bases, notes) and any unmatched strings.  Matching is purely
-    deterministic — no LLM calls.
-    """
-    body = await request.json()
-    purposes: list[str] = body.get("purposes", [])
-
-    if not purposes:
-        return {"matched": [], "unmatched": []}
-
-    result = tcf_lookup.lookup_purposes(purposes)
-    return result.model_dump(by_alias=True)
-
-
-@app.post("/api/tc-string-decode")
-async def tc_string_decode_endpoint(
-    request: fastapi.Request,
-) -> dict[str, object]:
-    """Decode an IAB TCF v2 TC String.
-
-    Accepts a raw TC String (Base64url-encoded, as stored in
-    the ``euconsent-v2`` cookie) and returns decoded metadata,
-    purpose consents, vendor consents, and legitimate interest
-    signals.  Purely deterministic — no LLM calls.
-    """
-    body = await request.json()
-    raw: str = body.get("tcString", "")
-
-    if not raw:
-        return {"error": "No tcString provided"}
-
-    decoded = tc_string.decode_tc_string(raw)
-    if decoded is None:
-        return {"error": "Failed to decode TC string"}
-
-    return decoded.model_dump(by_alias=True)
-
-
-# Maximum bytes to fetch for script preview (4096 KB).
-_MAX_PREVIEW_BYTES = 4096 * 1024
-
-
-async def _is_safe_remote_url(url: str) -> bool:
-    """Validate that a URL points to a public HTTP(S) host.
-
-    Rejects loopback, private, link-local, multicast, and
-    reserved IP ranges to prevent SSRF.
-    """
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme not in {"http", "https"}:
-        return False
-    if not parsed.hostname:
-        return False
-
-    host = parsed.hostname
-    loop = asyncio.get_running_loop()
-
-    try:
-        addrinfo = await loop.getaddrinfo(
-            host,
-            parsed.port or (443 if parsed.scheme == "https" else 80),
-        )
-    except OSError:
-        return False
-
-    for _family, _, _, _, sockaddr in addrinfo:
-        ip_str = sockaddr[0]
-        try:
-            ip = ipaddress.ip_address(ip_str)
-        except ValueError:
-            return False
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-            return False
-
-    return True
-
-
-@app.post("/api/fetch-script")
-async def fetch_script_endpoint(
-    request: fastapi.Request,
-) -> dict[str, object]:
-    """Fetch the source content of a remote JavaScript file.
-
-    Acts as a same-origin proxy so the client can display
-    syntax-highlighted script source without CORS restrictions.
-    Only HTTP(S) URLs are accepted and the response is capped
-    at 4096 KB to prevent abuse.
-    """
-
-    body = await request.json()
-    url: str = body.get("url", "").strip()
-
-    if not url:
-        raise fastapi.HTTPException(status_code=400, detail="url is required")
-
-    if not url.startswith(("http://", "https://")):
-        raise fastapi.HTTPException(status_code=400, detail="Only HTTP(S) URLs are accepted")
-
-    if not await _is_safe_remote_url(url):
-        raise fastapi.HTTPException(status_code=400, detail="URL points to a disallowed host")
-
-    try:
-        timeout = aiohttp.ClientTimeout(total=10)
-        async with (
-            aiohttp.ClientSession(timeout=timeout) as session,
-            session.get(
-                url,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; MeddlingKids/1.0)"},
-                max_redirects=3,
-            ) as resp,
-        ):
-            # Validate the final URL after redirects to prevent
-            # SSRF via an open-redirect chain.
-            if resp.url is not None and str(resp.url) != url and not await _is_safe_remote_url(str(resp.url)):
-                return {"error": "Redirect target points to a disallowed host", "content": None}
-            if resp.status >= 400:
-                return {"error": f"HTTP {resp.status}", "content": None}
-            raw = await resp.content.read(_MAX_PREVIEW_BYTES)
-            extra = await resp.content.read(1)
-            content = raw.decode("utf-8", errors="replace")
-            truncated = len(extra) > 0
-            return {"content": content, "truncated": truncated}
-    except TimeoutError:
-        return {"error": "Request timed out", "content": None}
-    except Exception as exc:
-        log.debug("Script fetch proxy error", {"url": url, "error": str(exc)})
-        return {"error": "Unexpected error fetching script", "content": None}
-
-
-@app.get("/api/open-browser-stream")
-async def analyze_endpoint(
-    url: str = fastapi.Query(..., description="The URL to analyze"),
-    device: str = fastapi.Query("ipad", description="Device type to emulate"),
-    clear_cache: bool = fastapi.Query(False, alias="clear-cache", description="Clear all caches before analysis"),
-) -> responses.StreamingResponse:
-    """
-    Analyze tracking on a URL with streaming progress via SSE.
-    """
-    log.info("Incoming analysis request", {"url": url, "device": device, "clearCache": clear_cache})
-
-    async def event_generator():
-        async for event_str in stream.analyze_url_stream(url, device, clear_cache=clear_cache):
-            yield event_str
-
-    return responses.StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )
+app.include_router(api_routes.router)
 
 
 # ============================================================================

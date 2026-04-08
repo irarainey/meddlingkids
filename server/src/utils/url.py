@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import socket
+from typing import TypedDict
 from urllib import parse
 
 import tldextract
@@ -167,7 +169,113 @@ async def validate_analysis_url(url: str) -> None:
     _check_ip(addr, hostname)
 
 
+class ResolvedAddress(TypedDict):
+    """Pre-resolved address info for pinned DNS connections."""
+
+    hostname: str
+    host: str
+    port: int
+    family: int
+    proto: int
+    flags: int
+
+
+async def resolve_and_validate(url: str) -> list[ResolvedAddress]:
+    """Resolve DNS for *url*, validate all IPs, and return address info.
+
+    Eliminates DNS rebinding (TOCTOU) by resolving once and returning
+    the validated addresses for the caller to pin connections to.
+
+    Args:
+        url: The URL to resolve and validate.
+
+    Returns:
+        A list of :class:`ResolvedAddress` dicts for use with a
+        pinned aiohttp resolver.
+
+    Raises:
+        UnsafeURLError: If the URL or any resolved IP is unsafe.
+    """
+    parsed = parse.urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeURLError(f"Only http and https URLs are supported (got {parsed.scheme!r})")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("URL has no hostname")
+
+    hostname_lower = hostname.lower()
+    if hostname_lower in _BLOCKED_HOSTNAMES:
+        raise UnsafeURLError(f"Blocked hostname: {hostname}")
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(hostname, port)
+    except OSError as exc:
+        raise UnsafeURLError(f"DNS resolution failed for {hostname}") from exc
+
+    results: list[ResolvedAddress] = []
+    seen: set[str] = set()
+    for family, _, _, _, sockaddr in infos:
+        ip_str = sockaddr[0]
+        if ip_str in seen:
+            continue
+        seen.add(ip_str)
+        addr = ipaddress.ip_address(ip_str)
+        _check_ip(addr, hostname)
+        results.append(
+            ResolvedAddress(
+                hostname=hostname,
+                host=ip_str,
+                port=port,
+                family=family,
+                proto=0,
+                flags=socket.AI_NUMERICHOST,
+            )
+        )
+
+    if not results:
+        raise UnsafeURLError(f"No addresses resolved for {hostname}")
+
+    return results
+
+
 def _check_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address, hostname: str) -> None:
     """Raise if *addr* is private, loopback, link-local, or multicast."""
     if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved:
         raise UnsafeURLError(f"URL resolves to a non-public address ({addr}) for host {hostname}")
+
+
+def validate_url_surface(url: str) -> None:
+    """Check scheme and hostname without DNS resolution.
+
+    Use this when the connection is already pinned to validated
+    IPs (e.g. after a redirect) so a fresh DNS lookup would
+    introduce a TOCTOU window.
+
+    Raises:
+        UnsafeURLError: If the scheme is not HTTP(S), the hostname
+            is missing, the hostname is blocked, or the hostname
+            is an IP literal pointing to a non-public address.
+    """
+    parsed = parse.urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeURLError(f"Only http and https URLs are supported (got {parsed.scheme!r})")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("URL has no hostname")
+
+    if hostname.lower() in _BLOCKED_HOSTNAMES:
+        raise UnsafeURLError(f"Blocked hostname: {hostname}")
+
+    # If the redirect target is an IP literal, validate it directly.
+    try:
+        addr = ipaddress.ip_address(hostname)
+        _check_ip(addr, hostname)
+    except ValueError:
+        pass

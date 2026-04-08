@@ -14,7 +14,7 @@ from typing import Any
 
 import agent_framework
 
-from src.agents.llm_client import LLMConnectionError
+from src.agents import llm_client
 from src.utils import logger, usage_tracking
 
 log = logger.create_logger("Agent-Middleware")
@@ -257,7 +257,7 @@ def _is_connection_error(error: BaseException) -> bool:
     )
 
 
-def _classify_connection_error(error: BaseException) -> LLMConnectionError:
+def _classify_connection_error(error: BaseException) -> llm_client.LLMConnectionError:
     """Wrap a raw exception in an ``LLMConnectionError`` with a diagnostic message."""
     msg = str(error).lower()
     if "authentication" in msg or "401" in msg or "unauthorized" in msg:
@@ -274,7 +274,7 @@ def _classify_connection_error(error: BaseException) -> LLMConnectionError:
         short = "Could not connect to the LLM endpoint. Check your configuration and network."
     else:
         short = "Could not connect to the LLM. Check your configuration and network."
-    return LLMConnectionError(short)
+    return llm_client.LLMConnectionError(short)
 
 
 class RetryChatMiddleware(agent_framework.ChatMiddleware):
@@ -386,7 +386,7 @@ class RetryChatMiddleware(agent_framework.ChatMiddleware):
             return
         try:
             text = result.text  # type: ignore[union-attr]
-        except Exception:
+        except (AttributeError, TypeError):
             return
 
         # Warn when the response was cut short by the token limit.

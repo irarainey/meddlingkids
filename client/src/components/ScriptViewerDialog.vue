@@ -3,6 +3,7 @@ import { ref, watch, computed, onUnmounted } from 'vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import { js_beautify } from 'js-beautify'
+import { stripQueryAndFragment } from '../utils'
 
 hljs.registerLanguage('javascript', javascript)
 
@@ -34,20 +35,7 @@ const isTruncated = ref(false)
 const copied = ref(false)
 
 /** URL without query string or fragment, matching the panel display. */
-const shortUrl = computed(() => {
-  try {
-    const u = new URL(props.scriptUrl)
-    return u.origin + u.pathname
-  } catch {
-    const noQuery = props.scriptUrl.indexOf('?') >= 0
-      ? props.scriptUrl.substring(0, props.scriptUrl.indexOf('?'))
-      : props.scriptUrl
-    const noFrag = noQuery.indexOf('#') >= 0
-      ? noQuery.substring(0, noQuery.indexOf('#'))
-      : noQuery
-    return noFrag
-  }
-})
+const shortUrl = computed(() => stripQueryAndFragment(props.scriptUrl))
 
 /** Syntax-highlighted HTML produced by highlight.js. */
 const highlightedHtml = computed(() => {
@@ -92,17 +80,27 @@ async function fetchScript(url: string): Promise<void> {
       return
     }
 
-    const data = await response.json() as { content: string | null; error?: string; truncated?: boolean }
+    const data: unknown = await response.json()
 
-    if (data.error || !data.content) {
-      errorMessage.value = data.error ?? 'No content returned'
+    if (typeof data !== 'object' || data === null) {
+      errorMessage.value = 'Invalid response format'
       return
     }
 
-    isTruncated.value = data.truncated ?? false
+    const result = data as Record<string, unknown>
+    const content = typeof result.content === 'string' ? result.content : null
+    const error = typeof result.error === 'string' ? result.error : undefined
+    const truncated = typeof result.truncated === 'boolean' ? result.truncated : false
+
+    if (error || !content) {
+      errorMessage.value = error ?? 'No content returned'
+      return
+    }
+
+    isTruncated.value = truncated
 
     // Beautify minified code for readability.
-    const formatted = js_beautify(data.content, {
+    const formatted = js_beautify(content, {
       indent_size: 2,
       indent_char: ' ',
       max_preserve_newlines: 2,

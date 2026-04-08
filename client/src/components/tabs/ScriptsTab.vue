@@ -1,20 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import type { TrackedScript, ScriptGroup } from '../../types'
-import { countryFlagUrl, countryName } from '../../utils'
+import { countryFlagUrl, countryName, stripQueryAndFragment } from '../../utils'
+import { useDomainInfo } from '../../composables'
 import ScriptViewerDialog from '../ScriptViewerDialog.vue'
-
-/** Return the URL without query string or fragment for display purposes. */
-function baseUrl(url: string): string {
-  try {
-    const u = new URL(url)
-    return u.origin + u.pathname
-  } catch {
-    const noQuery = url.indexOf('?') >= 0 ? url.substring(0, url.indexOf('?')) : url
-    const noFrag = noQuery.indexOf('#') >= 0 ? noQuery.substring(0, noQuery.indexOf('#')) : noQuery
-    return noFrag
-  }
-}
 
 /**
  * Tab panel displaying scripts grouped by domain.
@@ -43,31 +32,7 @@ function openViewer(url: string, description?: string): void {
   viewerOpen.value = true
 }
 
-/** Cached domain info keyed by domain. */
-const domainInfo = reactive<Record<string, { country: string | null }>>({})
-
-/** Fetch country info for all visible script domains. */
-async function fetchDomainInfo(domains: string[]): Promise<void> {
-  const unknown = domains.filter((d) => !(d in domainInfo))
-  if (unknown.length === 0) return
-
-  try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/domain-info`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domains: unknown }),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      for (const [domain, info] of Object.entries(data)) {
-        domainInfo[domain] = info as { country: string | null }
-      }
-    }
-  } catch {
-    // Silently fail — enrichment is non-critical
-  }
-}
+const { domainInfo, fetchDomainInfo } = useDomainInfo()
 
 watch(
   () => Object.keys(props.scriptsByDomain),
@@ -116,7 +81,7 @@ watch(
             <summary>Show examples</summary>
             <ul>
               <li v-for="url in group.exampleUrls" :key="url" class="example-url">
-                <a :href="url" target="_blank" :title="url">{{ baseUrl(url) }}</a>
+                <a :href="url" target="_blank" :title="url">{{ stripQueryAndFragment(url) }}</a>
               </li>
             </ul>
           </details>
@@ -141,7 +106,7 @@ watch(
             </h3>
             <div v-for="script in domainScripts.filter(s => !s.isGrouped)" :key="script.url" class="script-item">
               <div class="script-main">
-                <button class="script-url" :title="script.url" @click="openViewer(script.url, script.description)">{{ baseUrl(script.url) }}</button>
+                <button class="script-url" :title="script.url" @click="openViewer(script.url, script.description)">{{ stripQueryAndFragment(script.url) }}</button>
                 <span v-if="script.description" class="script-description">{{ script.description }}</span>
               </div>
             </div>

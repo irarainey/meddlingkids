@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
 import type { StorageItem, StorageInfo, StructuredReport } from '../../types'
-import { truncateValue, stripMarkdown } from '../../utils'
+import { truncateValue, stripMarkdown, purposeLabel, riskClass, API_BASE } from '../../utils'
 
 /**
  * Tab panel displaying localStorage and sessionStorage items.
@@ -34,8 +34,7 @@ async function fetchStorageKeyHints(keys: string[]): Promise<void> {
   if (unknown.length === 0) return
 
   try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/storage-key-info`, {
+    const response = await fetch(`${API_BASE}/api/storage-key-info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keys: unknown }),
@@ -46,8 +45,8 @@ async function fetchStorageKeyHints(keys: string[]): Promise<void> {
         storageKeyHints[key] = info as { setBy: string | null; description: string | null }
       }
     }
-  } catch {
-    // Silently fail — hints are non-critical
+  } catch (err) {
+    console.warn('[StorageTab] Failed to fetch storage key hints:', err)
   }
 }
 
@@ -83,8 +82,7 @@ async function toggleStorageInfo(storageType: string, item: StorageItem): Promis
   // Fetch from server
   loadingKeys.add(key)
   try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-    const response = await fetch(`${apiBase}/api/storage-info`, {
+    const response = await fetch(`${API_BASE}/api/storage-info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -96,42 +94,17 @@ async function toggleStorageInfo(storageType: string, item: StorageItem): Promis
     if (response.ok) {
       storageInfoCache[key] = await response.json()
     }
-  } catch {
-    // Silently fail — the user can try again
+  } catch (err) {
+    console.warn('[StorageTab] Failed to fetch storage info:', err)
   } finally {
     loadingKeys.delete(key)
   }
-}
-
-function purposeLabel(purpose: string): string {
-  const labels: Record<string, string> = {
-    'analytics': '📊 Analytics',
-    'advertising': '📢 Advertising',
-    'functional': '⚙️ Functional',
-    'session': '🔑 Session',
-    'consent': '✅ Consent',
-    'social-media': '👥 Social Media',
-    'fingerprinting': '🔍 Fingerprinting',
-    'identity-resolution': '🆔 Identity Resolution',
-    'unknown': '❓ Unknown',
-  }
-  return labels[purpose] || purpose
 }
 
 function isUnknownPurpose(info: StorageInfo | undefined): boolean {
   return info?.purpose === 'unknown'
 }
 
-function riskClass(level: string): string {
-  const classes: Record<string, string> = {
-    'none': 'risk-none',
-    'low': 'risk-low',
-    'medium': 'risk-medium',
-    'high': 'risk-high',
-    'critical': 'risk-critical',
-  }
-  return classes[level] || 'risk-low'
-}
 </script>
 
 <template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { StructuredReport, SummaryFinding, SummaryFindingType } from '../../types'
 import { getExclamation, getRiskLevel, getScoreClass, stripMarkdown } from '../../utils'
+import { severityClass, riskLabel } from '../../utils'
 
 /**
  * Tab panel displaying a high-level privacy summary.
@@ -26,45 +27,6 @@ defineProps<{
   /** One-sentence score summary from deterministic scorer */
   privacySummary: string
 }>()
-
-/** Colour-coded severity/risk badge class. */
-function severityClass(level: string): string {
-  switch (level) {
-    case 'critical':
-    case 'very-high':
-      return 'badge-critical'
-    case 'high':
-      return 'badge-high'
-    case 'medium':
-      return 'badge-medium'
-    case 'low':
-      return 'badge-low'
-    case 'none':
-      return 'badge-none'
-    default:
-      return 'badge-medium'
-  }
-}
-
-/** Human-readable label for risk levels. */
-function riskLabel(level: string): string {
-  switch (level) {
-    case 'very-high':
-      return 'Very High'
-    case 'critical':
-      return 'Critical'
-    case 'high':
-      return 'High'
-    case 'medium':
-      return 'Medium'
-    case 'low':
-      return 'Low'
-    case 'none':
-      return 'None'
-    default:
-      return level
-  }
-}
 
 /** Map summary finding type to badge class. */
 function findingSeverityClass(type: SummaryFindingType): string {

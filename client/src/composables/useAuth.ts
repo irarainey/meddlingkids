@@ -25,11 +25,13 @@ export function useAuth() {
   const isAuthenticated = ref(false)
   const isAuthEnabled = ref(false)
   const isCheckingAuth = ref(true)
+  const authError = ref<string | null>(null)
 
   const apiBase = import.meta.env.VITE_API_URL || ''
 
   /** Check the current session with the server. */
   async function checkAuth(): Promise<void> {
+    authError.value = null
     try {
       const res = await fetch(`${apiBase}/auth/me`)
 
@@ -56,11 +58,15 @@ export function useAuth() {
         isAuthenticated.value = false
         window.location.href = `${apiBase}/auth/login`
         return
+      } else {
+        authError.value = `Server returned ${res.status}`
+        console.warn('[Auth] Unexpected status from /auth/me:', res.status)
       }
-    } catch {
-      // Network error or server unavailable — assume no auth.
-      isAuthEnabled.value = false
-      isAuthenticated.value = true
+    } catch (err) {
+      // Network error — keep state indeterminate so the UI can
+      // show a retry prompt instead of silently assuming no auth.
+      authError.value = err instanceof Error ? err.message : 'Network error'
+      console.warn('[Auth] Failed to reach /auth/me:', authError.value)
     }
 
     isCheckingAuth.value = false
@@ -80,6 +86,7 @@ export function useAuth() {
     isAuthenticated,
     isAuthEnabled,
     isCheckingAuth,
+    authError,
     checkAuth,
     logout,
   }

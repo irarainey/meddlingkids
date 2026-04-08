@@ -18,13 +18,14 @@ from typing import Any
 from playwright import async_api
 
 from src.data import loader
-from src.models.consent import ConsentPlatformProfile
+from src.models import consent
 from src.utils import logger
 
 log = logger.create_logger("ConsentPlatform")
 
 # Re-export so existing ``platform_detection.ConsentPlatformProfile``
 # references continue to work.
+ConsentPlatformProfile = consent.ConsentPlatformProfile
 __all__ = ["ConsentPlatformProfile"]
 
 
@@ -34,12 +35,12 @@ __all__ = ["ConsentPlatformProfile"]
 
 
 @functools.cache
-def get_platform_profiles() -> dict[str, ConsentPlatformProfile]:
+def get_platform_profiles() -> dict[str, consent.ConsentPlatformProfile]:
     """Load and cache all consent platform profiles."""
     return loader.load_consent_platforms()
 
 
-def get_platform_profile(key: str) -> ConsentPlatformProfile | None:
+def get_platform_profile(key: str) -> consent.ConsentPlatformProfile | None:
     """Look up a single platform profile by key (case-insensitive)."""
     profiles = get_platform_profiles()
     return profiles.get(key.lower().replace(" ", "_"))
@@ -52,7 +53,7 @@ def get_platform_profile(key: str) -> ConsentPlatformProfile | None:
 
 def detect_platform_from_cookies(
     cookies: Sequence[Mapping[str, Any]],
-) -> ConsentPlatformProfile | None:
+) -> consent.ConsentPlatformProfile | None:
     """Identify the active CMP from page cookies.
 
     Checks each platform's ``cookie_indicators`` against the
@@ -71,7 +72,7 @@ def detect_platform_from_cookies(
     cookie_names = {c.get("name", "") for c in cookies}
     profiles = get_platform_profiles()
 
-    best: ConsentPlatformProfile | None = None
+    best: consent.ConsentPlatformProfile | None = None
     best_hits = 0
 
     for profile in profiles.values():
@@ -123,7 +124,7 @@ _MEDIA_GROUP_CMP_MAP: dict[str, str] = {
 }
 
 
-def detect_platform_from_domain(domain: str) -> ConsentPlatformProfile | None:
+def detect_platform_from_domain(domain: str) -> consent.ConsentPlatformProfile | None:
     """Look up the CMP for a domain via the media group database.
 
     Uses :func:`~src.data.loader.find_media_group_by_domain` to
@@ -177,7 +178,7 @@ def detect_platform_from_domain(domain: str) -> ConsentPlatformProfile | None:
 
 async def detect_platform_from_page(
     page: async_api.Page,
-) -> ConsentPlatformProfile | None:
+) -> consent.ConsentPlatformProfile | None:
     """Detect which CMP is active by probing the page DOM.
 
     Tries each platform's ``container_selectors`` to see if
@@ -272,7 +273,7 @@ async def detect_platform_from_page(
 
 async def _find_button_by_patterns(
     page: async_api.Page,
-    profile: ConsentPlatformProfile,
+    profile: consent.ConsentPlatformProfile,
     patterns: list[str],
     label: str,
 ) -> tuple[async_api.Locator, async_api.Frame, str] | None:
@@ -332,7 +333,7 @@ async def _find_button_by_patterns(
 
 async def find_accept_button(
     page: async_api.Page,
-    profile: ConsentPlatformProfile,
+    profile: consent.ConsentPlatformProfile,
 ) -> tuple[async_api.Locator, async_api.Frame, str] | None:
     """Try to find an accept button using CMP-specific selectors.
 

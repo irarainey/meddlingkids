@@ -110,7 +110,8 @@ meddlingkids/
 │   └── public/                # Static assets
 ├── server/                    # Python FastAPI backend
 │   └── src/
-│       ├── main.py            # FastAPI application entry point
+│       ├── main.py            # FastAPI app factory, middleware, and static files
+│       ├── api_routes.py      # API route handlers and request models
 │       ├── auth/              # Optional OAuth2 authentication (Authorization Code + PKCE)
 │       ├── agents/            # AI agents (Microsoft Agent Framework)
 │       │   ├── prompts/       # System prompts (one module per agent)

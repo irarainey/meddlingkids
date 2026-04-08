@@ -67,11 +67,11 @@ class TestDomainInfoEndpoint:
 
     def test_empty_domains(self, client: TestClient) -> None:
         response = client.post("/api/domain-info", json={"domains": []})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_missing_domains_key(self, client: TestClient) -> None:
         response = client.post("/api/domain-info", json={})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 class TestStorageKeyInfoEndpoint:
@@ -88,7 +88,7 @@ class TestStorageKeyInfoEndpoint:
 
     def test_empty_keys(self, client: TestClient) -> None:
         response = client.post("/api/storage-key-info", json={"keys": []})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 class TestTcfPurposesEndpoint:
@@ -115,15 +115,11 @@ class TestTcStringDecodeEndpoint:
 
     def test_empty_tc_string(self, client: TestClient) -> None:
         response = client.post("/api/tc-string-decode", json={"tcString": ""})
-        assert response.status_code == 200
-        data = response.json()
-        assert "error" in data
+        assert response.status_code == 400
 
     def test_invalid_tc_string(self, client: TestClient) -> None:
         response = client.post("/api/tc-string-decode", json={"tcString": "invalid"})
-        assert response.status_code == 200
-        data = response.json()
-        assert "error" in data
+        assert response.status_code == 400
 
 
 class TestFetchScriptEndpoint:
@@ -131,7 +127,7 @@ class TestFetchScriptEndpoint:
 
     def test_missing_url(self, client: TestClient) -> None:
         response = client.post("/api/fetch-script", json={"url": ""})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_non_http_url(self, client: TestClient) -> None:
         response = client.post("/api/fetch-script", json={"url": "ftp://example.com/file"})
@@ -147,7 +143,7 @@ class TestCookieInfoEndpoint:
 
     def test_missing_name(self, client: TestClient) -> None:
         response = client.post("/api/cookie-info", json={"name": ""})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 class TestStorageInfoEndpoint:
@@ -155,7 +151,7 @@ class TestStorageInfoEndpoint:
 
     def test_missing_key(self, client: TestClient) -> None:
         response = client.post("/api/storage-info", json={"key": ""})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 class TestJsonDecodeError:

@@ -1,6 +1,40 @@
 
 # Changelog
 
+## 1.8.4
+
+### Changed
+
+- **Pydantic request validation on API endpoints** — Request bodies for `/api/analyze`, `/api/decode-tc-string`, and `/api/fetch-script` are now typed with Pydantic models, replacing manual JSON parsing. Schema validation errors return `422` with structured details; invalid TC strings return `400`.
+- **Client-side composable refactoring** — The SSE/EventSource connection logic has been extracted into a reusable `useSSEConnection` composable, and domain-enrichment lookups are centralised in a shared `useDomainInfo` composable with cross-tab caching. Tab components now consume shared formatter helpers for consistent risk badges, purpose labels, and URL display.
+- **Shared UI formatter utilities** — Risk/severity label and class helpers, purpose labels, URL stripping (query/fragment removal), and base-domain extraction have been extracted into `client/src/utils/formatters.ts`, eliminating duplicated formatting logic across tab components.
+- **Server `main.py` split into separate modules** — API route handlers and request models have been extracted into `server/src/api_routes.py`. `main.py` now contains only the app factory, middleware wiring, lifespan management, and static-file serving, following the single-responsibility principle.
+- **Cookie/storage `explain()` deduplicated** — The identical `explain()` methods in `CookieInfoAgent` and `StorageInfoAgent` have been consolidated into a shared `_explain_item()` helper on `BaseAgent`, eliminating ~40 lines of duplicated LLM call → parse → fallback logic.
+- **CORS origins parsed once** — `CORS_ALLOWED_ORIGINS` is now parsed in a single `get_allowed_origins()` function in `auth/config.py`, shared by both the CORS middleware and the OAuth trusted-host derivation.
+- **`_build_section` made public** — `StructuredReportAgent._build_section()` has been renamed to `build_section()` so `SectionExecutor` in the report workflow no longer calls a private method across class boundaries.
+- **Narrowed `except Exception` in agents** — Broad `except Exception` catches in `BaseAgent._parse_response`, `StructuredReportAgent.build_section`, `TrackingAnalysisAgent`, and `RetryChatMiddleware` have been narrowed to specific types (`ValidationError`, `ValueError`, `AttributeError`, `TypeError`) to avoid swallowing unexpected bugs.
+- **Auth config/logout exceptions logged** — The silent `except Exception: pass` in `get_trusted_hosts()` (origin parsing) and the metadata fetch in `auth_logout` now log warnings instead of silently swallowing errors.
+- **TrackerGraphTab decomposed** — The 2138-line god component has been split into `tracker-graph-constants.ts` (types, colours, domain-classification data) and `useGraphData.ts` (graph computation composable), reducing the component to ~1525 lines with all D3 rendering, minimap, and lifecycle logic remaining in place.
+- **`localStorage`/`sessionStorage` refs renamed** — Reactive refs in `useTrackingAnalysis` that shadowed the browser globals have been renamed to `localStorageItems` and `sessionStorageItems`.
+- **Runtime-validated SSE payloads** — SSE event handlers in `useTrackingAnalysis` now use runtime type guards (`typeof`, `Array.isArray`) via helper functions (`asRecord`, `str`, `num`, `arr`) instead of bare `as` type assertions.
+- **`useAuth` distinguishes network errors** — Network failures when checking `/auth/me` now surface an `authError` ref instead of silently assuming "auth disabled / user authenticated".
+- **Tab component catch blocks log warnings** — Previously silent `catch {}` blocks in `CookiesTab`, `StorageTab`, `ConsentTab`, and `useDomainInfo` now `console.warn` with context so fetch failures are visible during development.
+- **`ScriptViewerDialog` response validation** — The `/api/fetch-script` response is now validated at runtime (`typeof` checks on `content`, `error`, `truncated`) instead of using a bare `as` type assertion.
+
+### Added
+
+- **DNS-pinned fetch-script endpoint (SSRF mitigation)** — `/api/fetch-script` now resolves the target hostname upfront, validates the resolved IP against an allow-list (blocking private/reserved ranges), and pins the validated address for the actual HTTP request. Redirect targets are re-validated to prevent DNS rebinding / TOCTOU attacks.
+- **`useDomainInfo` composable** — New composable that batches domain-enrichment lookups and caches results, so multiple tabs share a single lookup per domain.
+- **`useSSEConnection` composable** — Reusable SSE wrapper with automatic cleanup, error hooks, and JSON parsing, replacing duplicated EventSource logic in the analysis flow.
+- **API base URL helper** — New `client/src/utils/api.ts` centralises the API base URL for all client-side fetch calls.
+
+### Fixed
+
+- **Auth0 issuer validation failure** — Fixed `InvalidClaimError: Invalid claim 'iss'` when logging in with Auth0. The `OAUTH_ISSUER` value was normalised with `rstrip("/")` before being used for ID token issuer validation, but Auth0 tokens always include a trailing slash in the `iss` claim (e.g. `https://example.auth0.com/`). The raw environment variable value is now preserved for claim validation, with slash-stripping applied only when constructing URL paths (metadata URL and logout fallback).
+- **Script analysis fallback race condition** — Fixed a race where concurrent requests could fail to retry when the fallback client was activated mid-flight. Fallback activation is now safe for concurrent callers.
+- **Empty/missing input validation** — Endpoints now return proper HTTP error responses (`422` for schema validation failures, `400` for invalid TC strings) instead of ad-hoc success/error payloads for empty or missing inputs.
+- **Fetch-script redirect TOCTOU closed** — Redirect-target validation in `/api/fetch-script` was calling `validate_analysis_url()`, which performs a fresh DNS lookup — creating a time-of-check/time-of-use window despite the connection being pinned. Replaced with `validate_url_surface()` which checks scheme, blocked hostnames, and IP literals without re-resolving DNS.
+
 ## 1.8.3
 
 ### Changed

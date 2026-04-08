@@ -13,6 +13,7 @@ from unittest import mock
 import pytest
 
 from src.agents import middleware as middleware_mod
+from src.agents.llm_client import LLMConnectionError
 
 # ── _is_retryable ──────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ class TestTimeoutErrorMessage:
         context = mock.MagicMock()
         context.result = None
 
-        with pytest.raises(middleware_mod.LLMConnectionError, match=r"did not respond in time"):
+        with pytest.raises(LLMConnectionError, match=r"did not respond in time"):
             await middleware.process(context, slow_next)
 
         assert call_count == 2  # initial + 1 retry

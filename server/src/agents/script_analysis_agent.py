@@ -67,6 +67,11 @@ class ScriptAnalysisAgent(base.BaseAgent):
         user_message = f"Script: {url}\n{snippet}"
         log.debug("Analysing script", {"url": url})
 
+        # Capture fallback state before the first attempt so we can
+        # tell whether a concurrent request activated the fallback
+        # while our LLM call was in flight.
+        was_on_fallback = self._using_fallback
+
         try:
             result = await self._try_complete(user_message, url)
             if result is not None:
@@ -93,9 +98,17 @@ class ScriptAnalysisAgent(base.BaseAgent):
                 {"url": url},
             )
             self.activate_fallback()
-        elif self._using_fallback:
-            # Already on fallback — nothing more to try.
+        elif self._using_fallback and was_on_fallback:
+            # Already on fallback for our first attempt — nothing more to try.
             return None
+        elif self._using_fallback:
+            # A concurrent request activated fallback while our first
+            # attempt (on the old primary client) was in flight.
+            # The agent is now using the fallback client, so retry.
+            log.warn(
+                "Primary deployment failed, concurrent fallback already active",
+                {"url": url},
+            )
         else:
             # No fallback available at all.
             log.error("Script analysis failed, no fallback available", {"url": url})

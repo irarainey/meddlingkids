@@ -16,7 +16,7 @@ import pydantic
 from src.agents import config, llm_client
 from src.agents import context_providers as ctx_providers
 from src.agents import middleware as middleware_mod
-from src.utils import image, logger
+from src.utils import image, json_parsing, logger
 
 log = logger.create_logger("BaseAgent")
 
@@ -215,6 +215,53 @@ class BaseAgent:
             context_providers=[ctx_providers.GdprReferenceProvider()],
         )
 
+    async def _explain_item(
+        self,
+        user_message: str,
+        result_model: type[T],
+        *,
+        log_label: str,
+        log_context: dict[str, object],
+    ) -> T | None:
+        """Run an LLM explanation call and parse the structured result.
+
+        Shared by cookie and storage info agents, which follow
+        the same truncate → prompt → parse → fallback pattern.
+
+        Args:
+            user_message: Formatted user prompt.
+            result_model: Pydantic model for the expected response.
+            log_label: Human label for log messages (e.g. "cookie info").
+            log_context: Extra fields for log entries.
+
+        Returns:
+            Parsed model instance or ``None`` on failure.
+        """
+        log.debug(f"Explaining {log_label} via LLM", log_context)
+
+        try:
+            response = await self._complete(user_message)
+            parsed = self._parse_response(response, result_model)
+            if parsed:
+                return parsed
+
+            # Fallback: manual JSON parse from response text
+            raw = json_parsing.load_json_from_text(response.text)
+            if isinstance(raw, dict):
+                try:
+                    return result_model.model_validate(raw)
+                except (pydantic.ValidationError, ValueError):
+                    pass
+
+            log.warn(f"Failed to parse {log_label} response", log_context)
+            return None
+        except Exception as exc:
+            log.warn(
+                f"{log_label} LLM call failed: {exc}",
+                log_context,
+            )
+            return None
+
     # ── Convenience helpers ─────────────────────────────────────
 
     async def _complete(
@@ -362,7 +409,7 @@ class BaseAgent:
             val = response.value
             if val is not None and isinstance(val, model):
                 return val
-        except Exception:
+        except (AttributeError, TypeError, pydantic.ValidationError):
             pass
 
         # Fallback: parse response.text directly.
@@ -374,7 +421,7 @@ class BaseAgent:
             return None
         try:
             return model.model_validate_json(text)
-        except Exception as exc:
+        except (pydantic.ValidationError, ValueError) as exc:
             log.warn(
                 f"{self.agent_name}: failed to parse structured output: {exc}",
                 {"responsePreview": text[:200]},

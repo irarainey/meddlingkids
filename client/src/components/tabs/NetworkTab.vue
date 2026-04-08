@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import type { NetworkRequest } from '../../types'
-import { countryFlagUrl, countryName, getResourceTypeIcon, truncateValue } from '../../utils'
+import { countryFlagUrl, countryName, getResourceTypeIcon, truncateValue, stripQueryAndFragment } from '../../utils'
+import { useDomainInfo } from '../../composables'
 
 /**
  * Tab panel displaying network requests grouped by domain.
@@ -18,16 +19,6 @@ const expandedParams = ref<string | null>(null)
 
 function toggleParams(key: string): void {
   expandedParams.value = expandedParams.value === key ? null : key
-}
-
-/** Extract origin + pathname from a URL (no query string). */
-function shortUrl(url: string): string {
-  try {
-    const u = new URL(url)
-    return u.origin + u.pathname
-  } catch {
-    return url
-  }
 }
 
 /** Parse query parameters from a URL. Returns empty array if none. */
@@ -77,38 +68,7 @@ function parsePostData(data: string): { key: string; value: string }[] | null {
   return null
 }
 
-/** Cached domain info keyed by domain. */
-const domainInfo = reactive<Record<string, { company: string | null; description: string | null; url: string | null; country: string | null }>>({})
-
-/** Fetch company/description info for all visible domains. */
-async function fetchDomainInfo(domains: string[]): Promise<void> {
-  const unknown = domains.filter((d) => !(d in domainInfo))
-  if (unknown.length === 0) return
-
-  // Batch into chunks so flags and company info appear progressively
-  // instead of waiting for a single large request to complete.
-  const BATCH_SIZE = 30
-  const apiBase = import.meta.env.VITE_API_URL || ''
-
-  for (let i = 0; i < unknown.length; i += BATCH_SIZE) {
-    const batch = unknown.slice(i, i + BATCH_SIZE)
-    try {
-      const response = await fetch(`${apiBase}/api/domain-info`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domains: batch }),
-      })
-      if (response.ok) {
-        const data = await response.json()
-        for (const [domain, info] of Object.entries(data)) {
-          domainInfo[domain] = info as { company: string | null; description: string | null; url: string | null; country: string | null }
-        }
-      }
-    } catch {
-      // Silently fail — enrichment is non-critical
-    }
-  }
-}
+const { domainInfo, fetchDomainInfo } = useDomainInfo()
 
 watch(
   () => Object.keys(props.networkByDomain),
@@ -191,7 +151,7 @@ watch(
             <span v-if="request.duplicateCount && request.duplicateCount > 1" class="duplicate-badge"
               >×{{ request.duplicateCount }}</span
             >
-            <a :href="request.url" target="_blank" class="request-url" :title="request.url">{{ shortUrl(request.url) }}</a>
+            <a :href="request.url" target="_blank" class="request-url" :title="request.url">{{ stripQueryAndFragment(request.url) }}</a>
             <button
               v-if="getQueryParams(request.url).length > 0"
               class="params-toggle"

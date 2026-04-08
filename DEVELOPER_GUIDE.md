@@ -338,6 +338,7 @@ user                 // AuthUser | null (name, email, picture)
 isAuthenticated      // Whether the user has a valid session
 isAuthEnabled        // Whether OAuth is configured on the server
 isCheckingAuth       // Loading state during /auth/me check
+authError            // Error message if /auth/me check failed (network error, etc.)
 checkAuth()          // Checks session on mount, redirects if 401
 logout()             // POSTs to /auth/logout (CSRF-safe)
 ```
@@ -361,8 +362,8 @@ cookies              // TrackedCookie[]
 scripts              // TrackedScript[]
 scriptGroups         // ScriptGroup[] (grouped similar scripts)
 networkRequests      // NetworkRequest[]
-localStorage         // StorageItem[]
-sessionStorage       // StorageItem[]
+localStorageItems    // StorageItem[]
+sessionStorageItems  // StorageItem[]
 
 // Analysis results
 structuredReport     // Structured per-section report
@@ -386,24 +387,33 @@ selectedScreenshot   // Currently selected screenshot index
 
 ```typescript
 // In analyzeUrl():
-const eventSource = new EventSource(`/api/open-browser-stream?url=...&device=...&clear-cache=...`)
+// Uses the useSSEConnection composable to manage the EventSource lifecycle.
+// The composable handles JSON parsing, auto-cleanup on unmount, and error hooks.
+const sseConnection = useSSEConnection(sseUrl, {
+  progress(data) { /* ... */ },
+  screenshot(data) { /* ... */ },
+  // ...event handlers per SSE event type
+})
 
 // 15-second connection timeout safety net — if no events arrive,
 // the connection is aborted and an error dialog is shown.
 
-eventSource.addEventListener('progress', (e) => {
-  // Update loading indicators — monotonic: status message and
-  // progress bar only advance forward.  Concurrent pipeline stages
-  // may emit events out of order; lower-percentage events are
-  // silently ignored to prevent the status text from jumping
-  // backward (e.g. a script analysis event at 84% arriving after
-  // a report event at 91%).
-  //
-  // During the analysis phase (76–95%), a rotation timer cycles
-  // through contextual messages every 3.5s when no real server
-  // event arrives — keeps the UI feeling responsive during long
-  // concurrent LLM calls.
-})
+// progress handler:
+//   Update loading indicators — monotonic: status message and
+//   progress bar only advance forward.  Concurrent pipeline stages
+//   may emit events out of order; lower-percentage events are
+//   silently ignored to prevent the status text from jumping
+//   backward (e.g. a script analysis event at 84% arriving after
+//   a report event at 91%).
+//
+//   During the analysis phase (76–95%), a rotation timer cycles
+//   through contextual messages every 3.5s when no real server
+//   event arrives — keeps the UI feeling responsive during long
+//   concurrent LLM calls.
+//
+// SSE payloads are validated at runtime using type guards
+// (typeof, Array.isArray) via helper functions (asRecord, str,
+// num, arr) instead of bare `as` type assertions.
 
 eventSource.addEventListener('screenshot', (e) => {
   // Add screenshot, update data arrays
@@ -462,12 +472,18 @@ App.vue
 │       ├── StorageTab
 │       ├── NetworkTab
 │       ├── TrackerGraphTab (D3.js force-directed network graph with category legend filters)
+│       │   ├── tracker-graph-constants.ts (types, colours, domain-classification data)
+│       │   └── useGraphData.ts (graph data computation composable)
 │       ├── ScriptsTab (uses ScriptViewerDialog for source viewing)
 ```
 
 ---
 
 ## Server Architecture
+
+### Module Structure
+
+The server entry point is `main.py`, which creates the FastAPI app, wires middleware (CORS, GZip, optional OAuth2), and mounts static files. API route handlers and their Pydantic request models live in `api_routes.py`, keeping `main.py` focused on app configuration. Auth routes are in `auth/auth_routes.py`.
 
 ### Authentication Layer (Optional)
 
@@ -510,12 +526,12 @@ Key framework types used:
 | `SummaryFindingsAgent` | `summary_findings_agent.py` | Generate structured summary findings with deterministic metric anchoring. Receives consent delta (post-consent changes) and consent platform data for richer findings. Results sorted by severity (critical first, positive last) |
 | `StructuredReportAgent` | `structured_report_agent.py` | Generate structured privacy report with 10 concurrent section LLM calls via MAF WorkflowBuilder fan-out/fan-in. Each section executor fires a real-time progress callback on completion. Each section receives tailored context via `build_section_context()` and a `SectionNeeds` configuration matrix, including only the data blocks it requires (30–90% token reduction vs full context). Includes a plain-language consent digest section and deterministic user-rights note. Results sorted by severity within each section. Uses a 60 s per-call timeout |
 | `TrackingAnalysisAgent` | `tracking_analysis_agent.py` | Overall privacy risk narrative (streaming markdown) — scope narrowed to 3 sections (Tracking Technologies, Privacy Risk Assessment, Consent Dialog Analysis). Receives decoded privacy cookies and decoded consent signals. Uses `run(stream=True)` with a 90 s streaming inactivity timeout — raises `TimeoutError` if no token arrives within 90 s |
-| `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). LLM fallback for cookies not in known databases |
-| `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). LLM fallback for keys not in known databases |
+| `CookieInfoAgent` | `cookie_info_agent.py` | Explain individual cookies (purpose, who sets it, risk level, privacy note). Delegates to `BaseAgent._explain_item()` for the LLM call → parse → fallback flow. LLM fallback for cookies not in known databases |
+| `StorageInfoAgent` | `storage_info_agent.py` | Explain individual storage keys (purpose, who sets it, risk level, privacy note). Delegates to `BaseAgent._explain_item()` for the LLM call → parse → fallback flow. LLM fallback for keys not in known databases |
 
 | Infrastructure | Module | Responsibility |
 |----------------|--------|---------------|
-| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, per-agent deployment override support via `config.get_agent_deployment()`, and `use_responses_api` flag for Responses API client selection |
+| `BaseAgent` | `base.py` | Shared agent factory with middleware, structured output, Azure schema fixes, configurable `call_timeout` (default 30 s) passed to `RetryChatMiddleware`, per-agent deployment override support via `config.get_agent_deployment()`, `use_responses_api` flag for Responses API client selection, and `_explain_item()` shared helper for the cookie/storage info agents' LLM explain → parse → fallback pattern |
 | `Config` | `config.py` | LLM configuration via `pydantic-settings` `BaseSettings` (Azure / OpenAI) with per-agent deployment overrides (`get_agent_deployment()`, `_AGENT_DEPLOYMENT_OVERRIDES`). Azure supports API key and Managed Identity authentication (`AZURE_USE_MANAGED_IDENTITY`, `AZURE_CLIENT_ID`). `validate_llm_config()` is cached with `@functools.lru_cache(maxsize=1)` — environment variables are read once at startup |
 | `LLM Client` | `llm_client.py` | Chat client factory (`SupportsChatGetResponse`) with `deployment_override` support for per-agent model selection, `use_responses_api` for creating `OpenAIChatClient` (Responses API) instances using the versionless `/openai/v1/` endpoint, and Managed Identity support via `DefaultAzureCredential` when `AZURE_USE_MANAGED_IDENTITY=true` |
 | `Middleware` | `middleware.py` | `TimingChatMiddleware` (duration + token usage tracking + token estimation before each call) + `RetryChatMiddleware` with exponential backoff, per-call timeout via `asyncio.wait_for()`, and a global concurrency semaphore (max 10 in-flight LLM calls) to prevent overwhelming the endpoint. Raises `OutputTruncatedError` (non-retryable) when `finish_reason=length` produces an empty response |
@@ -637,7 +653,7 @@ The data package is split into feature-specific sub-modules. `loader.py` is a th
 | `risk.py` | Shared risk-scoring helpers (`risk_label`) |
 | `serialization.py` | Pydantic model serialization helpers |
 | `text.py` | Domain and ANSI text utilities — `strip_ansi()` and `sanitize_domain()` extracted from inline `re.sub()` calls |
-| `url.py` | URL and domain utilities, SSRF prevention (`validate_analysis_url()`) |
+| `url.py` | URL and domain utilities, SSRF prevention (`validate_analysis_url()`, `resolve_and_validate()` for DNS-pinned connections, `validate_url_surface()` for redirect validation without DNS re-resolution) |
 
 ---
 
@@ -678,7 +694,7 @@ Tracking data collected
 build_tracking_summary() → Formatted text for LLM
     │
     ▼
-BaseAgent._build_agent() → Creates Agent (agent_framework.Agent)
+BaseAgent._create_agent() → Creates Agent (agent_framework.Agent)
     │                         with SupportsChatGetResponse client + middleware
     │
     ├── TimingChatMiddleware → Logs duration + records token usage

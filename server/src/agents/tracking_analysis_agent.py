@@ -7,6 +7,8 @@ Consistent with other agents' structured-output approach.
 
 from __future__ import annotations
 
+import pydantic
+
 from src.agents import base, config, context_builder
 from src.agents.prompts import tracking_analysis
 from src.analysis import domain_cache
@@ -14,14 +16,6 @@ from src.models import analysis, consent
 from src.utils import json_parsing, logger
 
 log = logger.create_logger("TrackingAnalysisAgent")
-
-
-# ── Private response wrapper ───────────────────────────────────
-# The LLM sees this schema via ``response_format``.  We map
-# the parsed result to the public ``TrackingAnalysisResult``
-# model in ``models.analysis`` before returning.
-
-import pydantic  # noqa: E402 (grouped after local imports)  # noqa: important[wrong-import-order]
 
 
 class _TrackingAnalysisResponse(pydantic.BaseModel):
@@ -164,7 +158,7 @@ def _parse_text_fallback(
         return None
     try:
         return analysis.TrackingAnalysisResult.model_validate(data)
-    except Exception:
+    except (pydantic.ValidationError, ValueError):
         return None
 
 

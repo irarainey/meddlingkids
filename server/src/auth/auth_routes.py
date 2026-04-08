@@ -203,7 +203,8 @@ async def auth_logout(request: requests.Request) -> responses.RedirectResponse:
     oauth = _get_oauth()
     try:
         metadata = await oauth.provider.load_server_metadata()
-    except Exception:
+    except Exception as exc:
+        log.warn("Failed to load OIDC server metadata for logout", {"error": str(exc)})
         metadata = {}
 
     end_session = metadata.get("end_session_endpoint")
@@ -218,7 +219,7 @@ async def auth_logout(request: requests.Request) -> responses.RedirectResponse:
 
     # Fallback for providers (e.g. Auth0) that don't advertise
     # end_session_endpoint but do support /oidc/logout.
-    issuer = cfg["issuer"]
+    issuer = cfg["issuer"].rstrip("/")
     params = urllib.parse.urlencode(
         {
             "client_id": cfg["client_id"],
