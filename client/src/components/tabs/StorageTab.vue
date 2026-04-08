@@ -45,8 +45,8 @@ async function fetchStorageKeyHints(keys: string[]): Promise<void> {
         storageKeyHints[key] = info as { setBy: string | null; description: string | null }
       }
     }
-  } catch {
-    // Silently fail — hints are non-critical
+  } catch (err) {
+    console.warn('[StorageTab] Failed to fetch storage key hints:', err)
   }
 }
 
@@ -94,8 +94,8 @@ async function toggleStorageInfo(storageType: string, item: StorageItem): Promis
     if (response.ok) {
       storageInfoCache[key] = await response.json()
     }
-  } catch {
-    // Silently fail — the user can try again
+  } catch (err) {
+    console.warn('[StorageTab] Failed to fetch storage info:', err)
   } finally {
     loadingKeys.delete(key)
   }

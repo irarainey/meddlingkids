@@ -308,7 +308,7 @@ class StructuredReportAgent(base.BaseAgent):
         log.end_timer("structured-report", "Structured report complete")
         return result
 
-    async def _build_section(
+    async def build_section(
         self,
         system_prompt: str,
         data_context: str,
@@ -349,7 +349,7 @@ class StructuredReportAgent(base.BaseAgent):
             if raw:
                 try:
                     return response_cls.model_validate(raw)
-                except Exception:
+                except (pydantic.ValidationError, ValueError):
                     # Try unwrapping nested "section" key
                     if isinstance(raw, dict) and "section" in raw:
                         return response_cls.model_validate({"section": raw["section"]})

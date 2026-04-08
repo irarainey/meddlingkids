@@ -59,8 +59,9 @@ watch(
       } else {
         tcfError.value = true
       }
-    } catch {
+    } catch (err) {
       tcfError.value = true
+      console.warn('[ConsentTab] Failed to fetch TCF purposes:', err)
     } finally {
       tcfLoading.value = false
     }

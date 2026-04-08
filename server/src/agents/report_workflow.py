@@ -88,7 +88,7 @@ class SectionExecutor(agent_framework.Executor):
     """Executor that builds a single report section via LLM.
 
     Receives a ``ReportInput``, builds the section-specific
-    data context, calls the agent's ``_build_section`` method,
+    data context, calls the agent's ``build_section`` method,
     and sends a ``SectionResult`` downstream.
     """
 
@@ -155,7 +155,7 @@ class SectionExecutor(agent_framework.Executor):
             social_media_trackers=self._social_media_trackers,
         )
 
-        result = await self._agent._build_section(
+        result = await self._agent.build_section(
             self._system_prompt,
             data_context,
             self._response_model,

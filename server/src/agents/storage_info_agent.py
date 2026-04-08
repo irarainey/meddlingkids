@@ -11,10 +11,6 @@ from __future__ import annotations
 from src.agents import base, config
 from src.agents.prompts import storage_info
 from src.models import item_info
-from src.utils import json_parsing, logger
-
-log = logger.create_logger("StorageInfoAgent")
-
 
 # ── Structured output model ─────────────────────────────────────
 
@@ -57,27 +53,10 @@ class StorageInfoAgent(base.BaseAgent):
         """
         truncated_value = value[:200] if value else "[empty]"
         user_message = f"Storage key: {key}\nType: {storage_type}\nValue: {truncated_value}"
-        log.debug("Explaining storage key via LLM", {"key": key, "type": storage_type})
 
-        try:
-            response = await self._complete(user_message)
-            parsed = self._parse_response(response, StorageInfoResult)
-            if parsed:
-                return parsed
-
-            # Fallback: manual JSON parse from response text
-            raw = json_parsing.load_json_from_text(response.text)
-            if isinstance(raw, dict):
-                try:
-                    return StorageInfoResult.model_validate(raw)
-                except Exception:
-                    pass
-
-            log.warn("Failed to parse storage info response", {"key": key})
-            return None
-        except Exception as exc:
-            log.warn(
-                f"Storage info LLM call failed: {exc}",
-                {"key": key, "type": storage_type},
-            )
-            return None
+        return await self._explain_item(
+            user_message,
+            StorageInfoResult,
+            log_label="storage info",
+            log_context={"key": key, "type": storage_type},
+        )

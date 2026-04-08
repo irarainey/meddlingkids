@@ -105,8 +105,8 @@ async function toggleCookieInfo(cookie: TrackedCookie): Promise<void> {
     if (response.ok) {
       cookieInfoCache[key] = await response.json()
     }
-  } catch {
-    // Silently fail — the user can try again
+  } catch (err) {
+    console.warn('[CookiesTab] Failed to fetch cookie info:', err)
   } finally {
     loadingKeys.delete(key)
   }

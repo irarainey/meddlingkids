@@ -34,11 +34,19 @@ export function useDomainInfo() {
         if (response.ok) {
           const data = await response.json()
           for (const [domain, info] of Object.entries(data)) {
-            cache[domain] = info as DomainInfoEntry
+            if (typeof info === 'object' && info !== null) {
+              const entry = info as Record<string, unknown>
+              cache[domain] = {
+                company: typeof entry.company === 'string' ? entry.company : null,
+                description: typeof entry.description === 'string' ? entry.description : null,
+                url: typeof entry.url === 'string' ? entry.url : null,
+                country: typeof entry.country === 'string' ? entry.country : null,
+              }
+            }
           }
         }
-      } catch {
-        // Enrichment is non-critical
+      } catch (err) {
+        console.warn('[DomainInfo] Failed to fetch domain info batch:', err)
       }
     }
   }

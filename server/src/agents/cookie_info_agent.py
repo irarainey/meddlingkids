@@ -11,10 +11,6 @@ from __future__ import annotations
 from src.agents import base, config
 from src.agents.prompts import cookie_info
 from src.models import item_info
-from src.utils import json_parsing, logger
-
-log = logger.create_logger("CookieInfoAgent")
-
 
 # ── Structured output model ─────────────────────────────────────
 
@@ -55,30 +51,12 @@ class CookieInfoAgent(base.BaseAgent):
         Returns:
             Structured cookie information, or ``None`` on failure.
         """
-        # Truncate the value to avoid wasting tokens on long encoded strings
         truncated_value = value[:200] if value else "[empty]"
         user_message = f"Cookie name: {name}\nDomain: {domain}\nValue: {truncated_value}"
-        log.debug("Explaining cookie via LLM", {"name": name, "domain": domain})
 
-        try:
-            response = await self._complete(user_message)
-            parsed = self._parse_response(response, CookieInfoResult)
-            if parsed:
-                return parsed
-
-            # Fallback: manual JSON parse from response text
-            raw = json_parsing.load_json_from_text(response.text)
-            if isinstance(raw, dict):
-                try:
-                    return CookieInfoResult.model_validate(raw)
-                except Exception:
-                    pass
-
-            log.warn("Failed to parse cookie info response", {"name": name})
-            return None
-        except Exception as exc:
-            log.warn(
-                f"Cookie info LLM call failed: {exc}",
-                {"name": name, "domain": domain},
-            )
-            return None
+        return await self._explain_item(
+            user_message,
+            CookieInfoResult,
+            log_label="cookie info",
+            log_context={"name": name, "domain": domain},
+        )

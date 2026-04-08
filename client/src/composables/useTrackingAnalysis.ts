@@ -22,6 +22,29 @@ import type {
 import { API_BASE } from '../utils/api'
 import { useSSEConnection } from './useSSEConnection'
 
+/** Safely coerce SSE payload to a record. Returns empty object for non-objects. */
+function asRecord(data: unknown): Record<string, unknown> {
+  return typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {}
+}
+
+/** Extract a string field, falling back to a default. */
+function str(obj: Record<string, unknown>, key: string, fallback = ''): string {
+  const v = obj[key]
+  return typeof v === 'string' ? v : fallback
+}
+
+/** Extract a number field, falling back to a default. */
+function num(obj: Record<string, unknown>, key: string, fallback = 0): number {
+  const v = obj[key]
+  return typeof v === 'number' ? v : fallback
+}
+
+/** Extract an array field, falling back to an empty array. */
+function arr<T>(obj: Record<string, unknown>, key: string): T[] {
+  const v = obj[key]
+  return Array.isArray(v) ? (v as T[]) : []
+}
+
 /**
  * Composable that provides all state and methods for tracking analysis.
  * Handles SSE connection, data collection, and computed groupings.
@@ -85,9 +108,9 @@ export function useTrackingAnalysis() {
   /** Script groups (e.g., application chunks) */
   const scriptGroups = ref<ScriptGroup[]>([])
   /** localStorage items from the page */
-  const localStorage = ref<StorageItem[]>([])
+  const localStorageItems = ref<StorageItem[]>([])
   /** sessionStorage items from the page */
-  const sessionStorage = ref<StorageItem[]>([])
+  const sessionStorageItems = ref<StorageItem[]>([])
   /** Network requests made by the page */
   const networkRequests = ref<NetworkRequest[]>([])
 
@@ -298,8 +321,8 @@ export function useTrackingAnalysis() {
     cookies.value = []
     scripts.value = []
     scriptGroups.value = []
-    localStorage.value = []
-    sessionStorage.value = []
+    localStorageItems.value = []
+    sessionStorageItems.value = []
     networkRequests.value = []
     structuredReport.value = null
     analysisError.value = ''
@@ -416,29 +439,30 @@ export function useTrackingAnalysis() {
 
       const sseConnection = useSSEConnection(sseUrl, {
         progress(_data: unknown) {
-          const data = _data as Record<string, unknown>
+          const data = asRecord(_data)
           if (connectionTimeout) {
             clearTimeout(connectionTimeout)
             connectionTimeout = null
           }
+          const progress = num(data, 'progress')
           // Only advance — never allow the progress bar or status
           // message to go backward.  The server emits progress
           // values from multiple concurrent pipeline stages that
           // may arrive out of order (e.g. script analysis at 84%
           // interleaved with report generation at 91%).
-          if ((data.progress as number) >= progressPercent.value) {
-            statusMessage.value = data.message as string
-            progressStep.value = data.step as string
-            progressPercent.value = data.progress as number
+          if (progress >= progressPercent.value) {
+            statusMessage.value = str(data, 'message')
+            progressStep.value = str(data, 'step')
+            progressPercent.value = progress
           }
 
           // During the analysis phase (76–94%), schedule rotating
           // contextual messages so the UI stays dynamic while
           // concurrent LLM calls are in flight.
-          if ((data.progress as number) >= 76 && (data.progress as number) < 95) {
+          if (progress >= 76 && progress < 95) {
             clearAnalysisRotation()
             scheduleAnalysisRotation()
-          } else if ((data.progress as number) >= 95) {
+          } else if (progress >= 95) {
             clearAnalysisRotation()
           }
 
@@ -446,7 +470,7 @@ export function useTrackingAnalysis() {
           // The actual 'complete' event (with the full payload)
           // should arrive within seconds.  If it doesn't, the
           // payload was likely too large or got dropped.
-          if ((data.progress as number) >= 100 && !completionTimeout) {
+          if (progress >= 100 && !completionTimeout) {
             completionTimeout = setTimeout(() => {
               if (!hasCompleted && !isComplete.value) {
                 console.error('[SSE] Completion timeout — complete event not received')
@@ -465,30 +489,32 @@ export function useTrackingAnalysis() {
         },
 
         screenshot(_data: unknown) {
-          const data = _data as Record<string, unknown>
-          if (data.screenshot) {
-            screenshots.value.push(data.screenshot as string)
+          const data = asRecord(_data)
+          const shot = data.screenshot
+          if (typeof shot === 'string') {
+            screenshots.value.push(shot)
           }
-          cookies.value = (data.cookies as TrackedCookie[]) || []
-          scripts.value = (data.scripts as TrackedScript[]) || []
-          networkRequests.value = (data.networkRequests as NetworkRequest[]) || []
-          localStorage.value = (data.localStorage as StorageItem[]) || []
-          sessionStorage.value = (data.sessionStorage as StorageItem[]) || []
+          cookies.value = arr<TrackedCookie>(data, 'cookies')
+          scripts.value = arr<TrackedScript>(data, 'scripts')
+          networkRequests.value = arr<NetworkRequest>(data, 'networkRequests')
+          localStorageItems.value = arr<StorageItem>(data, 'localStorage')
+          sessionStorageItems.value = arr<StorageItem>(data, 'sessionStorage')
         },
 
         screenshotUpdate(_data: unknown) {
-          const data = _data as Record<string, unknown>
-          if (data.screenshot && screenshots.value.length > 0) {
-            screenshots.value[screenshots.value.length - 1] = data.screenshot as string
+          const data = asRecord(_data)
+          const shot = data.screenshot
+          if (typeof shot === 'string' && screenshots.value.length > 0) {
+            screenshots.value[screenshots.value.length - 1] = shot
           }
         },
 
         pageError(_data: unknown) {
-          const data = _data as Record<string, unknown>
+          const data = asRecord(_data)
           pageError.value = {
             type: data.isAccessDenied ? 'access-denied' : data.isOverlayBlocked ? 'overlay-blocked' : 'server-error',
-            message: (data.message as string) || 'Failed to load page',
-            statusCode: (data.statusCode as number | undefined) ?? null,
+            message: str(data, 'message', 'Failed to load page'),
+            statusCode: typeof data.statusCode === 'number' ? data.statusCode : null,
           }
           showPageErrorDialog.value = true
           isLoading.value = false
@@ -496,44 +522,42 @@ export function useTrackingAnalysis() {
         },
 
         consentDetails(_data: unknown) {
-          consentDetails.value = _data as ConsentDetails
+          if (typeof _data === 'object' && _data !== null) {
+            consentDetails.value = _data as ConsentDetails
+          }
         },
 
         decodedCookies(_data: unknown) {
-          decodedCookies.value = _data as DecodedCookies
+          if (typeof _data === 'object' && _data !== null) {
+            decodedCookies.value = _data as DecodedCookies
+          }
         },
 
         // ── Multi-part completion events ──────────────────────
         // The server splits the final payload across several SSE
         // events to keep each well under browser/proxy size limits.
         completeTracking(_data: unknown) {
-          const data = _data as Record<string, unknown>
-          if (data.cookies) {
-            cookies.value = data.cookies as TrackedCookie[]
-          }
-          if (data.networkRequests) {
-            networkRequests.value = data.networkRequests as NetworkRequest[]
-          }
-          if (data.localStorage) {
-            localStorage.value = data.localStorage as StorageItem[]
-          }
-          if (data.sessionStorage) {
-            sessionStorage.value = data.sessionStorage as StorageItem[]
-          }
+          const data = asRecord(_data)
+          const c = data.cookies
+          if (Array.isArray(c)) cookies.value = c as TrackedCookie[]
+          const nr = data.networkRequests
+          if (Array.isArray(nr)) networkRequests.value = nr as NetworkRequest[]
+          const ls = data.localStorage
+          if (Array.isArray(ls)) localStorageItems.value = ls as StorageItem[]
+          const ss = data.sessionStorage
+          if (Array.isArray(ss)) sessionStorageItems.value = ss as StorageItem[]
         },
 
         completeScripts(_data: unknown) {
-          const data = _data as Record<string, unknown>
-          if (data.scripts) {
-            scripts.value = data.scripts as TrackedScript[]
-          }
-          if (data.scriptGroups) {
-            scriptGroups.value = data.scriptGroups as ScriptGroup[]
-          }
+          const data = asRecord(_data)
+          const s = data.scripts
+          if (Array.isArray(s)) scripts.value = s as TrackedScript[]
+          const sg = data.scriptGroups
+          if (Array.isArray(sg)) scriptGroups.value = sg as ScriptGroup[]
         },
 
         complete(_data: unknown) {
-          const data = _data as Record<string, unknown>
+          const data = asRecord(_data)
           if (connectionTimeout) {
             clearTimeout(connectionTimeout)
             connectionTimeout = null
@@ -543,38 +567,40 @@ export function useTrackingAnalysis() {
             completionTimeout = null
           }
 
-          if (data.summaryFindings) {
-            summaryFindings.value = data.summaryFindings as SummaryFinding[]
+          const sf = data.summaryFindings
+          if (Array.isArray(sf)) {
+            summaryFindings.value = sf as SummaryFinding[]
           }
-          if (data.privacyScore !== null && data.privacyScore !== undefined) {
-            privacyScore.value = data.privacyScore as number
-            privacySummary.value = (data.privacySummary as string) || ''
+          if (typeof data.privacyScore === 'number') {
+            privacyScore.value = data.privacyScore
+            privacySummary.value = str(data, 'privacySummary')
           }
-          if (data.structuredReport) {
+          if (typeof data.structuredReport === 'object' && data.structuredReport !== null) {
             structuredReport.value = data.structuredReport as StructuredReport
           }
-          if (data.analysisError) {
-            analysisError.value = data.analysisError as string
+          if (typeof data.analysisError === 'string') {
+            analysisError.value = data.analysisError
           }
-          if (data.consentDetails) {
+          if (typeof data.consentDetails === 'object' && data.consentDetails !== null) {
             consentDetails.value = data.consentDetails as ConsentDetails
           }
-          if (data.decodedCookies) {
+          if (typeof data.decodedCookies === 'object' && data.decodedCookies !== null) {
             decodedCookies.value = data.decodedCookies as DecodedCookies
           }
 
           activeTab.value = 'summary'
-          statusMessage.value = data.message as string
+          statusMessage.value = str(data, 'message')
           progressPercent.value = 100
           hasCompleted = true
           clearAnalysisRotation()
           
           // Wait for the van animation to complete (500ms CSS transition + buffer)
           // before hiding progress, showing tabs, and opening the score dialog.
+          const hasScore = typeof data.privacyScore === 'number'
           setTimeout(() => {
             isLoading.value = false
             isComplete.value = true
-            if (data.privacyScore !== null && data.privacyScore !== undefined) {
+            if (hasScore) {
               showScoreDialog.value = true
             }
           }, 700)
@@ -620,8 +646,8 @@ export function useTrackingAnalysis() {
               showErrorDialog.value = true
             }
           } else if (typeof _data === 'object' && _data !== null && 'error' in (_data as Record<string, unknown>)) {
-            const data = _data as Record<string, unknown>
-            const error = (data.error as string) || 'An error occurred'
+            const data = asRecord(_data)
+            const error = str(data, 'error', 'An error occurred')
 
             let title = 'Error'
             if (error.includes('OpenAI is not configured') || error.includes('not configured')) {
@@ -726,8 +752,8 @@ export function useTrackingAnalysis() {
     cookies,
     scripts,
     scriptGroups,
-    localStorage,
-    sessionStorage,
+    localStorageItems,
+    sessionStorageItems,
     networkRequests,
     activeTab,
     structuredReport,

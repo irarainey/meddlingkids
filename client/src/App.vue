@@ -42,8 +42,8 @@ const {
   cookies,
   scripts,
   scriptGroups,
-  localStorage,
-  sessionStorage,
+  localStorageItems,
+  sessionStorageItems,
   networkRequests,
   activeTab,
   consentDetails,
@@ -289,7 +289,7 @@ function onUrlMouseUp(event: Event): void {
             🍪 Cookies ({{ cookies.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">
-            💾 Storage ({{ localStorage.length + sessionStorage.length }})
+            💾 Storage ({{ localStorageItems.length + sessionStorageItems.length }})
           </button>
           <button class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
             🌐 Network ({{ filteredNetworkRequests.length }})
@@ -330,8 +330,8 @@ function onUrlMouseUp(event: Event): void {
 
         <StorageTab
           v-show="activeTab === 'storage'"
-          :local-storage="localStorage"
-          :session-storage="sessionStorage"
+          :local-storage="localStorageItems"
+          :session-storage="sessionStorageItems"
           :structured-report="structuredReport"
         />
 
