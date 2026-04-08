@@ -256,9 +256,9 @@ async def fetch_script_endpoint(
     class _PinnedResolver(aiohttp.abc.AbstractResolver):
         async def resolve(
             self,
-            _host: str,
-            _port: int = 0,
-            _family: int = 0,
+            host: str,
+            port: int = 0,
+            family: int = 0,
         ) -> list[aiohttp.abc.ResolveResult]:
             return resolved  # type: ignore[return-value]
 
