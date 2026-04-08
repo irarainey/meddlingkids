@@ -7,13 +7,13 @@ app creation, middleware wiring, and static-file serving.
 from __future__ import annotations
 
 import asyncio
+import urllib.parse
 
 import aiohttp
 import aiohttp.abc
 import fastapi
 import pydantic
 from starlette import responses
-import urllib.parse
 
 from src import agents
 from src.analysis import cookie_lookup, storage_lookup, tc_string, tcf_lookup
@@ -217,8 +217,8 @@ async def fetch_script_endpoint(
     # Basic surface validation to constrain the URL and reduce SSRF risk
     try:
         parsed = urllib.parse.urlparse(url)
-    except Exception:
-        raise fastapi.HTTPException(status_code=400, detail="Invalid URL format")
+    except Exception as exc:
+        raise fastapi.HTTPException(status_code=400, detail="Invalid URL format") from exc
 
     if parsed.scheme not in ("http", "https"):
         raise fastapi.HTTPException(status_code=400, detail="Only http and https URLs are allowed")
