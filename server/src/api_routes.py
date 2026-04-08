@@ -26,7 +26,7 @@ log = logger.create_logger("Routes")
 router = fastapi.APIRouter()
 
 
-# ── Request models ───────────────────────────────────────────────────────
+# ── Request models ─────────────────────────────────────────────────────--
 
 
 class DomainInfoRequest(pydantic.BaseModel):
@@ -240,12 +240,14 @@ async def fetch_script_endpoint(
                 max_redirects=3,
             ) as resp,
         ):
-            # Validate the final URL after redirects to prevent
-            # SSRF via an open-redirect chain.
+            # Validate the redirect URL's scheme and hostname without
+            # re-resolving DNS — the pinned resolver already guarantees
+            # traffic goes to the validated IPs.  A fresh DNS lookup
+            # here would create a TOCTOU window.
             final_url = str(resp.url) if resp.url is not None else url
             if final_url != url:
                 try:
-                    await url_mod.validate_analysis_url(final_url)
+                    url_mod.validate_url_surface(final_url)
                 except url_mod.UnsafeURLError:
                     return {"error": "Redirect target points to a disallowed host", "content": None}
             if resp.status >= 400:

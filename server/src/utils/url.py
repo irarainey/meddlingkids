@@ -247,3 +247,35 @@ def _check_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address, hostname: str
     """Raise if *addr* is private, loopback, link-local, or multicast."""
     if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved:
         raise UnsafeURLError(f"URL resolves to a non-public address ({addr}) for host {hostname}")
+
+
+def validate_url_surface(url: str) -> None:
+    """Check scheme and hostname without DNS resolution.
+
+    Use this when the connection is already pinned to validated
+    IPs (e.g. after a redirect) so a fresh DNS lookup would
+    introduce a TOCTOU window.
+
+    Raises:
+        UnsafeURLError: If the scheme is not HTTP(S), the hostname
+            is missing, the hostname is blocked, or the hostname
+            is an IP literal pointing to a non-public address.
+    """
+    parsed = parse.urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeURLError(f"Only http and https URLs are supported (got {parsed.scheme!r})")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("URL has no hostname")
+
+    if hostname.lower() in _BLOCKED_HOSTNAMES:
+        raise UnsafeURLError(f"Blocked hostname: {hostname}")
+
+    # If the redirect target is an IP literal, validate it directly.
+    try:
+        addr = ipaddress.ip_address(hostname)
+        _check_ip(addr, hostname)
+    except ValueError:
+        pass

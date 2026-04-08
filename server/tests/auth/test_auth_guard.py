@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 from itsdangerous import TimestampSigner
 from starlette.middleware import sessions
 
-from src.auth import middleware, routes
+from src.auth import auth_routes, middleware
 
 _TEST_SECRET = "test-session-secret-for-auth-guard-tests"
 
@@ -72,7 +72,7 @@ def _build_auth_app() -> fastapi.FastAPI:
         same_site="lax",
     )
 
-    app.include_router(routes.router)
+    app.include_router(auth_routes.router)
     return app
 
 

@@ -1,7 +1,7 @@
 """
 Server entry point — FastAPI app factory, middleware, and static files.
 
-Route handlers live in :mod:`src.routes`.  This module is responsible
+Route handlers live in :mod:`src.api_routes`.  This module is responsible
 for bootstrapping the application, wiring middleware (CORS, GZip,
 optional OAuth2), and mounting the SPA static files.
 """
@@ -21,11 +21,10 @@ from fastapi.middleware import cors, gzip
 from starlette import responses
 from starlette.middleware import sessions
 
+from src import api_routes
 from src.agents import observability_setup
-from src.auth import config, middleware
-from src.auth import routes as auth_routes
+from src.auth import auth_routes, config, middleware
 from src.browser import manager
-from src.routes import router as api_router
 from src.utils import logger
 
 
@@ -157,7 +156,7 @@ async def disable_static_cache(
 # API Routes
 # ============================================================================
 
-app.include_router(api_router)
+app.include_router(api_routes.router)
 
 
 # ============================================================================
