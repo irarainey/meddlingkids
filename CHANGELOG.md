@@ -1,6 +1,13 @@
 
 # Changelog
 
+## 1.8.5
+
+### Fixed
+
+- **OIDC issuer claim validation** — Fixed `InvalidClaimError: Invalid claim 'iss'` during OAuth callback. The `iss` claim is now validated against the canonical issuer from the provider's OIDC discovery metadata rather than the raw `OAUTH_ISSUER` environment variable, eliminating mismatches caused by trailing slashes, version paths, or other URL format differences between the configured value and the token's actual issuer.
+- **OAuth callback error handling** — `InvalidClaimError` and other JWT validation errors (`JoseError`) are now caught during the token exchange, returning a 401 response instead of an unhandled 500 Internal Server Error.
+
 ## 1.8.4
 
 ### Changed

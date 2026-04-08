@@ -184,6 +184,7 @@ function onUrlMouseUp(event: Event): void {
 </script>
 
 <template>
+  <template v-if="!isCheckingAuth">
   <header class="header">
       <button v-if="isAuthEnabled" class="logout-button" :title="`Signed in as ${authUser?.email}`" @click="logout">
         {{ authUser?.name || 'User' }} · Sign out
@@ -193,8 +194,6 @@ function onUrlMouseUp(event: Event): void {
         Feed the meddling kids a URL to unmask hidden trackers, cookies, scripts, and shady consent dialogs.
       </p>
     </header>
-
-    <template v-if="!isCheckingAuth">
     <div class="url-bar-wrapper">
       <div class="url-bar">
         <input
